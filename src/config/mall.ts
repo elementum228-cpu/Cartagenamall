@@ -1,0 +1,329 @@
+import type { FloorConfig, FloorId, MallConfig, SpaceSlot, SpaceType, SpaceTypeInfo, ZoneConfig, ZoneId } from '../domain/types'
+
+// ── Geometría base ──────────────────────────────────────────────────────────────
+// Planta en cruz: plaza central cuadrada y cuatro pasillos que salen de ella. Cada pasillo se
+// describe en un marco local (eje +z = hacia afuera de la plaza) y se rota con `zone.angle`.
+export const LAYOUT = {
+  plazaHalf: 9.5,
+  corridorHalfWidth: 4.5,
+  wingHalfWidth: 9.5,
+  wingEnd: 29,
+  baseRadius: 44,
+} as const
+
+export const SPACE_TYPES: Record<SpaceType, SpaceTypeInfo> = {
+  island: {
+    type: 'island',
+    name: 'Isla comercial',
+    monthlyPriceCOP: 29_900,
+    size: [2.6, 2.6],
+    features: ['Estructura compacta en pasillo', 'Mostrador con logo', 'Pequeña vitrina', 'Hasta 6 productos destacados'],
+  },
+  local: {
+    type: 'local',
+    name: 'Local comercial',
+    monthlyPriceCOP: 69_900,
+    size: [6, 5],
+    features: ['Fachada con letrero', 'Vitrina frontal', 'Decoración de marca', 'Catálogo completo', 'Promociones'],
+  },
+  premium: {
+    type: 'premium',
+    name: 'Local premium',
+    monthlyPriceCOP: 180_000,
+    size: [11, 7],
+    features: ['Fachada personalizable', 'Mayor presencia visual', 'Vitrinas amplias', 'Promociones y ofertas relámpago', 'Preparado para GrowDesk (integración futura)'],
+  },
+}
+
+/** Plantilla de espacios por pasillo, en coordenadas locales. Igual para las cuatro zonas. */
+interface SlotTemplate {
+  n: number
+  type: SpaceType
+  /** [x, z] locales */
+  at: [number, number]
+  /** rotación local: la fachada mira hacia +z local tras rotar */
+  facing: number
+}
+
+const WING_TEMPLATE: SlotTemplate[] = [
+  { n: 1, type: 'island', at: [0, 12.5], facing: Math.PI },
+  { n: 2, type: 'local', at: [-7, 16], facing: Math.PI / 2 },
+  { n: 3, type: 'local', at: [7, 16], facing: -Math.PI / 2 },
+  { n: 4, type: 'island', at: [0, 19.5], facing: Math.PI },
+  { n: 5, type: 'premium', at: [0, 25.3], facing: Math.PI },
+]
+
+const ZONES_P1: Omit<ZoneConfig, 'focus'>[] = [
+  {
+    id: 'A',
+    name: 'Moda',
+    color: '#e0735f',
+    angle: Math.PI,
+    categories: [
+      { id: 'moda-femenina', name: 'Ropa femenina', zoneId: 'A' },
+      { id: 'moda-masculina', name: 'Ropa masculina', zoneId: 'A' },
+      { id: 'accesorios', name: 'Accesorios', zoneId: 'A' },
+      { id: 'calzado', name: 'Calzado', zoneId: 'A' },
+    ],
+  },
+  {
+    id: 'B',
+    name: 'Tecnología',
+    color: '#3b82a6',
+    angle: Math.PI / 2,
+    categories: [
+      { id: 'accesorios-moviles', name: 'Accesorios móviles', zoneId: 'B' },
+      { id: 'electronica', name: 'Electrónica', zoneId: 'B' },
+      { id: 'computadores', name: 'Computadores', zoneId: 'B' },
+      { id: 'gadgets', name: 'Gadgets', zoneId: 'B' },
+    ],
+  },
+  {
+    id: 'C',
+    name: 'Belleza',
+    color: '#c2607f',
+    angle: 0,
+    categories: [
+      { id: 'cosmeticos', name: 'Cosméticos', zoneId: 'C' },
+      { id: 'perfumeria', name: 'Perfumería', zoneId: 'C' },
+      { id: 'cuidado-personal', name: 'Cuidado personal', zoneId: 'C' },
+      { id: 'accesorios-belleza', name: 'Accesorios de belleza', zoneId: 'C' },
+    ],
+  },
+  {
+    id: 'D',
+    name: 'Lifestyle',
+    color: '#5f9a6e',
+    angle: -Math.PI / 2,
+    categories: [
+      { id: 'regalos', name: 'Regalos', zoneId: 'D' },
+      { id: 'hogar', name: 'Hogar', zoneId: 'D' },
+      { id: 'artesanal', name: 'Productos artesanales', zoneId: 'D' },
+      { id: 'gastronomia', name: 'Gastronomía', zoneId: 'D' },
+    ],
+  },
+]
+
+/** Rota un punto local del pasillo al marco del mundo. */
+export function toWorld(local: [number, number], angle: number): [number, number] {
+  const [x, z] = local
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  return [x * c + z * s, -x * s + z * c]
+}
+
+/**
+ * Puntos transitables frente a cada espacio del pasillo (coordenadas locales de la plantilla), para
+ * que los visitantes se detengan a mirar una vitrina. Están en filas libres de islas, jardineras,
+ * bancas y faroles; `row` es la fila por la que se llega desde el carril de caminata.
+ */
+export const VIEWING_SPOTS: Record<number, { spots: [number, number][]; lookAt: [number, number] }> = {
+  1: { spots: [[-2.8, 10.5], [-1.4, 10.5], [0, 10.5], [1.4, 10.5], [2.8, 10.5], [-2.1, 9.7], [-0.7, 9.7], [0.7, 9.7], [2.1, 9.7], [-3.2, 9.7], [-2.8, 8.9], [-1.4, 8.9], [0, 8.9], [1.4, 8.9], [2.8, 8.9]], lookAt: [0, 12.5] },
+  2: { spots: [[-3.7, 13.3], [-3.7, 14.1], [-3.7, 14.9], [-3.7, 15.7], [-3.7, 16.5], [-3.7, 17.3], [-3.7, 18.1], [-3.7, 18.9], [-2.9, 13.7], [-2.9, 14.5], [-2.9, 15.3], [-2.9, 16.1], [-2.9, 16.9], [-2.9, 17.7], [-2.9, 18.5]], lookAt: [-7, 16] },
+  3: { spots: [[3.7, 13.3], [3.7, 14.1], [3.7, 14.9], [3.7, 15.7], [3.7, 16.5], [3.7, 17.3], [3.7, 18.1], [3.7, 18.9], [2.9, 13.7], [2.9, 14.5], [2.9, 15.3], [2.9, 16.1], [2.9, 16.9], [2.9, 17.7], [2.9, 18.5]], lookAt: [7, 16] },
+  4: { spots: [[-0.9, 17.75], [0.9, 17.75], [0, 17.8], [-1.9, 17.6], [-2.1, 18.5], [-2.1, 19.4], [-2.1, 20.3], [-3, 18.05], [-3, 18.95], [1.9, 17.6], [2.1, 18.5], [2.1, 19.4], [2.1, 20.3], [3, 18.05], [3, 18.95]], lookAt: [0, 19.5] },
+  5: { spots: [[-3.2, 21.3], [-2.4, 21.3], [-1.6, 21.3], [-0.8, 21.3], [0, 21.3], [0.8, 21.3], [1.6, 21.3], [2.4, 21.3], [3.2, 21.3], [-3.4, 20.5], [-2.6, 20.5], [-1.8, 20.5], [1.8, 20.5], [2.6, 20.5], [3.4, 20.5]], lookAt: [0, 25.3] },
+}
+
+/**
+ * Lugares dentro de un local (coordenadas del local: fachada hacia +z) donde se paran los visitantes
+ * que entran a comprar durante una promoción, libres de vitrinas, mostrador, mesa y estantería. Las
+ * islas no tienen interior: ahí todo el grupo espera afuera.
+ */
+export const INTERIOR_SPOTS: Partial<Record<SpaceType, [number, number][]>> = {
+  local: [[-1.2, 0.7], [-1.1, -0.9], [0.15, -1.15], [0.2, 0.5]],
+  premium: [[1.4, 1.3], [2.6, 0.3], [1.2, -1.1], [2.3, -1.9]],
+}
+
+/** Carriles por los que caminan los visitantes de cada pasillo (x local) y fila libre para cruzar. */
+export const WALK_LANES = { x: 2.4, crossZ: 10, z0: 8, z1: 21.3 }
+/** Desvíos laterales de los carriles (cada visitante camina un poco a un lado: no van en fila india). */
+export const LANE_SPREAD = [-0.45, -0.15, 0.15, 0.45]
+
+// ── Piso 2: terraza gastronómica ──────────────────────────────────────────────
+// Plataforma elevada en el cuadrante del fondo de la fortaleza (detrás de la plaza, entre
+// Lifestyle y Moda). Coordenadas del piso: centro de la losa = origen del piso.
+export const FOOD_LAYOUT = {
+  half: 14,
+  /** Terraza con pérgola en la esquina del fondo. */
+  terrace: { x0: -14, x1: -7.4, z0: -14, z1: -7.4 },
+  /** Donde llegan las escaleras (borde frontal). */
+  arrival: { x: 10.5, z: 13 },
+} as const
+
+const P2_OFFSET: [number, number] = [-16, -16]
+const P2_ELEVATION = 7.2
+
+/**
+ * Escaleras eléctricas, en coordenadas del piso 1: suben desde la plaza hacia el fondo (−z)
+ * hasta el borde frontal de la terraza del piso 2.
+ */
+export const ESCALATOR = { lanesX: [-6.25, -4.75], bottomZ: 6.6, topZ: -3.2, width: 1.5 } as const
+/** Marcha de las escaleras: escalones por segundo y cantidad de escalones por carril (carril 0 sube). */
+export const ESCALATOR_STEP_RATE = 0.9
+export const ESCALATOR_STEPS = 16
+
+const FOOD_ZONE: ZoneConfig = {
+  id: 'E',
+  name: 'Gastronomía',
+  color: '#d4842e',
+  angle: 0,
+  focus: [2, 2],
+  categories: [
+    { id: 'comida-local', name: 'Comida local', zoneId: 'E' },
+    { id: 'mariscos', name: 'Mariscos', zoneId: 'E' },
+    { id: 'asados', name: 'Asados', zoneId: 'E' },
+    { id: 'internacional', name: 'Internacional', zoneId: 'E' },
+    { id: 'cafe', name: 'Café', zoneId: 'E' },
+    { id: 'postres', name: 'Postres', zoneId: 'E' },
+  ],
+}
+
+interface SlotDef {
+  n: number
+  type: SpaceType
+  at: [number, number]
+  facing: number
+}
+
+/**
+ * Espacios de la terraza: locales en los dos bordes del fondo (mirando hacia la plaza) e islas
+ * en el patio. Se conservan los IDs E1–E10: las asignaciones guardadas siguen valiendo.
+ */
+const FOOD_SLOTS: SlotDef[] = [
+  { n: 1, type: 'local', at: [-4, -11.3], facing: 0 },
+  { n: 2, type: 'local', at: [3, -11.3], facing: 0 },
+  { n: 3, type: 'local', at: [10, -11.3], facing: 0 },
+  { n: 4, type: 'local', at: [-11.3, -4], facing: Math.PI / 2 },
+  { n: 5, type: 'local', at: [-11.3, 3], facing: Math.PI / 2 },
+  { n: 6, type: 'local', at: [-11.3, 10], facing: Math.PI / 2 },
+  { n: 7, type: 'island', at: [-3, 10], facing: Math.PI / 4 },
+  { n: 8, type: 'island', at: [10, -3], facing: Math.PI / 4 },
+  { n: 9, type: 'island', at: [-2, 2], facing: Math.PI / 4 },
+  { n: 10, type: 'island', at: [5.5, 5.5], facing: Math.PI / 4 },
+]
+
+export const MALL: MallConfig = {
+  id: 'cartagena-mall',
+  name: 'Cartagena Mall',
+  tagline: 'Tu ciudad. Tu mall. Tu mundo.',
+  floors: [
+    {
+      id: 'P1',
+      name: 'Piso 1',
+      title: 'PISO 1',
+      subtitle: 'Plaza central',
+      level: 1,
+      elevation: 0,
+      offset: [0, 0],
+      layout: 'cross',
+      homeZoom: 1,
+      bounds: 27,
+      zones: ZONES_P1.map((z) => ({ ...z, focus: toWorld([0, 18], z.angle) })),
+    },
+    {
+      id: 'P2',
+      name: 'Piso 2',
+      title: 'PISO 2',
+      subtitle: 'Zona de comida',
+      level: 2,
+      elevation: P2_ELEVATION,
+      offset: P2_OFFSET,
+      layout: 'foodcourt',
+      homeZoom: 1.7,
+      bounds: 14,
+      zones: [FOOD_ZONE],
+    },
+  ],
+}
+
+function spaceFrom(floor: FloorConfig, zoneId: ZoneId, t: SlotDef, at: [number, number], rotation: number): SpaceSlot {
+  return {
+    id: `${floor.id}-${zoneId}${t.n}`,
+    floorId: floor.id,
+    zoneId,
+    type: t.type,
+    label: `${zoneId}-${String(t.n).padStart(2, '0')}`,
+    position: at,
+    rotation,
+    size: SPACE_TYPES[t.type].size,
+  }
+}
+
+/** Genera los espacios de un piso a partir de su distribución. Las posiciones son del piso (sin elevación). */
+export function generateSpaces(floor: FloorConfig): SpaceSlot[] {
+  if (floor.layout === 'cross')
+    return floor.zones.flatMap((zone) => WING_TEMPLATE.map((t) => spaceFrom(floor, zone.id, t, toWorld(t.at, zone.angle), zone.angle + t.facing)))
+  const zone = floor.zones[0]
+  return FOOD_SLOTS.map((t) => spaceFrom(floor, zone.id, t, t.at, t.facing))
+}
+
+export const FLOORS = MALL.floors
+export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))
+/** Piso 1 (en cruz): lo usan la estructura, decoración y ambiente específicos de esa planta. */
+export const P1 = FLOORS[0]
+export const SPACES: SpaceSlot[] = FLOORS.flatMap(generateSpaces)
+export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries(SPACES.map((s) => [s.id, s]))
+export const ZONES: ZoneConfig[] = FLOORS.flatMap((f) => f.zones)
+export const ZONE_BY_ID = Object.fromEntries(ZONES.map((z) => [z.id, z])) as Record<ZoneId, ZoneConfig>
+export const FLOOR_OF_ZONE = Object.fromEntries(FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id]))) as Record<ZoneId, FloorId>
+export const CATEGORIES = ZONES.flatMap((z) => z.categories)
+export const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]))
+
+/** Punto frente a la fachada de un espacio (donde aparecen señales y ofertas). */
+export function spaceFrontPoint(space: SpaceSlot, distance: number): [number, number] {
+  const depth = space.size[1] / 2 + distance
+  return [space.position[0] + Math.sin(space.rotation) * depth, space.position[1] + Math.cos(space.rotation) * depth]
+}
+
+// ── Fortaleza ──────────────────────────────────────────────────────────────────
+// Planta cuadrada alineada con los ejes (en isométrico se ve como rombo). La esquina del frente
+// (+x, +z) es la entrada monumental; las otras tres esquinas son baluartes.
+export const FORTRESS = {
+  /** Mitad del lado (eje de la muralla). */
+  half: 31,
+  wallThickness: 2.2,
+  wallHeight: 5,
+  /** La esquina del frente se recorta en diagonal para la puerta. */
+  gateCut: 8,
+  /** Baluartes: esquina (signo x, signo z) y cuánto sobresalen. */
+  bastions: [
+    { corner: [-1, 1], reach: 6 },
+    { corner: [1, -1], reach: 6 },
+    { corner: [-1, -1], reach: 6 },
+  ] as { corner: [number, number]; reach: number }[],
+  /** Garitas (x, z) y cañones (x, z, giro: el cañón apunta a su +z local, hacia afuera). */
+  garitas: [
+    [-34.6, 34.6],
+    [34.6, -34.6],
+    [-34.6, -34.6],
+    [-31, 6],
+  ] as [number, number][],
+  cannons: [
+    [-31.6, 31.6, -Math.PI / 4],
+    [31.6, -31.6, (3 * Math.PI) / 4],
+    [-31, -12, -Math.PI / 2],
+    [14, 31, 0],
+    [31, 14, Math.PI / 2],
+  ] as [number, number, number][],
+} as const
+
+/** Centro de la puerta (en el recorte diagonal de la esquina del frente). */
+export const GATE = (() => {
+  const c = FORTRESS.half - FORTRESS.gateCut / 2
+  return { x: c, z: c, width: FORTRESS.gateCut * Math.SQRT2, facing: Math.PI / 4 }
+})()
+
+/** ¿El punto (coordenadas del piso 1) está sobre la plaza o un pasillo, donde camina la gente? */
+export function onP1Walkway(x: number, z: number, margin = 0): boolean {
+  const P = LAYOUT.plazaHalf + margin
+  if (Math.abs(x) <= P && Math.abs(z) <= P) return true
+  for (const zone of FLOORS[0].zones) {
+    const c = Math.cos(zone.angle)
+    const s = Math.sin(zone.angle)
+    const lx = x * c - z * s
+    const lz = x * s + z * c
+    if (Math.abs(lx) <= LAYOUT.corridorHalfWidth + margin && lz >= LAYOUT.plazaHalf - 0.5 && lz <= 22 + margin) return true
+  }
+  return false
+}

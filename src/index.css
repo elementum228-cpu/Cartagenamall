@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-sand: #f4efe6;
+  --color-sand-2: #ebe3d4;
+  --color-card: #fffdf9;
+  --color-ink: #1d2a33;
+  --color-ink-soft: #5b6670;
+  --color-line: #e4dccd;
+  --color-brand: #0f766e;
+  --color-brand-dark: #0b5953;
+  --color-coral: #e0735f;
+  --color-sun: #f5b544;
+  --color-zone-a: #e0735f;
+  --color-zone-b: #3b82a6;
+  --color-zone-c: #c2607f;
+  --color-zone-d: #5f9a6e;
+  --shadow-soft: 0 1px 2px rgb(29 42 51 / 0.06), 0 8px 24px -8px rgb(29 42 51 / 0.18);
+  --shadow-float: 0 2px 6px rgb(29 42 51 / 0.08), 0 18px 40px -12px rgb(29 42 51 / 0.32);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-sand);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+.world-sky {
+  background:
+    radial-gradient(120% 80% at 50% 0%, #fff8ee 0%, #f6ecdc 45%, #ead9bf 100%);
+}
+
+.world-night {
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #ffffffcc 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 8%, #ffffffaa 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 46% 22%, #ffffffbb 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 12%, #ffffff99 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 81% 20%, #ffffffcc 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 6%, #ffffffaa 50%, transparent 51%),
+    radial-gradient(1px 1px at 7% 40%, #ffffff88 50%, transparent 51%),
+    radial-gradient(1px 1px at 95% 44%, #ffffff88 50%, transparent 51%),
+    radial-gradient(120% 80% at 50% 0%, #34497a 0%, #233359 55%, #18243f 100%);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-brand) 55%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Menús desplegables con el mismo aspecto que los campos de texto en todos los navegadores (Safari en
+ * iPhone dibuja su propio relleno y flecha): sin estilo nativo, flecha propia y espacio para ella.
+ */
+select:not([multiple]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235b6670' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 1rem;
+  padding-right: 2.4rem;
+  text-overflow: ellipsis;
+  color: var(--color-ink);
+}
+select:not([multiple]):disabled {
+  opacity: 0.55;
+}
+
+/* En el teléfono, Safari agranda toda la página al tocar un campo con letra menor a 16 px. */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,234 @@
+// Modelo de dominio de Cartagena Mall. Todo lo que la UI y los servicios intercambian pasa por
+// estos tipos, de modo que reemplazar los datos mock por Supabase/GrowDesk no toque los componentes.
+
+export type ZoneId = 'A' | 'B' | 'C' | 'D' | 'E'
+export type FloorId = string
+export type SpaceType = 'island' | 'local' | 'premium'
+
+export interface Category {
+  id: string
+  name: string
+  zoneId: ZoneId
+}
+
+export interface ZoneConfig {
+  id: ZoneId
+  name: string
+  color: string
+  /** Rotación (rad) del pasillo alrededor de la plaza central (pisos en cruz). */
+  angle: number
+  /** Punto (x, z) del piso al que se acerca la cámara al elegir la zona. */
+  focus: [number, number]
+  categories: Category[]
+}
+
+/** Distribución arquitectónica del piso. Agregar un piso 3 = agregar datos con uno de estos tipos. */
+export type FloorLayout = 'cross' | 'foodcourt'
+
+export interface FloorConfig {
+  id: FloorId
+  name: string
+  /** Rótulo principal del piso (cartel grande). */
+  title: string
+  subtitle: string
+  level: number
+  /** Altura del piso en el mundo 3D. */
+  elevation: number
+  /** Desplazamiento (x, z) del piso dentro de la fortaleza (el piso 2 es una terraza al fondo). */
+  offset: [number, number]
+  layout: FloorLayout
+  /** Zoom de "volver al centro" relativo al encuadre general. */
+  homeZoom: number
+  /** Límite de desplazamiento de la cámara (|x|, |z|). */
+  bounds: number
+  zones: ZoneConfig[]
+}
+
+export interface MallConfig {
+  id: string
+  name: string
+  tagline: string
+  floors: FloorConfig[]
+}
+
+export interface SpaceTypeInfo {
+  type: SpaceType
+  name: string
+  monthlyPriceCOP: number
+  features: string[]
+  /** [ancho de fachada, profundidad] en unidades del mundo. */
+  size: [number, number]
+}
+
+/** Un espacio físico del mall. Se genera desde configuración; no se persiste. */
+export interface SpaceSlot {
+  id: string
+  floorId: string
+  zoneId: ZoneId
+  type: SpaceType
+  label: string
+  /** Centro en el plano del piso (x, z). */
+  position: [number, number]
+  /** Rotación en Y: la fachada mira hacia +z local tras rotar. */
+  rotation: number
+  size: [number, number]
+}
+
+export type StoreStatus = 'open' | 'paused'
+export type FacadeStyle = 'awning' | 'arch' | 'minimal'
+
+export interface Store {
+  id: string
+  name: string
+  logoText: string
+  /** Logo subido por el comerciante (data URL reducida). Sin logo se usa `logoText`. */
+  logo?: string | null
+  /** Tienda destacada: cartel grande en el techo y luz propia en el mall. */
+  highlight?: boolean
+  tagline: string
+  description: string
+  categoryId: string
+  zoneId: ZoneId
+  brandColor: string
+  accentColor: string
+  facade: FacadeStyle
+  instagram: string
+  /** Número de demostración, nunca un número real. */
+  whatsapp: string
+  status: StoreStatus
+}
+
+export interface Variant {
+  id: string
+  name: string
+  swatch?: string
+}
+
+export type ProductIcon =
+  | 'shirt' | 'dress' | 'pants' | 'hat' | 'shoe' | 'sandal' | 'bag'
+  | 'headphones' | 'charger' | 'phone' | 'watch' | 'laptop' | 'speaker'
+  | 'perfume' | 'lipstick' | 'serum' | 'brush'
+  | 'candle' | 'coffee' | 'gift' | 'hammock' | 'sweet'
+  | 'plate' | 'fish' | 'dessert' | 'drink' | 'meat' | 'noodles' | 'croissant'
+
+export interface Product {
+  id: string
+  storeId: string
+  name: string
+  description: string
+  /** Precio en COP, sin decimales. */
+  price: number
+  /** Foto real (URL o data URL subida desde Mi negocio). null mientras se usa el placeholder ilustrado. */
+  image: string | null
+  icon: ProductIcon
+  categoryId: string
+  tags: string[]
+  /** Productos "similares" entre tiendas comparten grupo para el comparador. */
+  compareGroup?: string
+  variants: Variant[]
+  sizes: string[]
+  /** Inventario mock por combinación: clave `${variantId|_}|${size|_}`. */
+  inventory: Record<string, number>
+  featured: boolean
+  active: boolean
+}
+
+export type PromotionType = 'normal' | 'flash' | 'secret'
+
+export interface Promotion {
+  id: string
+  type: PromotionType
+  storeId: string
+  productId: string
+  title: string
+  description: string
+  discountPercent: number
+  /** Código para promociones escondidas. */
+  code?: string
+  startsAt: string
+  endsAt: string | null
+  /** Duración usada al (re)activar una oferta relámpago desde /admin. */
+  durationHours?: number
+  active: boolean
+}
+
+export interface CartItem {
+  key: string
+  productId: string
+  storeId: string
+  variantId: string | null
+  size: string | null
+  qty: number
+}
+
+export type OrderStatus =
+  | 'received'
+  | 'pending_confirmation'
+  | 'confirmed'
+  | 'preparing'
+  | 'ready'
+  | 'delivered'
+  | 'cancelled'
+
+export interface OrderLine {
+  productId: string
+  name: string
+  variantId: string | null
+  variantName: string | null
+  size: string | null
+  qty: number
+  originalUnitPrice: number
+  unitPrice: number
+  promotionId: string | null
+  promoCode: string | null
+  lineTotal: number
+}
+
+export interface SubOrder {
+  id: string
+  orderId: string
+  storeId: string
+  storeName: string
+  lines: OrderLine[]
+  subtotal: number
+  status: OrderStatus
+  history: { status: OrderStatus; at: string }[]
+  /** Se marca cuando el inventario mock ya se descontó al confirmar. */
+  stockCommitted: boolean
+}
+
+export type DeliveryMode = 'pickup' | 'delivery'
+
+export interface Customer {
+  name: string
+  whatsapp: string
+}
+
+export interface Order {
+  id: string
+  createdAt: string
+  customer: Customer
+  delivery: { mode: DeliveryMode; address: string | null }
+  notes: string
+  subOrders: SubOrder[]
+  /** Total estimado: precios, inventario y entrega se confirman antes de cualquier cobro. */
+  estimatedTotal: number
+  payment: 'not_charged'
+}
+
+export type ClaimStatus = 'pending' | 'approved' | 'rejected'
+
+export interface SpaceClaim {
+  id: string
+  spaceId: string
+  spaceType: SpaceType
+  businessName: string
+  categoryId: string
+  ownerName: string
+  whatsapp: string
+  email: string
+  createdAt: string
+  status: ClaimStatus
+  /** Tienda creada al aprobar. */
+  storeId?: string
+}

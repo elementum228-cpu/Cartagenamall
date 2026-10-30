@@ -1,0 +1,50 @@
+import { create } from 'zustand'
+import { supabase } from './client'
+
+/** Sesión del comerciante o administrador (solo con base de datos conectada). */
+interface SessionState {
+  ready: boolean
+  email: string | null
+  userId: string | null
+  isAdmin: boolean
+  storeIds: string[]
+  refresh: () => Promise<void>
+  signIn: (email: string) => Promise<string | null>
+  signOut: () => Promise<void>
+}
+
+export const useSession = create<SessionState>()((set, get) => ({
+  ready: !supabase,
+  email: null,
+  userId: null,
+  isAdmin: false,
+  storeIds: [],
+  refresh: async () => {
+    if (!supabase) return
+    const { data } = await supabase.auth.getSession()
+    const user = data.session?.user ?? null
+    if (!user) {
+      set({ ready: true, email: null, userId: null, isAdmin: false, storeIds: [] })
+      return
+    }
+    const { data: roles } = await supabase.rpc('my_roles')
+    set({ ready: true, email: user.email ?? null, userId: user.id, isAdmin: !!roles?.is_admin, storeIds: (roles?.store_ids as string[]) ?? [] })
+  },
+  signIn: async (email) => {
+    if (!supabase) return 'No hay base de datos conectada.'
+    const redirect = `${location.origin}${import.meta.env.BASE_URL}${location.pathname.replace(import.meta.env.BASE_URL, '').replace(/^\//, '')}`
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: redirect } })
+    return error ? error.message : null
+  },
+  signOut: async () => {
+    await supabase?.auth.signOut()
+    await get().refresh()
+  },
+}))
+
+if (supabase) {
+  supabase.auth.onAuthStateChange(() => {
+    void useSession.getState().refresh()
+  })
+  void useSession.getState().refresh()
+}
