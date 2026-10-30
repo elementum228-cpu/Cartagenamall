@@ -1,11 +1,12 @@
 import { useFrame } from '@react-three/fiber'
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { CATEGORY_BY_ID, SPACE_TYPES } from '../config/mall'
+import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product, SpaceSlot, Store, ZoneId } from '../domain/types'
 import { formatCOP } from '../lib/format'
 import { getLabel, getStoreSign } from './labelTexture'
 import { Batch } from './Batch'
+import { useSpacePrice } from '../state/spacePricing'
 import { isHighlighted } from '../lib/storeHighlight'
 import { TECH, TechCounter, TechEmptyModule, TechScreen, type ScreenMessage } from './TechDistrict'
 import { ScreenLabel } from './Billboard'
@@ -81,6 +82,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
   const accent = store?.brandColor ?? zoneColor
   const highlightMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent])
   const select = () => onSelect(space.id)
+  const price = useSpacePrice(space.id)
   const labelY = space.type === 'premium' ? 5.6 : space.type === 'local' ? 4.6 : 3.8
   // El contenido se memoiza: así el hover no reconstruye la fusión de mallas (ver Batch).
   const content = useMemo(
@@ -92,9 +94,9 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
           <ShopFront store={store} products={products} w={w} d={d} premium={space.type === 'premium'} detail={detail} rotation={space.rotation} />
         )
       ) : (
-        <AvailableSpace space={space} zoneColor={zoneColor} pending={pendingClaim} />
+        <AvailableSpace space={space} zoneColor={zoneColor} pending={pendingClaim} price={price} />
       ),
-    [store, products, detail, space, w, d, zoneColor, pendingClaim],
+    [store, products, detail, space, w, d, zoneColor, pendingClaim, price],
   )
 
   return (
@@ -488,11 +490,10 @@ function IslandShop({ store, products, detail }: { store: Store; products: Produ
 
 // ── Espacio disponible ─────────────────────────────────────────────────────────
 
-function AvailableSpace({ space, zoneColor, pending }: { space: SpaceSlot; zoneColor: string; pending: boolean }) {
+function AvailableSpace({ space, zoneColor, pending, price }: { space: SpaceSlot; zoneColor: string; pending: boolean; price: number }) {
   const [w, d] = space.size
   const ring = useRef<THREE.Mesh>(null)
   const totem = useRef<THREE.Group>(null)
-  const price = SPACE_TYPES[space.type].monthlyPriceCOP
   const label = pending
     ? getLabel('EN REVISIÓN', { bg: '#f5b544', fg: '#3b2a05', sub: 'Solicitud enviada' })
     : getLabel('TU NEGOCIO AQUÍ', { bg: zoneColor, fg: '#fff', sub: `Reclámalo · ${formatCOP(price)}/mes` })

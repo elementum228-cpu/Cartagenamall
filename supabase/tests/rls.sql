@@ -115,6 +115,32 @@ do $$ begin
   assert (select count(*) from public.court_reservations) = 1, 'admin ve reservas';
   assert (select count(*) from public.sub_orders) = 2, 'admin ve subpedidos';
   assert (select count(*) from public.store_member_emails('STORE-003')) = 1, 'correos de la tienda';
+  insert into public.mall_settings (key, doc) values ('pricing', '{"types": {"local": 80000}, "spaces": {}}');
+  update public.mall_settings set doc = '{"types": {"local": 90000}, "spaces": {"P1-A1": 50000}}' where key = 'pricing';
 end $$;
 reset role;
+
+-- 7. Precios del mall: todos leen, solo el admin escribe
+set role anon;
+do $$ begin
+  assert (select (doc->'types'->>'local')::int from public.mall_settings where key = 'pricing') = 90000, 'anon lee precios';
+  begin
+    update public.mall_settings set doc = '{}' where key = 'pricing';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+select pg_temp.como('22222222-2222-2222-2222-222222222222');
+do $$ begin
+  update public.mall_settings set doc = '{}' where key = 'pricing';
+  begin
+    insert into public.mall_settings (key, doc) values ('otra', '{}');
+    raise exception 'comerciante no debe escribir configuración';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+do $$ begin
+  assert (select (doc->'types'->>'local')::int from public.mall_settings where key = 'pricing') = 90000, 'nadie más cambió los precios';
+end $$;
 select 'OK: reglas de acceso verificadas' as resultado;

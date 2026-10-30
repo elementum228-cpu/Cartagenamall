@@ -25,10 +25,13 @@ import { StatusPill } from '../pages/OrdersPage'
 import { StoreLogo, btn, input } from '../ui/bits'
 import { isHighlighted } from '../lib/storeHighlight'
 import { DemoPromoButton } from '../features/DemoPromoButton'
+import { OwnerDashboard } from './OwnerDashboard'
+import { useSpacePrice, useSpacePricing } from '../state/spacePricing'
 
-type Tab = 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'integraciones'
+type Tab = 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'integraciones'
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'gestion', label: 'Gestión y precios' },
   { id: 'espacios', label: 'Espacios' },
   { id: 'solicitudes', label: 'Solicitudes' },
   { id: 'tiendas', label: 'Tiendas' },
@@ -50,7 +53,7 @@ export default function AdminPage() {
 }
 
 function AdminContent() {
-  const [tab, setTab] = useState<Tab>('espacios')
+  const [tab, setTab] = useState<Tab>('gestion')
   const pendingClaims = useClaims((s) => s.claims.filter((c) => c.status === 'pending').length)
   const pendingOrders = useOrders((s) => s.orders.flatMap((o) => o.subOrders).filter((so) => so.status === 'pending_confirmation').length)
 
@@ -91,6 +94,7 @@ function AdminContent() {
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-5 pb-16">
+        {tab === 'gestion' && <OwnerDashboard />}
         {tab === 'espacios' && <SpacesAdmin />}
         {tab === 'solicitudes' && <ClaimsAdmin />}
         {tab === 'tiendas' && <StoresAdmin />}
@@ -158,6 +162,7 @@ function SpaceCard({ s }: { s: SpaceSlot }) {
   const { storeById, spaceByStore } = useCatalogMaps()
   const claims = useClaims((st) => st.claims)
   const toast = useUI((st) => st.toast)
+  const price = useSpacePrice(s.id)
   const store = storeById[assignments[s.id]]
   const pending = claims.filter((c) => c.spaceId === s.id && c.status === 'pending').length
   return (
@@ -167,7 +172,7 @@ function SpaceCard({ s }: { s: SpaceSlot }) {
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${store ? 'bg-emerald-100 text-emerald-800' : 'bg-sand-2 text-ink-soft'}`}>{store ? 'Ocupado' : 'Disponible'}</span>
       </div>
       <p className="mt-1 text-xs text-ink-soft">
-        {SPACE_TYPES[s.type].name} · {formatCOP(SPACE_TYPES[s.type].monthlyPriceCOP)}/mes
+        {SPACE_TYPES[s.type].name} · {formatCOP(price)}/mes
       </p>
       <div className="my-3 flex min-h-10 items-center gap-2">
         {store ? (
@@ -920,6 +925,7 @@ function IntegrationsAdmin() {
       return
     }
     useCatalog.getState().reset()
+    useSpacePricing.getState().reset()
     useOrders.getState().reset()
     useClaims.getState().reset()
     useCart.getState().clear()

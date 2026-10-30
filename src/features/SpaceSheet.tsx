@@ -2,6 +2,7 @@ import { CheckCircle2, Clock, Store as StoreIcon } from 'lucide-react'
 import { useState } from 'react'
 import { CATEGORIES, FLOOR_BY_ID, SHOP_SPACE_TYPES, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
 import { COURT_COLOR } from '../football/open'
+import { typePrice, useSpacePrice, useSpacePricing } from '../state/spacePricing'
 import type { SpaceSlot, SpaceType } from '../domain/types'
 import { formatCOP } from '../lib/format'
 import { useCatalog } from '../state/catalog'
@@ -46,6 +47,7 @@ function Header({ space }: { space: SpaceSlot }) {
 function Body({ space }: { space: SpaceSlot }) {
   const color = spaceColor(space)
   const info = SPACE_TYPES[space.type]
+  const price = useSpacePrice(space.id)
   const pending = useClaims((s) => s.claims.filter((c) => c.spaceId === space.id && c.status === 'pending').length)
   const [step, setStep] = useState<'info' | 'form' | 'done'>('info')
   const [requestId, setRequestId] = useState('')
@@ -96,7 +98,7 @@ function Body({ space }: { space: SpaceSlot }) {
         <div className="col-span-2 flex items-end justify-between rounded-2xl p-3 text-white" style={{ background: color }}>
           <div>
             <dt className="text-xs opacity-85">Precio mensual de referencia</dt>
-            <dd className="text-2xl font-extrabold">{formatCOP(info.monthlyPriceCOP)}</dd>
+            <dd className="text-2xl font-extrabold">{formatCOP(price)}</dd>
           </div>
           <span className="text-[11px] opacity-85">Precio de ejemplo · sin cobro</span>
         </div>
@@ -145,6 +147,7 @@ function validate(f: FormState) {
 function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: string) => void; onBack: () => void }) {
   const zone = ZONE_BY_ID[space.zoneId]
   const submit = useClaims((s) => s.submit)
+  const prices = useSpacePricing()
   const [f, setF] = useState<FormState>({
     businessName: '',
     categoryId: space.type === 'court' ? 'deportes' : zone.categories[0].id,
@@ -234,7 +237,7 @@ function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: s
                 className={`rounded-2xl border p-2.5 text-left text-xs transition ${f.spaceType === t ? 'border-brand bg-brand/5 ring-2 ring-brand/20' : 'border-line bg-white'}`}
               >
                 <span className="block font-bold">{SPACE_TYPES[t].name}</span>
-                <span className="text-ink-soft">{formatCOP(SPACE_TYPES[t].monthlyPriceCOP)}/mes</span>
+                <span className="text-ink-soft">{formatCOP(typePrice(prices, t))}/mes</span>
               </button>
             ))}
           </div>

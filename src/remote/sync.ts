@@ -3,6 +3,7 @@ import { SEED_ASSIGNMENTS, SEED_PRODUCTS, SEED_STORES, createSeedPromotions } fr
 import { isDemoPromotion } from '../promotions/demo'
 import { useCatalog } from '../state/catalog'
 import { useClaims } from '../state/claims'
+import { useSpacePricing, type Pricing } from '../state/spacePricing'
 import { useOrders } from '../state/orders'
 import { useReservations, type CourtReservation } from '../state/reservations'
 import { useUI } from '../state/ui'
@@ -81,6 +82,7 @@ function enqueue(task: () => Promise<void>) {
   queue = queue.then(task).catch(async (e: { message?: string }) => {
     toast(`No se guardó en línea: ${e?.message ?? 'error desconocido'}. Se recargan los datos.`)
     await loadCatalog()
+    await loadPricing()
   })
 }
 
@@ -268,6 +270,29 @@ async function loadPrivate() {
   }
 }
 
+// ── Precios de los espacios (los fija el dueño) ──────────────────────────────
+
+/** Sin la migración 0002 la tabla no existe: se siguen usando los precios locales sin avisar. */
+let pricingTable = true
+export async function loadPricing() {
+  if (!supabase || !pricingTable) return
+  const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'pricing').maybeSingle()
+  if (error) {
+    pricingTable = false
+    console.warn('Precios de los locales: falta la tabla mall_settings (supabase/migrations/0002_mall_settings.sql).', error.message)
+    return
+  }
+  const doc = (data as Doc<Pricing> | null)?.doc
+  applyRemote(() => useSpacePricing.setState({ types: doc?.types ?? {}, spaces: doc?.spaces ?? {} }))
+}
+
+function pushPricing(p: Pricing) {
+  enqueue(async () => {
+    const { error } = await supabase!.from('mall_settings').upsert({ key: 'pricing', doc: { types: p.types, spaces: p.spaces } })
+    if (error) throw new Error(pricingTable ? error.message : 'falta crear la tabla de precios (migración 0002)')
+  })
+}
+
 // ── Arranque ─────────────────────────────────────────────────────────────────
 
 let started = false
@@ -276,10 +301,15 @@ export function startRemoteSync() {
   started = true
   const db = supabase
   void loadCatalog()
+  void loadPricing()
 
   useCatalog.subscribe((next, prev) => {
     if (applying || !signedIn()) return
     pushCatalog(prev, next)
+  })
+  useSpacePricing.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || (next.types === prev.types && next.spaces === prev.spaces)) return
+    pushPricing(next)
   })
   useOrders.subscribe((next, prev) => {
     if (applying || next.orders === prev.orders) return
@@ -313,5 +343,6 @@ export function startRemoteSync() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions' }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'space_assignments' }, reload)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mall_settings' }, () => void loadPricing())
     .subscribe()
 }

@@ -3,7 +3,8 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { COURT, FENCE_X, FENCE_Z, HALF_L, HALF_W } from '../../football/config'
 import { COURT_COLOR } from '../../football/open'
-import { SPACE_TYPES } from '../../config/mall'
+import { COURT_SPACE } from '../../config/mall'
+import { useSpacePrice } from '../../state/spacePricing'
 import { formatCOP } from '../../lib/format'
 import { Batch } from '../Batch'
 import { ScreenLabel } from '../Billboard'
@@ -150,10 +151,10 @@ export const COURT_BENCHES: [number, number][] = [
 ]
 
 /** Cartel de la cancha según su estado: operada por un negocio, libre o con solicitud en revisión. */
-function courtSign(operator: string | null, pending: boolean) {
+function courtSign(operator: string | null, pending: boolean, price: number) {
   if (operator) return getLabel('CANCHA SINTÉTICA', { bg: COURT_COLOR, fg: '#fff', sub: `${operator} · toca para reservar` })
   if (pending) return getLabel('EN REVISIÓN', { bg: '#f5b544', fg: '#3b2a05', sub: 'Cancha · solicitud enviada' })
-  return getLabel('TU NEGOCIO AQUÍ', { bg: COURT_COLOR, fg: '#fff', sub: `Cancha sintética · ${formatCOP(SPACE_TYPES.court.monthlyPriceCOP)}/mes` })
+  return getLabel('TU NEGOCIO AQUÍ', { bg: COURT_COLOR, fg: '#fff', sub: `Cancha sintética · ${formatCOP(price)}/mes` })
 }
 
 /**
@@ -162,7 +163,8 @@ function courtSign(operator: string | null, pending: boolean) {
  * reclamarla. La geometría estática va en Batch: pocas llamadas de dibujo.
  */
 export function FootballCourt({ selected, onOpen, interactive, operator, pending }: { selected: boolean; onOpen: () => void; interactive: boolean; operator: string | null; pending: boolean }) {
-  const sign = courtSign(operator, pending)
+  const price = useSpacePrice(COURT_SPACE.id)
+  const sign = courtSign(operator, pending, price)
   const wood = mat(PALETTE.wood)
   return (
     <group position={[COURT.center[0], COURT.y, COURT.center[1]]} rotation={[0, COURT.rotation, 0]}>
@@ -175,7 +177,7 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
         onPointerOver={() => interactive && (document.body.style.cursor = 'pointer')}
         onPointerOut={() => (document.body.style.cursor = '')}
       >
-        <Batch version={`cancha:${operator ?? ''}:${pending}`}>
+        <Batch version={`cancha:${operator ?? ''}:${pending}:${price}`}>
           {/* base de concreto y césped a franjas */}
           <mesh geometry={GEO.box} material={mat('#cfc6b6')} position={[0, -0.04, 0]} scale={[2 * FENCE_X + 0.7, 0.14, 2 * FENCE_Z + 0.7]} receiveShadow />
           {Array.from({ length: 8 }, (_, i) => {
