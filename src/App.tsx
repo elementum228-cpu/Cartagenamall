@@ -1,6 +1,7 @@
 import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart, Store, UserRound, Zap } from 'lucide-react'
-import { lazy, Suspense, useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { BrowserRouter, Link, MemoryRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { DoorIntro } from './features/DoorIntro'
 import { ExploreView } from './features/ExploreView'
 import { ProductSheet } from './features/ProductSheet'
 import { SecretPromoModal } from './features/SecretPromoModal'
@@ -56,6 +57,8 @@ export default function App() {
 function Shell() {
   const location = useLocation()
   const exploring = location.pathname === '/'
+  // El portón de bienvenida solo al abrir el mall en la portada (no en enlaces directos a otras páginas).
+  const [startedAtHome] = useState(exploring)
 
   // Al salir del mapa se cierra la selección de espacio (las fichas abiertas desde Comprar se mantienen).
   useEffect(() => {
@@ -108,6 +111,7 @@ function Shell() {
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />
+      {startedAtHome && <DoorIntro />}
     </div>
   )
 }
