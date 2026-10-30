@@ -308,6 +308,16 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       )}
       {use3D && <TimeToggle />}
       <DemoPromoButton className={item} onDone={() => setOpen(false)} />
+      <button
+        className={`${item} bg-white/95`}
+        onClick={() => {
+          setOpen(false)
+          useUI.getState().showDoor()
+        }}
+        aria-label="Ver otra vez el portón de entrada"
+      >
+        <DoorOpen className="size-4" /> Ver la entrada
+      </button>
       {use3D && (
         <button
           className={`${item} ${quality !== 'high' ? 'bg-ink text-white' : 'bg-white/95'}`}

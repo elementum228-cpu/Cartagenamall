@@ -1,11 +1,14 @@
+import { Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { doorSoundOn, playCreak, playEnter, playKnock, setDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
 import { useUI } from '../state/ui'
 
 // Portón de bienvenida: antes de ver el mall aparece la puerta colonial de la fortaleza. Al tocarla
 // suenan dos golpes de aldaba, las hojas se abren en 3D, la luz del interior inunda el vano y la
 // vista atraviesa la puerta hasta el centro comercial (el mundo 3D carga detrás mientras tanto y
-// la cámara empieza a entrar a mitad de la animación). Una vez por sesión del navegador.
+// la cámara empieza a entrar a mitad de la animación). Sola, una vez por sesión del navegador;
+// después se puede volver a ver con «Ver la entrada» (useUI.showDoor).
 // Todo con transiciones CSS por fases: suaves y baratas también en celulares.
 
 const SEEN_KEY = 'cm:door-seen'
@@ -28,19 +31,34 @@ function alreadySeen() {
   }
 }
 
-export function DoorIntro() {
-  const [phase, setPhase] = useState<Phase>(() => (alreadySeen() ? 'done' : 'idle'))
+export function DoorIntro({ auto }: { auto: boolean }) {
+  const [phase, setPhase] = useState<Phase>(() => (auto && !alreadySeen() ? 'idle' : 'done'))
+  const [sound, setSound] = useState(doorSoundOn)
   const timers = useRef<number[]>([])
+  const started = useRef(false)
+  const doorNonce = useUI((s) => s.doorNonce)
+
+  // «Ver la entrada»: el portón vuelve a aparecer cerrado
+  useEffect(() => {
+    if (!doorNonce) return
+    timers.current.forEach(clearTimeout)
+    timers.current = []
+    started.current = false
+    setPhase('idle')
+  }, [doorNonce])
   const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
   const open = () => {
-    if (phase !== 'idle') return
+    if (phase !== 'idle' || started.current) return
+    started.current = true
     try {
       sessionStorage.setItem(SEEN_KEY, '1')
     } catch {
       /* sin almacenamiento: se vuelve a mostrar la próxima vez */
     }
+    playKnock()
     if (reduce) {
+      playEnter()
       useUI.getState().enterMall()
       setPhase('through')
       timers.current.push(window.setTimeout(() => setPhase('done'), 400))
@@ -48,9 +66,15 @@ export function DoorIntro() {
     }
     setPhase('knock')
     const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
-    at(TIMELINE.open, () => setPhase('open'))
+    at(TIMELINE.open, () => {
+      setPhase('open')
+      playCreak()
+    })
     at(TIMELINE.enter, () => useUI.getState().enterMall())
-    at(TIMELINE.through, () => setPhase('through'))
+    at(TIMELINE.through, () => {
+      setPhase('through')
+      playEnter()
+    })
     at(TIMELINE.done, () => setPhase('done'))
   }
 
@@ -58,7 +82,7 @@ export function DoorIntro() {
   useEffect(() => {
     if (phase !== 'idle') return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if ((e.key === 'Enter' || e.key === ' ') && !(e.target as HTMLElement).closest?.('[aria-pressed]')) {
         e.preventDefault()
         open()
       }
@@ -179,6 +203,20 @@ export function DoorIntro() {
           </p>
         </div>
       </div>
+      {/* sonido sí / no (se recuerda en este navegador) */}
+      <button
+        type="button"
+        onClick={() => {
+          setDoorSound(!sound)
+          setSound(!sound)
+        }}
+        aria-pressed={sound}
+        aria-label={sound ? 'Silenciar sonidos de la puerta' : 'Activar sonidos de la puerta'}
+        className="absolute top-4 right-4 z-20 flex items-center gap-1.5 rounded-full bg-white/80 px-3.5 py-2 text-xs font-bold text-[#5b4a35] shadow-soft backdrop-blur transition hover:bg-white"
+        style={{ opacity: phase === 'idle' ? 1 : 0, transition: 'opacity 0.3s' }}
+      >
+        {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />} {sound ? 'Sonido' : 'Sin sonido'}
+      </button>
       {/* destello cálido al cruzar el umbral */}
       <div
         className="pointer-events-none absolute inset-0"

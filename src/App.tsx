@@ -111,7 +111,7 @@ function Shell() {
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />
-      {startedAtHome && <DoorIntro />}
+      <DoorIntro auto={startedAtHome} />
     </div>
   )
 }

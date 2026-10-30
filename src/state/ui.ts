@@ -35,6 +35,9 @@ interface UIState {
   setOverview: (on: boolean) => void
   /** Desde la vista de la fortaleza: entrar al piso 1 pasando por la puerta. */
   enterMall: () => void
+  /** Cambia cada vez que se pide ver de nuevo el portón de bienvenida. */
+  doorNonce: number
+  showDoor: () => void
   /** Espacio seleccionado (tienda activa o local disponible). */
   selectedSpaceId: string | null
   /** Tienda abierta en ficha sin pasar por el mapa (modo Comprar). */
@@ -68,6 +71,10 @@ export const useUI = create<UIState>()((set, get) => ({
     // petición reemplaza a esta (ver CameraRig).
     set({ activeFloor: id, overview: false, selectedSpaceId: null, focus: { kind: 'floor', nonce: Date.now() + Math.random() } })
   },
+  doorNonce: 0,
+  // de vuelta a la vista de la fortaleza: al abrir la puerta otra vez la cámara entra de nuevo
+  showDoor: () =>
+    set({ doorNonce: Date.now(), overview: true, activeFloor: 'P1', selectedSpaceId: null, openStoreId: null, courtOpen: false, focus: { kind: 'overview', nonce: Date.now() + Math.random() } }),
   enterMall: () => set({ overview: false, activeFloor: 'P1', selectedSpaceId: null, focus: { kind: 'enter', nonce: Date.now() + Math.random() } }),
   setOverview: (on) => set({ overview: on, selectedSpaceId: null, focus: { kind: on ? 'overview' : 'home', nonce: Date.now() + Math.random() } }),
   selectedSpaceId: null,
@@ -122,8 +129,7 @@ export const usePrefs = create<PrefsState>()(
       qualityLocked: false,
       setForce2D: (force2D) => set({ force2D }),
       setHintSeen: () => set({ hintSeen: true }),
-      stepDownQuality: () =>
-        set((s) => (s.qualityLocked ? s : { quality: s.quality === 'high' ? 'medium' : 'low' })),
+      stepDownQuality: () => set((s) => (s.qualityLocked ? s : { quality: s.quality === 'high' ? 'medium' : 'low' })),
       chooseQuality: (quality) => set({ quality, qualityLocked: true }),
     }),
     {
