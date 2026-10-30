@@ -112,12 +112,35 @@ select:not([multiple]):disabled {
   from { opacity: 0; transform: translateY(18px) scale(0.97); }
   to { opacity: 1; transform: none; }
 }
-@keyframes door-knock {
+@keyframes door-knock-0 {
   0%, 100% { transform: none; }
-  15% { transform: translateX(-3px) rotate(-0.4deg); }
-  30% { transform: translateX(2px); }
-  55% { transform: translateX(-3px) rotate(0.4deg); }
-  70% { transform: translateX(2px); }
+  20% { transform: translateX(-4px) rotate(-0.5deg) scale(0.995); }
+  45% { transform: translateX(3px) rotate(0.3deg); }
+  70% { transform: translateX(-1px); }
+}
+@keyframes door-knock-1 {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-4px) rotate(-0.5deg) scale(0.995); }
+  45% { transform: translateX(3px) rotate(0.3deg); }
+  70% { transform: translateX(-1px); }
+}
+@keyframes door-hit-0 {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-24deg); }
+  55% { transform: rotate(12deg); }
+  80% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes door-hit-1 {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-24deg); }
+  55% { transform: rotate(12deg); }
+  80% { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes door-pop {
+  from { transform: scale(0.8); opacity: 0.4; }
+  to { transform: scale(1); opacity: 1; }
 }
 @keyframes door-breathe {
   0%, 100% { opacity: 0.55; }

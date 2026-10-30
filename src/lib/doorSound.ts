@@ -126,12 +126,11 @@ function knockAt(ac: AudioContext, out: AudioNode, at: number, strength = 1) {
   click.start(at)
 }
 
-/** Dos golpes de aldaba (el segundo, un poco más suave). */
-export async function playKnock() {
+/** Un golpe de aldaba (cada toque en la puerta). */
+export async function playKnockOnce(strength = 1) {
   const r = await ready()
   if (!r) return
-  knockAt(r.ac, r.out, r.t)
-  knockAt(r.ac, r.out, r.t + 0.26, 0.85)
+  knockAt(r.ac, r.out, r.t, strength)
 }
 
 /** Crujido de bisagras viejas mientras se abren las hojas (~1,4 s) y el tope al final. */

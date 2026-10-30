@@ -1,11 +1,12 @@
 import { Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { doorSoundOn, playCreak, playEnter, playKnock, setDoorSound, unlockDoorSound } from '../lib/doorSound'
+import { doorSoundOn, playCreak, playEnter, playKnockOnce, setDoorSound, unlockDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
 import { useUI } from '../state/ui'
 
-// Portón de bienvenida: antes de ver el mall aparece la puerta colonial de la fortaleza. Al tocarla
-// suenan dos golpes de aldaba, las hojas se abren en 3D, la luz del interior inunda el vano y la
+// Portón de bienvenida: antes de ver el mall aparece la puerta colonial de la fortaleza. Hay que
+// tocarla tres veces (cada toque suena, la puerta tiembla y se cuela más luz); al tercero las hojas
+// se abren en 3D, la luz del interior inunda el vano y la
 // vista atraviesa la puerta hasta el centro comercial (el mundo 3D carga detrás mientras tanto y
 // la cámara empieza a entrar a mitad de la animación). Sola, una vez por sesión del navegador;
 // después se puede volver a ver con «Ver la entrada» (useUI.showDoor).
@@ -18,9 +19,12 @@ const IRON = '#23201d'
 const BRASS = '#d9a441'
 const ARCH = '50% 50% 6px 6px / 34% 34% 6px 6px'
 
-type Phase = 'idle' | 'knock' | 'open' | 'through' | 'done'
-/** Momento (ms desde el toque) en que empieza cada fase. */
-const TIMELINE = { knock: 0, open: 520, enter: 1150, through: 1500, done: 2700 }
+type Phase = 'idle' | 'open' | 'through' | 'done'
+/** Toques necesarios para abrir. */
+const KNOCKS = 3
+/** Momento (ms desde el último toque) en que empieza cada fase. */
+const TIMELINE = { open: 520, enter: 1150, through: 1500, done: 2700 }
+const HINTS = [`Toca la puerta ${KNOCKS} veces para entrar`, '¡Otra vez!', '¡Una más!']
 const EASE = 'cubic-bezier(0.65, 0, 0.25, 1)'
 
 function alreadySeen() {
@@ -34,6 +38,7 @@ function alreadySeen() {
 export function DoorIntro({ auto }: { auto: boolean }) {
   const [phase, setPhase] = useState<Phase>(() => (auto && !alreadySeen() ? 'idle' : 'done'))
   const [sound, setSound] = useState(doorSoundOn)
+  const [knocks, setKnocks] = useState(0)
   const timers = useRef<number[]>([])
   const started = useRef(false)
   const doorNonce = useUI((s) => s.doorNonce)
@@ -44,20 +49,28 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     timers.current.forEach(clearTimeout)
     timers.current = []
     started.current = false
+    setKnocks(0)
     setPhase('idle')
   }, [doorNonce])
   const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  const open = () => {
+  const knock = () => {
     if (phase !== 'idle' || started.current) return
+    unlockDoorSound()
+    const n = knocks + 1
+    // cada golpe un poco más decidido
+    void playKnockOnce(0.8 + n * 0.1)
+    setKnocks(n)
+    if (n >= KNOCKS) open()
+  }
+
+  const open = () => {
     started.current = true
     try {
       sessionStorage.setItem(SEEN_KEY, '1')
     } catch {
       /* sin almacenamiento: se vuelve a mostrar la próxima vez */
     }
-    unlockDoorSound()
-    void playKnock()
     if (reduce) {
       void playEnter()
       useUI.getState().enterMall()
@@ -65,7 +78,6 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       timers.current.push(window.setTimeout(() => setPhase('done'), 400))
       return
     }
-    setPhase('knock')
     const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
     at(TIMELINE.open, () => {
       setPhase('open')
@@ -85,7 +97,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     const onKey = (e: KeyboardEvent) => {
       if ((e.key === 'Enter' || e.key === ' ') && !(e.target as HTMLElement).closest?.('[aria-pressed]')) {
         e.preventDefault()
-        open()
+        knock()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -132,14 +144,15 @@ export function DoorIntro({ auto }: { auto: boolean }) {
           {/* portón con arco */}
           <button
             type="button"
-            onClick={open}
-            aria-label="Abrir la puerta y entrar al centro comercial"
+            onClick={knock}
+            aria-label={`Tocar la puerta para entrar al centro comercial (${knocks} de ${KNOCKS} toques)`}
             className="group relative cursor-pointer outline-none focus-visible:ring-4 focus-visible:ring-white/70"
             style={{
               width: 'min(78vw, 46vh, 440px)',
               aspectRatio: '3 / 4',
               borderRadius: ARCH,
-              animation: phase === 'idle' ? 'door-rise 1s 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both' : phase === 'knock' ? 'door-knock 0.5s ease-out' : 'none',
+              // entrada suave; luego, un temblor por golpe (alterna dos nombres para reiniciarlo)
+              animation: phase !== 'idle' ? 'none' : knocks ? `door-knock-${knocks % 2} 0.45s ease-out` : 'door-rise 1s 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both',
             }}
           >
             {/* marco de piedra clara */}
@@ -163,16 +176,18 @@ export function DoorIntro({ auto }: { auto: boolean }) {
                 }}
               />
               <Fanlight lit={opened} />
-              <Leaf side="left" opened={opened} reduce={reduce} />
-              <Leaf side="right" opened={opened} reduce={reduce} />
-              {/* rendija de luz entre las hojas (respira mientras espera) */}
+              <Leaf side="left" opened={opened} reduce={reduce} knocks={knocks} />
+              <Leaf side="right" opened={opened} reduce={reduce} knocks={knocks} />
+              {/* rendija de luz entre las hojas (respira; con cada golpe se cuela más luz) */}
               <div
-                className="absolute bottom-0 left-1/2 h-[72%] w-[3%] -translate-x-1/2"
+                className="absolute bottom-0 left-1/2 h-[72%] -translate-x-1/2"
                 style={{
+                  width: `${3 + knocks * 2.2}%`,
+                  boxShadow: knocks ? `0 0 ${12 + knocks * 14}px ${knocks * 4}px rgba(255,214,140,${0.25 + knocks * 0.15})` : 'none',
                   background: 'linear-gradient(90deg, transparent, #ffe2a6 40%, #fff6dc 50%, #ffe2a6 60%, transparent)',
                   filter: 'blur(2px)',
                   opacity: opened ? 0 : 1,
-                  transition: 'opacity 0.3s',
+                  transition: 'opacity 0.3s, width 0.4s ease-out, box-shadow 0.4s ease-out',
                   animation: 'door-breathe 2.6s ease-in-out infinite',
                 }}
               />
@@ -191,17 +206,29 @@ export function DoorIntro({ auto }: { auto: boolean }) {
             <div className="h-3 rounded-sm" style={{ width: 'min(94vw, 58vh, 560px)', background: '#b3966a' }} />
           </div>
 
-          <p
-            className="mt-5 rounded-full bg-[#2c4d39] px-5 py-2.5 text-sm font-bold text-white shadow-soft"
-            style={{
-              opacity: phase === 'idle' ? 1 : 0,
-              transform: phase === 'idle' ? 'none' : 'translateY(8px)',
-              transition: 'opacity 0.3s, transform 0.3s',
-              animation: phase === 'idle' ? 'door-hint 2.2s 1.2s ease-in-out infinite' : undefined,
-            }}
+          <div
+            className="mt-5 flex flex-col items-center gap-2"
+            style={{ opacity: phase === 'idle' ? 1 : 0, transform: phase === 'idle' ? 'none' : 'translateY(8px)', transition: 'opacity 0.3s, transform 0.3s' }}
+            aria-live="polite"
           >
-            Toca la puerta para entrar
-          </p>
+            <p
+              key={knocks}
+              className="rounded-full bg-[#2c4d39] px-5 py-2.5 text-sm font-bold text-white shadow-soft"
+              style={{ animation: knocks ? 'door-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1)' : 'door-hint 2.2s 1.2s ease-in-out infinite' }}
+            >
+              {HINTS[Math.min(knocks, HINTS.length - 1)]}
+            </p>
+            {/* un punto por golpe */}
+            <div className="flex gap-2" aria-hidden>
+              {Array.from({ length: KNOCKS }, (_, i) => (
+                <span
+                  key={i}
+                  className="size-3 rounded-full border-2 transition-all duration-300"
+                  style={{ borderColor: BRASS, background: i < knocks ? BRASS : 'transparent', transform: i < knocks ? 'scale(1.15)' : 'scale(1)', boxShadow: i < knocks ? `0 0 10px ${BRASS}` : 'none' }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       {/* sonido sí / no (se recuerda en este navegador) */}
@@ -212,7 +239,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
           setSound(!sound)
           if (!sound) {
             unlockDoorSound()
-            void playKnock()
+            void playKnockOnce()
           }
         }}
         aria-pressed={sound}
@@ -236,7 +263,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
 }
 
 /** Una hoja de madera con tableros, clavos de hierro y aldaba de bronce; gira sobre su bisagra. */
-function Leaf({ side, opened, reduce }: { side: 'left' | 'right'; opened: boolean; reduce: boolean }) {
+function Leaf({ side, opened, reduce, knocks }: { side: 'left' | 'right'; opened: boolean; reduce: boolean; knocks: number }) {
   const s = side === 'left' ? -1 : 1
   const studs: [number, number][] = []
   for (let r = 0; r < 6; r++) for (let c = 0; c < 3; c++) studs.push([18 + c * 32, 9 + r * 16.4])
@@ -279,7 +306,10 @@ function Leaf({ side, opened, reduce }: { side: 'left' | 'right'; opened: boolea
           borderColor: BRASS,
           boxShadow: '0 2px 0 rgba(0,0,0,0.35)',
           transformOrigin: '50% 0%',
-          animation: `door-sway 3.2s ${side === 'left' ? 0 : 0.4}s ease-in-out infinite`,
+          // con cada golpe la argolla da un salto y luego vuelve a mecerse
+          animation: knocks
+            ? `door-hit-${knocks % 2} 0.7s ease-out, door-sway 3.2s 0.7s ease-in-out infinite`
+            : `door-sway 3.2s ${side === 'left' ? 0 : 0.4}s ease-in-out infinite`,
         }}
       />
     </div>
