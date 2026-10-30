@@ -1,6 +1,6 @@
 import { Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { doorSoundOn, playCreak, playEnter, playKnock, setDoorSound } from '../lib/doorSound'
+import { doorSoundOn, playCreak, playEnter, playKnock, setDoorSound, unlockDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
 import { useUI } from '../state/ui'
 
@@ -56,9 +56,10 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     } catch {
       /* sin almacenamiento: se vuelve a mostrar la próxima vez */
     }
-    playKnock()
+    unlockDoorSound()
+    void playKnock()
     if (reduce) {
-      playEnter()
+      void playEnter()
       useUI.getState().enterMall()
       setPhase('through')
       timers.current.push(window.setTimeout(() => setPhase('done'), 400))
@@ -68,12 +69,12 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
     at(TIMELINE.open, () => {
       setPhase('open')
-      playCreak()
+      void playCreak()
     })
     at(TIMELINE.enter, () => useUI.getState().enterMall())
     at(TIMELINE.through, () => {
       setPhase('through')
-      playEnter()
+      void playEnter()
     })
     at(TIMELINE.done, () => setPhase('done'))
   }
@@ -209,6 +210,10 @@ export function DoorIntro({ auto }: { auto: boolean }) {
         onClick={() => {
           setDoorSound(!sound)
           setSound(!sound)
+          if (!sound) {
+            unlockDoorSound()
+            void playKnock()
+          }
         }}
         aria-pressed={sound}
         aria-label={sound ? 'Silenciar sonidos de la puerta' : 'Activar sonidos de la puerta'}
