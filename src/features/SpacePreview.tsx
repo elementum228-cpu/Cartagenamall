@@ -2,6 +2,7 @@ import type { SpaceType } from '../domain/types'
 
 /** Vista previa ilustrada (isométrica) de cada tipo de espacio. */
 export function SpacePreview({ type, color }: { type: SpaceType; color: string }) {
+  if (type === 'court') return <CourtPreview color={color} />
   const w = type === 'premium' ? 150 : type === 'local' ? 110 : 64
   const h = type === 'premium' ? 70 : type === 'local' ? 58 : 46
   return (
@@ -29,6 +30,25 @@ export function SpacePreview({ type, color }: { type: SpaceType; color: string }
           </>
         )}
         <text x="0" y={type === 'island' ? 30 : 18} textAnchor="middle" fontSize="12" fontWeight="800" fill={color}>
+          + TU MARCA
+        </text>
+      </g>
+    </svg>
+  )
+}
+
+/** Cancha libre: césped con líneas, arcos y el cartel por estrenar. */
+function CourtPreview({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 220 140" className="h-36 w-full" role="img" aria-label="Vista previa de la cancha">
+      <g transform="translate(110 78)">
+        <polygon points="0,-46 96,0 0,46 -96,0" fill="#5fae5f" stroke={color} strokeDasharray="5 4" strokeWidth="2" />
+        <polygon points="0,-36 76,0 0,36 -76,0" fill="none" stroke="#fff" strokeWidth="1.5" opacity="0.85" />
+        <line x1="-38" y1="-18" x2="38" y2="18" stroke="#fff" strokeWidth="1.5" opacity="0.85" />
+        <ellipse cx="0" cy="0" rx="14" ry="7" fill="none" stroke="#fff" strokeWidth="1.5" opacity="0.85" />
+        <path d="M-70 -3 l0 -12 l10 -5 l0 12" fill="none" stroke="#fff" strokeWidth="2" />
+        <path d="M70 3 l0 -12 l-10 5 l0 12" fill="none" stroke="#fff" strokeWidth="2" />
+        <text x="0" y="62" textAnchor="middle" fontSize="12" fontWeight="800" fill={color}>
           + TU MARCA
         </text>
       </g>

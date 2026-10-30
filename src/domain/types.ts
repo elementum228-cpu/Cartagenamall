@@ -3,7 +3,7 @@
 
 export type ZoneId = 'A' | 'B' | 'C' | 'D' | 'E'
 export type FloorId = string
-export type SpaceType = 'island' | 'local' | 'premium'
+export type SpaceType = 'island' | 'local' | 'premium' | 'court'
 
 export interface Category {
   id: string

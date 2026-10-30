@@ -1,6 +1,10 @@
-import { useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { COURT, FENCE_X, FENCE_Z, HALF_L, HALF_W } from '../../football/config'
+import { COURT_COLOR } from '../../football/open'
+import { SPACE_TYPES } from '../../config/mall'
+import { formatCOP } from '../../lib/format'
 import { Batch } from '../Batch'
 import { ScreenLabel } from '../Billboard'
 import { cameraState } from '../cameraState'
@@ -145,12 +149,20 @@ export const COURT_BENCHES: [number, number][] = [
   [3.4, FENCE_Z + 1.25],
 ]
 
+/** Cartel de la cancha según su estado: operada por un negocio, libre o con solicitud en revisión. */
+function courtSign(operator: string | null, pending: boolean) {
+  if (operator) return getLabel('CANCHA SINTÉTICA', { bg: COURT_COLOR, fg: '#fff', sub: `${operator} · toca para reservar` })
+  if (pending) return getLabel('EN REVISIÓN', { bg: '#f5b544', fg: '#3b2a05', sub: 'Cancha · solicitud enviada' })
+  return getLabel('TU NEGOCIO AQUÍ', { bg: COURT_COLOR, fg: '#fff', sub: `Cancha sintética · ${formatCOP(SPACE_TYPES.court.monthlyPriceCOP)}/mes` })
+}
+
 /**
  * Cancha completa. `selected` resalta el perímetro; `onOpen` abre su panel (al tocar la cancha o
- * su cartel). La geometría estática va en Batch: pocas llamadas de dibujo.
+ * su cartel). Sin negocio que la opere (`operator` null) queda vacía, con un tótem grande para
+ * reclamarla. La geometría estática va en Batch: pocas llamadas de dibujo.
  */
-export function FootballCourt({ selected, onOpen, interactive }: { selected: boolean; onOpen: () => void; interactive: boolean }) {
-  const sign = useMemo(() => getLabel('CANCHA SINTÉTICA', { bg: '#1f7a3d', fg: '#fff', sub: 'Fútbol 5 · toca para reservar' }), [])
+export function FootballCourt({ selected, onOpen, interactive, operator, pending }: { selected: boolean; onOpen: () => void; interactive: boolean; operator: string | null; pending: boolean }) {
+  const sign = courtSign(operator, pending)
   const wood = mat(PALETTE.wood)
   return (
     <group position={[COURT.center[0], COURT.y, COURT.center[1]]} rotation={[0, COURT.rotation, 0]}>
@@ -163,7 +175,7 @@ export function FootballCourt({ selected, onOpen, interactive }: { selected: boo
         onPointerOver={() => interactive && (document.body.style.cursor = 'pointer')}
         onPointerOut={() => (document.body.style.cursor = '')}
       >
-        <Batch version="cancha">
+        <Batch version={`cancha:${operator ?? ''}:${pending}`}>
           {/* base de concreto y césped a franjas */}
           <mesh geometry={GEO.box} material={mat('#cfc6b6')} position={[0, -0.04, 0]} scale={[2 * FENCE_X + 0.7, 0.14, 2 * FENCE_Z + 0.7]} receiveShadow />
           {Array.from({ length: 8 }, (_, i) => {
@@ -175,7 +187,7 @@ export function FootballCourt({ selected, onOpen, interactive }: { selected: boo
           <Goal side={1} />
           <Fence />
           {/* cartel físico sobre la malla, del lado de la puerta */}
-          <mesh geometry={GEO.box} material={mat('#1f7a3d')} position={[-4.4, 1.55, FENCE_Z + 0.05]} scale={[2.3 * sign.aspect * 0.42 + 0.12, 1.08, 0.05]} />
+          <mesh geometry={GEO.box} material={mat(pending && !operator ? '#f5b544' : COURT_COLOR)} position={[-4.4, 1.55, FENCE_Z + 0.05]} scale={[2.3 * sign.aspect * 0.42 + 0.12, 1.08, 0.05]} />
           <mesh geometry={GEO.plane} material={dimLabelMat(sign.texture)} position={[-4.4, 1.55, FENCE_Z + 0.085]} scale={[2.3 * sign.aspect * 0.42, 0.97, 1]} />
           {/* bancas para acompañantes */}
           {COURT_BENCHES.map(([x, z]) => (
@@ -187,6 +199,7 @@ export function FootballCourt({ selected, onOpen, interactive }: { selected: boo
           ))}
           <FootballCourtLighting />
         </Batch>
+        {!operator && <ClaimTotem label={sign} pending={pending} />}
       </group>
       {/* resalte del perímetro al seleccionar la cancha */}
       {selected && (
@@ -202,6 +215,37 @@ export function FootballCourt({ selected, onOpen, interactive }: { selected: boo
         </group>
       )}
       <ScreenLabel label={sign} position={[0, COURT.fenceHeight + 2.6, FENCE_Z]} pixelHeight={40} maxZoomRatio={1.6} lit priority={LABEL_PRIORITY.corridor + 5} onClick={interactive ? onOpen : undefined} />
+    </group>
+  )
+}
+
+/** Tótem grande «TU NEGOCIO AQUÍ» frente a la puerta de la cancha libre, con anillo pulsante. */
+function ClaimTotem({ label, pending }: { label: ReturnType<typeof getLabel>; pending: boolean }) {
+  const ring = useRef<THREE.Mesh>(null)
+  const totem = useRef<THREE.Group>(null)
+  const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ color: pending ? '#f5b544' : COURT_COLOR, transparent: true, depthWrite: false, toneMapped: false }), [pending])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    if (ring.current) {
+      const p = (t * 0.6) % 1
+      ring.current.scale.setScalar(1 + p * 1.6)
+      ringMat.opacity = 0.55 * (1 - p)
+    }
+    if (totem.current) totem.current.rotation.y = Math.sin(t * 0.8) * 0.06
+  })
+  const S = 2.2
+  const y = 3.4
+  return (
+    <group position={[0, 0, FENCE_Z + 1.5]}>
+      <mesh ref={ring} geometry={GEO.ring} material={ringMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} />
+      <group ref={totem}>
+        <mesh geometry={GEO.cylinder} material={mat(PALETTE.metal)} position={[0, y / 2, 0]} scale={[0.15, y, 0.15]} />
+        <mesh geometry={GEO.cylinder} material={mat(PALETTE.trim)} position={[0, 0.06, 0]} scale={[1.2, 0.12, 1.2]} />
+        <mesh geometry={GEO.rounded} material={glowMat(pending ? '#f5b544' : COURT_COLOR, 0.18, { dayGlow: 0.1 })} position={[0, y, 0]} scale={[(0.2 + 0.62 * label.aspect) * S, 0.82 * S, 0.12]} />
+        {[1, -1].map((k) => (
+          <mesh key={k} geometry={GEO.plane} material={dimLabelMat(label.texture)} position={[0, y, k * 0.066]} rotation={[0, k > 0 ? 0 : Math.PI, 0]} scale={[0.62 * label.aspect * S, 0.62 * S, 1]} />
+        ))}
+      </group>
     </group>
   )
 }

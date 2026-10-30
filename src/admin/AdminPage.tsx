@@ -1,8 +1,9 @@
 import { ArrowLeft, Check, Plug, RotateCcw, ShieldAlert, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CATEGORIES, CATEGORY_BY_ID, FLOORS, FLOOR_BY_ID, SPACES, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
-import type { FacadeStyle, OrderStatus, Product, ProductIcon, Promotion, PromotionType, SpaceClaim, Store } from '../domain/types'
+import { CATEGORIES, CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
+import { COURT_COLOR } from '../football/open'
+import type { FacadeStyle, OrderStatus, Product, ProductIcon, Promotion, PromotionType, SpaceClaim, SpaceSlot, Store } from '../domain/types'
 import { formatCOP, formatDateTime } from '../lib/format'
 import { stockKey, totalStock } from '../lib/inventory'
 import { isPromotionLive } from '../lib/pricing'
@@ -115,11 +116,6 @@ function Card({ children, className = '' }: { children: ReactNode; className?: s
 
 function SpacesAdmin() {
   const assignments = useCatalog((s) => s.assignments)
-  const stores = useCatalog((s) => s.stores)
-  const assignSpace = useCatalog((s) => s.assignSpace)
-  const { storeById, spaceByStore } = useCatalogMaps()
-  const claims = useClaims((s) => s.claims)
-  const toast = useUI((s) => s.toast)
   const occupied = SPACES.filter((s) => assignments[s.id]).length
 
   return (
@@ -136,54 +132,73 @@ function SpacesAdmin() {
             {z.name}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {SPACES.filter((s) => s.zoneId === z.id).map((s) => {
-              const store = storeById[assignments[s.id]]
-              const pending = claims.filter((c) => c.spaceId === s.id && c.status === 'pending').length
-              return (
-                <Card key={s.id} className={store ? '' : 'border-dashed'}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm font-extrabold">{s.label}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${store ? 'bg-emerald-100 text-emerald-800' : 'bg-sand-2 text-ink-soft'}`}>{store ? 'Ocupado' : 'Disponible'}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-ink-soft">
-                    {SPACE_TYPES[s.type].name} · {formatCOP(SPACE_TYPES[s.type].monthlyPriceCOP)}/mes
-                  </p>
-                  <div className="my-3 flex min-h-10 items-center gap-2">
-                    {store ? (
-                      <>
-                        <StoreLogo store={store} size={34} />
-                        <span className="text-sm font-bold">{store.name}</span>
-                      </>
-                    ) : (
-                      <span className="text-xs text-ink-soft">{pending ? `${pending} solicitud(es) pendiente(s)` : 'Sin solicitudes'}</span>
-                    )}
-                  </div>
-                  <select
-                    className={`${small} w-full`}
-                    value={assignments[s.id] ?? ''}
-                    aria-label={`Asignar tienda al espacio ${s.label}`}
-                    onChange={(e) => {
-                      const id = e.target.value || null
-                      const moved = id && spaceByStore[id] ? SPACES.find((x) => x.id === spaceByStore[id])?.label : null
-                      assignSpace(s.id, id)
-                      toast(id ? `${storeById[id].name} asignada a ${s.label}${moved ? ` (liberó ${moved})` : ''}` : `${s.label} liberado`, 'success')
-                    }}
-                  >
-                    <option value="">— Disponible —</option>
-                    {stores.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name}
-                        {spaceByStore[st.id] && spaceByStore[st.id] !== s.id ? ' (ya tiene espacio)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </Card>
-              )
-            })}
+            {SPACES.filter((s) => s.zoneId === z.id).map((s) => (
+              <SpaceCard key={s.id} s={s} />
+            ))}
           </div>
         </section>
       ))}
+      <section>
+        <h2 className="mb-2 flex items-center gap-2 text-sm font-extrabold">
+          <span className="size-3 rounded-full" style={{ background: COURT_COLOR }} /> {FLOOR_BY_ID.P1.name} · Cancha sintética
+        </h2>
+        <p className="mb-2 text-xs text-ink-soft">Libre, se muestra vacía con «TU NEGOCIO AQUÍ». Al asignarle un negocio se activa: partido, reservas por hora y su nombre en el cartel.</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <SpaceCard s={COURT_SPACE} />
+        </div>
+      </section>
     </div>
+  )
+}
+
+function SpaceCard({ s }: { s: SpaceSlot }) {
+  const assignments = useCatalog((st) => st.assignments)
+  const stores = useCatalog((st) => st.stores)
+  const assignSpace = useCatalog((st) => st.assignSpace)
+  const { storeById, spaceByStore } = useCatalogMaps()
+  const claims = useClaims((st) => st.claims)
+  const toast = useUI((st) => st.toast)
+  const store = storeById[assignments[s.id]]
+  const pending = claims.filter((c) => c.spaceId === s.id && c.status === 'pending').length
+  return (
+    <Card className={store ? '' : 'border-dashed'}>
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-sm font-extrabold">{s.label}</span>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${store ? 'bg-emerald-100 text-emerald-800' : 'bg-sand-2 text-ink-soft'}`}>{store ? 'Ocupado' : 'Disponible'}</span>
+      </div>
+      <p className="mt-1 text-xs text-ink-soft">
+        {SPACE_TYPES[s.type].name} · {formatCOP(SPACE_TYPES[s.type].monthlyPriceCOP)}/mes
+      </p>
+      <div className="my-3 flex min-h-10 items-center gap-2">
+        {store ? (
+          <>
+            <StoreLogo store={store} size={34} />
+            <span className="text-sm font-bold">{store.name}</span>
+          </>
+        ) : (
+          <span className="text-xs text-ink-soft">{pending ? `${pending} solicitud(es) pendiente(s)` : 'Sin solicitudes'}</span>
+        )}
+      </div>
+      <select
+        className={`${small} w-full`}
+        value={assignments[s.id] ?? ''}
+        aria-label={`Asignar tienda al espacio ${s.label}`}
+        onChange={(e) => {
+          const id = e.target.value || null
+          const moved = id && spaceByStore[id] ? SPACE_BY_ID[spaceByStore[id]]?.label : null
+          assignSpace(s.id, id)
+          toast(id ? `${storeById[id].name} asignada a ${s.label}${moved ? ` (liberó ${moved})` : ''}` : `${s.label} liberado`, 'success')
+        }}
+      >
+        <option value="">— Disponible —</option>
+        {stores.map((st) => (
+          <option key={st.id} value={st.id}>
+            {st.name}
+            {spaceByStore[st.id] && spaceByStore[st.id] !== s.id ? ' (ya tiene espacio)' : ''}
+          </option>
+        ))}
+      </select>
+    </Card>
   )
 }
 
@@ -256,7 +271,7 @@ function ClaimsAdmin() {
                 {CATEGORY_BY_ID[c.categoryId]?.name} · {c.ownerName} · {c.whatsapp} · {c.email}
               </p>
               <p className="mt-1 text-xs">
-                Espacio pedido: <b>{SPACES.find((s) => s.id === c.spaceId)?.label}</b> · Tipo solicitado: <b>{SPACE_TYPES[c.spaceType].name}</b>
+                Espacio pedido: <b>{SPACE_BY_ID[c.spaceId]?.label}</b> · Tipo solicitado: <b>{SPACE_TYPES[c.spaceType].name}</b>
                 {assignments[c.spaceId] && c.status === 'pending' && <span className="ml-1 text-amber-700">(hoy ocupado)</span>}
               </p>
             </div>
@@ -296,7 +311,7 @@ function StoresAdmin() {
 function StoreRow({ store, onEdit }: { store: Store; onEdit: () => void }) {
   const { spaceByStore } = useCatalogMaps()
   const count = useCatalog((s) => s.products.filter((p) => p.storeId === store.id).length)
-  const space = SPACES.find((sp) => sp.id === spaceByStore[store.id])
+  const space = SPACE_BY_ID[spaceByStore[store.id]]
   return (
     <Card className="flex flex-wrap items-center gap-3">
       <StoreLogo store={store} size={44} />

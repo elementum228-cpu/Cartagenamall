@@ -1,5 +1,6 @@
+import { openCourtOrClaim, useCourtOperator } from '../football/open'
 import { useMemo } from 'react'
-import { FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
+import { COURT_SPACE, FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import type { FloorConfig, Product, SpaceSlot } from '../domain/types'
 import { isPromotionLive } from '../lib/pricing'
 import { useMinute } from '../lib/useMinute'
@@ -91,12 +92,11 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
   )
 
   const courtOpen = useUI((s) => s.courtOpen)
+  const courtOperator = useCourtOperator()
+  const courtPending = useClaims((s) => s.claims.some((c) => c.spaceId === COURT_SPACE.id && c.status === 'pending'))
   const openCourtPanel = useMemo(
     () => () => {
-      const ui = useUI.getState()
-      if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
-      ui.openCourt(true)
-      ui.requestFocus({ kind: 'court' })
+      openCourtOrClaim()
       usePrefs.getState().setHintSeen()
     },
     [],
@@ -161,8 +161,15 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                       <CrossAmbient />
                       {quality !== 'low' && <Shoppers maxReacting={reduceMotion ? 0 : quality === 'high' ? 15 : 6} />}
                       <CrossLabels />
-                      <FootballCourt selected={courtOpen} interactive={interactive} onOpen={openCourtPanel} />
-                      <FootballMatchController quality={quality} reduceMotion={reduceMotion} />
+                      <FootballCourt
+                        selected={courtOpen || selectedSpaceId === COURT_SPACE.id}
+                        interactive={interactive}
+                        onOpen={openCourtPanel}
+                        operator={courtOperator?.name ?? null}
+                        pending={courtPending}
+                      />
+                      {/* partido solo con un negocio operando la cancha; libre, se ve vacía */}
+                      {courtOperator && <FootballMatchController quality={quality} reduceMotion={reduceMotion} />}
                       <TechDistrictDecor zoneId="B" angle={ZONE_BY_ID.B.angle} offers={techOffers} />
                     </>
                   ) : (

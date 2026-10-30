@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock, Store as StoreIcon } from 'lucide-react'
 import { useState } from 'react'
-import { CATEGORIES, FLOOR_BY_ID, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
+import { CATEGORIES, FLOOR_BY_ID, SHOP_SPACE_TYPES, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
+import { COURT_COLOR } from '../football/open'
 import type { SpaceSlot, SpaceType } from '../domain/types'
 import { formatCOP } from '../lib/format'
 import { useCatalog } from '../state/catalog'
@@ -22,20 +23,28 @@ export function SpaceSheet() {
   )
 }
 
-function Header({ space }: { space: SpaceSlot }) {
+/** Color y ubicación legible del espacio (la cancha tiene los suyos). */
+const spaceColor = (space: SpaceSlot) => (space.type === 'court' ? COURT_COLOR : ZONE_BY_ID[space.zoneId].color)
+function placeName(space: SpaceSlot) {
   const zone = ZONE_BY_ID[space.zoneId]
+  if (space.type === 'court') return `${FLOOR_BY_ID[space.floorId].name} · Jardín de la fortaleza`
+  return `${FLOOR_BY_ID[space.floorId].name} · ${zone.id === 'E' ? zone.name : `Pasillo ${zone.id} · ${zone.name}`}`
+}
+
+function Header({ space }: { space: SpaceSlot }) {
+  const color = spaceColor(space)
   return (
-    <div className="px-5 pt-3 pb-2" style={{ background: `linear-gradient(160deg, ${zone.color}22, #fffdf9 80%)` }}>
-      <p className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: zone.color }}>
-        {FLOOR_BY_ID[space.floorId].name} · Espacio {space.label} · disponible
+    <div className="px-5 pt-3 pb-2" style={{ background: `linear-gradient(160deg, ${color}22, #fffdf9 80%)` }}>
+      <p className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color }}>
+        {FLOOR_BY_ID[space.floorId].name} · {space.type === 'court' ? 'Cancha sintética' : `Espacio ${space.label}`} · disponible
       </p>
-      <h2 className="mt-1 pr-12 text-2xl font-extrabold tracking-tight">¡Tu negocio podría estar aquí!</h2>
+      <h2 className="mt-1 pr-12 text-2xl font-extrabold tracking-tight">{space.type === 'court' ? '¡Opera la cancha del mall!' : '¡Tu negocio podría estar aquí!'}</h2>
     </div>
   )
 }
 
 function Body({ space }: { space: SpaceSlot }) {
-  const zone = ZONE_BY_ID[space.zoneId]
+  const color = spaceColor(space)
   const info = SPACE_TYPES[space.type]
   const pending = useClaims((s) => s.claims.filter((c) => c.spaceId === space.id && c.status === 'pending').length)
   const [step, setStep] = useState<'info' | 'form' | 'done'>('info')
@@ -47,7 +56,7 @@ function Body({ space }: { space: SpaceSlot }) {
         <CheckCircle2 className="mx-auto size-14 text-brand" />
         <h3 className="mt-3 text-xl font-extrabold">Solicitud enviada</h3>
         <p className="mt-1 text-sm text-ink-soft">
-          Tu solicitud <b className="text-ink">{requestId}</b> para el espacio {space.label} quedó registrada.
+          Tu solicitud <b className="text-ink">{requestId}</b> para {space.type === 'court' ? 'la cancha sintética' : `el espacio ${space.label}`} quedó registrada.
         </p>
         <p className="mx-auto mt-4 max-w-xs rounded-2xl bg-sand p-3 text-[13px] text-ink-soft">
           El local <b>no se activa automáticamente</b>: el equipo de Cartagena Mall revisará la solicitud y te contactará. No se ha realizado ningún cobro.
@@ -73,7 +82,7 @@ function Body({ space }: { space: SpaceSlot }) {
   return (
     <div className="space-y-5 px-5 pt-2 pb-8">
       <div className="rounded-3xl border border-line bg-sand/60">
-        <SpacePreview type={space.type} color={zone.color} />
+        <SpacePreview type={space.type} color={color} />
       </div>
       <dl className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-2xl bg-sand p-3">
@@ -82,11 +91,9 @@ function Body({ space }: { space: SpaceSlot }) {
         </div>
         <div className="rounded-2xl bg-sand p-3">
           <dt className="text-xs text-ink-soft">Ubicación</dt>
-          <dd className="font-bold">
-            {FLOOR_BY_ID[space.floorId].name} · {zone.id === 'E' ? zone.name : `Pasillo ${zone.id} · ${zone.name}`}
-          </dd>
+          <dd className="font-bold">{placeName(space)}</dd>
         </div>
-        <div className="col-span-2 flex items-end justify-between rounded-2xl p-3 text-white" style={{ background: zone.color }}>
+        <div className="col-span-2 flex items-end justify-between rounded-2xl p-3 text-white" style={{ background: color }}>
           <div>
             <dt className="text-xs opacity-85">Precio mensual de referencia</dt>
             <dd className="text-2xl font-extrabold">{formatCOP(info.monthlyPriceCOP)}</dd>
@@ -110,7 +117,7 @@ function Body({ space }: { space: SpaceSlot }) {
         </p>
       )}
       <button className={`${btn.primary} w-full`} onClick={() => setStep('form')}>
-        <StoreIcon className="size-4" /> Reclamar este espacio
+        <StoreIcon className="size-4" /> {space.type === 'court' ? 'Reclamar la cancha' : 'Reclamar este espacio'}
       </button>
     </div>
   )
@@ -140,7 +147,7 @@ function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: s
   const submit = useClaims((s) => s.submit)
   const [f, setF] = useState<FormState>({
     businessName: '',
-    categoryId: zone.categories[0].id,
+    categoryId: space.type === 'court' ? 'deportes' : zone.categories[0].id,
     ownerName: '',
     whatsapp: '',
     email: '',
@@ -172,7 +179,7 @@ function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: s
       }}
     >
       <p className="text-sm text-ink-soft">
-        Solicitud para el espacio <b className="text-ink">{space.label}</b> (Pasillo {zone.id} · {zone.name}).
+        Solicitud para {space.type === 'court' ? 'la' : 'el espacio'} <b className="text-ink">{space.type === 'court' ? 'cancha sintética' : space.label}</b> ({placeName(space)}).
       </p>
       <label className="block">
         <span className="mb-1 block text-sm font-semibold">Nombre del negocio</span>
@@ -214,26 +221,26 @@ function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: s
           {field('email')}
         </label>
       </div>
-      <fieldset>
-        <legend className="mb-1.5 text-sm font-semibold">Tipo de espacio</legend>
-        <div className="grid grid-cols-3 gap-2">
-          {(Object.keys(SPACE_TYPES) as SpaceType[]).map((t) => (
-            <button
-              type="button"
-              key={t}
-              onClick={() => set('spaceType', t)}
-              aria-pressed={f.spaceType === t}
-              className={`rounded-2xl border p-2.5 text-left text-xs transition ${f.spaceType === t ? 'border-brand bg-brand/5 ring-2 ring-brand/20' : 'border-line bg-white'}`}
-            >
-              <span className="block font-bold">{SPACE_TYPES[t].name}</span>
-              <span className="text-ink-soft">{formatCOP(SPACE_TYPES[t].monthlyPriceCOP)}/mes</span>
-            </button>
-          ))}
-        </div>
-        {f.spaceType !== space.type && (
-          <p className="mt-1.5 text-xs text-ink-soft">Este espacio es un {SPACE_TYPES[space.type].name.toLowerCase()}; el equipo te propondrá uno del tipo elegido.</p>
-        )}
-      </fieldset>
+      {space.type !== 'court' && (
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-semibold">Tipo de espacio</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {SHOP_SPACE_TYPES.map((t) => (
+              <button
+                type="button"
+                key={t}
+                onClick={() => set('spaceType', t)}
+                aria-pressed={f.spaceType === t}
+                className={`rounded-2xl border p-2.5 text-left text-xs transition ${f.spaceType === t ? 'border-brand bg-brand/5 ring-2 ring-brand/20' : 'border-line bg-white'}`}
+              >
+                <span className="block font-bold">{SPACE_TYPES[t].name}</span>
+                <span className="text-ink-soft">{formatCOP(SPACE_TYPES[t].monthlyPriceCOP)}/mes</span>
+              </button>
+            ))}
+          </div>
+          {f.spaceType !== space.type && <p className="mt-1.5 text-xs text-ink-soft">Este espacio es un {SPACE_TYPES[space.type].name.toLowerCase()}; el equipo te propondrá uno del tipo elegido.</p>}
+        </fieldset>
+      )}
       <div className="flex gap-2 pt-1">
         <button type="button" className={btn.secondary} onClick={onBack}>
           Volver

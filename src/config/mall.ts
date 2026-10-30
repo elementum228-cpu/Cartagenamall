@@ -1,3 +1,4 @@
+import { COURT, FENCE_X, FENCE_Z } from '../football/config'
 import type { FloorConfig, FloorId, MallConfig, SpaceSlot, SpaceType, SpaceTypeInfo, ZoneConfig, ZoneId } from '../domain/types'
 
 // ── Geometría base ──────────────────────────────────────────────────────────────
@@ -33,7 +34,17 @@ export const SPACE_TYPES: Record<SpaceType, SpaceTypeInfo> = {
     size: [11, 7],
     features: ['Fachada personalizable', 'Mayor presencia visual', 'Vitrinas amplias', 'Promociones y ofertas relámpago', 'Preparado para GrowDesk (integración futura)'],
   },
+  court: {
+    type: 'court',
+    name: 'Cancha sintética',
+    monthlyPriceCOP: 450_000,
+    size: [2 * FENCE_X, 2 * FENCE_Z],
+    features: ['Cancha de fútbol 5 con césped, arcos y malla', 'Iluminación nocturna y bancas', 'Reservas por hora desde el mall', 'Cartel con tu marca sobre la malla', 'Precio por hora definido por ti'],
+  },
 }
+
+/** Tipos que se pueden pedir en el formulario de cualquier local (la cancha es un espacio único). */
+export const SHOP_SPACE_TYPES: SpaceType[] = ['island', 'local', 'premium']
 
 /** Plantilla de espacios por pasillo, en coordenadas locales. Igual para las cuatro zonas. */
 interface SlotTemplate {
@@ -100,6 +111,7 @@ const ZONES_P1: Omit<ZoneConfig, 'focus'>[] = [
       { id: 'hogar', name: 'Hogar', zoneId: 'D' },
       { id: 'artesanal', name: 'Productos artesanales', zoneId: 'D' },
       { id: 'gastronomia', name: 'Gastronomía', zoneId: 'D' },
+      { id: 'deportes', name: 'Deportes', zoneId: 'D' },
     ],
   },
 ]
@@ -263,7 +275,21 @@ export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOO
 /** Piso 1 (en cruz): lo usan la estructura, decoración y ambiente específicos de esa planta. */
 export const P1 = FLOORS[0]
 export const SPACES: SpaceSlot[] = FLOORS.flatMap(generateSpaces)
-export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries(SPACES.map((s) => [s.id, s]))
+/**
+ * La cancha sintética es un espacio más (se reclama y el administrador le asigna el negocio que la
+ * opera), pero no está en SPACES: tiene su propio mundo 3D y no entra en pasillos ni recorridos.
+ */
+export const COURT_SPACE: SpaceSlot = {
+  id: 'CANCHA',
+  floorId: 'P1',
+  zoneId: 'B',
+  type: 'court',
+  label: 'Cancha',
+  position: COURT.center,
+  rotation: COURT.rotation,
+  size: SPACE_TYPES.court.size,
+}
+export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries([...SPACES, COURT_SPACE].map((s) => [s.id, s]))
 export const ZONES: ZoneConfig[] = FLOORS.flatMap((f) => f.zones)
 export const ZONE_BY_ID = Object.fromEntries(ZONES.map((z) => [z.id, z])) as Record<ZoneId, ZoneConfig>
 export const FLOOR_OF_ZONE = Object.fromEntries(FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id]))) as Record<ZoneId, FloorId>

@@ -1,3 +1,4 @@
+import { useCourtOperator } from '../football/open'
 import { CalendarDays, Check, Clock, Info, Shirt, Trophy, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { COURT_INFO, demoTaken, priceAt } from '../football/config'
@@ -28,6 +29,7 @@ export function FootballCourtInfoPanel() {
 }
 
 function Header() {
+  const operator = useCourtOperator()
   return (
     <div className="px-5 pt-3 pb-4" style={{ background: 'linear-gradient(160deg, #d8f0dc, #fffdf9 85%)' }}>
       <div className="flex items-center gap-3.5 pr-12">
@@ -36,7 +38,10 @@ function Header() {
         </div>
         <div className="min-w-0">
           <h2 className="truncate text-xl font-extrabold tracking-tight">CANCHA SINTÉTICA</h2>
-          <p className="text-[13px] text-ink-soft">Categoría: {COURT_INFO.category} · Recreación</p>
+          <p className="text-[13px] text-ink-soft">
+            {operator ? <>Opera: <b className="text-ink">{operator.name}</b> · </> : null}
+            {COURT_INFO.category} · Recreación
+          </p>
           <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-bold">
             <span className="rounded-full bg-ink px-2 py-0.5 text-white">Piso 1</span>
             <span className="rounded-full bg-[#1f7a3d] px-2 py-0.5 text-white">Jardín exterior</span>

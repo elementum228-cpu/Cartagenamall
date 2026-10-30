@@ -1,3 +1,4 @@
+import { openCourtOrClaim } from '../football/open'
 import { AnimatePresence, motion } from 'motion/react'
 import { Castle, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
@@ -129,10 +130,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         })}
         <button
           onClick={() => {
-            const ui = useUI.getState()
-            if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
-            ui.openCourt(true)
-            if (use3D) ui.requestFocus({ kind: 'court' })
+            openCourtOrClaim(use3D)
           }}
           className="flex shrink-0 items-center gap-2 rounded-full bg-[#1f7a3d] py-1.5 pr-3.5 pl-1.5 text-[13px] font-bold text-white shadow-soft backdrop-blur transition active:scale-95"
         >
