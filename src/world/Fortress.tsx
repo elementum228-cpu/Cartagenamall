@@ -206,21 +206,21 @@ function EntranceGate() {
       <mesh geometry={GEO.halfDisc} material={stone} position={[0, TOP + 1.25, -0.2]} rotation={[Math.PI / 2, 0, 0]} scale={[0.95, D - 0.9, 0.95]} castShadow />
       <mesh geometry={GEO.box} material={trim} position={[0, TOP + 0.02, 0.05]} scale={[W + 0.1, 0.16, D + 0.12]} />
       {/* letrero sobre el arco */}
-      <mesh geometry={GEO.plane} material={litLabelMat(sign.texture)} position={[0, archH + 2.1, D / 2 + 0.04]} scale={[2.1 * sign.aspect, 2.1, 1]} />
-      {/* arco: marco claro, vano oscuro y puertas abiertas */}
-      <mesh geometry={GEO.box} material={trim} position={[0, archH / 2 + 0.1, D / 2 + 0.01]} scale={[archW + 0.6, archH, 0.02]} />
-      <mesh geometry={GEO.halfDisc} material={trim} position={[0, archH + 0.1, D / 2 + 0.01]} rotation={[Math.PI / 2, 0, 0]} scale={[archW / 2 + 0.3, 0.02, archW / 2 + 0.3]} />
-      <mesh geometry={GEO.box} material={dark} position={[0, archH / 2 + 0.1, D / 2 + 0.03]} scale={[archW, archH, 0.02]} />
-      <mesh geometry={GEO.halfDisc} material={dark} position={[0, archH + 0.1, D / 2 + 0.03]} rotation={[Math.PI / 2, 0, 0]} scale={[archW / 2, 0.02, archW / 2]} />
+      <mesh geometry={GEO.plane} material={litLabelMat(sign.texture)} position={[0, archH + 2.1, D / 2 + 0.12]} scale={[2.1 * sign.aspect, 2.1, 1]} />
+      {/* arco: marco claro, vano oscuro y puertas abiertas (capas separadas ≥2 cm: sin parpadeo al acercar) */}
+      <mesh geometry={GEO.box} material={trim} position={[0, archH / 2 + 0.1, D / 2 + 0.02]} scale={[archW + 0.6, archH, 0.02]} />
+      <mesh geometry={GEO.halfDisc} material={trim} position={[0, archH + 0.1, D / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]} scale={[archW / 2 + 0.3, 0.02, archW / 2 + 0.3]} />
+      <mesh geometry={GEO.box} material={dark} position={[0, archH / 2 + 0.1, D / 2 + 0.05]} scale={[archW, archH, 0.02]} />
+      <mesh geometry={GEO.halfDisc} material={dark} position={[0, archH + 0.1, D / 2 + 0.05]} rotation={[Math.PI / 2, 0, 0]} scale={[archW / 2, 0.02, archW / 2]} />
       {[-1, 1].map((s) => (
         <mesh key={s} geometry={GEO.box} material={door} position={[s * (archW / 2 + 0.35), 1.35, D / 2 + 0.65]} rotation={[0, s * 1.15, 0]} scale={[1.35, 2.5, 0.12]} castShadow />
       ))}
       {/* de noche: luz del pasaje en el vano y bañadores en torres y pilares */}
-      <mesh geometry={GEO.box} material={passage} position={[0, 0.6, D / 2 + 0.035]} scale={[archW - 0.4, 1.1, 0.01]} />
+      <mesh geometry={GEO.box} material={passage} position={[0, 0.6, D / 2 + 0.08]} scale={[archW - 0.4, 1.1, 0.01]} />
       {[-1, 1].map((s) => (
         <group key={s}>
           <mesh geometry={GEO.plane} material={uplightMat('plane', '#ffc27a', 0.9)} position={[s * (W / 2 - 1.2), (TOP + 0.9) / 2 + 0.2, D / 2 + 0.75]} scale={[3, TOP + 0.6, 1]} />
-          <mesh geometry={GEO.plane} material={uplightMat('plane', '#ffd08a', 0.5)} position={[s * (archW / 2 + 0.8), 2.3, D / 2 + 0.06]} scale={[1.8, 4.4, 1]} />
+          <mesh geometry={GEO.plane} material={uplightMat('plane', '#ffd08a', 0.5)} position={[s * (archW / 2 + 0.8), 2.3, D / 2 + 0.16]} scale={[1.8, 4.4, 1]} />
         </group>
       ))}
       {/* faroles */}

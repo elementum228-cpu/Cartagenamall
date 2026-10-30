@@ -499,9 +499,12 @@ function AvailableSpace({ space, zoneColor, pending }: { space: SpaceSlot; zoneC
   const ghost = mat(PALETTE.wall, { opacity: 0.55 })
   const isIsland = space.type === 'island'
   const H = space.type === 'premium' ? 2.2 : 1.6
-  // Tótem delante del espacio (en islas, a un costado para no tapar el pasillo).
+  // Tótem al frente y al centro del espacio. Cartel grande (se lee desde la vista general), sin
+  // salirse del ancho del local.
   const tz = isIsland ? 0 : d / 2 - 0.4
-  const tx = isIsland ? 0 : -w / 2 + 0.9
+  const tx = 0
+  const S = Math.min(1.75, (Math.max(w, isIsland ? 3.4 : 0) * 0.92) / (0.2 + 0.62 * label.aspect))
+  const signY = 1.55 + 0.82 * (S - 1) * 0.5 + 0.7 * (S - 1)
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime + space.position[0]
@@ -530,11 +533,11 @@ function AvailableSpace({ space, zoneColor, pending }: { space: SpaceSlot; zoneC
       <mesh ref={ring} userData={{ dynamic: true }} geometry={GEO.ring} material={ringMat} rotation={[-Math.PI / 2, 0, 0]} position={[tx, 0.12, tz]} />
       {/* tótem «Reclamar local» */}
       <group ref={totem} userData={{ dynamic: true }} position={[tx, 0, tz]}>
-        <mesh geometry={GEO.cylinder} material={mat(PALETTE.metal)} position={[0, 0.7, 0]} scale={[0.07, 1.4, 0.07]} />
-        <mesh geometry={GEO.cylinder} material={mat(PALETTE.trim)} position={[0, 0.06, 0]} scale={[0.6, 0.12, 0.6]} />
-        <mesh geometry={GEO.rounded} material={glowMat(zoneColor, 0.18, { dayGlow: 0.1 })} position={[0, 1.55, 0]} scale={[0.2 + 0.62 * label.aspect, 0.82, 0.1]} />
+        <mesh geometry={GEO.cylinder} material={mat(PALETTE.metal)} position={[0, signY / 2, 0]} scale={[0.07 * S, signY, 0.07 * S]} />
+        <mesh geometry={GEO.cylinder} material={mat(PALETTE.trim)} position={[0, 0.06, 0]} scale={[0.6 * S, 0.12, 0.6 * S]} />
+        <mesh geometry={GEO.rounded} material={glowMat(zoneColor, 0.18, { dayGlow: 0.1 })} position={[0, signY, 0]} scale={[(0.2 + 0.62 * label.aspect) * S, 0.82 * S, 0.1]} />
         {[1, -1].map((s) => (
-          <mesh key={s} geometry={GEO.plane} material={dimLabelMat(label.texture)} position={[0, 1.55, s * 0.056]} rotation={[0, s > 0 ? 0 : Math.PI, 0]} scale={[0.62 * label.aspect, 0.62, 1]} />
+          <mesh key={s} geometry={GEO.plane} material={dimLabelMat(label.texture)} position={[0, signY, s * 0.056]} rotation={[0, s > 0 ? 0 : Math.PI, 0]} scale={[0.62 * label.aspect * S, 0.62 * S, 1]} />
         ))}
       </group>
     </group>

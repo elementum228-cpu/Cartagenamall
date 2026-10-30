@@ -1,4 +1,4 @@
-import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart, Store, Zap } from 'lucide-react'
+import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart, Store, UserRound, Zap } from 'lucide-react'
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Link, MemoryRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ExploreView } from './features/ExploreView'
@@ -11,6 +11,7 @@ import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
 import { FavoritesPage } from './pages/FavoritesPage'
+import { LoginPage } from './pages/LoginPage'
 import { OffersPage } from './pages/OffersPage'
 import { OrderDetailPage, OrdersPage } from './pages/OrdersPage'
 import { ShopPage } from './pages/ShopPage'
@@ -84,6 +85,7 @@ function Shell() {
               <Route path="/comparar" element={<ComparePage />} />
               <Route path="/favoritos" element={<FavoritesPage />} />
               <Route path="/ofertas" element={<OffersPage />} />
+              <Route path="/entrar" element={<LoginPage />} />
               <Route
                 path="/mi-negocio"
                 element={
@@ -172,6 +174,9 @@ function TopBar() {
         <NavLink to="/admin" className="rounded-xl px-3 py-2 text-sm font-semibold text-ink-soft hover:text-ink">
           Admin
         </NavLink>
+        <NavLink to="/entrar" className={({ isActive }) => `rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'text-brand' : 'text-ink-soft hover:text-ink'}`}>
+          Entrar
+        </NavLink>
       </nav>
       <div className="ml-auto flex items-center gap-1.5 md:ml-0">
         <button className="grid size-10 place-items-center rounded-full hover:bg-ink/5" onClick={() => navigate('/comprar?foco=1')} aria-label="Buscar productos">
@@ -179,6 +184,9 @@ function TopBar() {
         </button>
         <Link to="/mi-negocio" className="grid size-10 place-items-center rounded-full hover:bg-ink/5 lg:hidden" aria-label="Mi negocio">
           <Store className="size-5" />
+        </Link>
+        <Link to="/entrar" className="grid size-10 place-items-center rounded-full hover:bg-ink/5 lg:hidden" aria-label="Entrar">
+          <UserRound className="size-5" />
         </Link>
         <Link to="/favoritos" className="grid size-10 place-items-center rounded-full hover:bg-ink/5" aria-label="Favoritos">
           <Heart className="size-5" />

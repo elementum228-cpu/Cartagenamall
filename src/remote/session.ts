@@ -10,6 +10,8 @@ interface SessionState {
   storeIds: string[]
   refresh: () => Promise<void>
   signIn: (email: string) => Promise<string | null>
+  signInWithPassword: (email: string, password: string) => Promise<string | null>
+  setPassword: (password: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
 
@@ -34,6 +36,18 @@ export const useSession = create<SessionState>()((set, get) => ({
     if (!supabase) return 'No hay base de datos conectada.'
     const redirect = `${location.origin}${import.meta.env.BASE_URL}${location.pathname.replace(import.meta.env.BASE_URL, '').replace(/^\//, '')}`
     const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: redirect } })
+    return error ? error.message : null
+  },
+  signInWithPassword: async (email, password) => {
+    if (!supabase) return 'No hay base de datos conectada.'
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    if (error) return /invalid login credentials/i.test(error.message) ? 'Correo o contraseña incorrectos.' : error.message
+    await get().refresh()
+    return null
+  },
+  setPassword: async (password) => {
+    if (!supabase) return 'No hay base de datos conectada.'
+    const { error } = await supabase.auth.updateUser({ password })
     return error ? error.message : null
   },
   signOut: async () => {
