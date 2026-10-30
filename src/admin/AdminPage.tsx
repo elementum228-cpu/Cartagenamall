@@ -25,7 +25,7 @@ import { StatusPill } from '../pages/OrdersPage'
 import { StoreLogo, btn, input } from '../ui/bits'
 import { isHighlighted } from '../lib/storeHighlight'
 import { DemoPromoButton } from '../features/DemoPromoButton'
-import { OwnerDashboard } from './OwnerDashboard'
+import { OwnerDashboard, PriceInput } from './OwnerDashboard'
 import { useSpacePrice, useSpacePricing } from '../state/spacePricing'
 
 type Tab = 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'integraciones'
@@ -163,6 +163,8 @@ function SpaceCard({ s }: { s: SpaceSlot }) {
   const claims = useClaims((st) => st.claims)
   const toast = useUI((st) => st.toast)
   const price = useSpacePrice(s.id)
+  const custom = useSpacePricing((st) => st.spaces[s.id] !== undefined)
+  const setSpacePrice = useSpacePricing((st) => st.setSpacePrice)
   const store = storeById[assignments[s.id]]
   const pending = claims.filter((c) => c.spaceId === s.id && c.status === 'pending').length
   return (
@@ -171,9 +173,22 @@ function SpaceCard({ s }: { s: SpaceSlot }) {
         <span className="font-mono text-sm font-extrabold">{s.label}</span>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${store ? 'bg-emerald-100 text-emerald-800' : 'bg-sand-2 text-ink-soft'}`}>{store ? 'Ocupado' : 'Disponible'}</span>
       </div>
-      <p className="mt-1 text-xs text-ink-soft">
-        {SPACE_TYPES[s.type].name} · {formatCOP(price)}/mes
-      </p>
+      <p className="mt-1 text-xs text-ink-soft">{SPACE_TYPES[s.type].name}</p>
+      <div className="mt-2">
+        <PriceInput
+          label={`Precio mensual del espacio ${s.label}`}
+          value={price}
+          onSave={(n) => {
+            setSpacePrice(s.id, n)
+            toast(`${s.label}: ${formatCOP(n)}/mes`, 'success')
+          }}
+        />
+        {custom && (
+          <button className="mt-1 flex items-center gap-1 text-[11px] font-bold text-brand" onClick={() => setSpacePrice(s.id, null)}>
+            <RotateCcw className="size-3" /> Usar precio del tipo
+          </button>
+        )}
+      </div>
       <div className="my-3 flex min-h-10 items-center gap-2">
         {store ? (
           <>

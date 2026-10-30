@@ -90,7 +90,7 @@ function Kpi({ label, value, strong, bar }: { label: string; value: ReactNode; s
 }
 
 /** Campo de precio en pesos: se guarda al salir del campo o con Enter. */
-function PriceInput({ value, onSave, label }: { value: number; onSave: (n: number) => void; label: string }) {
+export function PriceInput({ value, onSave, label }: { value: number; onSave: (n: number) => void; label: string }) {
   const [draft, setDraft] = useState<string | null>(null)
   const commit = () => {
     if (draft === null) return
