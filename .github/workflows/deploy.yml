@@ -29,10 +29,11 @@ jobs:
         env:
           # El sitio vive en https://<usuario>.github.io/<repositorio>/
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Settings → Secrets and variables → Actions → Variables. Sin ellas, el sitio publicado
-          # funciona en modo demostración (todo en el navegador de cada persona).
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          # Proyecto Supabase de producción. La clave publishable es pública (las reglas RLS protegen
+          # los datos); nunca pongas aquí la clave secreta. Se puede reemplazar con variables del
+          # repositorio (Settings → Secrets and variables → Actions → Variables).
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://ccdrxnpoqsniiaeygqhb.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || 'sb_publishable_bxk4Pytn9kX48-Cu3Al7Ig_pvMnA7nu' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
