@@ -40,8 +40,6 @@ body,
   --chrome-top: calc(max(10px, env(safe-area-inset-top)) + 56px + 10px);
   --chrome-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 64px + 10px);
 }
-/* versión de prueba: sin barra de navegación abajo */
-:root.demo { --chrome-bottom: max(14px, env(safe-area-inset-bottom)); }
 @media (min-width: 768px) {
   :root {
     --chrome-top: calc(max(12px, env(safe-area-inset-top)) + 60px + 12px);

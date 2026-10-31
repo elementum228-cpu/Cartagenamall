@@ -14,7 +14,6 @@ import { getGlassPill, getLabel } from '../labelTexture'
 import { GEO, PALETTE, mat } from '../materials'
 import { dimLabelMat, glowMat, lightPoolMat } from '../night'
 import { useIsNight } from '../../lib/useIsNight'
-import { DEMO } from '../../demo/flag'
 
 // Cancha sintética de fútbol 5 (estática, fusionada con Batch): césped a franjas, líneas,
 // círculo central, áreas, dos arcos con red, cerramiento de malla con acceso lateral, bancas,
@@ -156,7 +155,7 @@ export const COURT_BENCHES: [number, number][] = [
 function courtSign(operator: string | null, pending: boolean, price: number) {
   if (operator) return getLabel('CANCHA SINTÉTICA', { bg: COURT_COLOR, fg: '#fff', sub: `${operator} · toca para reservar` })
   if (pending) return getLabel('EN REVISIÓN', { bg: '#f5b544', fg: '#3b2a05', sub: 'Cancha · solicitud enviada' })
-  return getLabel('TU NEGOCIO AQUÍ', { bg: COURT_COLOR, fg: '#fff', sub: DEMO ? 'Cancha sintética' : `Cancha sintética · ${formatCOP(price)}/mes` })
+  return getLabel('TU NEGOCIO AQUÍ', { bg: COURT_COLOR, fg: '#fff', sub: `Cancha sintética · ${formatCOP(price)}/mes` })
 }
 
 /**
@@ -169,7 +168,7 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
   const sign = courtSign(operator, pending, price)
   // rótulo flotante discreto (el cartel grande va sobre la malla y en el tótem)
   const night = useIsNight()
-  const pill = getGlassPill('Cancha sintética', { dot: COURT_COLOR, dark: night, sub: operator ? `${operator} · reserva tu hora` : pending ? 'Solicitud en revisión' : DEMO ? 'Disponible' : `Disponible · ${formatCOP(price)}/mes` })
+  const pill = getGlassPill('Cancha sintética', { dot: COURT_COLOR, dark: night, sub: operator ? `${operator} · reserva tu hora` : pending ? 'Solicitud en revisión' : `Disponible · ${formatCOP(price)}/mes` })
   const wood = mat(PALETTE.wood)
   return (
     <group position={[COURT.center[0], COURT.y, COURT.center[1]]} rotation={[0, COURT.rotation, 0]}>

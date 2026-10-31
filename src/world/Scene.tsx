@@ -32,7 +32,6 @@ import { MallPathLighting } from './MallPathLighting'
 import { PATH_LIGHTS } from './pathLights'
 import { usePromoEvents } from '../promotions/store'
 import { AvailableOutlines, SpaceUnit } from './SpaceUnit'
-import { DEMO } from '../demo/flag'
 
 function modeFor(floor: FloorConfig, active: FloorConfig, overview: boolean): FloorMode {
   if (overview || floor.id === active.id) return 'full'
@@ -205,16 +204,16 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                     <AvailableOutlines key={z.id} color={z.color} spaces={availableByZone[z.id] ?? EMPTY_SPACES} />
                   ))}
                   <MallPathLighting lights={PATH_LIGHTS} floorId={floor.id} boost={quality === 'high' ? 1 : quality === 'medium' ? 1.15 : 1.4} />
-                  {!DEMO && <PromoSpotlights floorId={floor.id} reduceMotion={reduceMotion} onOpen={onSelect} />}
-                  {!DEMO && <SecretMarkers
+                  <PromoSpotlights floorId={floor.id} reduceMotion={reduceMotion} onOpen={onSelect} />
+                  <SecretMarkers
                     floorId={floor.id}
                     promos={secretPromos}
                     spaceByStore={spaceByStore}
                     hidden={saved}
                     interactive={interactive}
                     onOpen={(id) => openSecret(id)}
-                  />}
-                  {!DEMO && <TreasureMarkers floorId={floor.id} interactive={interactive} now={minute} />}
+                  />
+                  <TreasureMarkers floorId={floor.id} interactive={interactive} now={minute} />
                 </>
               }
             />

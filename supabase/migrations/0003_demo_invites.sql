@@ -1,4 +1,4 @@
--- Versión de prueba con invitación: cada persona entra con su propio código, que el administrador
+-- Presentación privada (versión de prueba) con invitación: cada persona entra con su propio código, que el administrador
 -- crea, vence o anula. Se registra cada entrada (qué código, desde qué dispositivo y cuándo).
 -- Nadie fuera del administrador puede leer los códigos: la versión de prueba solo los valida con
 -- demo_enter(), que no revela nada más que el nombre del invitado.

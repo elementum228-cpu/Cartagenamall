@@ -16,7 +16,6 @@ import { addToCart } from '../state/actions'
 import { isDemoPromotion } from '../promotions/demo'
 import { ProductCard } from '../ui/ProductCard'
 import { Sheet } from '../ui/Sheet'
-import { DEMO } from '../demo/flag'
 import { loyaltyOf, usePassport } from '../state/passport'
 
 /** Ficha comercial de una tienda: se abre al tocarla en el mapa o desde el modo Comprar. */
@@ -91,11 +90,11 @@ function StoreBody({ store }: { store: Store }) {
 
   return (
     <div className="space-y-6 px-5 pt-4 pb-8">
-      {!DEMO && flashNow && productById[flashNow.productId] && <FlashOffer promo={flashNow} store={store} />}
+      {flashNow && productById[flashNow.productId] && <FlashOffer promo={flashNow} store={store} />}
       <p className="text-[14px] leading-relaxed text-ink-soft">{store.description}</p>
-      {!DEMO && <LoyaltyStrip store={store} />}
+      <LoyaltyStrip store={store} />
 
-      {!DEMO && <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         <button onClick={() => toggleFav(store.id)} className={btn.secondary} aria-pressed={fav}>
           <Heart className={`size-4 ${fav ? 'text-coral' : ''}`} fill={fav ? 'currentColor' : 'none'} />
           {fav ? 'Guardada' : 'Guardar tienda'}
@@ -125,8 +124,8 @@ function StoreBody({ store }: { store: Store }) {
             Ver en el mapa
           </button>
         )}
-      </div>}
-      {!DEMO && <p className="-mt-3 flex items-center gap-1.5 text-xs text-ink-soft">
+      </div>
+      <p className="-mt-3 flex items-center gap-1.5 text-xs text-ink-soft">
         <AtSign className="size-3.5" /> {store.instagram} · {store.whatsapp}
         <span className="rounded bg-sand-2 px-1.5 py-0.5 text-[10px] font-bold">DEMO</span>
         <button
@@ -139,9 +138,9 @@ function StoreBody({ store }: { store: Store }) {
         >
           ¿Es tu negocio?
         </button>
-      </p>}
+      </p>
 
-      {!DEMO && promos.length > 0 && (
+      {promos.length > 0 && (
         <section>
           <SectionTitle>Promociones</SectionTitle>
           <div className="space-y-2">

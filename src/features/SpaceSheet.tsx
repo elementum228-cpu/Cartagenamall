@@ -11,7 +11,6 @@ import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
 import { Sheet } from '../ui/Sheet'
 import { SpacePreview } from './SpacePreview'
-import { DEMO } from '../demo/flag'
 
 /** Ficha de un local disponible, con el flujo para reclamarlo. */
 export function SpaceSheet() {
@@ -96,13 +95,13 @@ function Body({ space }: { space: SpaceSlot }) {
           <dt className="text-xs text-ink-soft">Ubicación</dt>
           <dd className="font-bold">{placeName(space)}</dd>
         </div>
-        {!DEMO && <div className="col-span-2 flex items-end justify-between rounded-2xl p-3 text-white" style={{ background: color }}>
+        <div className="col-span-2 flex items-end justify-between rounded-2xl p-3 text-white" style={{ background: color }}>
           <div>
             <dt className="text-xs opacity-85">Precio mensual de referencia</dt>
             <dd className="text-2xl font-extrabold">{formatCOP(price)}</dd>
           </div>
           <span className="text-[11px] opacity-85">Precio de ejemplo · sin cobro</span>
-        </div>}
+        </div>
       </dl>
       <div>
         <h3 className="mb-2 text-sm font-extrabold">Incluye</h3>
@@ -114,14 +113,14 @@ function Body({ space }: { space: SpaceSlot }) {
           ))}
         </ul>
       </div>
-      {!DEMO && pending > 0 && (
+      {pending > 0 && (
         <p className="flex items-center gap-2 rounded-2xl bg-amber-50 p-3 text-[13px] text-amber-900">
           <Clock className="size-4 shrink-0" /> Ya hay {pending === 1 ? 'una solicitud' : `${pending} solicitudes`} en revisión para este espacio. Aún puedes enviar la tuya.
         </p>
       )}
-      {!DEMO && <button className={`${btn.primary} w-full`} onClick={() => setStep('form')}>
+      <button className={`${btn.primary} w-full`} onClick={() => setStep('form')}>
         <StoreIcon className="size-4" /> {space.type === 'court' ? 'Reclamar la cancha' : 'Reclamar este espacio'}
-      </button>}
+      </button>
     </div>
   )
 }

@@ -126,13 +126,13 @@ export function DemoInvites() {
     <div className="space-y-4">
       <section className="rounded-3xl border border-line bg-card p-4">
         <h2 className="flex items-center gap-2 text-lg font-extrabold">
-          <KeyRound className="size-5 text-brand" /> Versión de prueba por invitación
+          <KeyRound className="size-5 text-brand" /> Presentación privada por invitación
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Cada persona entra con su propio código: solo ve el mall 3D y las tiendas de ejemplo, con su nombre como marca de agua. Puedes anularlo cuando quieras y ver desde cuántos dispositivos entró.
+          Cada persona entra con su propio código a una presentación privada: qué es el proyecto y un recorrido guiado con capturas, sin acceso a la app. Su nombre va como marca de agua. Puedes anularlo cuando quieras y ver desde cuántos dispositivos entró.
         </p>
         <label className="mt-3 block">
-          <span className="mb-1 block text-xs font-bold text-ink-soft">Dirección de la versión de prueba</span>
+          <span className="mb-1 block text-xs font-bold text-ink-soft">Dirección de la presentación</span>
           <div className="flex items-center gap-2">
             <Link2 className="size-4 shrink-0 text-ink-soft" />
             <input
