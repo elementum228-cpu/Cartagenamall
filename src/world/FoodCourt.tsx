@@ -7,6 +7,7 @@ import { LABEL_PRIORITY } from './labels'
 import { getGlassPill } from './labelTexture'
 import { GEO, GLASS, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
+import { useIsNight } from '../lib/useIsNight'
 
 // Piso 2: terraza gastronómica colonial, elevada al fondo de la fortaleza. Coordenadas del piso
 // (centro de la losa = origen del piso, que pone MallFloor).
@@ -320,8 +321,9 @@ export function FoodCourtDetail({ detail }: { detail: 'high' | 'low' }) {
 /** Carteles del piso 2: principal y terraza. */
 export function FoodCourtLabels() {
   const floor = FLOOR_BY_ID.P2
-  const title = useMemo(() => getGlassPill(floor.title, { dot: '#f7b34b', sub: floor.subtitle }), [floor])
-  const terrace = useMemo(() => getGlassPill('Terraza', { dot: '#d4842e' }), [])
+  const night = useIsNight()
+  const title = useMemo(() => getGlassPill(floor.title, { dot: '#f7b34b', sub: floor.subtitle, dark: night }), [floor, night])
+  const terrace = useMemo(() => getGlassPill('Terraza', { dot: '#d4842e', dark: night }), [night])
   return (
     <>
       <ScreenLabel label={title} position={[3, 5.4, 3]} pixelHeight={36} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />

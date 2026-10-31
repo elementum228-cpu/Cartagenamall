@@ -8,6 +8,7 @@ import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, WATER, mat, shade } from './materials'
 import { glowMat, lightPoolMat, litLabelMat, uplightMat } from './night'
+import { useIsNight } from '../lib/useIsNight'
 
 // Fortaleza caribeña: murallas, baluartes, garitas, cañones y entrada monumental, construidos con
 // módulos reutilizables y datos de `FORTRESS` (config/mall.ts). Todo es estático: Batch lo fusiona.
@@ -324,6 +325,7 @@ function Shore({ sparse }: { sparse: boolean }) {
  * Se dibuja siempre: es el contexto de todos los pisos.
  */
 export function FortressEnvironment({ onEnter, sparse = false }: { onEnter: () => void; sparse?: boolean }) {
+  const night = useIsNight()
   const C = S - FORTRESS.gateCut
   const top = WH + 0.3
   return (
@@ -388,7 +390,7 @@ export function FortressEnvironment({ onEnter, sparse = false }: { onEnter: () =
       </group>
       {/* Desde lejos el letrero de piedra es pequeño: un cartel legible sobre la puerta. */}
       <ScreenLabel
-        label={getGlassPill(MALL.name, { dot: '#f27b68', sub: MALL.tagline })}
+        label={getGlassPill(MALL.name, { dot: '#f27b68', sub: MALL.tagline, dark: night })}
         position={[GATE.x + 1, 11, GATE.z + 1]}
         pixelHeight={36}
         maxZoomRatio={1.05}

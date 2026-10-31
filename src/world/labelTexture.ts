@@ -157,8 +157,8 @@ export function getGateSign(title: string, tagline: string): Label {
  * punto de color (o el logo) y texto oscuro; `sub` va en una segunda línea más tenue. Es el estilo
  * de toda la señalización flotante del mapa (tiendas, pisos, pasillos, cancha).
  */
-export function getGlassPill(title: string, o: { dot?: string; sub?: string; logo?: string | null } = {}): Label {
-  const key = `pill|${title}|${o.dot ?? ''}|${o.sub ?? ''}|${o.logo ? `${o.logo.length}:${o.logo.slice(-48)}` : ''}`
+export function getGlassPill(title: string, o: { dot?: string; sub?: string; logo?: string | null; dark?: boolean } = {}): Label {
+  const key = `pill|${o.dark ? 'n' : 'd'}|${title}|${o.dot ?? ''}|${o.sub ?? ''}|${o.logo ? `${o.logo.length}:${o.logo.slice(-48)}` : ''}`
   const hit = cache.get(key)
   if (hit) return hit
   const H = o.sub ? 120 : 92
@@ -184,15 +184,33 @@ export function getGlassPill(title: string, o: { dot?: string; sub?: string; log
   const draw = (img: HTMLImageElement | null) => {
     ctx.clearRect(-pad, -pad, W + pad * 2, H + pad * 2)
     ctx.save()
-    ctx.shadowColor = 'rgba(6, 44, 66, 0.28)'
+    ctx.shadowColor = o.dark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(6, 44, 66, 0.28)'
     ctx.shadowBlur = 14
     ctx.shadowOffsetY = 4
-    ctx.fillStyle = 'rgba(250, 249, 246, 0.86)'
+    if (o.dark) {
+      // vidrio ahumado: azul profundo translúcido con un velo claro arriba
+      const g = ctx.createLinearGradient(0, 0, 0, H)
+      g.addColorStop(0, 'rgba(40, 78, 98, 0.82)')
+      g.addColorStop(1, 'rgba(8, 36, 54, 0.82)')
+      ctx.fillStyle = g
+    } else ctx.fillStyle = 'rgba(250, 249, 246, 0.86)'
     ctx.beginPath()
     ctx.roundRect(2, 2, W - 4, H - 4, r)
     ctx.fill()
     ctx.restore()
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
+    // borde de luz: brilla en las esquinas
+    const edge = ctx.createLinearGradient(0, 0, W, H)
+    if (o.dark) {
+      edge.addColorStop(0, 'rgba(255,255,255,0.85)')
+      edge.addColorStop(0.3, 'rgba(160,235,228,0.25)')
+      edge.addColorStop(0.65, 'rgba(255,255,255,0.08)')
+      edge.addColorStop(1, 'rgba(255,255,255,0.7)')
+    } else {
+      edge.addColorStop(0, 'rgba(255,255,255,1)')
+      edge.addColorStop(0.5, 'rgba(255,255,255,0.75)')
+      edge.addColorStop(1, 'rgba(255,255,255,1)')
+    }
+    ctx.strokeStyle = edge
     ctx.lineWidth = 3
     ctx.stroke()
     if (o.logo) {
@@ -225,11 +243,11 @@ export function getGlassPill(title: string, o: { dot?: string; sub?: string; log
     }
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = '#10232d'
+    ctx.fillStyle = o.dark ? '#f7f5f1' : '#10232d'
     ctx.font = titleFont
     if (o.sub) {
       ctx.fillText(title, left, 44)
-      ctx.fillStyle = '#66737c'
+      ctx.fillStyle = o.dark ? 'rgba(247,245,241,0.7)' : '#66737c'
       ctx.font = subFont
       ctx.fillText(o.sub, left, 84)
     } else ctx.fillText(title, left, H / 2 + 2)

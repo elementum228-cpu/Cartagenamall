@@ -34,6 +34,12 @@ export function ExploreView({ active }: { active: boolean }) {
   const night = useIsNight() && use3D
   const root = useRef<HTMLDivElement>(null)
 
+  // De noche, mientras se explora, las barras y controles pasan a vidrio ahumado (ver index.css).
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-night', active && night)
+    return () => document.documentElement.classList.remove('theme-night')
+  }, [active, night])
+
   // En el mapa, un pellizco nunca debe agrandar la página entera (eso "rompe" la vista en móvil):
   // los gestos de dos dedos son solo para el zoom del mundo 3D.
   useEffect(() => {
@@ -112,7 +118,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const courtActive = useUI((s) => s.courtOpen || s.selectedSpaceId === COURT_SPACE.id)
   const chip = (on: boolean) =>
     `tap-halo flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition duration-200 active:scale-[0.98] ${
-      on ? 'bg-teal text-white shadow-[var(--shadow-glow)] ring-1 ring-white/30' : 'glass text-ink shadow-none'
+      on ? 'glass-teal' : 'glass text-ink'
     }`
 
   return (
@@ -120,10 +126,9 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
       {use3D && <PinchHint hidden={dimmed || !!peekId} />}
       {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
       <div
-        className={`scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex gap-2 overflow-x-auto px-3 pb-2 transition-opacity duration-200 md:right-auto md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
-        role="toolbar"
-        aria-label="Categorías del mall"
+        className={`glass-tray absolute top-[var(--chrome-top)] right-3 left-3 z-10 overflow-hidden rounded-[24px] transition-opacity duration-200 md:right-auto md:left-5 md:max-w-[calc(100%-40px)] ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
       >
+      <div className="scrollbar-none flex gap-1.5 overflow-x-auto p-1.5" role="toolbar" aria-label="Categorías del mall">
         {ZONES.map((z) => {
           const Icon = ZONE_ICON[z.id]
           return (
@@ -148,12 +153,13 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           Cancha
         </button>
       </div>
+      </div>
 
       <FloorSelector use3D={use3D} dimmed={dimmed} />
 
       {/* descubrimientos y oferta relámpago: pills discretas */}
       <div
-        className={`pointer-events-none absolute top-[calc(var(--chrome-top)+44px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+        className={`pointer-events-none absolute top-[calc(var(--chrome-top)+58px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
       >
         <Link to="/ofertas" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
           <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
@@ -301,10 +307,11 @@ function PrimaryCta({ onClick, icon, label }: { onClick: () => void; icon: React
   return (
     <button
       onClick={onClick}
-      className="flex h-14 items-center gap-2.5 rounded-full bg-gradient-to-b from-[#0a9c95] to-teal px-7 text-[17px] font-semibold tracking-[-0.01em] text-white shadow-[0_14px_34px_-10px_rgb(0_141_135/0.75)] ring-1 ring-white/25 transition duration-200 active:scale-[0.97] max-md:max-w-[min(260px,100%)]"
+      className="glass-teal flex h-14 items-center gap-2.5 rounded-full pr-5 pl-6 text-[17px] font-semibold tracking-[-0.01em] transition duration-200 active:scale-[0.97] max-md:max-w-[min(280px,100%)]"
     >
       {icon}
       {label}
+      <ChevronRight className="size-5 opacity-90" strokeWidth={2} />
     </button>
   )
 }
@@ -457,7 +464,7 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
   return (
     <nav
       aria-label="Pisos"
-      className={`glass absolute top-1/2 left-3 z-10 flex w-[48px] -translate-y-1/2 flex-col items-stretch gap-0.5 overflow-hidden rounded-[24px] p-1 shadow-none transition-opacity duration-200 md:left-5 md:w-[64px] ${
+      className={`glass absolute top-1/2 left-3 z-10 flex w-[50px] -translate-y-1/2 flex-col items-stretch gap-0.5 overflow-hidden rounded-[24px] p-1 transition-opacity duration-200 md:left-5 md:w-[64px] ${
         dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''
       }`}
     >
@@ -472,7 +479,7 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
             onClick={() => setFloor(f.id)}
             aria-pressed={on}
             aria-label={f.name}
-            className={`rounded-[18px] px-1 py-2 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:py-2.5 md:text-[12px] ${on ? 'bg-teal text-white shadow-[var(--shadow-glow)]' : 'text-ink hover:bg-white/50'}`}
+            className={`rounded-[18px] px-1 py-2 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:py-2.5 md:text-[12px] ${on ? 'glass-teal' : 'text-ink hover:bg-white/30'}`}
           >
             <span className="md:hidden">P{f.level}</span>
             <span className="max-md:hidden">{f.name}</span>
@@ -487,9 +494,10 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
           onClick={() => setOverview(!overview)}
           aria-pressed={overview}
           title="Vista general de la fortaleza (ambos pisos)"
-          className={`flex flex-col items-center gap-0.5 rounded-[18px] py-1.5 text-[9.5px] font-semibold transition duration-200 active:scale-[0.97] ${overview ? 'bg-amber text-deep' : 'text-ink-soft hover:bg-white/50'}`}
+          aria-label="Fortaleza: ver todo el mall"
+          className={`grid h-10 place-items-center rounded-[18px] transition duration-200 active:scale-[0.97] ${overview ? 'bg-amber text-deep shadow-[0_6px_18px_-6px_rgb(247_179_75/0.7),inset_0_1px_0_rgb(255_255_255/0.5)]' : 'text-ink-soft hover:bg-white/30'}`}
         >
-          <Castle className="size-4" strokeWidth={1.8} /> Fortaleza
+          <Castle className="size-5" strokeWidth={1.8} />
         </button>
       )}
     </nav>

@@ -90,11 +90,113 @@ body {
   backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgb(255 255 255 / 0.32);
 }
+/*
+ * Brillo especular en los bordes: un trazo de 1 px con degradado que se enciende en las esquinas
+ * (arriba a la izquierda y abajo a la derecha), más una línea de luz interior arriba.
+ */
+@layer components {
+  /* en la capa de componentes: las utilidades fixed/absolute de Tailwind siguen ganando */
+  .glass,
+  .glass-strong,
+  .glass-tray,
+  .glass-teal {
+    position: relative;
+    isolation: isolate;
+  }
+}
+.glass::before,
+.glass-strong::before,
+.glass-tray::before,
+.glass-teal::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.18) 28%, rgb(255 255 255 / 0.06) 55%, rgb(255 255 255 / 0.22) 78%, rgb(255 255 255 / 0.75));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  z-index: 1;
+}
+.glass { box-shadow: var(--shadow-float), inset 0 1px 0 rgb(255 255 255 / 0.55); border-color: transparent; }
+
+/* Bandeja de vidrio (contiene las categorías). */
+.glass-tray {
+  background: rgb(247 245 241 / 0.32);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: var(--shadow-float), inset 0 1px 0 rgb(255 255 255 / 0.4);
+}
+
+/* Turquesa con reflejo (estado activo y botón principal). */
+.glass-teal {
+  background: linear-gradient(180deg, rgb(19 185 173 / 0.95), rgb(0 141 135 / 0.96) 55%, rgb(0 112 107 / 0.98));
+  color: #fff;
+  box-shadow: 0 14px 34px -10px rgb(0 141 135 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.45), inset 0 -1px 0 rgb(0 0 0 / 0.08);
+}
+.glass-teal::after {
+  /* reflejo superior, como el de una superficie de vidrio curva */
+  content: '';
+  position: absolute;
+  inset: 1px 1px 52% 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.28), rgb(255 255 255 / 0));
+  pointer-events: none;
+}
+
+/*
+ * Noche en el mapa (clase en <html> mientras se explora de noche): vidrio ahumado azul, texto
+ * blanco y bordes que brillan más. Las fichas (glass-strong) siguen claras para leer cómodo.
+ */
+.theme-night .glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.05)), rgb(8 42 62 / 0.42);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  color: #f7f5f1;
+  box-shadow: 0 18px 50px -16px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.28), inset 0 -1px 0 rgb(255 255 255 / 0.05);
+}
+.theme-night .glass-tray {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.03)), rgb(8 42 62 / 0.28);
+  box-shadow: 0 18px 50px -18px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+.theme-night .glass-tray .glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.04));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+.theme-night .glass::before,
+.theme-night .glass-tray::before {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.75), rgb(160 235 228 / 0.18) 26%, rgb(255 255 255 / 0.04) 52%, rgb(160 235 228 / 0.16) 76%, rgb(255 255 255 / 0.6));
+}
+.theme-night .glass .text-ink,
+.theme-night .glass.text-ink {
+  color: #f7f5f1;
+}
+.theme-night .glass .text-ink-soft,
+.theme-night .glass.text-ink-soft,
+.theme-night .glass .text-\[\#66737C\] {
+  color: rgb(247 245 241 / 0.68);
+}
+.theme-night .glass .text-teal {
+  color: #5fe0d5;
+}
+.theme-night .glass .bg-teal\/12 {
+  background: linear-gradient(180deg, rgb(19 185 173 / 0.32), rgb(0 141 135 / 0.2));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 0 18px -4px rgb(19 185 173 / 0.55);
+}
+.theme-night .glass .bg-ink\/10 {
+  background: rgb(255 255 255 / 0.14);
+}
+
 /* Navegador sin desenfoque: superficies más opacas para mantener la legibilidad. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass { background: rgb(247 245 241 / 0.94); }
   .glass-strong { background: rgb(250 249 246 / 0.97); }
   .glass-clear { background: rgb(6 44 66 / 0.55); }
+  .glass-tray { background: rgb(247 245 241 / 0.7); }
+  .theme-night .glass { background: rgb(8 42 62 / 0.9); }
+  .theme-night .glass-tray { background: rgb(8 42 62 / 0.75); }
 }
 
 /* Entrada suave de la barra superior y la inferior al cargar. */

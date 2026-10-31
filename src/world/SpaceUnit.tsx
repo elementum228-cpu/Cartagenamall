@@ -14,6 +14,7 @@ import { LABEL_PRIORITY } from './labels'
 import { cameraState } from './cameraState'
 import { GEO, GLASS, PALETTE, mat, shade } from './materials'
 import { dimLabelMat, glowMat, lightPoolMat, nightVolumeMat, uplightMat } from './night'
+import { useIsNight } from '../lib/useIsNight'
 
 export type Detail = 'high' | 'low'
 
@@ -94,6 +95,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
   const highlightMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent])
   const haloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#13b9ad', transparent: true, opacity: 0, depthWrite: false, toneMapped: false }), [])
   const select = () => onSelect(space.id)
+  const night = useIsNight()
   const price = useSpacePrice(space.id)
   const labelY = space.type === 'premium' ? 5.6 : space.type === 'local' ? 4.6 : 3.8
   // El contenido se memoiza: así el hover no reconstruye la fusión de mallas (ver Batch).
@@ -139,7 +141,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
       {store && kindOf(store) === 'tech' && <TechStoreScreen space={space} store={store} products={products} flashPercent={flashPercent} />}
       {store && (
         <ScreenLabel
-          label={getGlassPill(store.name, { dot: store.brandColor, sub: CATEGORY_BY_ID[store.categoryId]?.name, logo: store.logo })}
+          label={getGlassPill(store.name, { dot: store.brandColor, sub: CATEGORY_BY_ID[store.categoryId]?.name, logo: store.logo, dark: night })}
           position={[0, labelY, 0]}
           pixelHeight={isHighlighted(store) ? 46 : 40}
           minZoomRatio={isHighlighted(store) || space.type === 'premium' ? 0 : 1.15}
