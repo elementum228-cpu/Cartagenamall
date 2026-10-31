@@ -20,6 +20,8 @@ export interface LabelEntry {
   priority: number
   aspect: number
   pixelHeight: number
+  /** Escala mínima en pantallas chicas (ver Label.minUiScale). */
+  minUiScale: number
   /** El propio cartel decide si aplica (zoom, piso visible). */
   eligible: boolean
   /** Resultado del gestor: no se pisa con otro más importante. */
@@ -53,7 +55,7 @@ export function useLabelDeclutter() {
       v.project(camera)
       const x = ((v.x + 1) / 2) * size.width
       const y = ((1 - v.y) / 2) * size.height
-      const h = e.pixelHeight * cameraState.uiScale
+      const h = e.pixelHeight * Math.max(cameraState.uiScale, e.minUiScale)
       const w = h * e.aspect
       const r: [number, number, number, number] = [x - w / 2 - MARGIN, y - h / 2 - MARGIN, x + w / 2 + MARGIN, y + h / 2 + MARGIN]
       const hit = rects.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])

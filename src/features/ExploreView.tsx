@@ -190,7 +190,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
       {/* Parte baja: ficha del local elegido, botón principal y controles. La fila no captura toques
           (el mapa se puede arrastrar); solo sus botones. */}
       <div
-        className={`pointer-events-none absolute inset-x-3 bottom-[calc(var(--chrome-bottom)+10px)] z-10 flex flex-col gap-3 transition-opacity duration-200 md:inset-x-5 md:bottom-5 *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+        className={`pointer-events-none absolute inset-x-3 bottom-[calc(var(--chrome-bottom)+10px)] z-10 flex flex-col gap-3 transition-opacity duration-200 md:inset-x-5 md:bottom-5 ${dimmed ? 'max-md:opacity-0 max-md:**:pointer-events-none' : ''}`}
       >
         <AnimatePresence>
           {use3D && !hintSeen && (
@@ -199,7 +199,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.24 }}
-              className="glass-strong max-w-[300px] self-start rounded-[22px] p-3.5 text-[12.5px]"
+              className="glass-strong pointer-events-auto max-w-[300px] self-start rounded-[22px] p-3.5 text-[12.5px]"
             >
               <p className="flex items-center gap-2 font-semibold">
                 <Hand className="size-4 text-teal" strokeWidth={1.8} /> Cómo explorar
@@ -217,10 +217,11 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           )}
         </AnimatePresence>
         <AnimatePresence>{peekId && <PeekCard key={peekId} spaceId={peekId} />}</AnimatePresence>
-        <div className="flex items-end justify-between gap-3">
+        {/* la fila y su centro no capturan toques (el mapa sigue arrastrable y con pellizco debajo) */}
+        <div className="pointer-events-none flex items-end justify-between gap-3">
           {/* espacio izquierdo (equilibra los controles de la derecha para centrar el botón) */}
           <div className="w-11 shrink-0 max-md:block md:hidden" aria-hidden />
-          <div className="flex min-w-0 flex-1 justify-center md:justify-start">
+          <div className="flex min-w-0 flex-1 justify-center md:justify-start *:pointer-events-auto">
             {overview && use3D ? (
               <PrimaryCta onClick={() => useUI.getState().enterMall()} icon={<DoorOpen className="size-5" strokeWidth={1.9} />} label="Explorar el mall" />
             ) : use3D ? (
@@ -228,7 +229,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             ) : null}
           </div>
           {/* controles de cámara */}
-          <div className="flex shrink-0 flex-col items-end gap-2">
+          <div className="flex shrink-0 flex-col items-end gap-2 *:pointer-events-auto">
             {use3D && !overview && (
               <button className="glass grid size-11 place-items-center rounded-full text-ink shadow-none transition active:scale-[0.96]" onClick={goHome} aria-label="Volver al centro del piso">
                 <House className="size-5" strokeWidth={1.8} />
@@ -274,7 +275,7 @@ function PeekCard({ spaceId }: { spaceId: string }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.98 }}
       transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-      className="glass-strong mx-auto flex w-full max-w-[420px] items-center gap-1 rounded-[26px] p-1.5"
+      className="glass-strong pointer-events-auto mx-auto flex w-full max-w-[420px] items-center gap-1 rounded-[26px] p-1.5"
     >
       <button onClick={() => useUI.getState().openPeek()} className="flex min-w-0 flex-1 items-center gap-3 rounded-[20px] p-1.5 text-left transition duration-200 active:scale-[0.99]" aria-label={`Ver ${title}`}>
         {store ? (

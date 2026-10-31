@@ -392,7 +392,7 @@ export function FortressEnvironment({ onEnter, sparse = false }: { onEnter: () =
       <ScreenLabel
         label={getGlassPill(MALL.name, { dot: '#f27b68', sub: MALL.tagline, dark: night })}
         position={[GATE.x + 1, 11, GATE.z + 1]}
-        pixelHeight={36}
+        pixelHeight={35}
         maxZoomRatio={1.05}
         lit
         priority={LABEL_PRIORITY.floorSign + 10}

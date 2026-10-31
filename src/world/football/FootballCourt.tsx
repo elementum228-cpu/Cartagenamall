@@ -220,7 +220,7 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
           ))}
         </group>
       )}
-      <ScreenLabel label={pill} position={[0, COURT.fenceHeight + 2.6, FENCE_Z]} pixelHeight={36} maxZoomRatio={1.6} lit priority={LABEL_PRIORITY.corridor + 5} onClick={interactive ? onOpen : undefined} />
+      <ScreenLabel label={pill} position={[0, COURT.fenceHeight + 2.6, FENCE_Z]} pixelHeight={35} maxZoomRatio={1.6} lit priority={LABEL_PRIORITY.corridor + 5} onClick={interactive ? onOpen : undefined} />
     </group>
   )
 }

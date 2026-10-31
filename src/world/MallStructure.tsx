@@ -158,7 +158,7 @@ export function CrossLabels() {
   const title = useMemo(() => getGlassPill(P1.title, { dot: '#13b9ad', sub: P1.subtitle, dark: night }), [night])
   return (
     <>
-      <ScreenLabel label={title} position={[0, 5.2, 0]} pixelHeight={36} maxZoomRatio={3} priority={LABEL_PRIORITY.floorSign} />
+      <ScreenLabel label={title} position={[0, 5.2, 0]} pixelHeight={35} maxZoomRatio={3} priority={LABEL_PRIORITY.floorSign} />
       {P1.zones.map((z) => (
         <CorridorSign key={z.id} zone={z} />
       ))}
@@ -171,5 +171,5 @@ export function CorridorSign({ zone }: { zone: ZoneConfig }) {
   const [x, zz] = toWorld([0, 17], zone.angle)
   const label = getGlassPill(zone.name, { dot: zone.color, sub: `Pasillo ${zone.id}`, dark: useIsNight() })
   // Solo de lejos: de cerca se lee el cartel del arco y no se duplica.
-  return <ScreenLabel label={label} position={[x, 7, zz]} pixelHeight={36} maxZoomRatio={1.45} priority={LABEL_PRIORITY.corridor} />
+  return <ScreenLabel label={label} position={[x, 7, zz]} pixelHeight={35} maxZoomRatio={1.45} priority={LABEL_PRIORITY.corridor} />
 }

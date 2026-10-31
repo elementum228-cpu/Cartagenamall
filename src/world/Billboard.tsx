@@ -51,16 +51,16 @@ export function ScreenLabel({
   const entry = useRef<LabelEntry | null>(null)
   useEffect(() => {
     if (!group.current) return
-    const e: LabelEntry = { object: group.current, priority, aspect: label.aspect, pixelHeight, eligible: false, accepted: true }
+    const e: LabelEntry = { object: group.current, priority, aspect: label.aspect, pixelHeight, minUiScale: label.minUiScale ?? 0, eligible: false, accepted: true }
     entry.current = e
     return registerLabel(e)
-  }, [priority, label.aspect, pixelHeight])
+  }, [priority, label.aspect, label.minUiScale, pixelHeight])
   useFrame(() => {
     // de noche: los carteles se atenúan apenas (los iluminados, menos) para no deslumbrar ni perder legibilidad
     if (material.current) material.current.color.setScalar(1 - (lit ? 0.05 : 0.1) * nightState.t)
     const g = group.current
     if (!g) return
-    let h = Math.min((pixelHeight * cameraState.uiScale) / cameraState.zoom, maxWorldHeight)
+    let h = Math.min((pixelHeight * Math.max(cameraState.uiScale, label.minUiScale ?? 0)) / cameraState.zoom, maxWorldHeight)
     if (popAt !== null) {
       // salto amortiguado de ~1 s, repetido una vez a los 3 s
       const t = ((appClock.now() - popAt) / 1000) % 3

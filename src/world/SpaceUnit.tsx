@@ -143,7 +143,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
         <ScreenLabel
           label={getGlassPill(store.name, { dot: store.brandColor, sub: CATEGORY_BY_ID[store.categoryId]?.name, logo: store.logo, dark: night })}
           position={[0, labelY, 0]}
-          pixelHeight={isHighlighted(store) ? 46 : 40}
+          pixelHeight={isHighlighted(store) ? 44 : 38}
           minZoomRatio={isHighlighted(store) || space.type === 'premium' ? 0 : 1.15}
           // De cerca ya se lee el letrero físico: el del techo (tienda destacada) o el de la fachada
           // si mira a la cámara. El rótulo flotante no se duplica.

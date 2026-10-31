@@ -326,7 +326,7 @@ export function FoodCourtLabels() {
   const terrace = useMemo(() => getGlassPill('Terraza', { dot: '#d4842e', dark: night }), [night])
   return (
     <>
-      <ScreenLabel label={title} position={[3, 5.4, 3]} pixelHeight={36} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      <ScreenLabel label={title} position={[3, 5.4, 3]} pixelHeight={35} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       <ScreenLabel label={terrace} position={[(T.x0 + T.x1) / 2, 4, (T.z0 + T.z1) / 2]} pixelHeight={24} minZoomRatio={0.9} priority={LABEL_PRIORITY.section} />
     </>
   )

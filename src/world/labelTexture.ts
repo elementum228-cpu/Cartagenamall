@@ -3,6 +3,8 @@ import * as THREE from 'three'
 export interface Label {
   texture: THREE.CanvasTexture
   aspect: number
+  /** Escala mínima en pantallas chicas (por defecto los carteles se achican hasta 0,72 en celular). */
+  minUiScale?: number
 }
 
 const cache = new Map<string, Label>()
@@ -164,8 +166,8 @@ export function getGlassPill(title: string, o: { dot?: string; sub?: string; log
   const H = o.sub ? 120 : 92
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')!
-  const titleFont = `700 ${o.sub ? 44 : 46}px ${FONT}`
-  const subFont = `600 30px ${FONT}`
+  const titleFont = `800 ${o.sub ? 48 : 50}px ${FONT}`
+  const subFont = `700 34px ${FONT}`
   ctx.font = titleFont
   let tw = ctx.measureText(title).width
   if (o.sub) {
@@ -176,9 +178,13 @@ export function getGlassPill(title: string, o: { dot?: string; sub?: string; log
   const left = 30 + (mark ? mark + 18 : 0)
   const W = Math.ceil(left + tw + 36)
   const pad = 10 // margen para la sombra
-  canvas.width = (W + pad * 2) * SCALE
-  canvas.height = (H + pad * 2) * SCALE
-  ctx.scale(SCALE, SCALE)
+  // Nítido: el lienzo se dibuja a la resolución con que se verá (≈ 48 px CSS × densidad de la
+  // pantalla), así casi no se reduce y no hace falta suavizarlo con mipmaps.
+  const dpr = typeof window === 'undefined' ? 2 : Math.min(3, window.devicePixelRatio || 1)
+  const k = Math.min(3, Math.max(1.25, (52 * dpr) / H))
+  canvas.width = Math.round((W + pad * 2) * k)
+  canvas.height = Math.round((H + pad * 2) * k)
+  ctx.scale(k, k)
   ctx.translate(pad, pad)
   const r = H / 2
   const draw = (img: HTMLImageElement | null) => {
@@ -246,17 +252,17 @@ export function getGlassPill(title: string, o: { dot?: string; sub?: string; log
     ctx.fillStyle = o.dark ? '#f7f5f1' : '#10232d'
     ctx.font = titleFont
     if (o.sub) {
-      ctx.fillText(title, left, 44)
-      ctx.fillStyle = o.dark ? 'rgba(247,245,241,0.7)' : '#66737c'
+      ctx.fillText(title, left, 43)
+      ctx.fillStyle = o.dark ? 'rgba(247,245,241,0.78)' : '#55626b'
       ctx.font = subFont
-      ctx.fillText(o.sub, left, 84)
+      ctx.fillText(o.sub, left, 85)
     } else ctx.fillText(title, left, H / 2 + 2)
   }
   draw(null)
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
-  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
   if (o.logo) {
     const img = new Image()
@@ -269,7 +275,7 @@ export function getGlassPill(title: string, o: { dot?: string; sub?: string; log
     }
     img.src = remote ? `${o.logo}${o.logo.includes('?') ? '&' : '?'}cm=3d` : o.logo
   }
-  const label = { texture, aspect: (W + pad * 2) / (H + pad * 2) }
+  const label: Label = { texture, aspect: (W + pad * 2) / (H + pad * 2), minUiScale: 0.95 }
   cache.set(key, label)
   return label
 }
