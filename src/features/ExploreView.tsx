@@ -1,7 +1,7 @@
 import { openCourtOrClaim } from '../football/open'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, MotionConfig } from 'motion/react'
 import { Castle, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import { formatCOP } from '../lib/format'
@@ -122,7 +122,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
     }`
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       {use3D && <PinchHint hidden={dimmed || !!peekId} />}
       {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
       {/* cada cápsula flota sola sobre el mapa (sin bandeja); la fila no captura toques fuera de ellas */}
@@ -217,20 +217,37 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             </motion.div>
           )}
         </AnimatePresence>
-        <AnimatePresence>{peekId && <PeekCard key={peekId} spaceId={peekId} />}</AnimatePresence>
-        {/* la fila y su centro no capturan toques (el mapa sigue arrastrable y con pellizco debajo) */}
-        <div className="pointer-events-none flex items-end justify-between gap-3">
+        {/* la fila y su centro no capturan toques (el mapa sigue arrastrable y con pellizco debajo).
+            La ficha del local se posa encima del botón principal, como una tarjeta de mapas; los
+            controles suben para dejarle sitio. */}
+        <div className="pointer-events-none relative flex items-end justify-between gap-3">
           {/* espacio izquierdo (equilibra los controles de la derecha para centrar el botón) */}
           <div className="w-11 shrink-0 max-md:block md:hidden" aria-hidden />
           <div className="flex min-w-0 flex-1 justify-center md:justify-start *:pointer-events-auto">
-            {overview && use3D ? (
-              <PrimaryCta onClick={() => useUI.getState().enterMall()} icon={<DoorOpen className="size-5" strokeWidth={1.9} />} label="Explorar el mall" />
-            ) : use3D ? (
-              <PrimaryCta onClick={() => useUI.getState().setOverview(true)} icon={<Castle className="size-5" strokeWidth={1.9} />} label="Ver todo el mall" />
-            ) : null}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {use3D && !peekId && (
+                <motion.div
+                  key={overview ? 'enter' : 'overview'}
+                  initial={{ opacity: 0, scale: 0.9, filter: 'blur(6px)' }}
+                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, scale: 0.92, filter: 'blur(6px)' }}
+                  transition={SPRING}
+                >
+                  {overview ? (
+                    <PrimaryCta onClick={() => useUI.getState().enterMall()} icon={<DoorOpen className="size-5" strokeWidth={1.9} />} label="Explorar el mall" />
+                  ) : (
+                    <PrimaryCta onClick={() => useUI.getState().setOverview(true)} icon={<Castle className="size-5" strokeWidth={1.9} />} label="Ver todo el mall" />
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           {/* controles de cámara */}
-          <div className="flex shrink-0 flex-col items-end gap-2 *:pointer-events-auto">
+          <motion.div
+            className="flex shrink-0 flex-col items-end gap-2 *:pointer-events-auto"
+            animate={{ y: peekId ? -(PEEK_HEIGHT + 12) : 0 }}
+            transition={SPRING}
+          >
             {use3D && !overview && (
               <button className="glass grid size-11 place-items-center rounded-full text-ink shadow-none transition active:scale-[0.96]" onClick={goHome} aria-label="Volver al centro del piso">
                 <House className="size-5" strokeWidth={1.8} />
@@ -248,21 +265,53 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
               </div>
             )}
             <ViewOptions use3D={use3D} webgl={webgl} desktop={desktop} />
-          </div>
+          </motion.div>
+          <AnimatePresence>{peekId && <PeekCard spaceId={peekId} />}</AnimatePresence>
         </div>
       </div>
       {use3D && desktop && !dimmed && !overview && <ControlsLegend />}
-    </>
+    </MotionConfig>
   )
 }
 
 const ZONE_ICON: Record<ZoneId, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils }
 
+/** Resorte suave al estilo de las apps nativas: rápido al arrancar, sin rebote brusco al llegar. */
+const SPRING = { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } as const
+/** Alto de la ficha breve (logo de 48 + márgenes); los controles suben esto más el respiro. */
+const PEEK_HEIGHT = 72
+
 /**
- * Ficha breve del local tocado en el mapa (celular): logo, nombre y rubro; al tocarla se abre la
- * ficha completa. Para un espacio libre invita a reclamarlo.
+ * Ficha breve del local tocado en el mapa (celular): sube desde abajo y se posa sobre el botón
+ * principal. Al tocar otro local la tarjeta se queda y solo cambia su contenido (deslizándose);
+ * se cierra con la X o arrastrándola hacia abajo. Al tocarla se abre la ficha completa.
  */
 function PeekCard({ spaceId }: { spaceId: string }) {
+  const close = () => useUI.getState().selectSpace(null)
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 40, scale: 0.96 }}
+      transition={SPRING}
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0.05, bottom: 0.7 }}
+      onDragEnd={(_, info) => (info.offset.y > 36 || info.velocity.y > 400) && close()}
+      style={{ height: PEEK_HEIGHT }}
+      className="glass-strong pointer-events-auto absolute inset-x-0 bottom-0 z-10 mx-auto flex w-full max-w-[420px] touch-none items-center gap-1 overflow-hidden rounded-[26px] p-1.5"
+    >
+      <AnimatePresence mode="popLayout" initial={false}>
+        <PeekContent key={spaceId} spaceId={spaceId} />
+      </AnimatePresence>
+      <button onClick={close} className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-white/60" aria-label="Cerrar">
+        <X className="size-4" strokeWidth={2} />
+      </button>
+    </motion.div>
+  )
+}
+
+function PeekContent({ spaceId, ref }: { spaceId: string; ref?: Ref<HTMLButtonElement> }) {
   const space = SPACE_BY_ID[spaceId]
   const store = useCatalog((s) => s.stores.find((st) => st.id === s.assignments[spaceId]))
   const price = useSpacePrice(spaceId)
@@ -271,36 +320,34 @@ function PeekCard({ spaceId }: { spaceId: string }) {
   const title = store ? store.name : `Espacio ${space.label}`
   const sub = store ? (CATEGORY_BY_ID[store.categoryId]?.name ?? zone.name) : `Disponible · ${formatCOP(price)}/mes`
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 10, scale: 0.98 }}
-      transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-      className="glass-strong pointer-events-auto mx-auto flex w-full max-w-[420px] items-center gap-1 rounded-[26px] p-1.5"
+    <motion.button
+      ref={ref}
+      initial={{ opacity: 0, x: 28, filter: 'blur(4px)' }}
+      animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, x: -28, filter: 'blur(4px)' }}
+      transition={SPRING}
+      onClick={() => useUI.getState().openPeek()}
+      className="flex min-w-0 flex-1 items-center gap-3 rounded-[20px] p-1.5 text-left active:scale-[0.99]"
+      aria-label={`Ver ${title}`}
     >
-      <button onClick={() => useUI.getState().openPeek()} className="flex min-w-0 flex-1 items-center gap-3 rounded-[20px] p-1.5 text-left transition duration-200 active:scale-[0.99]" aria-label={`Ver ${title}`}>
-        {store ? (
-          <StoreLogo store={store} size={48} />
-        ) : (
-          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-teal/10 text-teal">
-            <StoreIcon className="size-5" strokeWidth={1.8} />
-          </span>
-        )}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[16px] font-semibold tracking-[-0.01em]">{title}</span>
-          <span className="flex items-center gap-1.5 truncate text-[13px] text-ink-soft">
-            <span className="size-1.5 shrink-0 rounded-full" style={{ background: store ? store.brandColor : zone.color }} />
-            {sub}
-          </span>
+      {store ? (
+        <StoreLogo store={store} size={48} />
+      ) : (
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-teal/10 text-teal">
+          <StoreIcon className="size-5" strokeWidth={1.8} />
         </span>
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)]">
-          <ChevronRight className="size-5" strokeWidth={2} />
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[16px] font-semibold tracking-[-0.01em]">{title}</span>
+        <span className="flex items-center gap-1.5 truncate text-[13px] text-ink-soft">
+          <span className="size-1.5 shrink-0 rounded-full" style={{ background: store ? store.brandColor : zone.color }} />
+          {sub}
         </span>
-      </button>
-      <button onClick={() => useUI.getState().selectSpace(null)} className="grid size-9 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-white/60" aria-label="Cerrar">
-        <X className="size-4" strokeWidth={2} />
-      </button>
-    </motion.div>
+      </span>
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)]">
+        <ChevronRight className="size-5" strokeWidth={2} />
+      </span>
+    </motion.button>
   )
 }
 
