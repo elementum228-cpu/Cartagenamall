@@ -31,7 +31,11 @@ export function readableOn(color: string, bg: string, min = 2.2) {
   return `#${c.getHexString()}`
 }
 
-const SCALE = 2
+/**
+ * Resolución de los letreros dibujados en lienzo. En escritorio (GPU con memoria de sobra) se dibujan
+ * a 3× para que se lean nítidos al acercar la cámara; en celulares, 2× para cuidar la memoria.
+ */
+const SCALE = typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1024px)').matches ? 3 : 2
 const FONT = '"Manrope", "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
 
 /**
@@ -88,7 +92,7 @@ export function getLabel(text: string, o: { bg: string; fg: string; sub?: string
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = 16
   texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
   const label = { texture, aspect: W / H }
@@ -148,7 +152,7 @@ export function getGateSign(title: string, tagline: string): Label {
   ctx.fillText(tagline, cx, 322)
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = 16
   const label = { texture, aspect: W / H }
   cache.set(key, label)
   return label
@@ -180,8 +184,10 @@ export function getGlassPill(title: string, o: { dot?: string; sub?: string; log
   const pad = 10 // margen para la sombra
   // Nítido: el lienzo se dibuja a la resolución con que se verá (≈ 48 px CSS × densidad de la
   // pantalla), así casi no se reduce y no hace falta suavizarlo con mipmaps.
+  // ≈ 1:1 con los píxeles reales de la pantalla: el rótulo se ve a ~44 px CSS de alto (con su margen),
+  // un poco más grande para que el filtrado lineal no lo suavice.
   const dpr = typeof window === 'undefined' ? 2 : Math.min(3, window.devicePixelRatio || 1)
-  const k = Math.min(3, Math.max(1.25, (52 * dpr) / H))
+  const k = Math.min(3, Math.max(0.45, (46 * dpr * 1.2) / (H + pad * 2)))
   canvas.width = Math.round((W + pad * 2) * k)
   canvas.height = Math.round((H + pad * 2) * k)
   ctx.scale(k, k)
@@ -320,7 +326,7 @@ export function getZoneSign(letter: string, name: string, color: string): Label 
   ctx.fillText(name, 186, 126)
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = 16
   texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
   const label = { texture, aspect: W / H }
@@ -411,7 +417,7 @@ export function getStoreSign(name: string, color: string, sub?: string, logo?: s
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = 16
   texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
   if (logo) {
@@ -515,7 +521,7 @@ export function getPromoBanner(discount: number, product: string, store: string)
   ctx.fillText(`en ${store} · toca para verla`, x, 166)
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
+  texture.anisotropy = 16
   texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
   const label = { texture, aspect: W / H }

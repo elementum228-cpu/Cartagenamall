@@ -79,7 +79,10 @@ function Shell() {
           <ExploreView active={exploring} />
         </div>
         {!exploring && (
-          <div className="absolute inset-0 overflow-y-auto bg-sand pt-[var(--chrome-top)]">
+          <div className="absolute inset-0 overflow-y-auto bg-sand">
+            {/* espacio para la barra flotante (no como relleno del contenedor: Safari lo suma a los
+                elementos «sticky» y quedaría un hueco) */}
+            <div className="h-[var(--chrome-top)]" aria-hidden />
             <Routes>
               <Route path="/comprar" element={<ShopPage />} />
               <Route path="/carrito" element={<CartPage />} />
