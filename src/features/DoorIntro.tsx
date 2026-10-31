@@ -1,6 +1,6 @@
 import { Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { doorSoundOn, playCreak, playEnter, playKnockOnce, setDoorSound, unlockDoorSound } from '../lib/doorSound'
+import { doorSoundOn, playCartagena, playKnockOnce, playOpen, setDoorSound, unlockDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
 import { useUI } from '../state/ui'
 
@@ -23,7 +23,7 @@ type Phase = 'idle' | 'open' | 'through' | 'done'
 /** Toques necesarios para abrir. */
 const KNOCKS = 3
 /** Momento (ms desde el último toque) en que empieza cada fase. */
-const TIMELINE = { open: 520, enter: 1150, through: 1500, done: 2700 }
+const TIMELINE = { open: 600, cartagena: 1700, enter: 2000, through: 2700, done: 4400 }
 const HINTS = [`Toca la puerta ${KNOCKS} veces para entrar`, '¡Otra vez!', '¡Una más!']
 const EASE = 'cubic-bezier(0.65, 0, 0.25, 1)'
 
@@ -72,7 +72,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       /* sin almacenamiento: se vuelve a mostrar la próxima vez */
     }
     if (reduce) {
-      void playEnter()
+      void playCartagena()
       useUI.getState().enterMall()
       setPhase('through')
       timers.current.push(window.setTimeout(() => setPhase('done'), 400))
@@ -81,13 +81,12 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
     at(TIMELINE.open, () => {
       setPhase('open')
-      void playCreak()
+      void playOpen()
     })
     at(TIMELINE.enter, () => useUI.getState().enterMall())
-    at(TIMELINE.through, () => {
-      setPhase('through')
-      void playEnter()
-    })
+    // la música y el mar empiezan cuando entra la luz, antes de cruzar
+    at(TIMELINE.cartagena, () => void playCartagena())
+    at(TIMELINE.through, () => setPhase('through'))
     at(TIMELINE.done, () => setPhase('done'))
   }
 
@@ -113,7 +112,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       className="door-intro fixed inset-0 z-[60] overflow-hidden"
       role="dialog"
       aria-label="Bienvenida a Cartagena Mall"
-      style={{ opacity: through ? 0 : 1, transition: through ? `opacity 0.9s ease-in ${reduce ? 0 : 0.35}s` : undefined }}
+      style={{ opacity: through ? 0 : 1, transition: through ? `opacity 1.2s ease-in-out ${reduce ? 0 : 0.5}s` : undefined }}
     >
       {/* escena que «avanza» hacia la puerta al atravesarla */}
       <div
@@ -122,7 +121,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
           background: 'radial-gradient(120% 90% at 50% 0%, #f0dcb4 0%, #dcc497 45%, #b99a68 100%)',
           transform: through && !reduce ? 'scale(3.4)' : 'scale(1)',
           transformOrigin: '50% 52%',
-          transition: `transform 1.2s ${EASE}`,
+          transition: `transform 1.7s ${EASE}`,
         }}
       >
         <StoneWall />
@@ -170,7 +169,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
                 style={{
                   background: 'repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,247,220,0.55) 0deg 6deg, transparent 6deg 22deg)',
                   opacity: opened ? 0.9 : 0,
-                  transition: 'opacity 0.8s ease-out',
+                  transition: 'opacity 1.6s ease-in-out 0.3s',
                   animation: 'door-rays 14s linear infinite',
                   mixBlendMode: 'screen',
                 }}
@@ -255,7 +254,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
         style={{
           background: 'radial-gradient(60% 60% at 50% 52%, #fff8e6 0%, #ffe0a3 55%, rgba(255,214,140,0) 100%)',
           opacity: through ? 1 : 0,
-          transition: `opacity 0.6s ease-out ${reduce ? 0 : 0.25}s`,
+          transition: `opacity 0.9s ease-in-out ${reduce ? 0 : 0.35}s`,
         }}
       />
     </div>
@@ -272,7 +271,7 @@ function Leaf({ side, opened, reduce, knocks }: { side: 'left' | 'right'; opened
     transformOrigin: `${side} center`,
     transform: opened ? `rotateY(${s * (reduce ? 0 : 104)}deg)` : 'rotateY(0deg)',
     opacity: opened && reduce ? 0 : 1,
-    transition: `transform 1.5s ${EASE}, opacity 0.3s`,
+    transition: `transform 2.4s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.3s`,
     background: `linear-gradient(${side === 'left' ? 90 : 270}deg, ${WOOD_DARK}, ${WOOD} 30%, ${WOOD} 85%, ${WOOD_DARK})`,
     boxShadow: opened ? `${-s * 18}px 0 30px rgba(40,25,10,0.45)` : 'none',
   }
@@ -336,7 +335,7 @@ function MallGlimpse({ lit }: { lit: boolean }) {
       viewBox="0 0 100 100"
       preserveAspectRatio="xMidYMax slice"
       className="absolute inset-0 size-full"
-      style={{ opacity: lit ? 0.9 : 0.5, transform: lit ? 'scale(1)' : 'scale(0.92)', transformOrigin: '50% 80%', transition: `opacity 1s, transform 1.6s ${EASE}` }}
+      style={{ opacity: lit ? 0.9 : 0.5, transform: lit ? 'scale(1)' : 'scale(0.92)', transformOrigin: '50% 80%', transition: `opacity 1.6s, transform 2.6s ${EASE}` }}
     >
       <rect x="0" y="62" width="100" height="38" fill="#f3e3c3" />
       {[
