@@ -120,7 +120,7 @@ function Dock() {
 }
 
 /** Una persona en miniatura (mismo estilo que los visitantes del mall). */
-function Person({ color, skin }: { color: string; skin: string }) {
+export function Person({ color, skin }: { color: string; skin: string }) {
   return (
     <group>
       <mesh geometry={GEO.capsule} material={mat(color)} position={[0, 0.43, 0]} castShadow />

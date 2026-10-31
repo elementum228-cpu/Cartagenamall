@@ -27,8 +27,9 @@ const item = (productId: string, variantId: string | null, size: string | null, 
 })
 
 describe('mall layout', () => {
-  it('genera los espacios desde configuración: 20 en el piso 1 y 10 en el piso 2', () => {
-    expect(SPACES.filter((s) => s.floorId === 'P1')).toHaveLength(20)
+  it('genera los espacios desde configuración: 20 en los pasillos y 4 en servicios (piso 1), 10 en el piso 2', () => {
+    expect(SPACES.filter((s) => s.floorId === 'P1')).toHaveLength(24)
+    expect(SPACES.filter((s) => s.zoneId === 'F')).toHaveLength(4)
     expect(SPACES.filter((s) => s.floorId === 'P2')).toHaveLength(10)
     for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z)).toHaveLength(5)
     expect(new Set(SPACES.map((s) => s.id)).size).toBe(SPACES.length)
@@ -41,11 +42,11 @@ describe('mall layout', () => {
         expect(d).toBeGreaterThan((Math.min(...a.size) + Math.min(...b.size)) / 2 - 0.01)
       }
   })
-  it('piso 1 conserva 5 tiendas y 15 espacios libres; piso 2 tiene 6 negocios y 4 libres', () => {
+  it('piso 1 conserva 5 tiendas y 19 espacios libres (4 de servicios); piso 2 tiene 6 negocios y 4 libres', () => {
     const p1 = SPACES.filter((s) => s.floorId === 'P1')
     const p2 = SPACES.filter((s) => s.floorId === 'P2')
     expect(p1.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(5)
-    expect(p1.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(15)
+    expect(p1.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(19)
     expect(p2.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(6)
     expect(p2.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(4)
     expect(SPACE_TYPES.premium.monthlyPriceCOP).toBe(180_000)

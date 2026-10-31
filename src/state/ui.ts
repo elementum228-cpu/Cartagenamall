@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { FloorId, ZoneId } from '../domain/types'
 import type { BoatId } from '../tourism/types'
+import type { ShowroomId } from '../district/showrooms'
 import { safeStorage } from './storage'
 
 export type FocusInput =
@@ -20,6 +21,8 @@ export type FocusInput =
   | { kind: 'zoom'; factor: number }
   /** Acerca un poco la cámara al muelle turístico, sin perder el mall de vista. */
   | { kind: 'harbor' }
+  /** Encuadra una vitrina de la zona de servicios (con lugar para su ficha). */
+  | { kind: 'showroom'; id: ShowroomId }
 
 export type FocusRequest = FocusInput & { nonce: number }
 
@@ -52,6 +55,8 @@ interface UIState {
   secretPromoId: string | null
   /** Lancha del muelle turístico abierta y qué muestra su ficha. */
   harbor: { boat: BoatId; view: 'card' | 'list' } | null
+  /** Vitrina de marca aliada abierta (Planly, GrowDesk). */
+  showroom: ShowroomId | null
   /** Pista de la búsqueda del tesoro recién encontrada (abre su ventana). */
   clue: { week: number; index: number } | null
   /** Panel de la cancha sintética abierto. */
@@ -72,6 +77,7 @@ interface UIState {
   openSecret: (id: string | null) => void
   openHarbor: (boat: BoatId | null) => void
   setHarborView: (view: 'card' | 'list') => void
+  openShowroom: (id: ShowroomId | null) => void
   openClue: (clue: { week: number; index: number } | null) => void
   requestFocus: (f: FocusInput) => void
   toast: (message: string, tone?: Toast['tone']) => void
@@ -104,23 +110,30 @@ export const useUI = create<UIState>()((set, get) => ({
   productSheetId: null,
   secretPromoId: null,
   harbor: null,
+  showroom: null,
   clue: null,
   focus: null,
   toasts: [],
-  selectSpace: (id) => set(id ? { selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: false, harbor: null } : { selectedSpaceId: null, openStoreId: null, peek: false }),
+  selectSpace: (id) => set(id ? { selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: false, harbor: null, showroom: null } : { selectedSpaceId: null, openStoreId: null, peek: false }),
   peek: false,
-  peekSpace: (id) => set({ selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: true, harbor: null }),
+  peekSpace: (id) => set({ selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: true, harbor: null, showroom: null }),
   openPeek: () => set({ peek: false }),
-  openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, harbor: null } : { openStoreId: null, selectedSpaceId: null }),
+  openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, harbor: null, showroom: null } : { openStoreId: null, selectedSpaceId: null }),
   courtOpen: false,
-  openCourt: (open) => set(open ? { courtOpen: true, selectedSpaceId: null, openStoreId: null, harbor: null } : { courtOpen: false }),
+  openCourt: (open) => set(open ? { courtOpen: true, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null } : { courtOpen: false }),
   openProduct: (id) => set({ productSheetId: id }),
   openSecret: (id) => set({ secretPromoId: id }),
   openHarbor: (boat) =>
     set(
       boat
-        ? { harbor: { boat, view: 'card' }, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
+        ? { harbor: { boat, view: 'card' }, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
         : { harbor: null },
+    ),
+  openShowroom: (id) =>
+    set(
+      id
+        ? { showroom: id, harbor: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'showroom', id, nonce: Date.now() + Math.random() } }
+        : { showroom: null },
     ),
   setHarborView: (view) => set((s) => (s.harbor ? { harbor: { ...s.harbor, view } } : s)),
   openClue: (clue) => set({ clue }),

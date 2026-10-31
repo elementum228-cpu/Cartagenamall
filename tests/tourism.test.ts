@@ -37,3 +37,32 @@ describe('muelle turístico', () => {
     expect(atardecer.at(-1)?.status).toBe('soldout')
   })
 })
+
+import { DISTRICT_PLAZA, SPACES } from '../src/config/mall'
+import { SHOWROOMS, SHOWROOM_IDS } from '../src/district/showrooms'
+
+describe('zona de servicios', () => {
+  type Box = [number, number, number, number]
+  const boxOf = (cx: number, cz: number, w: number, d: number): Box => [cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2]
+  const overlap = (a: Box, b: Box) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
+  const spaces = SPACES.filter((s) => s.zoneId === 'F').map((s) => {
+    const [w, d] = Math.abs(Math.sin(s.rotation)) > 0.5 ? [s.size[1], s.size[0]] : s.size
+    return boxOf(s.position[0], s.position[1], w, d)
+  })
+  const rooms = SHOWROOM_IDS.map((id) => boxOf(SHOWROOMS[id].position[0], SHOWROOMS[id].position[1], ...SHOWROOMS[id].size))
+  const plaza = boxOf(DISTRICT_PLAZA.x, DISTRICT_PLAZA.z, DISTRICT_PLAZA.r * 2, DISTRICT_PLAZA.r * 2)
+  const harborPath = boxOf(HARBOR.x, HARBOR.wallZ - 3.7, 3.2, 5.2)
+
+  it('nada se pisa: vitrinas, espacios, plaza y paso al muelle', () => {
+    const all = [...spaces, ...rooms, plaza, harborPath]
+    for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) expect(overlap(all[i], all[j]), `${i} vs ${j}`).toBe(false)
+  })
+  it('todo queda dentro de la esquina, sin tocar los pasillos ni la muralla', () => {
+    for (const b of [...spaces, ...rooms, plaza]) {
+      expect(b[0]).toBeGreaterThan(-29.9)
+      expect(b[2]).toBeLessThan(-9.9)
+      expect(b[1]).toBeGreaterThan(9.9)
+      expect(b[3]).toBeLessThan(29.9)
+    }
+  })
+})

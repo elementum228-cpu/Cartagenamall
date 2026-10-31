@@ -8,6 +8,7 @@ import { FLOOR_BY_ID, FLOOR_OF_ZONE, GATE, SPACE_BY_ID, ZONE_BY_ID } from '../co
 import { floorOrigin, liveOrigins, overviewCenter } from './floors'
 import { useUI } from '../state/ui'
 import { HARBOR_FOCUS } from '../tourism/config'
+import { SHOWROOMS } from '../district/showrooms'
 import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR, cameraState } from './cameraState'
 
 interface Goal {
@@ -253,6 +254,22 @@ export function CameraRig() {
         const visible = Math.max(120, window.innerHeight * 0.48 - canvasTop)
         target.addScaledVector(TOWARD_CAMERA, (size.height / 2 - visible / 2) / (zoom * ELEVATION_SIN))
       }
+      goal.current = { target, zoom }
+    } else if (focus.kind === 'showroom') {
+      // como un local grande: el edificio completo a la vista, con lugar para su ficha
+      const room = SHOWROOMS[focus.id]
+      const usable = desktop ? size.width - DESKTOP_PANEL : size.width
+      const zoom = THREE.MathUtils.clamp((usable * 0.55) / (Math.max(...room.size) * 1.6), fit * 1.6, fit * 3)
+      const so = floorOrigin(FLOOR_BY_ID.P1, overview)
+      cameraState.groundY = so.y
+      const target = new THREE.Vector3(so.x + room.position[0], so.y, so.z + room.position[1])
+      if (desktop) target.addScaledVector(SCREEN_RIGHT, DESKTOP_PANEL / 2 / zoom)
+      else {
+        const canvasTop = gl.domElement.getBoundingClientRect().top
+        const visible = Math.max(120, window.innerHeight * MOBILE_SHEET_FREE - canvasTop)
+        target.addScaledVector(TOWARD_CAMERA, (size.height / 2 - visible / 2) / (zoom * ELEVATION_SIN))
+      }
+      cameraState.viewOffset.set(0, 0, 0)
       goal.current = { target, zoom }
     } else if (focus.kind === 'space') {
       const space = SPACE_BY_ID[focus.id]

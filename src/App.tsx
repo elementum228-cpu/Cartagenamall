@@ -10,6 +10,7 @@ import { SpaceSheet } from './features/SpaceSheet'
 import { FootballCourtInfoPanel } from './features/FootballCourtInfoPanel'
 import { StoreSheet } from './features/StoreSheet'
 import { HarborSheet } from './features/HarborSheet'
+import { ShowroomSheet } from './features/ShowroomSheet'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
@@ -120,6 +121,7 @@ function Shell() {
       <SpaceSheet />
       <FootballCourtInfoPanel />
       <HarborSheet />
+      <ShowroomSheet />
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />

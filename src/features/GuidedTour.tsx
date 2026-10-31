@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Compass, Gem, MapPin, Shirt, Smartphone, Sparkles, Store as StoreIcon, Trophy, Utensils, Zap, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Compass, Gem, MapPin, Scissors, Shirt, Smartphone, Sparkles, Store as StoreIcon, Trophy, Utensils, Zap, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { COURT_SPACE, FLOOR_OF_ZONE, MALL, SPACES, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
@@ -399,6 +399,19 @@ function useTourSteps(): Step[] {
       zoneStep('B'),
       zoneStep('C'),
       zoneStep('D'),
+      {
+        key: 'servicios',
+        icon: Scissors,
+        color: ZONE_BY_ID.F.color,
+        kicker: 'Zona F',
+        title: 'Servicios',
+        body: <>Barberías y servicios alrededor de una plaza, con las vitrinas de Planly (turismo) y GrowDesk (software). Desde aquí sale la puerta al muelle.</>,
+        chips: ['Planly', 'GrowDesk', 'Barberías', 'Muelle turístico'],
+        go: () => {
+          ui().setFloor('P1')
+          ui().requestFocus({ kind: 'zone', id: 'F' })
+        },
+      },
       {
         key: 'cancha',
         icon: Trophy,

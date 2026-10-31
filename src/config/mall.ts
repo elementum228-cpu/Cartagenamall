@@ -270,11 +270,50 @@ export function generateSpaces(floor: FloorConfig): SpaceSlot[] {
   return FOOD_SLOTS.map((t) => spaceFrom(floor, zone.id, t, t.at, t.facing))
 }
 
+/**
+ * Zona de negocios y servicios (piso 1): la esquina entre Lifestyle y Belleza, junto al baluarte.
+ * No es un pasillo: tiene su propia plaza, dos vitrinas grandes de marcas aliadas (Planly y
+ * GrowDesk, ver district/showrooms.ts) y espacios para barberías y servicios.
+ */
+export const DISTRICT_ZONE: ZoneConfig = {
+  id: 'F',
+  name: 'Servicios',
+  color: '#7a6ff0',
+  angle: -Math.PI / 4,
+  focus: [-19.5, 18.5],
+  categories: [
+    { id: 'barberias', name: 'Barberías', zoneId: 'F' },
+    { id: 'servicios', name: 'Servicios profesionales', zoneId: 'F' },
+  ],
+}
+
+/** Plaza central de la zona de servicios (x, z) y su radio. */
+export const DISTRICT_PLAZA = { x: -19.8, z: 22.6, r: 3 }
+
+/** Espacios para barberías y servicios (se reclaman como cualquier local). */
+const DISTRICT_SPACES: SpaceSlot[] = (
+  [
+    { n: 1, type: 'local', at: [-27, 22.8], rotation: Math.PI / 2 },
+    { n: 2, type: 'island', at: [-24.8, 27.6], rotation: 0 },
+    { n: 3, type: 'island', at: [-12.2, 21.8], rotation: 0 },
+    { n: 4, type: 'island', at: [-11.9, 27.3], rotation: 0 },
+  ] as { n: number; type: SpaceType; at: [number, number]; rotation: number }[]
+).map((t) => ({
+  id: `P1-F${t.n}`,
+  floorId: 'P1',
+  zoneId: 'F',
+  type: t.type,
+  label: `F-${String(t.n).padStart(2, '0')}`,
+  position: t.at,
+  rotation: t.rotation,
+  size: SPACE_TYPES[t.type].size,
+}))
+
 export const FLOORS = MALL.floors
 export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))
 /** Piso 1 (en cruz): lo usan la estructura, decoración y ambiente específicos de esa planta. */
 export const P1 = FLOORS[0]
-export const SPACES: SpaceSlot[] = FLOORS.flatMap(generateSpaces)
+export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES]
 /**
  * La cancha sintética es un espacio más (se reclama y el administrador le asigna el negocio que la
  * opera), pero no está en SPACES: tiene su propio mundo 3D y no entra en pasillos ni recorridos.
@@ -290,9 +329,9 @@ export const COURT_SPACE: SpaceSlot = {
   size: SPACE_TYPES.court.size,
 }
 export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries([...SPACES, COURT_SPACE].map((s) => [s.id, s]))
-export const ZONES: ZoneConfig[] = FLOORS.flatMap((f) => f.zones)
+export const ZONES: ZoneConfig[] = [...FLOORS.flatMap((f) => f.zones), DISTRICT_ZONE]
 export const ZONE_BY_ID = Object.fromEntries(ZONES.map((z) => [z.id, z])) as Record<ZoneId, ZoneConfig>
-export const FLOOR_OF_ZONE = Object.fromEntries(FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id]))) as Record<ZoneId, FloorId>
+export const FLOOR_OF_ZONE = Object.fromEntries([...FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id])), [DISTRICT_ZONE.id, 'P1']]) as Record<ZoneId, FloorId>
 export const CATEGORIES = ZONES.flatMap((z) => z.categories)
 export const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]))
 

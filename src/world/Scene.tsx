@@ -1,6 +1,6 @@
 import { openCourtOrClaim, useCourtOperator } from '../football/open'
 import { useMemo } from 'react'
-import { COURT_SPACE, FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
+import { COURT_SPACE, FLOORS, FLOOR_BY_ID, FLOOR_OF_ZONE, SPACES, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import type { FloorConfig, Product, SpaceSlot } from '../domain/types'
 import { isPromotionLive } from '../lib/pricing'
 import { useMinute } from '../lib/useMinute'
@@ -20,6 +20,7 @@ import { Lighting } from './Lighting'
 import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
 import { Harbor } from './Harbor'
+import { District } from './District'
 import { MallFloor, type FloorMode } from './MallFloor'
 import { SecretMarkers } from './SecretMarkers'
 import { TreasureMarkers } from './TreasureMarkers'
@@ -131,6 +132,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       <group dispose={null}>
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
         <Harbor reduceMotion={reduceMotion} />
+        <District reduceMotion={reduceMotion} />
         <Batch version="jardines">
           <Diorama />
         </Batch>
@@ -202,7 +204,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                       />
                     )
                   })}
-                  {floor.zones.map((z) => (
+                  {ZONES.filter((z) => FLOOR_OF_ZONE[z.id] === floor.id).map((z) => (
                     <AvailableOutlines key={z.id} color={z.color} spaces={availableByZone[z.id] ?? EMPTY_SPACES} />
                   ))}
                   <MallPathLighting lights={PATH_LIGHTS} floorId={floor.id} boost={quality === 'high' ? 1 : quality === 'medium' ? 1.15 : 1.4} />

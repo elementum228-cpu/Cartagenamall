@@ -1,6 +1,6 @@
 import { openCourtOrClaim } from '../football/open'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { BookOpen, Castle, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
+import { BookOpen, Castle, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -34,7 +34,7 @@ export function ExploreView({ active }: { active: boolean }) {
   const use3D = webgl && !force2D
   const selectedSpaceId = useUI((s) => s.selectedSpaceId)
   const peek = useUI((s) => s.peek)
-  const harborOpen = useUI((s) => s.harbor !== null)
+  const harborOpen = useUI((s) => s.harbor !== null || s.showroom !== null)
   const night = useIsNight() && use3D
   const root = useRef<HTMLDivElement>(null)
 
@@ -307,7 +307,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   )
 }
 
-const ZONE_ICON: Record<ZoneId, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils }
+const ZONE_ICON: Record<ZoneId, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils, F: Scissors }
 
 /** Resorte suave al estilo de las apps nativas: rápido al arrancar, sin rebote brusco al llegar. */
 const SPRING = { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } as const

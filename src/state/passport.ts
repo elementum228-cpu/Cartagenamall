@@ -14,7 +14,7 @@ import { useUI } from './ui'
 
 /** Sellos del pasaporte, en orden. */
 export const PASSPORT_STAMPS: { id: string; name: string; hint: string; color: string; zone?: string }[] = [
-  ...ZONES.map((z) => ({ id: z.id, name: z.name, hint: `Visita una tienda del ${z.id === 'E' ? 'Piso 2' : `pasillo ${z.id}`}`, color: z.color, zone: z.id })),
+  ...ZONES.map((z) => ({ id: z.id, name: z.name, hint: z.id === 'F' ? 'Visita un negocio de la zona de servicios' : `Visita una tienda del ${z.id === 'E' ? 'Piso 2' : `pasillo ${z.id}`}`, color: z.color, zone: z.id })),
   { id: 'CANCHA', name: 'Cancha sintética', hint: 'Abre la cancha en el mapa', color: '#2f9e5a' },
   { id: 'GEMA', name: 'Cazador de gemas', hint: 'Encuentra una oferta escondida', color: '#e39a2d' },
   { id: 'TESORO', name: 'Búsqueda del tesoro', hint: 'Resuelve las 3 pistas de la semana', color: '#062c42' },
@@ -138,6 +138,7 @@ export function startPassport() {
   const passport = usePassport.getState
 
   useUI.subscribe((s, prev) => {
+    if (s.showroom && s.showroom !== prev.showroom) passport().stamp('F')
     if (s.selectedSpaceId === prev.selectedSpaceId && s.openStoreId === prev.openStoreId && s.courtOpen === prev.courtOpen && s.peek === prev.peek) return
     const id = stampForVisit(s.selectedSpaceId, s.openStoreId, s.courtOpen, s.peek)
     if (id) passport().stamp(id)

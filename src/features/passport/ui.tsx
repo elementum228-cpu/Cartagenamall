@@ -1,9 +1,9 @@
-import { Gem, Map as MapIcon, Search, Shirt, Smartphone, Sparkles, Trophy, Utensils, type LucideIcon } from 'lucide-react'
+import { Gem, Map as MapIcon, Scissors, Search, Shirt, Smartphone, Sparkles, Trophy, Utensils, type LucideIcon } from 'lucide-react'
 import { motion } from 'motion/react'
 import { PASSPORT_STAMPS } from '../../state/passport'
 
 /** Ícono de cada sello del pasaporte. */
-export const STAMP_ICON: Record<string, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils, CANCHA: Trophy, GEMA: Search, TESORO: MapIcon }
+export const STAMP_ICON: Record<string, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils, F: Scissors, CANCHA: Trophy, GEMA: Search, TESORO: MapIcon }
 
 export const stampInfo = (id: string) => PASSPORT_STAMPS.find((s) => s.id === id)
 

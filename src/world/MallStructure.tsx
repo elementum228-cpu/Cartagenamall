@@ -19,7 +19,8 @@ const WALL_T = 0.4
 export function Diorama() {
   return (
     <group>
-      {[45, 135, 225, 315].map((deg) => {
+      {/* jardines de las esquinas (la de 315°, entre Lifestyle y Belleza, es la zona de servicios) */}
+      {[45, 135, 225].map((deg) => {
         const a = (deg * Math.PI) / 180
         const r = 25
         return (
