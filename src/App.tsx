@@ -15,6 +15,8 @@ import { ComparePage } from './pages/ComparePage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { LoginPage } from './pages/LoginPage'
 import { OffersPage } from './pages/OffersPage'
+import { PassportPage } from './pages/PassportPage'
+import { ClueModal, StampToast } from './features/passport/PassportOverlays'
 import { OrderDetailPage, OrdersPage } from './pages/OrdersPage'
 import { ShopPage } from './pages/ShopPage'
 import { useCartCount } from './state/cart'
@@ -22,6 +24,8 @@ import { usePersonal } from './state/personal'
 import { useUI } from './state/ui'
 import { PromotionEventDriver } from './promotions/PromotionEventDriver'
 import { Toasts } from './ui/Toasts'
+import { MallMark } from './ui/MallMark'
+import { InstallLayer } from './pwa/InstallApp'
 
 const AdminPage = lazy(() => import('./admin/AdminPage'))
 const MerchantPage = lazy(() => import('./pages/MerchantPage'))
@@ -92,6 +96,7 @@ function Shell() {
               <Route path="/comparar" element={<ComparePage />} />
               <Route path="/favoritos" element={<FavoritesPage />} />
               <Route path="/ofertas" element={<OffersPage />} />
+              <Route path="/pasaporte" element={<PassportPage />} />
               <Route path="/entrar" element={<LoginPage />} />
               <Route
                 path="/mi-negocio"
@@ -117,6 +122,9 @@ function Shell() {
       <SecretPromoModal />
       <Toasts />
       <GuidedTour />
+      <InstallLayer />
+      <StampToast />
+      <ClueModal />
       <DoorIntro auto={startedAtHome} />
     </div>
   )
@@ -152,23 +160,6 @@ function ModeSwitch() {
       {item('explore', 'Explorar', <Compass className="size-4" strokeWidth={1.8} />, '/')}
       {item('shop', 'Comprar', <ShoppingBag className="size-4" strokeWidth={1.8} />, '/comprar')}
     </div>
-  )
-}
-
-/** Marca: casa minimalista con la puerta en coral, dentro de un cuadrado turquesa redondeado. */
-export function MallMark({ size = 36 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden>
-      <defs>
-        <linearGradient id="mm-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#13B9AD" />
-          <stop offset="1" stopColor="#008D87" />
-        </linearGradient>
-      </defs>
-      <rect width="40" height="40" rx="12" fill="url(#mm-g)" />
-      <path d="M11 19.5 L20 12 L29 19.5 V28.5 H11 Z" fill="none" stroke="#F7F5F1" strokeWidth="2.2" strokeLinejoin="round" />
-      <path d="M17.6 28.5 V23.4 A2.4 2.4 0 0 1 22.4 23.4 V28.5" fill="#F27B68" />
-    </svg>
   )
 }
 

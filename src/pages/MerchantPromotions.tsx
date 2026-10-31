@@ -1,4 +1,4 @@
-import { Gem, MapPin, Pause, Play, Plus, RotateCcw, Tag, Trash2, X, Zap } from 'lucide-react'
+import { Gem, MapPin, Pause, Play, Plus, RotateCcw, Stamp, Tag, Trash2, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPACE_BY_ID } from '../config/mall'
@@ -10,6 +10,7 @@ import { useNow } from '../lib/useNow'
 import { MAX_DISCOUNT, MIN_DISCOUNT, PROMO_TYPE_NAME, buildPromotion, validatePromotion } from '../promotions/build'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useUI } from '../state/ui'
+import { MAX_LOYALTY_STAMPS, MIN_LOYALTY_STAMPS, loyaltyOf } from '../state/passport'
 import { Countdown, EmptyState, btn, input } from '../ui/bits'
 import { describeHideSpot } from '../promotions/hideSpot'
 import { HideSpotPicker } from './HideSpotPicker'
@@ -43,6 +44,7 @@ export function MerchantPromotions({ store }: { store: Store }) {
 
   return (
     <div className="space-y-3">
+      <LoyaltyEditor key={store.id} store={store} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-ink-soft">
           {mine.filter((p) => isPromotionLive(p, now)).length} activas · {mine.length} en total
@@ -67,6 +69,62 @@ export function MerchantPromotions({ store }: { store: Store }) {
           ))}
       </ul>
     </div>
+  )
+}
+
+/** Tarjeta de sellos de la tienda: cuántas compras pide y qué premio da al llenarla. */
+function LoyaltyEditor({ store }: { store: Store }) {
+  const upsertStore = useCatalog((s) => s.upsertStore)
+  const toast = useUI((s) => s.toast)
+  const current = loyaltyOf(store)
+  const [stamps, setStamps] = useState(current.stamps)
+  const [reward, setReward] = useState(current.reward)
+  const dirty = stamps !== current.stamps || reward.trim() !== current.reward
+  const save = (patch: Partial<typeof current>) => upsertStore({ ...store, loyalty: { ...current, ...patch } })
+  return (
+    <section className="rounded-3xl border border-line bg-card p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal/10 text-teal" aria-hidden>
+          <Stamp className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold">Tarjeta de sellos</p>
+          <p className="text-xs text-ink-soft">Cada compra en tu tienda le da un sello al cliente en su pasaporte. Al llenarla canjea tu premio con un código.</p>
+        </div>
+        <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-bold">
+          <input type="checkbox" className="size-4 accent-brand" checked={current.active} onChange={(e) => save({ active: e.target.checked })} />
+          {current.active ? 'Activa' : 'Apagada'}
+        </label>
+      </div>
+      {current.active && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-[140px_1fr_auto] sm:items-end">
+          <label className="block">
+            <span className="mb-1 block text-xs font-bold text-ink-soft">Sellos para el premio</span>
+            <select className={input} value={stamps} onChange={(e) => setStamps(Number(e.target.value))}>
+              {Array.from({ length: MAX_LOYALTY_STAMPS - MIN_LOYALTY_STAMPS + 1 }, (_, i) => MIN_LOYALTY_STAMPS + i).map((n) => (
+                <option key={n} value={n}>
+                  {n} compras
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-bold text-ink-soft">Premio</span>
+            <input className={input} value={reward} maxLength={70} onChange={(e) => setReward(e.target.value)} placeholder="Un café gratis, 15 % de descuento…" />
+          </label>
+          <button
+            className={btn.primary}
+            disabled={!dirty || reward.trim().length < 3}
+            onClick={() => {
+              save({ stamps, reward: reward.trim() })
+              toast('Tarjeta de sellos actualizada.', 'success')
+            }}
+          >
+            Guardar
+          </button>
+        </div>
+      )}
+    </section>
   )
 }
 

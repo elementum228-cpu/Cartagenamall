@@ -42,7 +42,8 @@ describe('recorridos de visitantes', () => {
               const spot = VIEWING_SPOTS[n].spots[slot]
               expect(Math.hypot(end[0] - spot[0], end[1] - spot[1])).toBeLessThan(1e-6)
             }
-  })
+    // revisa miles de tramos: en máquinas lentas pasa de los 5 s por defecto
+  }, 30_000)
 
   it('los puntos de observación de una vitrina están separados (sin aglomeraciones)', () => {
     for (const { spots } of Object.values(VIEWING_SPOTS))

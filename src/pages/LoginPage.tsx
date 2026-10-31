@@ -1,9 +1,10 @@
-import { ArrowRight, ChevronRight, ClipboardList, Heart, Settings, Store, type LucideIcon } from 'lucide-react'
+import { ArrowRight, BookOpen, ChevronRight, ClipboardList, Heart, Settings, Store, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import { AccountBar, SignInForm } from '../remote/AccountGate'
 import { useSession } from '../remote/session'
 import { btn } from '../ui/bits'
+import { InstallButton } from '../pwa/InstallApp'
 
 /** Pantalla de entrada para administradores y dueños de negocio. */
 export function LoginPage() {
@@ -51,11 +52,13 @@ export function LoginPage() {
 
       {/* accesos del perfil: lo que en celular no cabe en la barra superior */}
       <nav aria-label="Accesos" className="glass-strong mt-4 overflow-hidden rounded-[26px] p-1.5">
+        <Shortcut to="/pasaporte" icon={BookOpen} label="Mi pasaporte" hint="Sellos, búsqueda del tesoro y premios" />
         <Shortcut to="/favoritos" icon={Heart} label="Favoritos" hint="Tiendas y productos guardados" />
         <Shortcut to="/pedidos" icon={ClipboardList} label="Mis pedidos" hint="Estado de tus compras" />
         <Shortcut to="/mi-negocio" icon={Store} label="Mi negocio" hint="Logo, productos y promociones" />
         <Shortcut to="/admin" icon={Settings} label="Administración" hint="Gestión del mall y precios" />
       </nav>
+      <InstallButton className={`${btn.secondary} mt-4 w-full`} />
     </div>
   )
 }

@@ -53,3 +53,34 @@ describe('escondites de promociones', () => {
     expect(buildPromotion({ ...d, type: 'flash' }, 1, new Set()).hideAt).toBeUndefined()
   })
 })
+
+import { HUNT_LENGTH, HUNT_SPOTS, huntEndsAt, huntFor, huntWeek } from '../src/promotions/hunt'
+import { loyaltyOf, rewardCode } from '../src/state/passport'
+
+describe('búsqueda del tesoro', () => {
+  it('tiene escondites válidos en ambos pisos', () => {
+    expect(HUNT_SPOTS.length).toBeGreaterThanOrEqual(8)
+    expect(HUNT_SPOTS.some((s) => s.floorId === 'P2')).toBe(true)
+    for (const s of HUNT_SPOTS) expect(canHideAt(s.floorId, s.x, s.z)).toBe(true)
+  })
+  it('cada semana: 3 pistas distintas, estables y que cambian', () => {
+    const w = huntWeek(Date.UTC(2026, 9, 31))
+    const a = huntFor(w)
+    expect(a).toHaveLength(HUNT_LENGTH)
+    expect(new Set(a.map((s) => s.id)).size).toBe(HUNT_LENGTH)
+    expect(huntFor(w).map((s) => s.id)).toEqual(a.map((s) => s.id))
+    const weeks = Array.from({ length: 6 }, (_, i) => huntFor(w + i).map((s) => s.id).join())
+    expect(new Set(weeks).size).toBeGreaterThan(1)
+    expect(huntEndsAt(w)).toBeGreaterThan(Date.UTC(2026, 9, 31))
+  })
+})
+
+describe('tarjetas de sellos', () => {
+  it('usa la tarjeta por defecto y respeta la del comerciante', () => {
+    expect(loyaltyOf(undefined).stamps).toBe(5)
+    expect(loyaltyOf({ loyalty: { stamps: 8, reward: 'Café', active: false } })).toEqual({ stamps: 8, reward: 'Café', active: false })
+  })
+  it('códigos de premio legibles', () => {
+    expect(rewardCode(123456)).toMatch(/^CM-[A-Z2-9]{6}$/)
+  })
+})

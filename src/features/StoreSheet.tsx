@@ -1,6 +1,6 @@
-import { AtSign, Heart, MapPin, MessageCircle, Sparkles, Zap } from 'lucide-react'
+import { AtSign, Heart, MapPin, MessageCircle, Sparkles, Stamp, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { CATEGORY_BY_ID, FLOOR_BY_ID, FLOOR_OF_ZONE, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
 import type { Promotion, Store } from '../domain/types'
 import { copyText } from '../lib/clipboard'
@@ -16,6 +16,7 @@ import { addToCart } from '../state/actions'
 import { isDemoPromotion } from '../promotions/demo'
 import { ProductCard } from '../ui/ProductCard'
 import { Sheet } from '../ui/Sheet'
+import { loyaltyOf, usePassport } from '../state/passport'
 
 /** Ficha comercial de una tienda: se abre al tocarla en el mapa o desde el modo Comprar. */
 export function StoreSheet() {
@@ -91,6 +92,7 @@ function StoreBody({ store }: { store: Store }) {
     <div className="space-y-6 px-5 pt-4 pb-8">
       {flashNow && productById[flashNow.productId] && <FlashOffer promo={flashNow} store={store} />}
       <p className="text-[14px] leading-relaxed text-ink-soft">{store.description}</p>
+      <LoyaltyStrip store={store} />
 
       <div className="flex flex-wrap gap-2">
         <button onClick={() => toggleFav(store.id)} className={btn.secondary} aria-pressed={fav}>
@@ -245,5 +247,28 @@ function FlashOffer({ promo, store }: { promo: Promotion; store: Store }) {
         </button>
       </div>
     </section>
+  )
+}
+
+/** Tarjeta de sellos de la tienda en su ficha: cuánto lleva la persona y qué gana al llenarla. */
+function LoyaltyStrip({ store }: { store: Store }) {
+  const have = usePassport((s) => s.cards[store.id] ?? 0)
+  const l = loyaltyOf(store)
+  if (!l.active) return null
+  return (
+    <Link to="/pasaporte" className="flex items-center gap-3 rounded-[22px] bg-ink/[0.04] p-3 transition active:scale-[0.99]">
+      <span className="grid size-10 shrink-0 place-items-center rounded-2xl text-white" style={{ background: store.brandColor }}>
+        <Stamp className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-semibold">
+          Tarjeta de sellos · {Math.min(have, l.stamps)}/{l.stamps}
+        </span>
+        <span className="block truncate text-[12px] text-ink-soft">Premio: {l.reward}</span>
+      </span>
+      <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-ink/10">
+        <span className="block h-full rounded-full" style={{ width: `${Math.min(1, have / l.stamps) * 100}%`, background: store.brandColor }} />
+      </span>
+    </Link>
   )
 }

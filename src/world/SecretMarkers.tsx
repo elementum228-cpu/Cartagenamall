@@ -13,17 +13,20 @@ const REVEAL_DISTANCE = 9
 /** Además, la cámara debe estar al menos así de cerca respecto al encuadre general. */
 const REVEAL_ZOOM_RATIO = 1.7
 
-const gold = mat('#f5b544', { emissive: 0.55, rough: 0.35 })
-const sparkle = mat('#fff3c4', { emissive: 0.9 })
 const HINT_COUNT = 6
-/** Brillo dorado en el piso donde aparecerá la gema (de día tenue, de noche más visible). */
-const SPOT = lightPoolMat('#ffcc4d', 0.9, 0.35)
+/** Colores por tipo: gema dorada (oferta escondida) o turquesa (pista de la búsqueda del tesoro). */
+const TONES = {
+  gold: { gem: mat('#f5b544', { emissive: 0.55, rough: 0.35 }), sparkle: mat('#fff3c4', { emissive: 0.9 }), pool: lightPoolMat('#ffcc4d', 0.9, 0.35) },
+  treasure: { gem: mat('#13b9ad', { emissive: 0.6, rough: 0.3 }), sparkle: mat('#d9fffb', { emissive: 0.95 }), pool: lightPoolMat('#5ef2e4', 0.9, 0.35) },
+}
+export type MarkerTone = keyof typeof TONES
 
 /**
  * Oferta escondida: una gema que solo aparece cuando la persona explora de cerca su escondite (el
  * que eligió el comerciante, o junto a su local). No interrumpe: no abre nada sola, hay que tocarla.
  */
-function Marker({ promo, spot, interactive, onOpen }: { promo: Promotion; spot: ResolvedSpot; interactive: boolean; onOpen: (id: string) => void }) {
+export function HiddenMarker({ id, spot, interactive, onOpen, tone = 'gold' }: { id: string; spot: ResolvedSpot; interactive: boolean; onOpen: (id: string) => void; tone?: MarkerTone }) {
+  const { gem: gold, sparkle, pool: SPOT } = TONES[tone]
   const [px, pz] = spot.at
   const group = useRef<THREE.Group>(null)
   const gem = useRef<THREE.Mesh>(null)
@@ -90,7 +93,7 @@ function Marker({ promo, spot, interactive, onOpen }: { promo: Promotion; spot: 
           onClick={(e) => {
             if (!interactive || cameraState.handMode || e.delta > 8 || reveal.current < 0.5) return
             e.stopPropagation()
-            onOpen(promo.id)
+            onOpen(id)
           }}
           onPointerOver={() => (document.body.style.cursor = 'pointer')}
           onPointerOut={() => (document.body.style.cursor = '')}
@@ -107,7 +110,7 @@ function Marker({ promo, spot, interactive, onOpen }: { promo: Promotion; spot: 
           onClick={(e) => {
             if (!interactive || cameraState.handMode || e.delta > 8 || reveal.current < 0.5) return
             e.stopPropagation()
-            onOpen(promo.id)
+            onOpen(id)
           }}
         >
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -139,7 +142,7 @@ export function SecretMarkers({
         if (hidden.includes(p.id)) return null
         const spot = resolveHideSpot(p, spaceByStore)
         if (spot?.floorId !== floorId) return null
-        return <Marker key={`${p.id}@${spot.at.join(',')}`} promo={p} spot={spot} interactive={interactive} onOpen={onOpen} />
+        return <HiddenMarker key={`${p.id}@${spot.at.join(',')}`} id={p.id} spot={spot} interactive={interactive} onOpen={onOpen} />
       })}
     </>
   )

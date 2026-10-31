@@ -96,6 +96,8 @@ export interface Store {
   /** Número de demostración, nunca un número real. */
   whatsapp: string
   status: StoreStatus
+  /** Tarjeta de sellos: cada compra da un sello; al llenarla se canjea este premio. */
+  loyalty?: { stamps: number; reward: string; active: boolean }
 }
 
 export interface Variant {

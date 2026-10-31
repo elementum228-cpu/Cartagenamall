@@ -21,6 +21,7 @@ import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
 import { MallFloor, type FloorMode } from './MallFloor'
 import { SecretMarkers } from './SecretMarkers'
+import { TreasureMarkers } from './TreasureMarkers'
 import { Shoppers } from './Shoppers'
 import { Travelers } from './Travelers'
 import { TechDistrictDecor } from './TechDistrict'
@@ -212,6 +213,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                     interactive={interactive}
                     onOpen={(id) => openSecret(id)}
                   />
+                  <TreasureMarkers floorId={floor.id} interactive={interactive} now={minute} />
                 </>
               }
             />

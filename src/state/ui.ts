@@ -47,6 +47,8 @@ interface UIState {
   openStoreId: string | null
   productSheetId: string | null
   secretPromoId: string | null
+  /** Pista de la búsqueda del tesoro recién encontrada (abre su ventana). */
+  clue: { week: number; index: number } | null
   /** Panel de la cancha sintética abierto. */
   courtOpen: boolean
   openCourt: (open: boolean) => void
@@ -63,6 +65,7 @@ interface UIState {
   openStore: (id: string | null) => void
   openProduct: (id: string | null) => void
   openSecret: (id: string | null) => void
+  openClue: (clue: { week: number; index: number } | null) => void
   requestFocus: (f: FocusInput) => void
   toast: (message: string, tone?: Toast['tone']) => void
   dismissToast: (id: number) => void
@@ -93,6 +96,7 @@ export const useUI = create<UIState>()((set, get) => ({
   openStoreId: null,
   productSheetId: null,
   secretPromoId: null,
+  clue: null,
   focus: null,
   toasts: [],
   selectSpace: (id) => set(id ? { selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: false } : { selectedSpaceId: null, openStoreId: null, peek: false }),
@@ -104,6 +108,7 @@ export const useUI = create<UIState>()((set, get) => ({
   openCourt: (open) => set(open ? { courtOpen: true, selectedSpaceId: null, openStoreId: null } : { courtOpen: false }),
   openProduct: (id) => set({ productSheetId: id }),
   openSecret: (id) => set({ secretPromoId: id }),
+  openClue: (clue) => set({ clue }),
   requestFocus: (f) => set({ focus: { ...f, nonce: Date.now() + Math.random() } }),
   toast: (message, tone = 'default') => {
     const id = ++toastId

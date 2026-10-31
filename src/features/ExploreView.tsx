@@ -1,6 +1,6 @@
 import { openCourtOrClaim } from '../football/open'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { Castle, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
+import { BookOpen, Castle, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -14,6 +14,7 @@ import { useIsNight } from '../lib/useIsNight'
 import { useIsDesktop } from '../lib/useMedia'
 import { useCatalog } from '../state/catalog'
 import { usePersonal } from '../state/personal'
+import { PASSPORT_STAMPS, usePassport } from '../state/passport'
 import { usePrefs, useUI } from '../state/ui'
 import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
@@ -21,6 +22,7 @@ import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
 import { startTour } from './GuidedTour'
 import { PinchHint } from './PinchHint'
+import { InstallButton } from '../pwa/InstallApp'
 
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
 
@@ -97,6 +99,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const setHintSeen = usePrefs((s) => s.setHintSeen)
   const promotions = useCatalog((s) => s.promotions)
   const discovered = usePersonal((s) => s.discovered)
+  const passportDone = usePassport((s) => PASSPORT_STAMPS.filter((p) => s.stamps[p.id]).length)
   const now = useNow()
   const secretTotal = promotions.filter((p) => p.type === 'secret' && isPromotionLive(p, now)).length
   // Indicador textual de la oferta relámpago: la que se está presentando o, si no, la más reciente.
@@ -168,6 +171,12 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             <Gem className="size-3" strokeWidth={2} />
           </span>
           Secretas {Math.min(discovered.length, secretTotal)}/{secretTotal}
+        </Link>
+        <Link to="/pasaporte" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none" aria-label={`Mi pasaporte: ${passportDone} de ${PASSPORT_STAMPS.length} sellos`}>
+          <span className="grid size-5 place-items-center rounded-full bg-teal text-white">
+            <BookOpen className="size-3" strokeWidth={2} />
+          </span>
+          Pasaporte {passportDone}/{PASSPORT_STAMPS.length}
         </Link>
         {flash && flashEvent && (
           <button
@@ -451,6 +460,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       >
         <DoorOpen className="size-4" /> Ver la entrada
       </button>
+      <InstallButton className={item} onDone={() => setOpen(false)} />
       {use3D && (
         <button
           className={item}
