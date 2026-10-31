@@ -129,9 +129,10 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
       <div className="tour-hide">
       {use3D && <PinchHint hidden={dimmed || !!peekId} />}
       {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
-      {/* cada cápsula flota sola sobre el mapa (sin bandeja); la fila no captura toques fuera de ellas */}
+      {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
+          fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
       <div
-        className={`scrollbar-none pointer-events-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex gap-2.5 overflow-x-auto px-3 pb-3 transition-opacity duration-200 md:px-5 *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+        className={`scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
         role="toolbar"
         aria-label="Categorías del mall"
       >
