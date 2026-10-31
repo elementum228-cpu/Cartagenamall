@@ -6,6 +6,29 @@ export interface Label {
 }
 
 const cache = new Map<string, Label>()
+
+// ── Contraste: el comerciante elige su color de marca y puede ser casi blanco ──────────────────
+function luminance(hex: string) {
+  const c = new THREE.Color(hex) // lineal
+  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+}
+function contrast(a: string, b: string) {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+  return (x + 0.05) / (y + 0.05)
+}
+/**
+ * El color tal cual si ya se lee sobre `bg`; si no (menos de 2,2:1, p. ej. una marca casi blanca),
+ * el mismo tono oscurecido hasta leerse bien (4,5:1). `min` permite exigir menos (bordes).
+ */
+export function readableOn(color: string, bg: string, min = 2.2) {
+  if (contrast(color, bg) >= min) return color
+  const c = new THREE.Color(color)
+  const black = new THREE.Color('#1f1b16')
+  const target = Math.max(min, 4.5)
+  for (let i = 0; i < 16 && contrast(`#${c.getHexString()}`, bg) < target; i++) c.lerp(black, 0.2)
+  return `#${c.getHexString()}`
+}
+
 const SCALE = 2
 const FONT = '"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
 
@@ -47,7 +70,8 @@ export function getLabel(text: string, o: { bg: string; fg: string; sub?: string
     ctx.lineWidth = 6
     ctx.stroke()
   }
-  ctx.fillStyle = o.fg
+  // texto ilegible (p. ej. blanco sobre un color de marca muy claro): se cambia por uno oscuro
+  ctx.fillStyle = contrast(o.fg, o.bg) < 2.5 ? readableOn(o.bg, o.bg) : o.fg
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.font = main
@@ -202,13 +226,16 @@ export function getStoreSign(name: string, color: string, sub?: string, logo?: s
   canvas.height = H * SCALE
   ctx.scale(SCALE, SCALE)
 
+  // Nombre, borde e inicial en el color de marca, oscurecido si es muy claro para el fondo crema.
+  const ink = readableOn(color, '#fffaf0')
+  const edge = contrast(color, '#fffaf0') < 1.4 ? readableOn(color, '#fffaf0') : color
   const draw = (img: HTMLImageElement | null) => {
     ctx.clearRect(0, 0, W, H)
     ctx.fillStyle = '#fffaf0'
     ctx.beginPath()
     ctx.roundRect(5, 5, W - 10, H - 10, sub ? 34 : 24)
     ctx.fill()
-    ctx.strokeStyle = color
+    ctx.strokeStyle = edge
     ctx.lineWidth = 9
     ctx.stroke()
     ctx.textBaseline = 'middle'
@@ -220,7 +247,7 @@ export function getStoreSign(name: string, color: string, sub?: string, logo?: s
       ctx.beginPath()
       if (sub) ctx.arc(cx, H / 2, r, 0, Math.PI * 2)
       else ctx.roundRect(cx - r, H / 2 - r, r * 2, r * 2, 16)
-      ctx.fillStyle = img ? '#ffffff' : color
+      ctx.fillStyle = img ? '#ffffff' : ink
       ctx.fill()
       if (img) {
         ctx.clip()
@@ -242,11 +269,11 @@ export function getStoreSign(name: string, color: string, sub?: string, logo?: s
       ctx.fillStyle = '#2f2a24'
       ctx.font = nameFont
       ctx.fillText(name, left, 64)
-      ctx.fillStyle = color
+      ctx.fillStyle = ink
       ctx.font = subFont
       ctx.fillText(sub, left + 2, 124)
     } else {
-      ctx.fillStyle = color
+      ctx.fillStyle = ink
       ctx.textAlign = 'center'
       ctx.font = nameFont
       ctx.fillText(name, left + (W - left - 44) / 2, H / 2 + 3)
