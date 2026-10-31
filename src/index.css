@@ -169,3 +169,38 @@ select:not([multiple]):disabled {
 @media (prefers-reduced-motion: reduce) {
   .door-intro *, .door-intro { animation: none !important; }
 }
+
+/* Invitación a hacer zoom (features/PinchHint.tsx): los dedos se abren y se cierran */
+@keyframes pinch-index {
+  0%, 15% { transform: rotate(-14deg) translate(-4px, 6px); }
+  55%, 70% { transform: rotate(10deg) translate(4px, -6px); }
+  100% { transform: rotate(-14deg) translate(-4px, 6px); }
+}
+@keyframes pinch-thumb {
+  0%, 15% { transform: rotate(16deg) translate(6px, -2px); }
+  55%, 70% { transform: rotate(-10deg) translate(-6px, 4px); }
+  100% { transform: rotate(16deg) translate(6px, -2px); }
+}
+@keyframes pinch-tap {
+  0%, 12% { opacity: 0; transform: scale(0.6); }
+  18% { opacity: 1; transform: scale(1); }
+  70% { opacity: 1; transform: scale(1.1); }
+  80%, 100% { opacity: 0; transform: scale(1.4); }
+}
+@keyframes pinch-arrows {
+  0%, 30% { opacity: 0; transform: scale(0.85); }
+  55%, 70% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+@keyframes pinch-ring {
+  0% { opacity: 0.7; transform: scale(0.9); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+.pinch-index { animation: pinch-index 1.8s ease-in-out infinite; }
+.pinch-thumb { animation: pinch-thumb 1.8s ease-in-out infinite; }
+.pinch-tap { transform-box: fill-box; transform-origin: center; animation: pinch-tap 1.8s ease-in-out infinite; }
+.pinch-arrows { transform-box: view-box; transform-origin: 50px 50px; animation: pinch-arrows 1.8s ease-in-out infinite; }
+.pinch-ring { animation: pinch-ring 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pinch-index, .pinch-thumb, .pinch-tap, .pinch-arrows, .pinch-ring { animation: none; }
+}

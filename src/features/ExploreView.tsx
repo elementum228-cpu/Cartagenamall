@@ -17,6 +17,7 @@ import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
 import { startTour } from './GuidedTour'
+import { PinchHint } from './PinchHint'
 
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
 
@@ -103,6 +104,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
 
   return (
     <>
+      {use3D && <PinchHint hidden={dimmed} />}
       {/* zonas */}
       <div className={`scrollbar-none absolute top-3 right-0 left-0 z-10 flex gap-2 overflow-x-auto px-3 transition-opacity md:right-auto ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}>
         {ZONES.map((z) => {
