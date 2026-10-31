@@ -22,6 +22,7 @@ import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
 import { startTour } from './GuidedTour'
 import { PinchHint } from './PinchHint'
+import { DEMO } from '../demo/flag'
 import { InstallButton } from '../pwa/InstallApp'
 
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
@@ -165,8 +166,8 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
 
       <FloorSelector use3D={use3D} dimmed={dimmed} />
 
-      {/* descubrimientos y oferta relámpago: pills discretas */}
-      <div
+      {/* descubrimientos y oferta relámpago: pills discretas (no van en la versión de prueba) */}
+      {!DEMO && <div
         className={`pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
       >
         <Link to="/ofertas" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
@@ -202,7 +203,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           </button>
         )}
         <PromoAnnouncer />
-      </div>
+      </div>}
 
       {/* Parte baja: ficha del local elegido, botón principal y controles. La fila no captura toques
           (el mapa se puede arrastrar); solo sus botones. */}
@@ -225,7 +226,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
                 {desktop
                   ? 'Arrastra con el mouse (o mantén Espacio y arrastra) para recorrer. Rueda para acercarte. Toca una tienda o un espacio libre.'
                   : 'Desliza un dedo para recorrer y pellizca con dos para acercarte. Toca una tienda o un espacio libre.'}{' '}
-                Hay ofertas escondidas por todo el mall: acércate a los destellos dorados.
+                {!DEMO && 'Hay ofertas escondidas por todo el mall: acércate a los destellos dorados.'}
               </p>
               <button className="mt-1.5 text-xs font-semibold text-teal" onClick={setHintSeen}>
                 Entendido
@@ -335,7 +336,7 @@ function PeekContent({ spaceId, ref }: { spaceId: string; ref?: Ref<HTMLButtonEl
   if (!space) return null
   const zone = ZONE_BY_ID[space.zoneId]
   const title = store ? store.name : `Espacio ${space.label}`
-  const sub = store ? (CATEGORY_BY_ID[store.categoryId]?.name ?? zone.name) : `Disponible · ${formatCOP(price)}/mes`
+  const sub = store ? (CATEGORY_BY_ID[store.categoryId]?.name ?? zone.name) : DEMO ? 'Espacio disponible' : `Disponible · ${formatCOP(price)}/mes`
   return (
     <motion.button
       ref={ref}
@@ -455,7 +456,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
         </button>
       )}
       {use3D && <TimeToggle />}
-      <DemoPromoButton className={item} onDone={() => setOpen(false)} />
+      {!DEMO && <DemoPromoButton className={item} onDone={() => setOpen(false)} />}
       <button
         className={item}
         onClick={() => {
@@ -466,7 +467,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       >
         <DoorOpen className="size-4" /> Ver la entrada
       </button>
-      <InstallButton className={item} onDone={() => setOpen(false)} />
+      {!DEMO && <InstallButton className={item} onDone={() => setOpen(false)} />}
       {use3D && (
         <button
           className={item}

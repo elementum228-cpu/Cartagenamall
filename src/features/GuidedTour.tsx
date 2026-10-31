@@ -10,6 +10,7 @@ import { isPromotionLive } from '../lib/pricing'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { spacePrice, useSpacePricing } from '../state/spacePricing'
 import { useUI } from '../state/ui'
+import { DEMO } from '../demo/flag'
 
 // Recorrido guiado, al estilo de las historias: la primera vez que alguien entra (después del
 // portón) la cámara vuela por lo que tiene el mall — plaza, pasillos con sus tiendas, cancha, zona de
@@ -392,7 +393,7 @@ function useTourSteps(): Step[] {
         kicker: 'Bienvenido a',
         title: MALL.name,
         body: <>Un centro comercial dentro de una fortaleza amurallada, como el Centro Histórico. Te mostramos lo que hay en menos de un minuto.</>,
-        chips: [`${totalStores} tiendas`, '2 pisos', 'Cancha sintética', 'Ofertas escondidas'],
+        chips: DEMO ? [`${totalStores} tiendas`, '2 pisos', 'Cancha sintética'] : [`${totalStores} tiendas`, '2 pisos', 'Cancha sintética', 'Ofertas escondidas'],
         go: () => ui().enterMall(),
       },
       zoneStep('A'),
@@ -409,6 +410,8 @@ function useTourSteps(): Step[] {
           <>
             Fútbol 5 con iluminación nocturna, operada por <b className="font-semibold text-ink">{court.name}</b>. Reserva tu hora desde el mall.
           </>
+        ) : DEMO ? (
+          <>Fútbol 5 con iluminación nocturna, lista para un negocio que la opere.</>
         ) : (
           <>Fútbol 5 con iluminación nocturna, lista para un negocio que la opere: {formatCOP(spacePrice(pricing, COURT_SPACE))}/mes.</>
         ),
@@ -431,7 +434,7 @@ function useTourSteps(): Step[] {
         },
       },
     ]
-    if (flash) {
+    if (flash && !DEMO) {
       const sp = SPACE_BY_ID[spaceByStore[flash.storeId]]
       steps.push({
         key: 'ofertas',
@@ -451,7 +454,7 @@ function useTourSteps(): Step[] {
         },
       })
     }
-    if (free)
+    if (free && !DEMO)
       steps.push({
         key: 'tu-negocio',
         icon: StoreIcon,
@@ -474,7 +477,7 @@ function useTourSteps(): Step[] {
       color: '#008d87',
       kicker: 'Todo el mall',
       title: '¡Ahora te toca a ti!',
-      body: <>Toca cualquier tienda para ver sus productos, cambia de piso a la izquierda y busca las ofertas escondidas.</>,
+      body: DEMO ? <>Toca cualquier tienda para ver sus productos y cambia de piso a la izquierda.</> : <>Toca cualquier tienda para ver sus productos, cambia de piso a la izquierda y busca las ofertas escondidas.</>,
       go: () => ui().setOverview(true),
     })
     return steps

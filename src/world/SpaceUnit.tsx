@@ -15,6 +15,7 @@ import { cameraState } from './cameraState'
 import { GEO, GLASS, PALETTE, mat, shade } from './materials'
 import { dimLabelMat, glowMat, lightPoolMat, nightVolumeMat, uplightMat } from './night'
 import { useIsNight } from '../lib/useIsNight'
+import { DEMO } from '../demo/flag'
 
 export type Detail = 'high' | 'low'
 
@@ -511,7 +512,7 @@ function AvailableSpace({ space, zoneColor, pending, price }: { space: SpaceSlot
   const totem = useRef<THREE.Group>(null)
   const label = pending
     ? getLabel('EN REVISIÓN', { bg: '#f5b544', fg: '#3b2a05', sub: 'Solicitud enviada' })
-    : getLabel('TU NEGOCIO AQUÍ', { bg: zoneColor, fg: '#fff', sub: `Reclámalo · ${formatCOP(price)}/mes` })
+    : getLabel('TU NEGOCIO AQUÍ', { bg: zoneColor, fg: '#fff', sub: DEMO ? 'Espacio disponible' : `Reclámalo · ${formatCOP(price)}/mes` })
   const ghost = mat(PALETTE.wall, { opacity: 0.55 })
   const isIsland = space.type === 'island'
   const H = space.type === 'premium' ? 2.2 : 1.6

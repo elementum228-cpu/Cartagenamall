@@ -7,6 +7,7 @@ import { usePricing } from '../state/pricing'
 import { useUI } from '../state/ui'
 import { Price, PromoBadge } from './bits'
 import { ProductImage } from './ProductImage'
+import { DEMO } from '../demo/flag'
 
 export function ProductCard({ product, store, compact = false }: { product: Product; store: Store; compact?: boolean }) {
   const { priceOf } = usePricing()
@@ -23,10 +24,10 @@ export function ProductCard({ product, store, compact = false }: { product: Prod
         <ProductImage product={product} brandColor={store.brandColor} className="aspect-[4/3] w-full" />
       </button>
       <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
-        <PromoBadge info={info} />
+        {!DEMO && <PromoBadge info={info} />}
         {soldOut && <span className="rounded-full bg-ink/80 px-2 py-0.5 text-[11px] font-bold text-white">Agotado</span>}
       </div>
-      <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+      {!DEMO && <div className="absolute top-2 right-2 flex flex-col gap-1.5">
         <button
           onClick={() => toggleFav(product.id)}
           className={`grid size-8 place-items-center rounded-full bg-white/90 shadow-soft backdrop-blur transition active:scale-90 ${fav ? 'text-coral' : 'text-ink-soft'}`}
@@ -45,7 +46,7 @@ export function ProductCard({ product, store, compact = false }: { product: Prod
             <Scale className="size-4" />
           </button>
         )}
-      </div>
+      </div>}
       <div className="flex flex-1 flex-col gap-1 p-3">
         <p className="truncate text-[11px] font-bold tracking-wide uppercase" style={{ color: store.brandColor }}>
           {store.name}
@@ -55,14 +56,14 @@ export function ProductCard({ product, store, compact = false }: { product: Prod
         </button>
         <div className="mt-auto flex items-end justify-between gap-2 pt-1">
           <Price info={info} size="sm" />
-          <button
+          {!DEMO && <button
             onClick={() => (needsOptions(product) ? openProduct(product.id) : addToCart(product, null, null))}
             disabled={soldOut}
             className="grid size-9 shrink-0 place-items-center rounded-full bg-brand text-white shadow-soft transition hover:bg-brand-dark active:scale-90 disabled:opacity-35"
             aria-label={needsOptions(product) ? `Elegir opciones de ${product.name}` : `Agregar ${product.name} al carrito`}
           >
             <Plus className="size-5" />
-          </button>
+          </button>}
         </div>
       </div>
     </article>

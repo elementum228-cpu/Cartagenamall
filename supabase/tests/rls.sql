@@ -143,4 +143,43 @@ reset role;
 do $$ begin
   assert (select (doc->'types'->>'local')::int from public.mall_settings where key = 'pricing') = 90000, 'nadie más cambió los precios';
 end $$;
+
+-- 8. Invitaciones a la versión de prueba: solo el admin las ve; cualquiera valida su código
+select pg_temp.como('11111111-1111-1111-1111-111111111111');
+insert into public.demo_invites (code, name, expires_at, max_devices) values
+  ('PRUEBA-AB12', 'Juan', now() + interval '7 days', 2),
+  ('VENCIDO-123', 'Ana', now() - interval '1 day', 2),
+  ('ANULADO-123', 'Luis', now() + interval '7 days', 2);
+update public.demo_invites set revoked = true where code = 'ANULADO-123';
+reset role;
+select pg_temp.como(null);
+do $$ begin
+  assert pg_temp.visibles('demo_invites') = 0, 'anon no ve los códigos';
+  assert pg_temp.visibles('demo_visits') = 0, 'anon no ve las entradas';
+  assert (public.demo_enter('prueba-ab12', 'device-aaaa1') ->> 'ok')::boolean, 'código válido (sin importar mayúsculas)';
+  assert public.demo_enter('PRUEBA-AB12', 'device-aaaa1') ->> 'name' = 'Juan', 'mismo dispositivo vuelve a entrar';
+  assert (public.demo_enter('PRUEBA-AB12', 'device-bbbb2') ->> 'ok')::boolean, 'segundo dispositivo';
+  assert public.demo_enter('PRUEBA-AB12', 'device-cccc3') ->> 'reason' = 'full', 'tercer dispositivo: cupo lleno';
+  assert public.demo_enter('VENCIDO-123', 'device-aaaa1') ->> 'reason' = 'expired', 'vencido';
+  assert public.demo_enter('ANULADO-123', 'device-aaaa1') ->> 'reason' = 'invalid', 'anulado';
+  assert public.demo_enter('NOEXISTE-1', 'device-aaaa1') ->> 'reason' = 'invalid', 'inexistente';
+  assert public.demo_enter('PRUEBA-AB12', 'x') ->> 'reason' = 'invalid', 'dispositivo inválido';
+  begin
+    insert into public.demo_invites (code, name, expires_at) values ('HACK-12345', 'x', now() + interval '1 day');
+    raise exception 'anon NO debería crear invitaciones';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+select pg_temp.como('22222222-2222-2222-2222-222222222222');
+do $$ begin
+  assert pg_temp.visibles('demo_invites') = 0, 'un comerciante no ve los códigos';
+end $$;
+reset role;
+select pg_temp.como('11111111-1111-1111-1111-111111111111');
+do $$ begin
+  assert pg_temp.visibles('demo_invites') = 3, 'el admin ve los códigos';
+  assert (select count(*) from public.demo_visits where code = 'PRUEBA-AB12') = 2, 'entradas anotadas una vez por dispositivo';
+end $$;
+reset role;
 select 'OK: reglas de acceso verificadas' as resultado;

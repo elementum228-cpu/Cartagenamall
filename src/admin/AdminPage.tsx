@@ -26,9 +26,10 @@ import { StoreLogo, btn, input } from '../ui/bits'
 import { isHighlighted } from '../lib/storeHighlight'
 import { DemoPromoButton } from '../features/DemoPromoButton'
 import { OwnerDashboard, PriceInput } from './OwnerDashboard'
+import { DemoInvites } from './DemoInvites'
 import { useSpacePrice, useSpacePricing } from '../state/spacePricing'
 
-type Tab = 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'integraciones'
+type Tab = 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'invitaciones' | 'integraciones'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'gestion', label: 'Gestión y precios' },
@@ -39,6 +40,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'promociones', label: 'Promociones' },
   { id: 'pedidos', label: 'Pedidos' },
   { id: 'cancha', label: 'Cancha' },
+  { id: 'invitaciones', label: 'Invitaciones' },
   { id: 'integraciones', label: 'Integraciones' },
 ]
 
@@ -102,6 +104,7 @@ function AdminContent() {
         {tab === 'promociones' && <PromotionsAdmin />}
         {tab === 'pedidos' && <OrdersAdmin />}
         {tab === 'cancha' && <CourtAdmin />}
+        {tab === 'invitaciones' && <DemoInvites />}
         {tab === 'integraciones' && <IntegrationsAdmin />}
       </main>
     </div>
