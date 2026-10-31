@@ -9,6 +9,7 @@ import { SecretPromoModal } from './features/SecretPromoModal'
 import { SpaceSheet } from './features/SpaceSheet'
 import { FootballCourtInfoPanel } from './features/FootballCourtInfoPanel'
 import { StoreSheet } from './features/StoreSheet'
+import { HarborSheet } from './features/HarborSheet'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
@@ -118,6 +119,7 @@ function Shell() {
       <StoreSheet />
       <SpaceSheet />
       <FootballCourtInfoPanel />
+      <HarborSheet />
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />

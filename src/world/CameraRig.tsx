@@ -7,6 +7,7 @@ import type { MapControls as MapControlsImpl } from 'three-stdlib'
 import { FLOOR_BY_ID, FLOOR_OF_ZONE, GATE, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import { floorOrigin, liveOrigins, overviewCenter } from './floors'
 import { useUI } from '../state/ui'
+import { HARBOR_FOCUS } from '../tourism/config'
 import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR, cameraState } from './cameraState'
 
 interface Goal {
@@ -24,6 +25,8 @@ const OVERVIEW_ZOOM = 0.6
 /** En pantallas verticales la fortaleza se encuadra más cerca (se recortan apenas las puntas de los baluartes). */
 const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
 const OVERVIEW_BOUNDS = 40
+/** Alcance de la cámara con el muelle turístico abierto. */
+const HARBOR_BOUNDS = 70
 const TOWARD_CAMERA = new THREE.Vector3(1, 0, 1).normalize()
 const SCREEN_RIGHT = new THREE.Vector3(1, 0, -1).normalize()
 
@@ -237,6 +240,20 @@ export function CameraRig() {
       }
       cameraState.viewOffset.set(0, 0, 0)
       goal.current = { target, zoom }
+    } else if (focus.kind === 'harbor') {
+      // El muelle al centro de la parte visible (al lado del panel o arriba de la ficha), con un
+      // acercamiento leve: se ve el muelle sin perder el mall de vista.
+      const zoom = THREE.MathUtils.clamp(camera.zoom * 1.15, fit * 0.9, fit * 1.8)
+      const target = new THREE.Vector3(HARBOR_FOCUS[0], 0, HARBOR_FOCUS[1])
+      cameraState.groundY = 0
+      if (desktop) target.addScaledVector(SCREEN_RIGHT, DESKTOP_PANEL / 2 / zoom)
+      else {
+        const canvasTop = gl.domElement.getBoundingClientRect().top
+        // la ficha del muelle ocupa como mucho el 70 %; su tarjeta inicial, cerca de la mitad
+        const visible = Math.max(120, window.innerHeight * 0.48 - canvasTop)
+        target.addScaledVector(TOWARD_CAMERA, (size.height / 2 - visible / 2) / (zoom * ELEVATION_SIN))
+      }
+      goal.current = { target, zoom }
     } else if (focus.kind === 'space') {
       const space = SPACE_BY_ID[focus.id]
       if (!space) return
@@ -291,9 +308,10 @@ export function CameraRig() {
       camera.position.sub(back)
     }
     // Límites del piso activo (o de la vista general): no se puede "salir" del mall arrastrando.
-    const { activeFloor, overview } = useUI.getState()
+    const { activeFloor, overview, harbor } = useUI.getState()
     const center = overview ? overviewCenter() : floorOrigin(FLOOR_BY_ID[activeFloor], false)
-    const bound = overview ? OVERVIEW_BOUNDS : FLOOR_BY_ID[activeFloor].bounds
+    // con el muelle abierto se puede ir hasta él (queda por fuera de la muralla)
+    const bound = Math.max(overview ? OVERVIEW_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor ? HARBOR_BOUNDS : 0)
     const cx = THREE.MathUtils.clamp(t.x, center.x - bound, center.x + bound)
     const cz = THREE.MathUtils.clamp(t.z, center.z - bound, center.z + bound)
     if (cx !== t.x || cz !== t.z) {

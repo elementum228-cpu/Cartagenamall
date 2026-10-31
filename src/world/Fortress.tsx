@@ -18,9 +18,9 @@ const WT = FORTRESS.wallThickness
 const WH = FORTRESS.wallHeight
 const BASE_Y = -1.3 // las murallas nacen en el agua
 // piedra coralina: más tostada que la arena y el piso del mall para que la muralla se lea
-const STONE = ['#c7a574', '#bd9a68', '#cdae7f']
-const STONE_DARK = '#9c7d55'
-const CORDON = '#e6d2a8'
+export const STONE = ['#c7a574', '#bd9a68', '#cdae7f']
+export const STONE_DARK = '#9c7d55'
+export const CORDON = '#e6d2a8'
 const TERRACOTTA = '#d0784f'
 const IRON = '#2f3338'
 
@@ -159,7 +159,7 @@ function Cannon({ x, z, y, angle }: { x: number; z: number; y: number; angle: nu
 }
 
 /** Farol colonial de pared (vidrio cálido que se enciende de noche). */
-function WallLantern({ x, y, z }: { x: number; y: number; z: number }) {
+export function WallLantern({ x, y, z }: { x: number; y: number; z: number }) {
   return (
     <group position={[x, y, z]}>
       <mesh geometry={GEO.box} material={mat(IRON)} position={[0, 0, -0.2]} scale={[0.08, 0.08, 0.45]} />

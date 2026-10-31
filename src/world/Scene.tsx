@@ -19,6 +19,7 @@ import { useLabelDeclutter } from './labels'
 import { Lighting } from './Lighting'
 import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
+import { Harbor } from './Harbor'
 import { MallFloor, type FloorMode } from './MallFloor'
 import { SecretMarkers } from './SecretMarkers'
 import { TreasureMarkers } from './TreasureMarkers'
@@ -129,6 +130,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       <CameraRig />
       <group dispose={null}>
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
+        <Harbor reduceMotion={reduceMotion} />
         <Batch version="jardines">
           <Diorama />
         </Batch>

@@ -20,6 +20,7 @@ import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
+import { BOATS, BOAT_IDS } from '../tourism/config'
 import { startTour } from './GuidedTour'
 import { PinchHint } from './PinchHint'
 import { InstallButton } from '../pwa/InstallApp'
@@ -33,6 +34,7 @@ export function ExploreView({ active }: { active: boolean }) {
   const use3D = webgl && !force2D
   const selectedSpaceId = useUI((s) => s.selectedSpaceId)
   const peek = useUI((s) => s.peek)
+  const harborOpen = useUI((s) => s.harbor !== null)
   const night = useIsNight() && use3D
   const root = useRef<HTMLDivElement>(null)
 
@@ -75,7 +77,7 @@ export function ExploreView({ active }: { active: boolean }) {
         <Map2D reason={!webgl ? 'Tu navegador no soporta 3D (WebGL). Mostramos el plano 2D con las mismas tiendas.' : undefined} />
       )}
       {use3D && <div className="world-vignette pointer-events-none absolute inset-0" aria-hidden />}
-      {active && <Hud use3D={use3D} webgl={webgl} dimmed={!!selectedSpaceId && !peek} />}
+      {active && <Hud use3D={use3D} webgl={webgl} dimmed={(!!selectedSpaceId && !peek) || harborOpen} />}
     </div>
   )
 }
@@ -130,6 +132,20 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
     <MotionConfig reducedMotion="user">
       <div className="tour-hide">
       {use3D && <PinchHint hidden={dimmed || !!peekId} />}
+      {/* las lanchas del muelle, también con teclado (en el mapa se tocan directamente) */}
+      {use3D && (
+        <div className="absolute bottom-[calc(var(--chrome-bottom)+80px)] left-3 z-30 flex flex-col gap-2">
+          {BOAT_IDS.map((id) => (
+            <button
+              key={id}
+              className="glass sr-only rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink focus:not-sr-only focus-visible:ring-2 focus-visible:ring-teal"
+              onClick={() => useUI.getState().openHarbor(id)}
+            >
+              Muelle turístico: {BOATS[id].title}
+            </button>
+          ))}
+        </div>
+      )}
       {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
       {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
           fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}

@@ -18,6 +18,8 @@ export function Sheet({
   z = 40,
   desktopWidth = 420,
   header,
+  mobileHeight = 'h-[86dvh]',
+  scrim = true,
 }: {
   open: boolean
   onClose: () => void
@@ -27,6 +29,10 @@ export function Sheet({
   z?: number
   desktopWidth?: number
   header?: ReactNode
+  /** Alto en celular (clase de Tailwind). */
+  mobileHeight?: string
+  /** En celular, difuminar lo de atrás (no, si el mapa de arriba debe verse: p. ej. el muelle). */
+  scrim?: boolean
 }) {
   const desktop = useIsDesktop()
   const drag = useDragControls()
@@ -42,7 +48,7 @@ export function Sheet({
     <AnimatePresence>
       {open && (
         <>
-          {(modal || !desktop) && (
+          {(modal || (!desktop && scrim)) && (
             <motion.div
               className={`fixed inset-0 ${modal ? 'bg-deep/40 backdrop-blur-[4px]' : 'bg-deep/20 backdrop-blur-[8px]'}`}
               style={{ zIndex: z }}
@@ -61,7 +67,7 @@ export function Sheet({
             className={
               desktop
                 ? 'glass-sheet fixed top-[var(--chrome-top)] right-5 bottom-4 flex flex-col overflow-hidden rounded-[28px]'
-                : `glass-sheet fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[32px] ${modal ? 'max-h-[92dvh]' : 'h-[86dvh]'}`
+                : `glass-sheet fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[32px] ${modal ? 'max-h-[92dvh]' : mobileHeight}`
             }
             style={{ zIndex: z + 1, width: desktop ? desktopWidth : undefined }}
             initial={desktop ? { x: desktopWidth + 40, opacity: 0.6 } : { y: '100%' }}
