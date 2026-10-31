@@ -27,7 +27,7 @@ export function ShowroomSheet() {
               </span>
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold text-ink-soft">
-                  {room.kind} · Zona de servicios
+                  {room.kind} · Zona Soporte
                 </p>
                 <h2 className="truncate text-[22px] leading-tight font-bold tracking-[-0.02em]">{room.name}</h2>
                 <p className="truncate text-[13px] text-ink-soft">{room.tagline}</p>

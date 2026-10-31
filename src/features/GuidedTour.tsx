@@ -404,7 +404,7 @@ function useTourSteps(): Step[] {
         icon: Scissors,
         color: ZONE_BY_ID.F.color,
         kicker: 'Zona F',
-        title: 'Servicios',
+        title: 'Soporte',
         body: <>Barberías y servicios alrededor de una plaza, con las vitrinas de Planly (turismo) y GrowDesk (software). Desde aquí sale la puerta al muelle.</>,
         chips: ['Planly', 'GrowDesk', 'Barberías', 'Muelle turístico'],
         go: () => {

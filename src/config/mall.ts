@@ -277,7 +277,7 @@ export function generateSpaces(floor: FloorConfig): SpaceSlot[] {
  */
 export const DISTRICT_ZONE: ZoneConfig = {
   id: 'F',
-  name: 'Servicios',
+  name: 'Soporte',
   color: '#7a6ff0',
   angle: -Math.PI / 4,
   focus: [-19.5, 18.5],

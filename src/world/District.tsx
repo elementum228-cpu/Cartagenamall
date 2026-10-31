@@ -12,7 +12,7 @@ import { Person } from './Harbor'
 import { getGlassPill, getLabel } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
-import { glowMat, lightPoolMat, litLabelMat } from './night'
+import { glowMat, lightPoolMat, litLabelMat, uplightMat } from './night'
 
 // Zona de servicios (piso 1, esquina entre Lifestyle y Belleza): piso de baldosa cálida, una plaza
 // redonda con palmera, toldo y guirnaldas, y las vitrinas grandes de Planly (turismo) y GrowDesk
@@ -211,8 +211,10 @@ function Planly({ room }: { room: Showroom }) {
   const coral = mat('#e0735f')
   const teal = mat('#2fa3a0')
   const wood = mat('#9a6b45')
-  const glass = mat('#bfe9ec', { opacity: 0.55, rough: 0.2 })
-  const warm = glowMat('#ffd9a0', 1.2, { dayGlow: 0.35 })
+  const glass = mat('#bfe9ec', { opacity: 0.32, rough: 0.2 })
+  // de noche la oficina queda encendida: interior cálido, ventanas, bombillos y fachada bañada de luz
+  const warm = glowMat('#ffd9a0', 2.6, { dayGlow: 0.35 })
+  const bulb = glowMat('#ffd58a', 2.6, { dayGlow: 0.4 })
   return (
     <group>
       {/* cuerpo, zócalo y cornisa */}
@@ -259,7 +261,17 @@ function Planly({ room }: { room: Showroom }) {
       {[-1.65, 2.05].map((x) => (
         <mesh key={x} geometry={GEO.cylinder} material={teal} position={[x, 1.3, D / 2 + 0.35]} scale={[0.3, 2.6, 0.3]} castShadow />
       ))}
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.7)} rotation={[-Math.PI / 2, 0, 0]} position={[0.2, 0.06, D / 2 + 1.4]} scale={[5, 2.5, 1]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 1)} rotation={[-Math.PI / 2, 0, 0]} position={[0.2, 0.06, D / 2 + 1.4]} scale={[6, 3, 1]} />
+      {/* ventana encendida en el costado */}
+      <mesh geometry={GEO.box} material={warm} position={[W / 2 + 0.04, 1.7, 1.1]} scale={[0.02, 1.2, 1.8]} />
+      <mesh geometry={GEO.box} material={wood} position={[W / 2 + 0.06, 1.05, 1.1]} scale={[0.08, 0.08, 2]} />
+      {/* bombillos colgados en el borde de la pérgola */}
+      {Array.from({ length: 9 }, (_, i) => (
+        <mesh key={i} geometry={GEO.sphere} material={bulb} position={[-W / 2 + 0.7 + i * ((W - 1.4) / 8), H + 1.36 - Math.sin((i / 8) * Math.PI) * 0.12, D / 2 - 0.85]} scale={0.14} />
+      ))}
+      {/* fachada y costado bañados de luz cálida (solo de noche) */}
+      <mesh geometry={GEO.plane} material={uplightMat('plane', '#ffc27a', 0.75)} position={[0, H / 2 + 0.3, D / 2 + 0.14]} scale={[W, H + 0.6, 1]} />
+      <mesh geometry={GEO.plane} material={uplightMat('plane', '#ffc27a', 0.55)} position={[W / 2 + 0.12, H / 2 + 0.3, 0]} rotation={[0, Math.PI / 2, 0]} scale={[D, H + 0.6, 1]} />
     </group>
   )
 }
@@ -270,8 +282,10 @@ function GrowDesk({ room }: { room: Showroom }) {
   const sign = useMemo(() => getLabel('GrowDesk Offices', { bg: '#1b2547', fg: '#ffffff', weight: 800 }), [])
   const navy = mat('#26325c')
   const navyDark = mat('#1b2547')
-  const glass = mat('#9fd6ee', { opacity: 0.45, rough: 0.1 })
-  const inside = glowMat('#e9f6ff', 1, { dayGlow: 0.4 })
+  const glass = mat('#9fd6ee', { opacity: 0.28, rough: 0.1 })
+  // de noche: oficinas encendidas (interior, ventanas y sala del techo) y una línea de luz turquesa
+  const inside = glowMat('#e9f6ff', 2.6, { dayGlow: 0.4 })
+  const led = glowMat('#13b9ad', 2.8, { dayGlow: 0.5 })
   const teal = mat('#13b9ad')
   const white = mat('#ffffff')
   return (
@@ -306,7 +320,16 @@ function GrowDesk({ room }: { room: Showroom }) {
       {/* entrada: alero y palmera */}
       <mesh geometry={GEO.box} material={navyDark} position={[-0.4, 2.95, D / 2 - 0.1]} scale={[W - 1.6, 0.12, 0.9]} castShadow />
       <Palm x={-W / 2 + 0.2} z={D / 2 + 0.3} h={2.9} seed={4.2} />
-      <mesh geometry={GEO.plane} material={lightPoolMat('#cfeaff', 0.6)} rotation={[-Math.PI / 2, 0, 0]} position={[-0.4, 0.06, D / 2 + 1.2]} scale={[5, 2.4, 1]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#cfeaff', 1)} rotation={[-Math.PI / 2, 0, 0]} position={[-0.4, 0.06, D / 2 + 1.2]} scale={[6, 3, 1]} />
+      {/* ventanas encendidas en el costado, detrás de las aletas */}
+      {[1.05, 2.45].map((y) => (
+        <mesh key={y} geometry={GEO.box} material={inside} position={[W / 2 + 0.025, y, -0.3]} scale={[0.01, 0.7, D - 1.4]} />
+      ))}
+      {/* línea de luz turquesa en el borde del techo */}
+      <mesh geometry={GEO.box} material={led} position={[0, H + 0.2, D / 2 - 0.33]} scale={[W + 0.25, 0.06, 0.03]} />
+      <mesh geometry={GEO.box} material={led} position={[(W + 0.25) / 2 + 0.02, H + 0.2, -0.2]} scale={[0.03, 0.06, D - 0.3]} />
+      {/* fachada bañada de luz fría (solo de noche) */}
+      <mesh geometry={GEO.plane} material={uplightMat('plane', '#bfe3ff', 0.6)} position={[-0.4, H / 2 + 0.2, D / 2 - 0.25]} scale={[W - 0.6, H + 0.4, 1]} />
     </group>
   )
 }
@@ -406,7 +429,7 @@ export function District({ reduceMotion }: { reduceMotion: boolean }) {
         <ShowroomBuilding key={id} id={id} />
       ))}
       <Strollers reduceMotion={reduceMotion} />
-      <ScreenLabel label={zoneLabel} position={[P.x, 6.5, P.z]} pixelHeight={35} maxZoomRatio={1.45} priority={LABEL_PRIORITY.corridorOverview} />
+      <ScreenLabel label={zoneLabel} position={[-17.5, 6, 21.5]} pixelHeight={35} maxZoomRatio={1.45} priority={LABEL_PRIORITY.corridorOverview - 10} />
       {labels.map(({ id, label }) =>
         open === id ? null : (
           <ScreenLabel
