@@ -73,7 +73,7 @@ export function PinchHint({ hidden }: { hidden: boolean }) {
       role="status"
     >
       <PinchIcon />
-      <p className="text-[13px] font-semibold tracking-wide [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">{desktop ? 'Rueda o pellizca para acercarte' : 'Pellizca para acercarte'}</p>
+      <p className="text-[11px] font-semibold tracking-wide [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">{desktop ? 'Rueda o pellizca para acercarte' : 'Pellizca para acercarte'}</p>
     </div>
   )
 }
@@ -82,7 +82,7 @@ export function PinchHint({ hidden }: { hidden: boolean }) {
  * flechas que salen hacia afuera («abre los dedos para acercar»). */
 function PinchIcon() {
   return (
-    <svg viewBox="0 0 64 64" className="size-[76px] overflow-visible drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 64 64" className="size-12 overflow-visible drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M33 34 L39 10 A3.6 3.6 0 0 1 46 11.6 L43 33 C47.5 32.4 52.5 34.6 52.5 39.5 L52.5 47 C52.5 55 47 60 40 60 L36.5 60 C32.5 60 30 57.8 28.8 54.6 L12.6 32.6 A3.6 3.6 0 0 1 18.2 28 L31 40 Z" />
       <path d="M43 33 L43.4 40.5 M48 33.8 L48 41" strokeWidth="2" opacity="0.75" />
       {/* toques en las puntas */}
