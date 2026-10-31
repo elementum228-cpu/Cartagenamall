@@ -8,6 +8,8 @@ import { cameraState } from './cameraState'
  */
 export const LABEL_PRIORITY = {
   selected: 200,
+  /** Los cuatro pasillos se ven siempre en la vista general: valen más que el cartel del piso. */
+  corridorOverview: 125,
   floorSign: 120,
   store: 60,
   promo: 55,
@@ -29,6 +31,7 @@ export interface LabelEntry {
 }
 
 const entries = new Set<LabelEntry>()
+if (import.meta.env.DEV) (window as unknown as { __cmLabels?: unknown }).__cmLabels = entries
 
 export function registerLabel(e: LabelEntry) {
   entries.add(e)
