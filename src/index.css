@@ -336,6 +336,10 @@ select:not([multiple]):disabled {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
+/* durante el recorrido guiado la interfaz se aparta y queda solo la tarjeta sobre el mapa */
+.tour-hide { transition: opacity 0.3s ease; }
+.tour-on .tour-hide { opacity: 0 !important; pointer-events: none !important; }
+.tour-on .tour-hide * { pointer-events: none !important; }
 @keyframes tour-fill {
   from { width: 0; }
   to { width: 100%; }

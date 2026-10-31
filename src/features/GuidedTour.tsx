@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Compass, Gem, MapPin, Shirt, Smartphone, Sparkles, Store as StoreIcon, Trophy, Utensils, Zap, type LucideIcon } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { AnimatePresence, motion, MotionConfig } from 'motion/react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { COURT_SPACE, FLOOR_OF_ZONE, MALL, SPACES, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import type { ZoneId } from '../domain/types'
 import { COURT_COLOR } from '../football/open'
@@ -53,10 +53,21 @@ interface Step {
 
 const ZONE_ICON: Partial<Record<ZoneId, LucideIcon>> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem }
 
+/** Resorte de las apps nativas: arranca ágil y se asienta sin rebote. */
+const SPRING = { type: 'spring', stiffness: 360, damping: 34, mass: 0.9 } as const
+/** Distancia (px) o velocidad para que un deslizamiento lateral cambie de parada. */
+const SWIPE_PX = 60
+const SWIPE_V = 450
+
 export function GuidedTour() {
   const step = useUI((s) => s.tourStep)
   const steps = useTourSteps()
   const timer = useRef<number | null>(null)
+  const startedAt = useRef(0)
+  const remaining = useRef(STEP_MS)
+  const [paused, setPaused] = useState(false)
+  const pressedAt = useRef(0)
+  const [dir, setDir] = useState(1)
   const current = step === null ? null : steps[Math.min(step, steps.length - 1)]
   const last = step !== null && step >= steps.length - 1
 
@@ -65,25 +76,47 @@ export function GuidedTour() {
     useUI.getState().setTourStep(null)
     useUI.getState().setOverview(true)
   }
+  /** Fue un toque breve (no mantener presionado para pausar). */
+  const tapped = () => performance.now() - pressedAt.current < 350
   const goto = (n: number) => {
-    if (n < 0) return
+    if (n < 0 || step === null) return
     if (n >= steps.length) return finish()
+    setDir(n > step ? 1 : -1)
+    setPaused(false)
     useUI.getState().setTourStep(n)
   }
 
-  // cada parada: mover la cámara, sonar y programar la siguiente
+  // cada parada: mover la cámara y sonar
   useEffect(() => {
     if (step === null || !current) return
     current.go()
     if (last) void playSparkle()
     else if (step > 0) void playWhoosh()
-    if (timer.current) clearTimeout(timer.current)
-    if (!last) timer.current = window.setTimeout(() => goto(step + 1), STEP_MS)
+    remaining.current = STEP_MS
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
+  // avance automático; mantener presionado lo pausa (como las historias) y al soltar sigue donde iba
+  useEffect(() => {
+    if (step === null || last) return
+    if (paused) {
+      remaining.current = Math.max(0, remaining.current - (performance.now() - startedAt.current))
+      return
+    }
+    startedAt.current = performance.now()
+    timer.current = window.setTimeout(() => goto(step + 1), remaining.current)
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step])
+  }, [step, paused, last])
+
+  // la interfaz del mall se aparta mientras dura el recorrido
+  const on = step !== null
+  useEffect(() => {
+    document.documentElement.classList.toggle('tour-on', on)
+    return () => document.documentElement.classList.remove('tour-on')
+  }, [on])
 
   // teclado: flechas para moverse, Escape para salir
   useEffect(() => {
@@ -98,147 +131,219 @@ export function GuidedTour() {
   })
 
   return (
-    <AnimatePresence>
-      {step !== null && current && (
-        <motion.div
-          key="tour"
-          className="fixed inset-0 z-[55] select-none"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          role="dialog"
-          aria-label="Recorrido guiado por el centro comercial"
-        >
-          {/* zonas táctiles: izquierda vuelve, derecha avanza (como las historias) */}
-          <button type="button" className="absolute inset-y-0 left-0 w-1/3 cursor-w-resize" aria-label="Parada anterior" onClick={() => goto(step - 1)} />
-          <button type="button" className="absolute inset-y-0 right-0 w-2/3 cursor-e-resize" aria-label="Siguiente parada" onClick={() => goto(step + 1)} />
-          {/* sombra arriba y abajo para leer sobre el mapa */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-ink/45 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-ink/70 via-ink/25 to-transparent" />
+    <MotionConfig reducedMotion="user">
+      <AnimatePresence>
+        {step !== null && current && (
+          <motion.div
+            key="tour"
+            className="fixed inset-0 z-[55] select-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            role="dialog"
+            aria-label="Recorrido guiado por el centro comercial"
+          >
+            {/* toques sobre el mapa: izquierda vuelve, derecha avanza; mantener presionado pausa */}
+            <div
+              className="absolute inset-0"
+              onPointerDown={() => {
+                pressedAt.current = performance.now()
+                setPaused(true)
+              }}
+              onPointerUp={() => setPaused(false)}
+              onPointerCancel={() => setPaused(false)}
+              onPointerLeave={() => setPaused(false)}
+            >
+              <button type="button" className="absolute inset-y-0 left-0 w-1/3 cursor-w-resize" aria-label="Parada anterior" onClick={() => tapped() && goto(step - 1)} />
+              <button type="button" className="absolute inset-y-0 right-0 w-2/3 cursor-e-resize" aria-label="Siguiente parada" onClick={() => tapped() && goto(step + 1)} />
+            </div>
+            {/* velo suave abajo para leer la tarjeta sobre el mapa */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-deep/70 via-deep/25 to-transparent" />
 
-          {/* barras de avance */}
-          <div className="pointer-events-none absolute inset-x-3 top-3 flex gap-1.5 md:inset-x-auto md:left-1/2 md:w-[560px] md:-translate-x-1/2">
-            {steps.map((s, i) => (
-              <span key={s.key} className="h-1 flex-1 overflow-hidden rounded-full bg-white/35">
-                <span
-                  key={i === step ? `on-${step}` : 'off'}
-                  className="block h-full rounded-full bg-white"
-                  style={
-                    i < step
-                      ? { width: '100%' }
-                      : i === step
-                        ? { width: last ? '100%' : 0, animation: last ? undefined : `tour-fill ${STEP_MS}ms linear forwards` }
-                        : { width: 0 }
-                  }
-                />
+            {/* arriba: contador y salir, en vidrio */}
+            <motion.div
+              className="absolute inset-x-3 top-[max(12px,env(safe-area-inset-top))] flex items-center justify-between md:inset-x-6"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ ...SPRING, delay: 0.1 }}
+            >
+              <span className="glass rounded-full px-3 py-1.5 text-[12px] font-semibold text-ink tabular-nums">
+                {step + 1} de {steps.length}
               </span>
-            ))}
-          </div>
-          <div className="absolute top-7 right-3 flex items-center gap-2">
-            <span className="rounded-full bg-black/30 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-              {step + 1} / {steps.length}
-            </span>
-            <button type="button" onClick={finish} className="rounded-full bg-white/90 px-3.5 py-1.5 text-xs font-extrabold text-ink shadow-soft">
-              Saltar recorrido
-            </button>
-          </div>
+              <button type="button" onClick={finish} className="glass rounded-full px-4 py-1.5 text-[13px] font-semibold text-ink transition active:scale-[0.96]">
+                Saltar
+              </button>
+            </motion.div>
 
-          {/* tarjeta de la parada */}
-          <div className="pointer-events-none absolute inset-x-3 bottom-[max(16px,env(safe-area-inset-bottom))] flex justify-center md:bottom-8">
-            <AnimatePresence mode="wait">
+            {/* tarjeta: se queda en su sitio y solo cambia su contenido; se desliza de lado para
+                cambiar de parada */}
+            <div className="pointer-events-none absolute inset-x-3 bottom-[max(16px,env(safe-area-inset-bottom))] flex justify-center md:bottom-8">
               <motion.div
-                key={current.key}
-                className="pointer-events-auto w-full max-w-[520px] overflow-hidden rounded-[28px] bg-card/95 shadow-float backdrop-blur"
-                initial={{ y: 40, opacity: 0, scale: 0.94, rotate: -1.5 }}
-                animate={{ y: 0, opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ y: -24, opacity: 0, scale: 0.97 }}
-                transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+                className="glass-strong pointer-events-auto w-full max-w-[460px] touch-pan-y overflow-hidden rounded-[32px]"
+                initial={{ y: 80, opacity: 0, scale: 0.94 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                transition={SPRING}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.35}
+                onDragStart={() => setPaused(true)}
+                onDragEnd={(_, info) => {
+                  setPaused(false)
+                  if (info.offset.x < -SWIPE_PX || info.velocity.x < -SWIPE_V) goto(step + 1)
+                  else if (info.offset.x > SWIPE_PX || info.velocity.x > SWIPE_V) goto(step - 1)
+                }}
+                layout
               >
-                <div className="h-1.5" style={{ background: current.color }} />
-                <div className="p-4 sm:p-5">
-                  <div className="flex items-start gap-3.5">
-                    <motion.span
-                      className="grid size-12 shrink-0 place-items-center rounded-2xl text-white shadow-soft"
-                      style={{ background: current.color }}
-                      initial={{ scale: 0, rotate: -40 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: 'spring', damping: 12, stiffness: 300, delay: 0.08 }}
-                    >
-                      <current.icon className="size-6" />
-                    </motion.span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color: current.color }}>
-                        {current.kicker}
-                      </p>
-                      <h2 className="text-xl leading-tight font-extrabold tracking-tight sm:text-2xl">{current.title}</h2>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-[14px] leading-snug text-ink-soft">{current.body}</div>
-                  {current.chips && current.chips.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {current.chips.map((c, i) => (
-                        <motion.span
-                          key={c}
-                          className="rounded-full border border-line bg-white px-2.5 py-1 text-xs font-bold"
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.18 + i * 0.07 }}
-                        >
-                          {c}
+                <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+                  <motion.div
+                    key={current.key}
+                    custom={dir}
+                    variants={{
+                      enter: (d: number) => ({ x: d * 70, opacity: 0, filter: 'blur(8px)' }),
+                      center: { x: 0, opacity: 1, filter: 'blur(0px)' },
+                      exit: (d: number) => ({ x: d * -70, opacity: 0, filter: 'blur(8px)' }),
+                    }}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={SPRING}
+                    className="px-5 pt-5 pb-1"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <motion.span
+                        className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-[18px] text-white"
+                        style={{ background: `linear-gradient(145deg, ${current.color}, color-mix(in srgb, ${current.color} 70%, #062c42))`, boxShadow: `0 10px 24px -10px ${current.color}` }}
+                        initial={{ scale: 0.6, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 18, delay: 0.06 }}
+                      >
+                        {/* brillo de vidrio arriba del ícono */}
+                        <span className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent" />
+                        <motion.span initial={{ y: 6 }} animate={{ y: [6, -3, 0] }} transition={{ duration: 0.55, delay: 0.12, ease: 'easeOut' }}>
+                          <current.icon className="relative size-7" strokeWidth={1.8} />
                         </motion.span>
-                      ))}
+                      </motion.span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold text-ink-soft">{current.kicker}</p>
+                        <h2 className="text-[24px] leading-[1.1] font-bold tracking-[-0.02em] text-ink">{current.title}</h2>
+                      </div>
                     </div>
-                  )}
-                  <div className="mt-4 flex items-center gap-2">
-                    {step > 0 && (
-                      <button type="button" onClick={() => goto(step - 1)} className="grid size-11 place-items-center rounded-2xl border border-line bg-white" aria-label="Anterior">
-                        <ChevronLeft className="size-5" />
-                      </button>
+                    <div className="mt-3 text-[15px] leading-snug text-ink-soft">{current.body}</div>
+                    {current.chips && current.chips.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {current.chips.map((c, i) => (
+                          <motion.span
+                            key={c}
+                            className="rounded-full bg-ink/[0.06] px-3 py-1 text-[12.5px] font-semibold text-ink"
+                            initial={{ opacity: 0, y: 8, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={{ ...SPRING, delay: 0.12 + i * 0.05 }}
+                          >
+                            {c}
+                          </motion.span>
+                        ))}
+                      </div>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => goto(step + 1)}
-                      className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-extrabold text-white shadow-soft transition active:scale-[0.98]"
-                      style={{ background: last ? '#1f7a6e' : current.color }}
-                    >
-                      {last ? (
-                        <>
-                          <Compass className="size-4" /> ¡Empieza a explorar!
-                        </>
-                      ) : (
-                        <>
-                          Siguiente <ChevronRight className="size-4" />
-                        </>
-                      )}
-                    </button>
+                  </motion.div>
+                </AnimatePresence>
+
+                <div className="px-5 pt-4 pb-5">
+                  {/* indicador de páginas: la actual es una cápsula que se llena con el tiempo */}
+                  <div className="mb-4 flex items-center justify-center gap-1.5" aria-hidden>
+                    {steps.map((s, i) => (
+                      <motion.span
+                        key={s.key}
+                        className="relative h-[7px] overflow-hidden rounded-full bg-ink/15"
+                        animate={{ width: i === step ? 28 : 7 }}
+                        transition={SPRING}
+                      >
+                        {i === step && (
+                          <span
+                            key={`fill-${step}`}
+                            className="absolute inset-y-0 left-0 rounded-full bg-teal"
+                            style={last ? { width: '100%' } : { animation: `tour-fill ${STEP_MS}ms linear forwards`, animationPlayState: paused ? 'paused' : 'running' }}
+                          />
+                        )}
+                        {i < step && <span className="absolute inset-0 rounded-full bg-ink/35" />}
+                      </motion.span>
+                    ))}
                   </div>
+                  <div className="flex items-center gap-2">
+                    <AnimatePresence initial={false}>
+                      {step > 0 && (
+                        <motion.button
+                          type="button"
+                          onClick={() => goto(step - 1)}
+                          className="grid size-[52px] shrink-0 place-items-center rounded-full bg-ink/[0.06] text-ink transition active:scale-[0.95]"
+                          aria-label="Anterior"
+                          initial={{ opacity: 0, scale: 0.6, width: 0 }}
+                          animate={{ opacity: 1, scale: 1, width: 52 }}
+                          exit={{ opacity: 0, scale: 0.6, width: 0 }}
+                          transition={SPRING}
+                        >
+                          <ChevronLeft className="size-5" strokeWidth={2} />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                    <motion.button
+                      type="button"
+                      layout
+                      onClick={() => goto(step + 1)}
+                      className="glass-teal flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full text-[16px] font-semibold tracking-[-0.01em] transition active:scale-[0.98]"
+                    >
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        <motion.span
+                          key={last ? 'fin' : 'sig'}
+                          className="flex items-center gap-2"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={SPRING}
+                        >
+                          {last ? (
+                            <>
+                              <Compass className="size-5" strokeWidth={1.9} /> Empezar a explorar
+                            </>
+                          ) : (
+                            <>
+                              {step === 0 ? 'Comenzar' : 'Continuar'} <ChevronRight className="size-5" strokeWidth={2} />
+                            </>
+                          )}
+                        </motion.span>
+                      </AnimatePresence>
+                    </motion.button>
+                  </div>
+                  <p className="mt-3 text-center text-[11.5px] text-ink-soft max-md:block md:hidden">Desliza la tarjeta o toca el mapa para avanzar</p>
                 </div>
               </motion.div>
-            </AnimatePresence>
-          </div>
-          {last && <Sparks />}
-        </motion.div>
-      )}
-    </AnimatePresence>
+            </div>
+            {last && <Sparks />}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </MotionConfig>
   )
 }
 
-/** Chispas doradas que saltan al final del recorrido. */
+/** Destellos turquesa y ámbar que se abren suavemente al final del recorrido. */
 function Sparks() {
-  const sparks = useMemo(() => Array.from({ length: 26 }, (_, i) => ({ i, x: (Math.random() - 0.5) * 520, y: -120 - Math.random() * 320, d: Math.random() * 0.25, s: 6 + Math.random() * 8 })), [])
+  const sparks = useMemo(() => Array.from({ length: 22 }, (_, i) => ({ i, x: (Math.random() - 0.5) * 460, y: -140 - Math.random() * 300, d: Math.random() * 0.25, s: 4 + Math.random() * 6 })), [])
   return (
-    <div className="pointer-events-none absolute bottom-40 left-1/2" aria-hidden>
-      {sparks.map((p) => (
-        <motion.span
-          key={p.i}
-          className="absolute rounded-full"
-          style={{ width: p.s, height: p.s, background: p.i % 3 ? '#f5c35c' : '#fff3c4', boxShadow: '0 0 12px #f5c35c' }}
-          initial={{ x: 0, y: 0, opacity: 1, scale: 0.4 }}
-          animate={{ x: p.x, y: [0, p.y, p.y + 140], opacity: [1, 1, 0], scale: [0.4, 1, 0.6] }}
-          transition={{ duration: 1.6, delay: p.d, ease: 'easeOut' }}
-        />
-      ))}
+    <div className="pointer-events-none absolute bottom-56 left-1/2" aria-hidden>
+      {sparks.map((p) => {
+        const c = p.i % 3 === 0 ? '#13b9ad' : p.i % 3 === 1 ? '#f7b34b' : '#ffffff'
+        return (
+          <motion.span
+            key={p.i}
+            className="absolute rounded-full"
+            style={{ width: p.s, height: p.s, background: c, boxShadow: `0 0 10px ${c}` }}
+            initial={{ x: 0, y: 0, opacity: 0, scale: 0.3 }}
+            animate={{ x: p.x, y: [0, p.y, p.y + 110], opacity: [0, 1, 0], scale: [0.3, 1, 0.5] }}
+            transition={{ duration: 1.8, delay: p.d, ease: [0.2, 0.8, 0.2, 1] }}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -264,7 +369,7 @@ function useTourSteps(): Step[] {
         color: z.color,
         kicker: `Pasillo ${id}`,
         title: z.name,
-        body: names.length ? `${names.length === 1 ? 'Una tienda' : `${names.length} tiendas`} te esperan: ${z.categories.map((c) => c.name.toLowerCase()).join(', ')}.` : `Categorías: ${z.categories.map((c) => c.name.toLowerCase()).join(', ')}. ¡Aún hay espacio para nuevas tiendas!`,
+        body: names.length ? `${names.length === 1 ? 'Una tienda te espera' : `${names.length} tiendas te esperan`}: ${z.categories.map((c) => c.name.toLowerCase()).join(', ')}.` : `Categorías: ${z.categories.map((c) => c.name.toLowerCase()).join(', ')}. ¡Aún hay espacio para nuevas tiendas!`,
         chips: names.slice(0, 4),
         go: () => {
           ui().setFloor(FLOOR_OF_ZONE[id])
@@ -283,7 +388,7 @@ function useTourSteps(): Step[] {
       {
         key: 'bienvenida',
         icon: MapPin,
-        color: '#1f7a6e',
+        color: '#008d87',
         kicker: 'Bienvenido a',
         title: MALL.name,
         body: <>Un centro comercial dentro de una fortaleza amurallada, como el Centro Histórico. Te mostramos lo que hay en menos de un minuto.</>,
@@ -302,7 +407,7 @@ function useTourSteps(): Step[] {
         title: 'Cancha sintética',
         body: court ? (
           <>
-            Fútbol 5 con iluminación nocturna, operada por <b className="text-ink">{court.name}</b>. Reserva tu hora desde el mall.
+            Fútbol 5 con iluminación nocturna, operada por <b className="font-semibold text-ink">{court.name}</b>. Reserva tu hora desde el mall.
           </>
         ) : (
           <>Fútbol 5 con iluminación nocturna, lista para un negocio que la opere: {formatCOP(spacePrice(pricing, COURT_SPACE))}/mes.</>
@@ -331,12 +436,12 @@ function useTourSteps(): Step[] {
       steps.push({
         key: 'ofertas',
         icon: Zap,
-        color: '#e09a1f',
+        color: '#e39a2d',
         kicker: 'Ofertas',
         title: `Relámpago −${flash.discountPercent}%`,
         body: (
           <>
-            {flash.title} en <b className="text-ink">{storeById[flash.storeId]?.name}</b>. Duran pocas horas
+            {flash.title} en <b className="font-semibold text-ink">{storeById[flash.storeId]?.name}</b>. Duran pocas horas
             {secrets ? <> y hay {secrets === 1 ? 'una oferta escondida' : `${secrets} ofertas escondidas`} cerca de las tiendas: búscalas.</> : '.'}
           </>
         ),
@@ -366,7 +471,7 @@ function useTourSteps(): Step[] {
     steps.push({
       key: 'final',
       icon: Compass,
-      color: '#1f7a6e',
+      color: '#008d87',
       kicker: 'Todo el mall',
       title: '¡Ahora te toca a ti!',
       body: <>Toca cualquier tienda para ver sus productos, cambia de piso a la izquierda y busca las ofertas escondidas.</>,

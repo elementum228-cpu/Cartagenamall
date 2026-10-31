@@ -182,7 +182,7 @@ function TopBar() {
   const navigate = useNavigate()
   const compare = usePersonal((s) => s.compare.length)
   return (
-    <header className="chrome-in-top glass fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 rounded-[22px] pr-1.5 pl-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] md:rounded-[24px] md:pr-2">
+    <header className="tour-hide chrome-in-top glass fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 rounded-[22px] pr-1.5 pl-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] md:rounded-[24px] md:pr-2">
       <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-2xl pr-2" aria-label="Cartagena Mall, inicio">
         <MallMark />
         <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Cartagena Mall</span>
@@ -245,7 +245,7 @@ function BottomNav() {
   ]
   return (
     <nav
-      className="chrome-in-bottom glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 h-16 rounded-[26px] px-1.5 md:hidden"
+      className="tour-hide chrome-in-bottom glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 h-16 rounded-[26px] px-1.5 md:hidden"
       aria-label="Navegación principal"
     >
       <ul className="grid h-full grid-cols-5 items-center">

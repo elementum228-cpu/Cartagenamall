@@ -123,6 +123,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
 
   return (
     <MotionConfig reducedMotion="user">
+      <div className="tour-hide">
       {use3D && <PinchHint hidden={dimmed || !!peekId} />}
       {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
       {/* cada cápsula flota sola sobre el mapa (sin bandeja); la fila no captura toques fuera de ellas */}
@@ -270,6 +271,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         </div>
       </div>
       {use3D && desktop && !dimmed && !overview && <ControlsLegend />}
+      </div>
     </MotionConfig>
   )
 }
