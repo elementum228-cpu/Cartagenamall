@@ -31,7 +31,7 @@ export interface LabelEntry {
 }
 
 const entries = new Set<LabelEntry>()
-if (import.meta.env.DEV) (window as unknown as { __cmLabels?: unknown }).__cmLabels = entries
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __cmLabels?: unknown }).__cmLabels = entries
 
 export function registerLabel(e: LabelEntry) {
   entries.add(e)
