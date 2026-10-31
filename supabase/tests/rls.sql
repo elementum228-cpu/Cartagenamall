@@ -179,7 +179,27 @@ reset role;
 select pg_temp.como('11111111-1111-1111-1111-111111111111');
 do $$ begin
   assert pg_temp.visibles('demo_invites') = 3, 'el admin ve los códigos';
-  assert (select count(*) from public.demo_visits where code = 'PRUEBA-AB12') = 2, 'entradas anotadas una vez por dispositivo';
+  assert (select count(*) from public.demo_visits where code = 'PRUEBA-AB12' and not blocked) = 2, 'entradas anotadas una vez por dispositivo';
+  assert (select count(*) from public.demo_visits where code = 'PRUEBA-AB12' and blocked) = 1, 'intento bloqueado anotado';
+  -- invitación de un solo dispositivo (por defecto): el enlace reenviado se bloquea
+  insert into public.demo_invites (code, name, expires_at) values ('UNICO-12345', 'Pedro', now() + interval '7 days');
+end $$;
+reset role;
+select pg_temp.como(null);
+do $$ begin
+  assert (public.demo_enter('UNICO-12345', 'celular-pedro') ->> 'ok')::boolean, 'el primero lo toma';
+  assert public.demo_enter('UNICO-12345', 'celular-amigo') ->> 'reason' = 'full', 'reenviado: bloqueado';
+  assert (public.demo_enter('UNICO-12345', 'celular-pedro') ->> 'ok')::boolean, 'el dueño sigue entrando';
+end $$;
+reset role;
+select pg_temp.como('11111111-1111-1111-1111-111111111111');
+do $$ begin
+  delete from public.demo_visits where code = 'UNICO-12345';
+end $$;
+reset role;
+select pg_temp.como(null);
+do $$ begin
+  assert (public.demo_enter('UNICO-12345', 'celular-nuevo') ->> 'ok')::boolean, 'liberado: lo toma el siguiente';
 end $$;
 reset role;
 select 'OK: reglas de acceso verificadas' as resultado;

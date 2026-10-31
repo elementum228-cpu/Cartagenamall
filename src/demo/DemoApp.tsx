@@ -11,7 +11,7 @@ import { Landing } from './Landing'
 const REASON: Record<Exclude<DemoAccess, { ok: true }>['reason'], string> = {
   invalid: 'Ese código no es válido o fue anulado.',
   expired: 'Esta invitación ya venció.',
-  full: 'Esta invitación ya se usó en el máximo de dispositivos.',
+  full: 'Esta invitación es personal y ya está abierta en otro dispositivo. Pídele a quien te la compartió una propia.',
   offline: 'No pudimos verificar el código. Revisa tu conexión e inténtalo de nuevo.',
   none: 'Escribe tu código de invitación.',
 }

@@ -1,4 +1,4 @@
-import { Ban, CalendarPlus, Copy, KeyRound, Link2, RotateCcw, Trash2, UserPlus } from 'lucide-react'
+import { Ban, CalendarPlus, Copy, KeyRound, Link2, RotateCcw, ShieldAlert, Smartphone, Trash2, UserPlus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { copyText } from '../lib/clipboard'
 import { formatDateTime } from '../lib/format'
@@ -21,6 +21,8 @@ interface Visit {
   code: string
   device: string
   at: string
+  /** Intento desde un dispositivo de más (enlace reenviado): no entró. */
+  blocked?: boolean
 }
 
 const URL_KEY = 'cm:demo-url'
@@ -57,13 +59,13 @@ export function DemoInvites() {
   const [demoUrl, setDemoUrl] = useState(readUrl)
   const [name, setName] = useState('')
   const [days, setDays] = useState(7)
-  const [devices, setDevices] = useState(2)
+  const [devices, setDevices] = useState(1)
 
   const load = useCallback(async () => {
     if (!supabase) return setLoading(false)
     const [inv, vis] = await Promise.all([
       supabase.from('demo_invites').select('*').order('created_at', { ascending: false }),
-      supabase.from('demo_visits').select('code, device, at').order('at', { ascending: false }).limit(1000),
+      supabase.from('demo_visits').select('code, device, at, blocked').order('at', { ascending: false }).limit(1000),
     ])
     if (inv.error) toast('No se pudieron cargar las invitaciones. ¿Corriste el SQL 0003 en Supabase?', 'error')
     setInvites((inv.data as Invite[]) ?? [])
@@ -76,9 +78,14 @@ export function DemoInvites() {
   }, [load])
 
   const stats = useMemo(() => {
-    const m: Record<string, { devices: Set<string>; entries: number; last: string | null }> = {}
+    const m: Record<string, { devices: Set<string>; entries: number; last: string | null; blocked: Set<string>; lastBlocked: string | null }> = {}
     for (const v of visits) {
-      const s = (m[v.code] ??= { devices: new Set(), entries: 0, last: null })
+      const s = (m[v.code] ??= { devices: new Set(), entries: 0, last: null, blocked: new Set(), lastBlocked: null })
+      if (v.blocked) {
+        s.blocked.add(v.device)
+        if (!s.lastBlocked || v.at > s.lastBlocked) s.lastBlocked = v.at
+        continue
+      }
       s.devices.add(v.device)
       s.entries++
       if (!s.last || v.at > s.last) s.last = v.at
@@ -110,6 +117,13 @@ export function DemoInvites() {
     if (!supabase) return
     const { error } = await supabase.from('demo_invites').update(patch).eq('code', code)
     if (error) toast('No se pudo guardar el cambio.', 'error')
+    await load()
+  }
+  /** Si la persona cambió de celular: se borran sus dispositivos y el próximo que lo abra lo toma. */
+  const release = async (inv: Invite) => {
+    if (!supabase) return
+    const { error } = await supabase.from('demo_visits').delete().eq('code', inv.code)
+    toast(error ? 'No se pudo liberar el enlace.' : `Enlace de ${inv.name} liberado: el próximo dispositivo que lo abra lo toma.`, error ? 'error' : 'success')
     await load()
   }
   const remove = async (code: string) => {
@@ -174,7 +188,7 @@ export function DemoInvites() {
             <select className={input} value={devices} onChange={(e) => setDevices(Number(e.target.value))}>
               {[1, 2, 3, 5, 10].map((n) => (
                 <option key={n} value={n}>
-                  {n === 1 ? '1 dispositivo' : `Hasta ${n}`}
+                  {n === 1 ? 'Solo 1 (no se puede reenviar)' : `Hasta ${n}`}
                 </option>
               ))}
             </select>
@@ -203,8 +217,13 @@ export function DemoInvites() {
                       {inv.name} <span className="font-mono text-sm font-semibold text-ink-soft">· {inv.code}</span>
                     </p>
                     <p className="mt-0.5 text-xs text-ink-soft">
-                      Vence {formatDateTime(inv.expires_at)} · {s ? s.devices.size : 0}/{inv.max_devices} dispositivos · {s ? `${s.entries} ${s.entries === 1 ? 'entrada' : 'entradas'}, la última ${formatDateTime(s.last!)}` : 'aún no ha entrado'}
+                      Vence {formatDateTime(inv.expires_at)} · {s ? s.devices.size : 0}/{inv.max_devices} {inv.max_devices === 1 ? 'dispositivo' : 'dispositivos'} · {s?.last ? `${s.entries} ${s.entries === 1 ? 'entrada' : 'entradas'}, la última ${formatDateTime(s.last)}` : 'aún no ha entrado'}
                     </p>
+                    {s && s.blocked.size > 0 && (
+                      <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-red-600">
+                        <ShieldAlert className="size-3.5 shrink-0" /> Bloqueado: lo intentaron abrir desde {s.blocked.size === 1 ? 'otro dispositivo' : `${s.blocked.size} dispositivos más`} (último intento {formatDateTime(s.lastBlocked!)}). Parece que lo reenviaron.
+                      </p>
+                    )}
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${status === 'Activa' ? 'bg-emerald-100 text-emerald-800' : 'bg-sand-2 text-ink-soft'}`}>{status}</span>
                 </div>
@@ -212,6 +231,11 @@ export function DemoInvites() {
                   {status === 'Activa' && (
                     <button className={btn.ghost} onClick={() => void share(inv)}>
                       <Copy className="size-4" /> Copiar enlace
+                    </button>
+                  )}
+                  {s && (s.devices.size > 0 || s.blocked.size > 0) && (
+                    <button className={btn.ghost} onClick={() => void release(inv)} title="Borra los dispositivos registrados: el próximo que abra el enlace lo toma">
+                      <Smartphone className="size-4" /> Liberar enlace
                     </button>
                   )}
                   <button className={btn.ghost} onClick={() => void update(inv.code, { expires_at: new Date(Math.max(now, Date.parse(inv.expires_at)) + 7 * 864e5).toISOString() })}>
