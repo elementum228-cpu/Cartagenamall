@@ -156,7 +156,7 @@ function ModeSwitch() {
     </button>
   )
   return (
-    <div className="flex rounded-full bg-white/40 p-1 ring-1 ring-white/60" role="group" aria-label="Modo de experiencia">
+    <div className="flex p-1" role="group" aria-label="Modo de experiencia">
       {item('explore', 'Explorar', <Compass className="size-4" strokeWidth={1.8} />, '/')}
       {item('shop', 'Comprar', <ShoppingBag className="size-4" strokeWidth={1.8} />, '/comprar')}
     </div>
@@ -165,7 +165,7 @@ function ModeSwitch() {
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-full px-3 py-1.5 text-[13.5px] font-semibold transition duration-200 ${isActive ? 'bg-teal/12 text-teal' : 'text-ink-soft hover:text-ink'}`
-const iconBtn = 'relative grid size-10 place-items-center rounded-full text-ink transition duration-200 hover:bg-white/55 active:scale-[0.96]'
+const iconBtn = 'glass relative grid size-11 place-items-center rounded-full text-ink shadow-none transition duration-200 active:scale-[0.96]'
 
 /** Barra superior flotante de vidrio. */
 function TopBar() {
@@ -173,15 +173,16 @@ function TopBar() {
   const navigate = useNavigate()
   const compare = usePersonal((s) => s.compare.length)
   return (
-    <header className="tour-hide chrome-in-top glass fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 rounded-[22px] pr-1.5 pl-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] md:rounded-[24px] md:pr-2">
+    // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
+    <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
       <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-2xl pr-2" aria-label="Cartagena Mall, inicio">
-        <MallMark />
-        <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Cartagena Mall</span>
+        <MallMark size={40} />
+        <span className="chrome-text text-[17px] font-bold tracking-[-0.01em]">Cartagena Mall</span>
       </Link>
-      <div className="mx-auto hidden md:block">
+      <div className="glass mx-auto hidden rounded-full md:block">
         <ModeSwitch />
       </div>
-      <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Secciones">
+      <nav className="glass hidden items-center gap-0.5 rounded-full p-1 lg:flex" aria-label="Secciones">
         <NavLink to="/ofertas" className={navLink}>
           Ofertas
         </NavLink>
@@ -195,7 +196,7 @@ function TopBar() {
           Admin
         </NavLink>
       </nav>
-      <div className="ml-auto flex items-center gap-0.5 md:ml-0">
+      <div className="ml-auto flex items-center gap-2 md:ml-0">
         <button className={iconBtn} onClick={() => navigate('/comprar?foco=1')} aria-label="Buscar productos">
           <Search className="size-[21px]" strokeWidth={1.8} />
         </button>
@@ -208,10 +209,10 @@ function TopBar() {
             <Badge n={compare} />
           </Link>
         )}
-        <NavLink to="/entrar" className={({ isActive }) => `${iconBtn} ${isActive ? 'bg-teal/12 text-teal' : ''}`} aria-label="Perfil: cuenta, Mi negocio, favoritos y administración">
+        <NavLink to="/entrar" className={({ isActive }) => `${iconBtn} ${isActive ? '!bg-teal !text-white' : ''}`} aria-label="Perfil: cuenta, Mi negocio, favoritos y administración">
           <UserRound className="size-[21px]" strokeWidth={1.8} />
         </NavLink>
-        <Link to="/carrito" className="relative grid size-10 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden" aria-label={`Carrito, ${count} productos`}>
+        <Link to="/carrito" className="relative grid size-11 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden" aria-label={`Carrito, ${count} productos`}>
           <ShoppingCart className="size-[19px]" strokeWidth={1.9} />
           <Badge n={count} />
         </Link>

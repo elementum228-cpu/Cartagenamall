@@ -39,8 +39,10 @@ export function ExploreView({ active }: { active: boolean }) {
   // De noche, mientras se explora, las barras y controles pasan a vidrio ahumado (ver index.css).
   useEffect(() => {
     document.documentElement.classList.toggle('theme-night', active && night)
-    return () => document.documentElement.classList.remove('theme-night')
-  }, [active, night])
+    // sobre el mapa 3D el nombre del mall va en blanco (el fondo es agua y muralla, no la arena)
+    document.documentElement.classList.toggle('on-map', active && use3D)
+    return () => document.documentElement.classList.remove('theme-night', 'on-map')
+  }, [active, night, use3D])
 
   // En el mapa, un pellizco nunca debe agrandar la página entera (eso "rompe" la vista en móvil):
   // los gestos de dos dedos son solo para el zoom del mundo 3D.
