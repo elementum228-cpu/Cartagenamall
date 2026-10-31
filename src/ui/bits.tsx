@@ -55,6 +55,8 @@ export function StoreLogo({ store, size = 44 }: { store: Pick<Store, 'logoText' 
     return (
       <img
         src={store.logo}
+        // mismo modo que los letreros 3D: así la copia en caché sirve para ambos (ver labelTexture)
+        crossOrigin={store.logo.startsWith('data:') ? undefined : 'anonymous'}
         alt=""
         aria-hidden
         className="shrink-0 rounded-2xl bg-white object-contain shadow-soft ring-1 ring-line"

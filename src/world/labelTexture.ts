@@ -290,13 +290,16 @@ export function getStoreSign(name: string, color: string, sub?: string, logo?: s
     const img = new Image()
     // Logos en Supabase Storage (otro dominio): sin crossOrigin el lienzo queda «contaminado» y
     // WebGL no puede usarlo, y el cartel se vería en blanco.
-    if (!logo.startsWith('data:')) img.crossOrigin = 'anonymous'
+    // Además la URL lleva una marca propia: si el navegador ya guardó el logo en caché pedido sin
+    // CORS (una <img> normal), esa copia no trae el permiso y el letrero quedaría sin logo.
+    const remote = !logo.startsWith('data:')
+    if (remote) img.crossOrigin = 'anonymous'
     img.onload = () => {
       if (!usableImage(img)) return // se queda el cartel con el nombre
       draw(img)
       texture.needsUpdate = true
     }
-    img.src = logo
+    img.src = remote ? `${logo}${logo.includes('?') ? '&' : '?'}cm=3d` : logo
   }
   const label = { texture, aspect: W / H }
   cache.set(key, label)

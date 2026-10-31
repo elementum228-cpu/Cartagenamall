@@ -41,7 +41,7 @@ const ICONS: Record<ProductIcon, LucideIcon> = {
  * con el color de la tienda y de la primera variante, para que el catálogo no se vea vacío.
  */
 export function ProductImage({ product, brandColor, className = '' }: { product: Product; brandColor: string; className?: string }) {
-  if (product.image) return <img src={product.image} alt={product.name} loading="lazy" className={`object-cover ${className}`} />
+  if (product.image) return <img src={product.image} crossOrigin={product.image.startsWith('data:') ? undefined : 'anonymous'} alt={product.name} loading="lazy" className={`object-cover ${className}`} />
   const Icon = ICONS[product.icon] ?? ShoppingBag
   const swatch = product.variants.find((v) => v.swatch)?.swatch
   return (
