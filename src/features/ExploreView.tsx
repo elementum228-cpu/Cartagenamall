@@ -125,10 +125,12 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
     <>
       {use3D && <PinchHint hidden={dimmed || !!peekId} />}
       {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
+      {/* cada cápsula flota sola sobre el mapa (sin bandeja); la fila no captura toques fuera de ellas */}
       <div
-        className={`glass-tray absolute top-[var(--chrome-top)] right-3 left-3 z-10 overflow-hidden rounded-[24px] transition-opacity duration-200 md:right-auto md:left-5 md:max-w-[calc(100%-40px)] ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
+        className={`scrollbar-none pointer-events-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex gap-2.5 overflow-x-auto px-3 pb-3 transition-opacity duration-200 md:px-5 *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+        role="toolbar"
+        aria-label="Categorías del mall"
       >
-      <div className="scrollbar-none flex gap-1.5 overflow-x-auto p-1.5" role="toolbar" aria-label="Categorías del mall">
         {ZONES.map((z) => {
           const Icon = ZONE_ICON[z.id]
           return (
@@ -153,13 +155,12 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           Cancha
         </button>
       </div>
-      </div>
 
       <FloorSelector use3D={use3D} dimmed={dimmed} />
 
       {/* descubrimientos y oferta relámpago: pills discretas */}
       <div
-        className={`pointer-events-none absolute top-[calc(var(--chrome-top)+58px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+        className={`pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
       >
         <Link to="/ofertas" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
           <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
