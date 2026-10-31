@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { FLOOR_BY_ID, FLOOR_OF_ZONE, ZONE_BY_ID } from '../config/mall'
 import type { Promotion } from '../domain/types'
 import { formatCOP } from '../lib/format'
+import { describeHideSpot, hideSpotZone } from '../promotions/hideSpot'
 import { discounted, isPromotionLive } from '../lib/pricing'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { usePersonal } from '../state/personal'
@@ -122,14 +123,32 @@ function LockedSecret({ promo }: { promo: Promotion }) {
   const { storeById, spaceByStore } = useCatalogMaps()
   const navigate = useNavigate()
   const store = storeById[promo.storeId]
-  const zone = store ? ZONE_BY_ID[store.zoneId] : null
+  // la pista apunta al escondite elegido por la tienda o, si no eligió, a la zona de su local
+  const spot = promo.hideAt
+  const spotZone = spot ? hideSpotZone(spot) : null
+  const zone = spot ? (spotZone ? ZONE_BY_ID[spotZone] : null) : store ? ZONE_BY_ID[store.zoneId] : null
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-line bg-card/70 p-5 text-center">
       <div className="grid size-12 place-items-center rounded-2xl bg-sand-2 text-ink-soft">
         <Lock className="size-5" />
       </div>
       <p className="text-sm font-bold">Oferta por descubrir</p>
-      {zone && <p className="text-xs text-ink-soft">Pista: busca en {FLOOR_BY_ID[FLOOR_OF_ZONE[zone.id]].name} · {zone.name}</p>}
+      {spot ? (
+        <p className="text-xs text-ink-soft">Pista: busca en {describeHideSpot(spot)}</p>
+      ) : (
+        zone && <p className="text-xs text-ink-soft">Pista: busca en {FLOOR_BY_ID[FLOOR_OF_ZONE[zone.id]].name} · {zone.name}</p>
+      )}
+      {spot && !zone && (
+        <button
+          className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-brand"
+          onClick={() => {
+            navigate('/')
+            useUI.getState().enterMall()
+          }}
+        >
+          <MapPin className="size-3.5" /> Ir a la plaza
+        </button>
+      )}
       {zone && (
         <button
           className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-brand"
@@ -143,7 +162,7 @@ function LockedSecret({ promo }: { promo: Promotion }) {
           <MapPin className="size-3.5" /> Ir a la zona
         </button>
       )}
-      {!spaceByStore[promo.storeId] && <p className="text-[11px] text-ink-soft">(La tienda no tiene local asignado)</p>}
+      {!spot && !spaceByStore[promo.storeId] && <p className="text-[11px] text-ink-soft">(La tienda no tiene local asignado)</p>}
     </div>
   )
 }

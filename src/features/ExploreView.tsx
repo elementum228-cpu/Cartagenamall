@@ -210,7 +210,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
                 {desktop
                   ? 'Arrastra con el mouse (o mantén Espacio y arrastra) para recorrer. Rueda para acercarte. Toca una tienda o un espacio libre.'
                   : 'Desliza un dedo para recorrer y pellizca con dos para acercarte. Toca una tienda o un espacio libre.'}{' '}
-                Cerca de las tiendas hay ofertas escondidas.
+                Hay ofertas escondidas por todo el mall: acércate a los destellos dorados.
               </p>
               <button className="mt-1.5 text-xs font-semibold text-teal" onClick={setHintSeen}>
                 Entendido

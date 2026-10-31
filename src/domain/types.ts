@@ -135,6 +135,12 @@ export interface Product {
 
 export type PromotionType = 'normal' | 'flash' | 'secret'
 
+export interface HideSpot {
+  floorId: FloorId
+  x: number
+  z: number
+}
+
 export interface Promotion {
   id: string
   type: PromotionType
@@ -145,6 +151,11 @@ export interface Promotion {
   discountPercent: number
   /** Código para promociones escondidas. */
   code?: string
+  /**
+   * Escondite elegido por el comerciante para una promoción escondida (coordenadas del piso). Sin
+   * escondite, la gema aparece junto a su local.
+   */
+  hideAt?: HideSpot
   startsAt: string
   endsAt: string | null
   /** Duración usada al (re)activar una oferta relámpago desde /admin. */

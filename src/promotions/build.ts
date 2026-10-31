@@ -1,4 +1,4 @@
-import type { Promotion, PromotionType } from '../domain/types'
+import type { HideSpot, Promotion, PromotionType } from '../domain/types'
 
 /** Datos que llena un comerciante (o el admin) para lanzar una promoción. */
 export interface PromotionDraft {
@@ -11,6 +11,8 @@ export interface PromotionDraft {
   /** Duración en minutos (relámpago y escondida). Las normales no vencen. */
   minutes: number
   code?: string
+  /** Escondite de una promoción escondida; sin él, junto al local. */
+  hideAt?: HideSpot | null
 }
 
 export const PROMO_TYPE_NAME: Record<PromotionType, string> = { normal: 'Normal', flash: 'Relámpago', secret: 'Escondida' }
@@ -39,6 +41,7 @@ export function buildPromotion(d: PromotionDraft, now: number, takenIds: Set<str
     description: '',
     discountPercent: Math.round(d.discountPercent),
     code: d.type === 'secret' ? d.code!.trim().toUpperCase() : undefined,
+    ...(d.type === 'secret' && d.hideAt ? { hideAt: d.hideAt } : {}),
     startsAt: new Date(now).toISOString(),
     endsAt: d.type === 'normal' ? null : new Date(now + d.minutes * 60_000).toISOString(),
     durationHours: d.type === 'normal' ? undefined : d.minutes / 60,

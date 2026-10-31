@@ -1,8 +1,8 @@
 import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
 import type * as THREE from 'three'
-import { SPACE_BY_ID, spaceFrontPoint } from '../config/mall'
 import type { Promotion } from '../domain/types'
+import { resolveHideSpot, type ResolvedSpot } from '../promotions/hideSpot'
 import { cameraState } from './cameraState'
 import { GEO, mat } from './materials'
 import { lightPoolMat } from './night'
@@ -20,16 +20,11 @@ const HINT_COUNT = 6
 const SPOT = lightPoolMat('#ffcc4d', 0.9, 0.35)
 
 /**
- * Oferta escondida: una gema que solo aparece cuando la persona explora de cerca la tienda.
- * No interrumpe: no abre nada sola, hay que tocarla.
+ * Oferta escondida: una gema que solo aparece cuando la persona explora de cerca su escondite (el
+ * que eligió el comerciante, o junto a su local). No interrumpe: no abre nada sola, hay que tocarla.
  */
-function Marker({ promo, spaceId, interactive, onOpen }: { promo: Promotion; spaceId: string; interactive: boolean; onOpen: (id: string) => void }) {
-  const space = SPACE_BY_ID[spaceId]
-  const [x, z] = spaceFrontPoint(space, 1.4)
-  // Un poco hacia un costado, para no tapar la entrada.
-  const side = space.type === 'island' ? 1.6 : space.size[0] * 0.32
-  const px = x + Math.cos(space.rotation) * side
-  const pz = z - Math.sin(space.rotation) * side
+function Marker({ promo, spot, interactive, onOpen }: { promo: Promotion; spot: ResolvedSpot; interactive: boolean; onOpen: (id: string) => void }) {
+  const [px, pz] = spot.at
   const group = useRef<THREE.Group>(null)
   const gem = useRef<THREE.Mesh>(null)
   const reveal = useRef(0)
@@ -38,10 +33,10 @@ function Marker({ promo, spaceId, interactive, onOpen }: { promo: Promotion; spa
     const g = group.current
     if (!g) return
     // Posición en el mundo = origen actual del piso + posición en el piso.
-    const origin = liveOrigins[space.floorId]
+    const origin = liveOrigins[spot.floorId]
     const dx = cameraState.target.x - cameraState.viewOffset.x - (origin.x + px)
     const dz = cameraState.target.z - cameraState.viewOffset.z - (origin.z + pz)
-    const near = Math.hypot(dx, dz) < REVEAL_DISTANCE + space.size[0] * 0.5 && cameraState.zoom > cameraState.fitZoom * REVEAL_ZOOM_RATIO
+    const near = Math.hypot(dx, dz) < REVEAL_DISTANCE + spot.extent && cameraState.zoom > cameraState.fitZoom * REVEAL_ZOOM_RATIO
     reveal.current += ((near ? 1 : 0) - reveal.current) * Math.min(1, dt * 4)
     const s = reveal.current
     g.visible = s > 0.02
@@ -51,10 +46,10 @@ function Marker({ promo, spaceId, interactive, onOpen }: { promo: Promotion; spa
     if (gem.current) gem.current.rotation.y = t * 1.6
   })
 
-  // Pista: destellos dorados sobre la tienda, visibles desde lejos mientras la gema sigue oculta.
+  // Pista: destellos dorados sobre el escondite, visibles desde lejos mientras la gema sigue oculta.
   const hints = useRef<THREE.Group>(null)
-  const hintY = space.type === 'premium' ? 4.6 : 3.8
-  const spot = useRef<THREE.Mesh>(null)
+  const hintY = spot.hintY
+  const glow = useRef<THREE.Mesh>(null)
   useFrame(({ clock }) => {
     const h = hints.current
     if (!h) return
@@ -62,9 +57,9 @@ function Marker({ promo, spaceId, interactive, onOpen }: { promo: Promotion; spa
     const fade = 1 - reveal.current
     const show = fade > 0.05 && cameraState.zoom > cameraState.fitZoom * 0.95
     h.visible = show
-    if (spot.current) {
-      spot.current.visible = show
-      spot.current.scale.setScalar((1.6 + Math.sin(t * 2) * 0.25) * fade)
+    if (glow.current) {
+      glow.current.visible = show
+      glow.current.scale.setScalar((1.6 + Math.sin(t * 2) * 0.25) * fade)
     }
     if (!show) return
     h.children.forEach((c, i) => {
@@ -78,12 +73,12 @@ function Marker({ promo, spaceId, interactive, onOpen }: { promo: Promotion; spa
 
   return (
     <group position={[px, 0, pz]}>
-      <group ref={hints} position={[space.position[0] - px, 0, space.position[1] - pz]}>
+      <group ref={hints} position={[spot.hintAt[0] - px, 0, spot.hintAt[1] - pz]}>
         {Array.from({ length: HINT_COUNT }, (_, i) => (
           <mesh key={i} geometry={GEO.octa} material={sparkle} />
         ))}
       </group>
-      <mesh ref={spot} geometry={GEO.plane} material={SPOT} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.26, 0]} />
+      <mesh ref={glow} geometry={GEO.plane} material={SPOT} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.26, 0]} />
       <group ref={group} visible={false}>
         <mesh
           ref={gem}
@@ -122,7 +117,7 @@ function Marker({ promo, spaceId, interactive, onOpen }: { promo: Promotion; spa
   )
 }
 
-/** Ofertas escondidas de las tiendas de un piso. */
+/** Ofertas escondidas de un piso. */
 export function SecretMarkers({
   floorId,
   promos,
@@ -140,11 +135,12 @@ export function SecretMarkers({
 }) {
   return (
     <>
-      {promos
-        .filter((p) => !hidden.includes(p.id) && spaceByStore[p.storeId] && SPACE_BY_ID[spaceByStore[p.storeId]]?.floorId === floorId)
-        .map((p) => (
-          <Marker key={p.id} promo={p} spaceId={spaceByStore[p.storeId]} interactive={interactive} onOpen={onOpen} />
-        ))}
+      {promos.map((p) => {
+        if (hidden.includes(p.id)) return null
+        const spot = resolveHideSpot(p, spaceByStore)
+        if (spot?.floorId !== floorId) return null
+        return <Marker key={`${p.id}@${spot.at.join(',')}`} promo={p} spot={spot} interactive={interactive} onOpen={onOpen} />
+      })}
     </>
   )
 }

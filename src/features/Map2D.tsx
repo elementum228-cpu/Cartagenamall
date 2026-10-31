@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { FLOOR_BY_ID, FOOD_LAYOUT, LAYOUT, SPACES, ZONE_BY_ID } from '../config/mall'
+import type { FloorConfig } from '../domain/types'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useClaims } from '../state/claims'
 import { useUI } from '../state/ui'
@@ -27,11 +28,7 @@ export function Map2D({ reason }: { reason?: string }) {
         m[e.spaceId] = { discount: Math.max(m[e.spaceId]?.discount ?? 0, e.discount), playing: (m[e.spaceId]?.playing ?? false) || e.spotlight === 'playing' }
     return m
   }, [events])
-  const E = LAYOUT.wingEnd + 1
-  const P = LAYOUT.plazaHalf
-  const W = LAYOUT.wingHalfWidth
-  const FH = FOOD_LAYOUT.half
-  const TR = FOOD_LAYOUT.terrace
+  const E = PLAN_EXTENT
 
   return (
     <div className="absolute inset-0 overflow-auto">
@@ -42,44 +39,7 @@ export function Map2D({ reason }: { reason?: string }) {
           <span className="font-semibold text-ink-soft max-md:hidden"> · {floor.subtitle}</span>
         </p>
         <svg viewBox={`${-E} ${-E} ${E * 2} ${E * 2}`} className="w-full max-w-[600px]" role="group" aria-label={`Plano 2D del ${floor.name}`}>
-          <circle r={E} fill="#ead9bb" />
-          {floor.layout === 'cross' ? (
-            <>
-              {/* planta en cruz */}
-              <rect x={-P} y={-P} width={P * 2} height={P * 2} fill="#eadcc4" />
-              {floor.zones.map((z) => {
-                const vertical = Math.abs(Math.sin(z.angle)) < 0.5
-                const sign = vertical ? Math.cos(z.angle) : Math.sin(z.angle)
-                const rect = vertical
-                  ? { x: -W, y: sign > 0 ? P : -E + 1, width: W * 2, height: E - 1 - P }
-                  : { x: sign > 0 ? P : -E + 1, y: -W, width: E - 1 - P, height: W * 2 }
-                const lx = vertical ? 0 : sign * (P + 9)
-                const ly = vertical ? sign * (P + 9) : 0
-                return (
-                  <g key={z.id}>
-                    <rect {...rect} fill="#f7f2e8" stroke="#dcc8a6" strokeWidth={0.4} />
-                    <text x={lx} y={ly} textAnchor="middle" fontSize={1.6} fontWeight={800} fill={z.color} opacity={0.35}>
-                      {z.id}
-                    </text>
-                  </g>
-                )
-              })}
-              <circle r={2.7} fill="#7cc4c9" />
-            </>
-          ) : (
-            <>
-              {/* terraza gastronómica: losa, terraza con pérgola y llegada de las escaleras */}
-              <rect x={-FH} y={-FH} width={FH * 2} height={FH * 2} fill="#f7f2e8" stroke="#dcc8a6" strokeWidth={0.4} />
-              <rect x={TR.x0} y={TR.z0} width={TR.x1 - TR.x0} height={TR.z1 - TR.z0} fill="#dcb78c" opacity={0.7} />
-              <text x={(TR.x0 + TR.x1) / 2} y={(TR.z0 + TR.z1) / 2 + 0.4} textAnchor="middle" fontSize={1.1} fontWeight={800} fill="#8a6340">
-                TERRAZA
-              </text>
-              <rect x={FOOD_LAYOUT.arrival.x - 2.2} y={FH - 1.6} width={4.4} height={1.6} fill="#cfd6da" />
-              <text x={FOOD_LAYOUT.arrival.x} y={FH - 0.5} textAnchor="middle" fontSize={0.75} fontWeight={700} fill="#5b6670">
-                Escaleras
-              </text>
-            </>
-          )}
+          <FloorPlanBase floor={floor} />
           {spaces.map((s) => {
             const store = storeById[assignments[s.id]]
             const zone = ZONE_BY_ID[s.zoneId]
@@ -146,5 +106,59 @@ export function Map2D({ reason }: { reason?: string }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Medio lado del plano 2D (en unidades del mundo): el viewBox va de −PLAN_EXTENT a +PLAN_EXTENT. */
+export const PLAN_EXTENT = LAYOUT.wingEnd + 1
+
+/** Fondo del plano de un piso: planta en cruz (piso 1) o terraza gastronómica (piso 2). */
+export function FloorPlanBase({ floor }: { floor: FloorConfig }) {
+  const E = PLAN_EXTENT
+  const P = LAYOUT.plazaHalf
+  const W = LAYOUT.wingHalfWidth
+  const FH = FOOD_LAYOUT.half
+  const TR = FOOD_LAYOUT.terrace
+  return (
+    <>
+      <circle r={E} fill="#ead9bb" />
+      {floor.layout === 'cross' ? (
+        <>
+          {/* planta en cruz */}
+          <rect x={-P} y={-P} width={P * 2} height={P * 2} fill="#eadcc4" />
+          {floor.zones.map((z) => {
+            const vertical = Math.abs(Math.sin(z.angle)) < 0.5
+            const sign = vertical ? Math.cos(z.angle) : Math.sin(z.angle)
+            const rect = vertical
+              ? { x: -W, y: sign > 0 ? P : -E + 1, width: W * 2, height: E - 1 - P }
+              : { x: sign > 0 ? P : -E + 1, y: -W, width: E - 1 - P, height: W * 2 }
+            const lx = vertical ? 0 : sign * (P + 9)
+            const ly = vertical ? sign * (P + 9) : 0
+            return (
+              <g key={z.id}>
+                <rect {...rect} fill="#f7f2e8" stroke="#dcc8a6" strokeWidth={0.4} />
+                <text x={lx} y={ly} textAnchor="middle" fontSize={1.6} fontWeight={800} fill={z.color} opacity={0.35}>
+                  {z.id}
+                </text>
+              </g>
+            )
+          })}
+          <circle r={2.7} fill="#7cc4c9" />
+        </>
+      ) : (
+        <>
+          {/* terraza gastronómica: losa, terraza con pérgola y llegada de las escaleras */}
+          <rect x={-FH} y={-FH} width={FH * 2} height={FH * 2} fill="#f7f2e8" stroke="#dcc8a6" strokeWidth={0.4} />
+          <rect x={TR.x0} y={TR.z0} width={TR.x1 - TR.x0} height={TR.z1 - TR.z0} fill="#dcb78c" opacity={0.7} />
+          <text x={(TR.x0 + TR.x1) / 2} y={(TR.z0 + TR.z1) / 2 + 0.4} textAnchor="middle" fontSize={1.1} fontWeight={800} fill="#8a6340">
+            TERRAZA
+          </text>
+          <rect x={FOOD_LAYOUT.arrival.x - 2.2} y={FH - 1.6} width={4.4} height={1.6} fill="#cfd6da" />
+          <text x={FOOD_LAYOUT.arrival.x} y={FH - 0.5} textAnchor="middle" fontSize={0.75} fontWeight={700} fill="#5b6670">
+            Escaleras
+          </text>
+        </>
+      )}
+    </>
   )
 }

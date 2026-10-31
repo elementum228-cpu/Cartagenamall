@@ -2,7 +2,7 @@ import { Gem, MapPin, Pause, Play, Plus, RotateCcw, Tag, Trash2, X, Zap } from '
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPACE_BY_ID } from '../config/mall'
-import type { Promotion, PromotionType, Store } from '../domain/types'
+import type { HideSpot, Promotion, PromotionType, Store } from '../domain/types'
 import { appClock } from '../lib/clock'
 import { formatCOP, formatDateTime } from '../lib/format'
 import { discounted, isPromotionLive } from '../lib/pricing'
@@ -11,6 +11,8 @@ import { MAX_DISCOUNT, MIN_DISCOUNT, PROMO_TYPE_NAME, buildPromotion, validatePr
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useUI } from '../state/ui'
 import { Countdown, EmptyState, btn, input } from '../ui/bits'
+import { describeHideSpot } from '../promotions/hideSpot'
+import { HideSpotPicker } from './HideSpotPicker'
 
 // Promociones del comerciante: las crea, pausa, relanza y borra para su propia tienda. Una oferta
 // relámpago nueva se presenta en el mall (local iluminado, cartel grande y visitantes que acuden).
@@ -28,7 +30,7 @@ const DURATIONS: { minutes: number; label: string }[] = [
 const TYPE_HELP: Record<PromotionType, string> = {
   flash: 'Con contador. Al lanzarla, tu local se ilumina en el mall y los visitantes se acercan.',
   normal: 'Descuento en tu tienda, sin vencimiento hasta que la pauses.',
-  secret: 'No se muestra: aparece como una pista cerca de tu local y se revela al tocarla.',
+  secret: 'No se muestra: la escondes donde quieras del mall y se revela cuando alguien la encuentra.',
 }
 
 const TYPE_ICON = { flash: Zap, normal: Tag, secret: Gem } as const
@@ -76,6 +78,8 @@ function PromotionRow({ promo, store, now }: { promo: Promotion; store: Store; n
   const toast = useUI((s) => s.toast)
   const showInMall = useShowInMall(store)
   const [armed, setArmed] = useState(false)
+  const [moving, setMoving] = useState(false)
+  const upsert = useCatalog((s) => s.upsertPromotion)
   const product = productById[promo.productId]
   const live = isPromotionLive(promo, now)
   const expired = !!promo.endsAt && Date.parse(promo.endsAt) <= now
@@ -104,6 +108,11 @@ function PromotionRow({ promo, store, now }: { promo: Promotion; store: Store; n
             )}
             {promo.code && <span className="font-mono"> · código {promo.code}</span>}
           </p>
+          {promo.type === 'secret' && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-ink-soft">
+              <Gem className="size-3 text-amber" /> {promo.hideAt ? describeHideSpot(promo.hideAt) : 'Junto a tu local'}
+            </p>
+          )}
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
             <span className={`rounded-full px-2 py-0.5 font-bold ${live ? 'bg-emerald-100 text-emerald-800' : 'bg-sand-2 text-ink-soft'}`}>{status}</span>
             {live && promo.endsAt && (
@@ -115,7 +124,26 @@ function PromotionRow({ promo, store, now }: { promo: Promotion; store: Store; n
           </p>
         </div>
       </div>
+      {moving && (
+        <div className="mt-3 rounded-2xl bg-sand p-3">
+          <HideSpotPicker
+            storeId={store.id}
+            value={promo.hideAt ?? null}
+            onChange={(spot) => upsert({ ...promo, hideAt: spot ?? undefined })}
+          />
+          <div className="mt-2 flex justify-end">
+            <button className={btn.secondary} onClick={() => setMoving(false)}>
+              Listo
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap justify-end gap-1.5">
+        {promo.type === 'secret' && !moving && (
+          <button className={btn.ghost} onClick={() => setMoving(true)}>
+            <MapPin className="size-4 text-brand" /> Cambiar escondite
+          </button>
+        )}
         {live && promo.type === 'flash' && (
           <button className={btn.ghost} onClick={showInMall}>
             <MapPin className="size-4 text-brand" /> Ver en el mall
@@ -165,6 +193,7 @@ function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) 
   const [minutes, setMinutes] = useState(30)
   const [title, setTitle] = useState('')
   const [code, setCode] = useState('')
+  const [hideAt, setHideAt] = useState<HideSpot | null>(null)
   const product = mine.find((p) => p.id === productId)
   const draft = {
     type,
@@ -175,9 +204,10 @@ function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) 
     title,
     minutes: type === 'normal' ? 0 : minutes,
     code,
+    hideAt,
   }
-  const error = validatePromotion(draft)
   const placed = !!spaceByStore[store.id]
+  const error = validatePromotion(draft) ?? (type === 'secret' && !hideAt && !placed ? 'Elige en el mapa dónde esconderla.' : null)
 
   if (!mine.length)
     return (
@@ -262,7 +292,8 @@ function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) 
           </label>
         )}
       </div>
-      {!placed && <p className="rounded-2xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900">Tu tienda aún no tiene local en el mall: la oferta se verá en tu ficha y en Comprar, pero no en el mapa.</p>}
+      {type === 'secret' && <HideSpotPicker storeId={store.id} value={hideAt} onChange={setHideAt} />}
+      {!placed && !(type === 'secret' && hideAt) && <p className="rounded-2xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900">Tu tienda aún no tiene local en el mall: la oferta se verá en tu ficha y en Comprar, pero no en el mapa.</p>}
       {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
       <div className="flex justify-end gap-2">
         <button className={btn.secondary} onClick={onDone}>
@@ -278,7 +309,8 @@ function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) 
             if (type === 'flash' && placed) {
               toast('¡Oferta relámpago lanzada! Tu local se ilumina en el mall.', 'success')
               showInMall()
-            } else toast('Promoción creada y activa.', 'success')
+            } else if (type === 'secret') toast(hideAt ? `Oferta escondida en ${describeHideSpot(hideAt)}. ¡A ver quién la encuentra!` : 'Oferta escondida junto a tu local.', 'success')
+            else toast('Promoción creada y activa.', 'success')
           }}
         >
           {type === 'flash' ? 'Lanzar oferta' : 'Crear promoción'}
