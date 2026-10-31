@@ -53,6 +53,13 @@ interface UIState {
   focus: FocusRequest | null
   toasts: Toast[]
   selectSpace: (id: string | null) => void
+  /**
+   * En celulares, tocar un local en el mapa muestra primero una ficha breve (`peek`) sobre el mapa;
+   * `openPeek` abre la ficha completa. En escritorio la ficha completa se abre directo.
+   */
+  peek: boolean
+  peekSpace: (id: string) => void
+  openPeek: () => void
   openStore: (id: string | null) => void
   openProduct: (id: string | null) => void
   openSecret: (id: string | null) => void
@@ -88,7 +95,10 @@ export const useUI = create<UIState>()((set, get) => ({
   secretPromoId: null,
   focus: null,
   toasts: [],
-  selectSpace: (id) => set(id ? { selectedSpaceId: id, openStoreId: null, courtOpen: false } : { selectedSpaceId: null, openStoreId: null }),
+  selectSpace: (id) => set(id ? { selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: false } : { selectedSpaceId: null, openStoreId: null, peek: false }),
+  peek: false,
+  peekSpace: (id) => set({ selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: true }),
+  openPeek: () => set({ peek: false }),
   openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false } : { openStoreId: null, selectedSpaceId: null }),
   courtOpen: false,
   openCourt: (open) => set(open ? { courtOpen: true, selectedSpaceId: null, openStoreId: null } : { courtOpen: false }),

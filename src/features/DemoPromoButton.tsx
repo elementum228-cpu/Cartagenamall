@@ -17,7 +17,7 @@ export function DemoPromoButton({ className, onDone }: { className: string; onDo
   if (live)
     return (
       <button
-        className={`${className} bg-ink text-white`}
+        className={`${className} !bg-deep/85 !text-white`}
         onClick={() => {
           endDemoPromotion()
           toast('Promoción de prueba finalizada.')
@@ -29,7 +29,7 @@ export function DemoPromoButton({ className, onDone }: { className: string; onDo
     )
   return (
     <button
-      className={`${className} bg-white/95`}
+      className={className}
       title="Demostración: activa una oferta ficticia del 30 % en una tienda del piso 1"
       onClick={() => {
         const spaceId = activateDemoPromotion()

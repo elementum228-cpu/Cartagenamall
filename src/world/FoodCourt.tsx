@@ -4,7 +4,7 @@ import { ESCALATOR, FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
-import { getLabel } from './labelTexture'
+import { getGlassPill } from './labelTexture'
 import { GEO, GLASS, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
 
@@ -320,11 +320,11 @@ export function FoodCourtDetail({ detail }: { detail: 'high' | 'low' }) {
 /** Carteles del piso 2: principal y terraza. */
 export function FoodCourtLabels() {
   const floor = FLOOR_BY_ID.P2
-  const title = useMemo(() => getLabel(floor.title, { bg: '#d4842e', fg: '#fff', sub: floor.subtitle }), [floor])
-  const terrace = useMemo(() => getLabel('Terraza', { bg: '#ffffffee', fg: '#8a6340', border: '#dcb78c' }), [])
+  const title = useMemo(() => getGlassPill(floor.title, { dot: '#f7b34b', sub: floor.subtitle }), [floor])
+  const terrace = useMemo(() => getGlassPill('Terraza', { dot: '#d4842e' }), [])
   return (
     <>
-      <ScreenLabel label={title} position={[3, 5.4, 3]} pixelHeight={38} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      <ScreenLabel label={title} position={[3, 5.4, 3]} pixelHeight={36} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       <ScreenLabel label={terrace} position={[(T.x0 + T.x1) / 2, 4, (T.z0 + T.z1) / 2]} pixelHeight={24} minZoomRatio={0.9} priority={LABEL_PRIORITY.section} />
     </>
   )

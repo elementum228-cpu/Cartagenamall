@@ -19,7 +19,7 @@ import { Sheet } from '../ui/Sheet'
 
 /** Ficha comercial de una tienda: se abre al tocarla en el mapa o desde el modo Comprar. */
 export function StoreSheet() {
-  const selectedSpaceId = useUI((s) => s.selectedSpaceId)
+  const selectedSpaceId = useUI((s) => (s.peek ? null : s.selectedSpaceId))
   const openStoreId = useUI((s) => s.openStoreId)
   const assignments = useCatalog((s) => s.assignments)
   const { storeById } = useCatalogMaps()

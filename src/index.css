@@ -1,29 +1,50 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --color-sand: #f4efe6;
-  --color-sand-2: #ebe3d4;
-  --color-card: #fffdf9;
-  --color-ink: #1d2a33;
-  --color-ink-soft: #5b6670;
-  --color-line: #e4dccd;
-  --color-brand: #0f766e;
-  --color-brand-dark: #0b5953;
-  --color-coral: #e0735f;
-  --color-sun: #f5b544;
+  /* Sistema visual «Cartagena de noche»: azul profundo, turquesa, coral suave y luz ámbar. */
+  --font-sans: "Manrope", "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-deep: #062c42;
+  --color-teal: #008d87;
+  --color-teal-bright: #13b9ad;
+  --color-amber: #f7b34b;
+  --color-warm: #f7f5f1;
+  --color-sand: #f7f5f1;
+  --color-sand-2: #ece8e1;
+  --color-card: #fffefc;
+  --color-ink: #10232d;
+  --color-ink-soft: #66737c;
+  --color-line: #e6e1d9;
+  --color-brand: #008d87;
+  --color-brand-dark: #00706b;
+  --color-coral: #f27b68;
+  --color-sun: #f7b34b;
   --color-zone-a: #e0735f;
   --color-zone-b: #3b82a6;
   --color-zone-c: #c2607f;
   --color-zone-d: #5f9a6e;
-  --shadow-soft: 0 1px 2px rgb(29 42 51 / 0.06), 0 8px 24px -8px rgb(29 42 51 / 0.18);
-  --shadow-float: 0 2px 6px rgb(29 42 51 / 0.08), 0 18px 40px -12px rgb(29 42 51 / 0.32);
+  /* sombras largas y suaves, teñidas de azul profundo (nunca negras) */
+  --shadow-soft: 0 1px 2px rgb(6 44 66 / 0.05), 0 10px 30px -10px rgb(6 44 66 / 0.22);
+  --shadow-float: 0 2px 8px rgb(6 44 66 / 0.06), 0 24px 60px -18px rgb(6 44 66 / 0.38);
+  --shadow-glow: 0 10px 30px -8px rgb(0 141 135 / 0.55);
+  --radius-glass: 26px;
 }
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+/* Medidas de las barras flotantes: el mapa y las páginas se acomodan a ellas. */
+:root {
+  --chrome-top: calc(max(10px, env(safe-area-inset-top)) + 56px + 10px);
+  --chrome-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 64px + 10px);
+}
+@media (min-width: 768px) {
+  :root {
+    --chrome-top: calc(max(12px, env(safe-area-inset-top)) + 60px + 12px);
+    --chrome-bottom: 16px;
+  }
 }
 
 body {
@@ -38,8 +59,62 @@ body {
 
 .world-sky {
   background:
-    radial-gradient(120% 80% at 50% 0%, #fff8ee 0%, #f6ecdc 45%, #ead9bf 100%);
+    radial-gradient(120% 85% at 50% 35%, #0e4a68 0%, #083a55 45%, #062c42 100%);
 }
+
+/* Viñeta cinematográfica sobre el mapa: bordes en azul profundo, centro despejado. */
+.world-vignette {
+  background:
+    radial-gradient(130% 95% at 50% 52%, transparent 55%, rgb(6 44 66 / 0.38) 100%),
+    linear-gradient(to bottom, rgb(6 44 66 / 0.18), transparent 22%, transparent 78%, rgb(6 44 66 / 0.22));
+}
+
+/* Superficies de vidrio: blanco cálido translúcido, desenfoque y borde de luz. */
+.glass {
+  background: rgb(247 245 241 / 0.66);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  box-shadow: var(--shadow-float);
+}
+.glass-strong {
+  background: rgb(250 249 246 / 0.84);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow: var(--shadow-float);
+}
+.glass-clear {
+  background: rgb(255 255 255 / 0.16);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.32);
+}
+/* Navegador sin desenfoque: superficies más opacas para mantener la legibilidad. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: rgb(247 245 241 / 0.94); }
+  .glass-strong { background: rgb(250 249 246 / 0.97); }
+  .glass-clear { background: rgb(6 44 66 / 0.55); }
+}
+
+/* Entrada suave de la barra superior y la inferior al cargar. */
+@keyframes chrome-in-top {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes chrome-in-bottom {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.chrome-in-top { animation: chrome-in-top 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.chrome-in-bottom { animation: chrome-in-bottom 280ms 60ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Halo turquesa al tocar una cápsula. */
+@keyframes tap-halo {
+  from { box-shadow: 0 0 0 0 rgb(19 185 173 / 0.45); }
+  to { box-shadow: 0 0 0 10px rgb(19 185 173 / 0); }
+}
+.tap-halo:active { animation: tap-halo 260ms ease-out; }
 
 .world-night {
   background:

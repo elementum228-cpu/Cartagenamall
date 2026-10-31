@@ -86,7 +86,7 @@ export function CartPage() {
         ))}
       </div>
 
-      <aside className="md:sticky md:top-4 md:self-start">
+      <aside className="md:sticky md:top-[calc(var(--chrome-top)+8px)] md:self-start">
         <div className="space-y-3 rounded-3xl border border-line bg-card p-5">
           {groups.map((g) => (
             <div key={g.store?.id} className="flex justify-between text-sm">

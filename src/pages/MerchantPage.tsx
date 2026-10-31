@@ -325,7 +325,7 @@ function ProfileEditor({ store }: { store: Store }) {
         </Field>
       </Card>
 
-      <div className="sticky bottom-20 z-10 flex justify-end gap-2 md:bottom-4">
+      <div className="sticky bottom-[calc(var(--chrome-bottom)+8px)] z-10 flex justify-end gap-2 md:bottom-4">
         {dirty && (
           <button className={btn.secondary} onClick={() => setF(store)}>
             Descartar

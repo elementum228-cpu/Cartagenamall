@@ -30,7 +30,7 @@ export function readableOn(color: string, bg: string, min = 2.2) {
 }
 
 const SCALE = 2
-const FONT = '"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
+const FONT = '"Manrope", "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif'
 
 /**
  * Rótulos como CanvasTexture: no requieren descargar fuentes dentro de WebGL y se cachean por
@@ -148,6 +148,110 @@ export function getGateSign(title: string, tagline: string): Label {
   texture.colorSpace = THREE.SRGBColorSpace
   texture.anisotropy = 8
   const label = { texture, aspect: W / H }
+  cache.set(key, label)
+  return label
+}
+
+/**
+ * Rótulo flotante discreto («pill» de vidrio): blanco translúcido, borde de luz, sombra suave, un
+ * punto de color (o el logo) y texto oscuro; `sub` va en una segunda línea más tenue. Es el estilo
+ * de toda la señalización flotante del mapa (tiendas, pisos, pasillos, cancha).
+ */
+export function getGlassPill(title: string, o: { dot?: string; sub?: string; logo?: string | null } = {}): Label {
+  const key = `pill|${title}|${o.dot ?? ''}|${o.sub ?? ''}|${o.logo ? `${o.logo.length}:${o.logo.slice(-48)}` : ''}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const H = o.sub ? 120 : 92
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')!
+  const titleFont = `700 ${o.sub ? 44 : 46}px ${FONT}`
+  const subFont = `600 30px ${FONT}`
+  ctx.font = titleFont
+  let tw = ctx.measureText(title).width
+  if (o.sub) {
+    ctx.font = subFont
+    tw = Math.max(tw, ctx.measureText(o.sub).width)
+  }
+  const mark = o.logo ? H - 34 : o.dot ? 20 : 0
+  const left = 30 + (mark ? mark + 18 : 0)
+  const W = Math.ceil(left + tw + 36)
+  const pad = 10 // margen para la sombra
+  canvas.width = (W + pad * 2) * SCALE
+  canvas.height = (H + pad * 2) * SCALE
+  ctx.scale(SCALE, SCALE)
+  ctx.translate(pad, pad)
+  const r = H / 2
+  const draw = (img: HTMLImageElement | null) => {
+    ctx.clearRect(-pad, -pad, W + pad * 2, H + pad * 2)
+    ctx.save()
+    ctx.shadowColor = 'rgba(6, 44, 66, 0.28)'
+    ctx.shadowBlur = 14
+    ctx.shadowOffsetY = 4
+    ctx.fillStyle = 'rgba(250, 249, 246, 0.86)'
+    ctx.beginPath()
+    ctx.roundRect(2, 2, W - 4, H - 4, r)
+    ctx.fill()
+    ctx.restore()
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
+    ctx.lineWidth = 3
+    ctx.stroke()
+    if (o.logo) {
+      const d = mark
+      const cx = 30 + d / 2
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(cx, H / 2, d / 2, 0, Math.PI * 2)
+      ctx.fillStyle = '#ffffff'
+      ctx.fill()
+      if (img) {
+        ctx.clip()
+        const k = Math.min(d / img.naturalWidth, d / img.naturalHeight)
+        ctx.drawImage(img, cx - (img.naturalWidth * k) / 2, H / 2 - (img.naturalHeight * k) / 2, img.naturalWidth * k, img.naturalHeight * k)
+      } else if (o.dot) {
+        ctx.fillStyle = o.dot
+        ctx.beginPath()
+        ctx.arc(cx, H / 2, 10, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.restore()
+    } else if (o.dot) {
+      ctx.fillStyle = o.dot
+      ctx.beginPath()
+      ctx.arc(30 + 10, H / 2, 10, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'
+      ctx.lineWidth = 3
+      ctx.stroke()
+    }
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#10232d'
+    ctx.font = titleFont
+    if (o.sub) {
+      ctx.fillText(title, left, 44)
+      ctx.fillStyle = '#66737c'
+      ctx.font = subFont
+      ctx.fillText(o.sub, left, 84)
+    } else ctx.fillText(title, left, H / 2 + 2)
+  }
+  draw(null)
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.anisotropy = 8
+  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.magFilter = THREE.LinearFilter
+  if (o.logo) {
+    const img = new Image()
+    const remote = !o.logo.startsWith('data:')
+    if (remote) img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      if (!usableImage(img)) return
+      draw(img)
+      texture.needsUpdate = true
+    }
+    img.src = remote ? `${o.logo}${o.logo.includes('?') ? '&' : '?'}cm=3d` : o.logo
+  }
+  const label = { texture, aspect: (W + pad * 2) / (H + pad * 2) }
   cache.set(key, label)
   return label
 }

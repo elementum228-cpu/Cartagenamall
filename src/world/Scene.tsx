@@ -108,7 +108,9 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       const space = SPACE_BY_ID[spaceId]
       // Tocar un local de otro piso (vista general) lleva a ese piso.
       if (ui.overview || space.floorId !== ui.activeFloor) ui.setFloor(space.floorId)
-      ui.selectSpace(spaceId)
+      // celular: primero la ficha breve sobre el mapa; escritorio: la ficha completa al lado
+      if (window.matchMedia('(min-width: 768px)').matches) ui.selectSpace(spaceId)
+      else ui.peekSpace(spaceId)
       ui.requestFocus({ kind: 'space', id: spaceId })
       usePrefs.getState().setHintSeen()
     },

@@ -6,7 +6,7 @@ import type { ZoneConfig } from '../domain/types'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
-import { getLabel, getZoneSign } from './labelTexture'
+import { getGlassPill, getZoneSign } from './labelTexture'
 import { GEO, PALETTE, mat, shade } from './materials'
 import { dimLabelMat, glowMat, lightPoolMat } from './night'
 
@@ -153,10 +153,10 @@ export function CrossShell() {
 
 /** Cartel principal del piso y carteles de pasillo (solo señalización: no capturan toques). */
 export function CrossLabels() {
-  const title = useMemo(() => getLabel(P1.title, { bg: '#0f766e', fg: '#fff7ea', sub: P1.subtitle }), [])
+  const title = useMemo(() => getGlassPill(P1.title, { dot: '#008d87', sub: P1.subtitle }), [])
   return (
     <>
-      <ScreenLabel label={title} position={[0, 5.2, 0]} pixelHeight={40} maxZoomRatio={3} priority={LABEL_PRIORITY.floorSign} />
+      <ScreenLabel label={title} position={[0, 5.2, 0]} pixelHeight={36} maxZoomRatio={3} priority={LABEL_PRIORITY.floorSign} />
       {P1.zones.map((z) => (
         <CorridorSign key={z.id} zone={z} />
       ))}
@@ -167,7 +167,7 @@ export function CrossLabels() {
 /** Cartel flotante de pasillo: PASILLO A / Moda… Solo señalización (los chips de zona navegan). */
 export function CorridorSign({ zone }: { zone: ZoneConfig }) {
   const [x, zz] = toWorld([0, 17], zone.angle)
-  const label = getZoneSign(zone.id, zone.name.toUpperCase(), zone.color)
+  const label = getGlassPill(zone.name, { dot: zone.color, sub: `Pasillo ${zone.id}` })
   // Solo de lejos: de cerca se lee el cartel del arco y no se duplica.
-  return <ScreenLabel label={label} position={[x, 7, zz]} pixelHeight={40} maxZoomRatio={1.45} priority={LABEL_PRIORITY.corridor} />
+  return <ScreenLabel label={label} position={[x, 7, zz]} pixelHeight={36} maxZoomRatio={1.45} priority={LABEL_PRIORITY.corridor} />
 }

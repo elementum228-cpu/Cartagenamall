@@ -44,7 +44,7 @@ export function Sheet({
         <>
           {(modal || !desktop) && (
             <motion.div
-              className={`fixed inset-0 ${modal ? 'bg-ink/35 backdrop-blur-[3px]' : 'bg-ink/15 backdrop-blur-[6px]'}`}
+              className={`fixed inset-0 ${modal ? 'bg-deep/40 backdrop-blur-[4px]' : 'bg-deep/20 backdrop-blur-[8px]'}`}
               style={{ zIndex: z }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -60,14 +60,14 @@ export function Sheet({
             aria-label={title}
             className={
               desktop
-                ? 'fixed top-[72px] right-3 bottom-3 flex flex-col overflow-hidden rounded-3xl bg-card shadow-float'
-                : `fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[28px] bg-card shadow-float ${modal ? 'max-h-[90dvh]' : 'h-[76dvh]'}`
+                ? 'glass-strong fixed top-[var(--chrome-top)] right-5 bottom-4 flex flex-col overflow-hidden rounded-[28px]'
+                : `glass-strong fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[32px] ${modal ? 'max-h-[90dvh]' : 'h-[76dvh]'}`
             }
             style={{ zIndex: z + 1, width: desktop ? desktopWidth : undefined }}
             initial={desktop ? { x: desktopWidth + 40, opacity: 0.6 } : { y: '100%' }}
             animate={desktop ? { x: 0, opacity: 1 } : { y: 0 }}
             exit={desktop ? { x: desktopWidth + 40, opacity: 0 } : { y: '100%' }}
-            transition={{ type: 'spring', damping: 32, stiffness: 320 }}
+            transition={{ type: 'spring', damping: 34, stiffness: 360 }}
             drag={desktop ? false : 'y'}
             dragListener={false}
             dragControls={drag}

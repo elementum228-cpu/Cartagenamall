@@ -1,4 +1,4 @@
-import { ArrowRight, Settings, Store } from 'lucide-react'
+import { ArrowRight, ChevronRight, ClipboardList, Heart, Settings, Store, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import { AccountBar, SignInForm } from '../remote/AccountGate'
@@ -10,9 +10,9 @@ export function LoginPage() {
   const s = useSession()
   return (
     <div className="mx-auto max-w-md px-4 pt-8 pb-28">
-      <div className="rounded-3xl border border-line bg-card p-5 shadow-soft">
+      <div className="glass-strong rounded-[28px] p-5">
         <p className="text-xs font-bold tracking-wider text-brand uppercase">Cartagena Mall</p>
-        <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Entrar</h1>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">Tu cuenta</h1>
         <p className="mt-1 text-sm text-ink-soft">Para administradores y dueños de negocio: crea tiendas, sube productos y gestiona pedidos.</p>
 
         {!remoteEnabled() ? (
@@ -48,6 +48,29 @@ export function LoginPage() {
           </div>
         )}
       </div>
+
+      {/* accesos del perfil: lo que en celular no cabe en la barra superior */}
+      <nav aria-label="Accesos" className="glass-strong mt-4 overflow-hidden rounded-[26px] p-1.5">
+        <Shortcut to="/favoritos" icon={Heart} label="Favoritos" hint="Tiendas y productos guardados" />
+        <Shortcut to="/pedidos" icon={ClipboardList} label="Mis pedidos" hint="Estado de tus compras" />
+        <Shortcut to="/mi-negocio" icon={Store} label="Mi negocio" hint="Logo, productos y promociones" />
+        <Shortcut to="/admin" icon={Settings} label="Administración" hint="Gestión del mall y precios" />
+      </nav>
     </div>
+  )
+}
+
+function Shortcut({ to, icon: Icon, label, hint }: { to: string; icon: LucideIcon; label: string; hint: string }) {
+  return (
+    <Link to={to} className="flex items-center gap-3 rounded-[20px] px-3 py-2.5 transition duration-200 hover:bg-white/70 active:scale-[0.99]">
+      <span className="grid size-10 place-items-center rounded-2xl bg-teal/10 text-teal">
+        <Icon className="size-5" strokeWidth={1.8} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold">{label}</span>
+        <span className="block truncate text-xs text-ink-soft">{hint}</span>
+      </span>
+      <ChevronRight className="size-5 text-ink-soft" strokeWidth={1.8} />
+    </Link>
   )
 }

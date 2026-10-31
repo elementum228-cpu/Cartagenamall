@@ -1,4 +1,4 @@
-import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart, Store, UserRound, Zap } from 'lucide-react'
+import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart, UserRound, Zap } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { BrowserRouter, Link, MemoryRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { DoorIntro } from './features/DoorIntro'
@@ -71,15 +71,15 @@ function Shell() {
   }, [location.pathname, exploring])
 
   return (
-    <div className="fixed inset-0 flex flex-col">
-      <TopBar />
-      <main className="relative min-h-0 flex-1">
+    <div className="fixed inset-0">
+      {/* el mapa (o la página) ocupa toda la pantalla; las barras flotan encima */}
+      <main className="absolute inset-0">
         {/* El mundo se mantiene montado: volver a Explorar es inmediato y conserva la cámara. */}
         <div className={exploring ? 'absolute inset-0' : 'invisible absolute inset-0'}>
           <ExploreView active={exploring} />
         </div>
         {!exploring && (
-          <div className="absolute inset-0 overflow-y-auto bg-sand">
+          <div className="absolute inset-0 overflow-y-auto bg-sand pt-[var(--chrome-top)]">
             <Routes>
               <Route path="/comprar" element={<ShopPage />} />
               <Route path="/carrito" element={<CartPage />} />
@@ -103,6 +103,7 @@ function Shell() {
           </div>
         )}
       </main>
+      <TopBar />
       <PromotionEventDriver exploring={exploring} />
       <CompareTray />
       <BottomNav />
@@ -137,74 +138,87 @@ function ModeSwitch() {
     <button
       onClick={() => navigate(to)}
       aria-pressed={mode === m}
-      className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-bold transition ${mode === m ? 'bg-ink text-white shadow-soft' : 'text-ink-soft hover:text-ink'}`}
+      className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition duration-200 active:scale-[0.98] ${mode === m ? 'bg-teal text-white shadow-[var(--shadow-glow)]' : 'text-ink-soft hover:text-ink'}`}
     >
       {icon}
       {label}
     </button>
   )
   return (
-    <div className="flex rounded-full bg-sand-2 p-1" role="group" aria-label="Modo de experiencia">
-      {item('explore', 'Explorar', <Compass className="size-4" />, '/')}
-      {item('shop', 'Comprar', <ShoppingBag className="size-4" />, '/comprar')}
+    <div className="flex rounded-full bg-white/40 p-1 ring-1 ring-white/60" role="group" aria-label="Modo de experiencia">
+      {item('explore', 'Explorar', <Compass className="size-4" strokeWidth={1.8} />, '/')}
+      {item('shop', 'Comprar', <ShoppingBag className="size-4" strokeWidth={1.8} />, '/comprar')}
     </div>
   )
 }
 
+/** Marca: casa minimalista con la puerta en coral, dentro de un cuadrado turquesa redondeado. */
+export function MallMark({ size = 36 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden>
+      <defs>
+        <linearGradient id="mm-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#13B9AD" />
+          <stop offset="1" stopColor="#008D87" />
+        </linearGradient>
+      </defs>
+      <rect width="40" height="40" rx="12" fill="url(#mm-g)" />
+      <path d="M11 19.5 L20 12 L29 19.5 V28.5 H11 Z" fill="none" stroke="#F7F5F1" strokeWidth="2.2" strokeLinejoin="round" />
+      <path d="M17.6 28.5 V23.4 A2.4 2.4 0 0 1 22.4 23.4 V28.5" fill="#F27B68" />
+    </svg>
+  )
+}
+
+const navLink = ({ isActive }: { isActive: boolean }) =>
+  `rounded-full px-3 py-1.5 text-[13.5px] font-semibold transition duration-200 ${isActive ? 'bg-teal/12 text-teal' : 'text-ink-soft hover:text-ink'}`
+const iconBtn = 'relative grid size-10 place-items-center rounded-full text-ink transition duration-200 hover:bg-white/55 active:scale-[0.96]'
+
+/** Barra superior flotante de vidrio. */
 function TopBar() {
   const count = useCartCount()
   const navigate = useNavigate()
   const compare = usePersonal((s) => s.compare.length)
   return (
-    <header className="relative z-30 flex h-[60px] shrink-0 items-center gap-3 border-b border-line/70 bg-card/90 px-3 backdrop-blur md:px-5">
-      <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Cartagena Mall, inicio">
-        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="size-8" />
-        <span className="leading-none">
-          <span className="block text-[15px] font-extrabold tracking-tight">CARTAGENA MALL</span>
-          <span className="hidden text-[10px] font-semibold text-ink-soft sm:block">Tu ciudad. Tu mall. Tu mundo.</span>
-        </span>
+    <header className="chrome-in-top glass fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 rounded-[22px] pr-1.5 pl-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] md:rounded-[24px] md:pr-2">
+      <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-2xl pr-2" aria-label="Cartagena Mall, inicio">
+        <MallMark />
+        <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">Cartagena Mall</span>
       </Link>
       <div className="mx-auto hidden md:block">
         <ModeSwitch />
       </div>
-      <nav className="hidden items-center gap-1 lg:flex">
-        <NavLink to="/ofertas" className={({ isActive }) => `rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'text-brand' : 'text-ink-soft hover:text-ink'}`}>
+      <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Secciones">
+        <NavLink to="/ofertas" className={navLink}>
           Ofertas
         </NavLink>
-        <NavLink to="/pedidos" className={({ isActive }) => `rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'text-brand' : 'text-ink-soft hover:text-ink'}`}>
+        <NavLink to="/pedidos" className={navLink}>
           Pedidos
         </NavLink>
-        <NavLink to="/mi-negocio" className={({ isActive }) => `rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'text-brand' : 'text-ink-soft hover:text-ink'}`}>
+        <NavLink to="/mi-negocio" className={navLink}>
           Mi negocio
         </NavLink>
-        <NavLink to="/admin" className="rounded-xl px-3 py-2 text-sm font-semibold text-ink-soft hover:text-ink">
+        <NavLink to="/admin" className={navLink({ isActive: false })}>
           Admin
         </NavLink>
-        <NavLink to="/entrar" className={({ isActive }) => `rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'text-brand' : 'text-ink-soft hover:text-ink'}`}>
-          Entrar
-        </NavLink>
       </nav>
-      <div className="ml-auto flex items-center gap-1.5 md:ml-0">
-        <button className="grid size-10 place-items-center rounded-full hover:bg-ink/5" onClick={() => navigate('/comprar?foco=1')} aria-label="Buscar productos">
-          <Search className="size-5" />
+      <div className="ml-auto flex items-center gap-0.5 md:ml-0">
+        <button className={iconBtn} onClick={() => navigate('/comprar?foco=1')} aria-label="Buscar productos">
+          <Search className="size-[21px]" strokeWidth={1.8} />
         </button>
-        <Link to="/mi-negocio" className="grid size-10 place-items-center rounded-full hover:bg-ink/5 lg:hidden" aria-label="Mi negocio">
-          <Store className="size-5" />
-        </Link>
-        <Link to="/entrar" className="grid size-10 place-items-center rounded-full hover:bg-ink/5 lg:hidden" aria-label="Entrar">
-          <UserRound className="size-5" />
-        </Link>
-        <Link to="/favoritos" className="grid size-10 place-items-center rounded-full hover:bg-ink/5" aria-label="Favoritos">
-          <Heart className="size-5" />
+        <Link to="/favoritos" className={`${iconBtn} max-md:hidden`} aria-label="Favoritos">
+          <Heart className="size-[21px]" strokeWidth={1.8} />
         </Link>
         {compare > 0 && (
-          <Link to="/comparar" className="relative hidden size-10 place-items-center rounded-full hover:bg-ink/5 md:grid" aria-label={`Comparador, ${compare} productos`}>
-            <Scale className="size-5" />
+          <Link to="/comparar" className={`${iconBtn} max-md:hidden`} aria-label={`Comparador, ${compare} productos`}>
+            <Scale className="size-[21px]" strokeWidth={1.8} />
             <Badge n={compare} />
           </Link>
         )}
-        <Link to="/carrito" className="relative grid size-10 place-items-center rounded-full bg-ink text-white" aria-label={`Carrito, ${count} productos`}>
-          <ShoppingCart className="size-5" />
+        <NavLink to="/entrar" className={({ isActive }) => `${iconBtn} ${isActive ? 'bg-teal/12 text-teal' : ''}`} aria-label="Perfil: cuenta, Mi negocio, favoritos y administración">
+          <UserRound className="size-[21px]" strokeWidth={1.8} />
+        </NavLink>
+        <Link to="/carrito" className="relative grid size-10 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden" aria-label={`Carrito, ${count} productos`}>
+          <ShoppingCart className="size-[19px]" strokeWidth={1.9} />
           <Badge n={count} />
         </Link>
       </div>
@@ -214,7 +228,7 @@ function TopBar() {
 
 function Badge({ n }: { n: number }) {
   if (!n) return null
-  return <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[11px] font-bold text-white ring-2 ring-card">{n > 99 ? '99+' : n}</span>
+  return <span className="absolute -top-0.5 -right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[10.5px] font-bold text-white ring-2 ring-white/90">{n > 99 ? '99+' : n}</span>
 }
 
 function BottomNav() {
@@ -227,20 +241,27 @@ function BottomNav() {
     { to: '/carrito', label: 'Carrito', icon: ShoppingCart, badge: count },
   ]
   return (
-    <nav className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-line/70 bg-card/95 backdrop-blur md:hidden" aria-label="Navegación principal">
-      <ul className="grid h-16 grid-cols-5">
+    <nav
+      className="chrome-in-bottom glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 h-16 rounded-[26px] px-1.5 md:hidden"
+      aria-label="Navegación principal"
+    >
+      <ul className="grid h-full grid-cols-5 items-center">
         {tabs.map((t) => (
-          <li key={t.to}>
-            <NavLink to={t.to} end={t.end} className={({ isActive }) => `relative flex h-full flex-col items-center justify-center gap-0.5 text-[11px] font-bold ${isActive ? 'text-brand' : 'text-ink-soft'}`}>
-              {({ isActive }) => (
-                <>
-                  <span className={`relative grid h-7 w-12 place-items-center rounded-full transition ${isActive ? 'bg-brand/12' : ''}`}>
-                    <t.icon className="size-5" />
-                    {t.badge ? <Badge n={t.badge} /> : null}
-                  </span>
-                  {t.label}
-                </>
-              )}
+          <li key={t.to} className="flex justify-center">
+            <NavLink
+              to={t.to}
+              end={t.end}
+              className={({ isActive }) =>
+                `relative flex min-h-[48px] min-w-[58px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1.5 text-[10.5px] font-semibold transition duration-200 active:scale-[0.97] ${
+                  isActive ? 'bg-teal/12 text-teal' : 'text-[#66737C]'
+                }`
+              }
+            >
+              <span className="relative">
+                <t.icon className="size-[21px]" strokeWidth={1.8} />
+                {t.badge ? <Badge n={t.badge} /> : null}
+              </span>
+              {t.label}
             </NavLink>
           </li>
         ))}
@@ -256,7 +277,7 @@ function CompareTray() {
   return (
     <Link
       to="/comparar"
-      className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm font-bold text-white shadow-float md:hidden"
+      className="glass fixed bottom-[calc(var(--chrome-bottom)+8px)] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-ink md:hidden"
     >
       <Scale className="size-4" /> Comparar ({n})
     </Link>

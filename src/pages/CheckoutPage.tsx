@@ -132,7 +132,7 @@ export function CheckoutPage() {
         </button>
       </form>
 
-      <aside className="space-y-3 md:sticky md:top-4 md:self-start">
+      <aside className="space-y-3 md:sticky md:top-[calc(var(--chrome-top)+8px)] md:self-start">
         <div className="space-y-3 rounded-3xl border border-line bg-card p-5">
           <p className="text-sm font-bold">Tu pedido se dividirá en {groups.length} {groups.length === 1 ? 'suborden' : 'subórdenes'}</p>
           {groups.map((g, i) => (

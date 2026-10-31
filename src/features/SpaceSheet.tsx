@@ -14,7 +14,7 @@ import { SpacePreview } from './SpacePreview'
 
 /** Ficha de un local disponible, con el flujo para reclamarlo. */
 export function SpaceSheet() {
-  const selectedSpaceId = useUI((s) => s.selectedSpaceId)
+  const selectedSpaceId = useUI((s) => (s.peek ? null : s.selectedSpaceId))
   const assignments = useCatalog((s) => s.assignments)
   const space = selectedSpaceId && !assignments[selectedSpaceId] ? SPACE_BY_ID[selectedSpaceId] : undefined
   return (

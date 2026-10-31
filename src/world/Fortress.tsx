@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { FORTRESS, GATE, MALL } from '../config/mall'
 import { cameraState } from './cameraState'
 import { Batch } from './Batch'
-import { getGateSign, getLabel } from './labelTexture'
+import { getGateSign, getGlassPill } from './labelTexture'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, WATER, mat, shade } from './materials'
@@ -388,9 +388,9 @@ export function FortressEnvironment({ onEnter, sparse = false }: { onEnter: () =
       </group>
       {/* Desde lejos el letrero de piedra es pequeño: un cartel legible sobre la puerta. */}
       <ScreenLabel
-        label={getLabel(MALL.name.toUpperCase(), { bg: '#f5ead2', fg: '#5b4a35', sub: MALL.tagline, border: '#c9b089' })}
+        label={getGlassPill(MALL.name, { dot: '#f27b68', sub: MALL.tagline })}
         position={[GATE.x + 1, 11, GATE.z + 1]}
-        pixelHeight={42}
+        pixelHeight={36}
         maxZoomRatio={1.05}
         lit
         priority={LABEL_PRIORITY.floorSign + 10}

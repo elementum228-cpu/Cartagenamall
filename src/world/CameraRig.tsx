@@ -34,6 +34,8 @@ function fitZoomFor(w: number, h: number) {
 
 /** Parte de la pantalla (desde arriba) que deja libre el panel inferior en celulares. */
 const MOBILE_SHEET_FREE = 0.26
+/** Con la ficha breve: queda libre más de la mitad de arriba. */
+const MOBILE_PEEK_FREE = 0.62
 
 export function CameraRig() {
   const controls = useRef<MapControlsImpl>(null)
@@ -247,9 +249,10 @@ export function CameraRig() {
       // El panel tapa parte del lienzo: se corre el objetivo para que la tienda quede visible.
       if (desktop) target.addScaledVector(SCREEN_RIGHT, DESKTOP_PANEL / 2 / zoom)
       else {
-        // Bottom sheet de ~76 % de alto (ver ui/Sheet): la tienda se centra en la franja visible de arriba.
+        // Ficha breve (peek) sobre el mapa o bottom sheet de ~76 % de alto (ver ui/Sheet): la tienda se
+        // centra en la franja visible de arriba.
         const canvasTop = gl.domElement.getBoundingClientRect().top
-        const visible = Math.max(120, window.innerHeight * MOBILE_SHEET_FREE - canvasTop)
+        const visible = Math.max(120, window.innerHeight * (useUI.getState().peek ? MOBILE_PEEK_FREE : MOBILE_SHEET_FREE) - canvasTop)
         target.addScaledVector(TOWARD_CAMERA, (size.height / 2 - visible / 2) / (zoom * ELEVATION_SIN))
       }
       cameraState.viewOffset.set(target.x - so.x - space.position[0], 0, target.z - so.z - space.position[1])

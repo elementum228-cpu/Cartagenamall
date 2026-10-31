@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product, SpaceSlot, Store, ZoneId } from '../domain/types'
 import { formatCOP } from '../lib/format'
-import { getLabel, getStoreSign } from './labelTexture'
+import { getGlassPill, getLabel, getStoreSign } from './labelTexture'
 import { Batch } from './Batch'
 import { useSpacePrice } from '../state/spacePricing'
 import { isHighlighted } from '../lib/storeHighlight'
@@ -61,6 +61,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
   if (selected && !wasSelected.current) bounce.current = 1
   wasSelected.current = selected
 
+  const halo = useRef<THREE.Mesh>(null)
   useFrame(({ clock }, dt) => {
     const g = group.current
     if (!g) return
@@ -70,6 +71,16 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
       const b = Math.sin((1 - bounce.current) * Math.PI) * 0.08 * bounce.current
       g.scale.set(1 - b * 0.4, 1 + b, 1 - b * 0.4)
     } else if (g.scale.y !== 1) g.scale.set(1, 1, 1)
+    // halo turquesa que se expande desde el local elegido (pulsación suave)
+    const ring = halo.current
+    if (ring) {
+      ring.visible = selected
+      if (selected) {
+        const p = (clock.elapsedTime * 0.7) % 1
+        ring.scale.setScalar(Math.max(space.size[0], space.size[1]) * 0.62 * (1 + p * 0.6))
+        ;(ring.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - p)
+      }
+    }
     const h = highlight.current
     if (h) {
       const m = h.material as THREE.MeshBasicMaterial
@@ -81,6 +92,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
   const [w, d] = space.size
   const accent = store?.brandColor ?? zoneColor
   const highlightMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent])
+  const haloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#13b9ad', transparent: true, opacity: 0, depthWrite: false, toneMapped: false }), [])
   const select = () => onSelect(space.id)
   const price = useSpacePrice(space.id)
   const labelY = space.type === 'premium' ? 5.6 : space.type === 'local' ? 4.6 : 3.8
@@ -101,6 +113,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
 
   return (
     <group position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]} userData={{ audit: store ? `tienda-${space.type}` : 'vacio', spaceId: space.id }}>
+      <mesh ref={halo} visible={false} geometry={GEO.ring} material={haloMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0.4]} userData={{ dynamic: true }} raycast={() => null} />
       <mesh ref={highlight} geometry={GEO.plane} material={highlightMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0.4]} scale={[w + 1.2, d + 1.6, 1]} />
       <group
         ref={group}
@@ -126,9 +139,9 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
       {store && kindOf(store) === 'tech' && <TechStoreScreen space={space} store={store} products={products} flashPercent={flashPercent} />}
       {store && (
         <ScreenLabel
-          label={getStoreSign(store.name, store.brandColor, CATEGORY_BY_ID[store.categoryId]?.name, store.logo)}
+          label={getGlassPill(store.name, { dot: store.brandColor, sub: CATEGORY_BY_ID[store.categoryId]?.name, logo: store.logo })}
           position={[0, labelY, 0]}
-          pixelHeight={isHighlighted(store) ? 60 : 50}
+          pixelHeight={isHighlighted(store) ? 46 : 40}
           minZoomRatio={isHighlighted(store) || space.type === 'premium' ? 0 : 1.15}
           // De cerca ya se lee el letrero físico: el del techo (tienda destacada) o el de la fachada
           // si mira a la cámara. El rótulo flotante no se duplica.

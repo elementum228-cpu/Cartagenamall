@@ -10,7 +10,7 @@ import { Batch } from '../Batch'
 import { ScreenLabel } from '../Billboard'
 import { cameraState } from '../cameraState'
 import { LABEL_PRIORITY } from '../labels'
-import { getLabel } from '../labelTexture'
+import { getGlassPill, getLabel } from '../labelTexture'
 import { GEO, PALETTE, mat } from '../materials'
 import { dimLabelMat, glowMat, lightPoolMat } from '../night'
 
@@ -165,6 +165,8 @@ function courtSign(operator: string | null, pending: boolean, price: number) {
 export function FootballCourt({ selected, onOpen, interactive, operator, pending }: { selected: boolean; onOpen: () => void; interactive: boolean; operator: string | null; pending: boolean }) {
   const price = useSpacePrice(COURT_SPACE.id)
   const sign = courtSign(operator, pending, price)
+  // rótulo flotante discreto (el cartel grande va sobre la malla y en el tótem)
+  const pill = getGlassPill('Cancha sintética', { dot: COURT_COLOR, sub: operator ? `${operator} · reserva tu hora` : pending ? 'Solicitud en revisión' : `Disponible · ${formatCOP(price)}/mes` })
   const wood = mat(PALETTE.wood)
   return (
     <group position={[COURT.center[0], COURT.y, COURT.center[1]]} rotation={[0, COURT.rotation, 0]}>
@@ -216,7 +218,7 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
           ))}
         </group>
       )}
-      <ScreenLabel label={sign} position={[0, COURT.fenceHeight + 2.6, FENCE_Z]} pixelHeight={40} maxZoomRatio={1.6} lit priority={LABEL_PRIORITY.corridor + 5} onClick={interactive ? onOpen : undefined} />
+      <ScreenLabel label={pill} position={[0, COURT.fenceHeight + 2.6, FENCE_Z]} pixelHeight={36} maxZoomRatio={1.6} lit priority={LABEL_PRIORITY.corridor + 5} onClick={interactive ? onOpen : undefined} />
     </group>
   )
 }
