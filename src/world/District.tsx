@@ -279,7 +279,7 @@ function GrowDesk({ room }: { room: Showroom }) {
       <mesh geometry={GEO.box} material={navy} position={[0, H / 2, -0.3]} scale={[W, H, D - 0.6]} castShadow receiveShadow />
       <mesh geometry={GEO.box} material={navyDark} position={[0, H + 0.12, -0.2]} scale={[W + 0.25, 0.24, D - 0.3]} castShadow />
       {/* fachada de vidrio con interior luminoso: recepción y un monitor */}
-      <mesh geometry={GEO.box} material={inside} position={[-0.4, 1.4, D / 2 - 0.62]} scale={[W - 2.2, 2.5, 0.04]} />
+      <mesh geometry={GEO.box} material={inside} position={[-0.4, 1.4, D / 2 - 0.575]} scale={[W - 2.2, 2.5, 0.02]} />
       <mesh geometry={GEO.box} material={glass} position={[-0.4, 1.45, D / 2 - 0.5]} scale={[W - 2, 2.7, 0.08]} />
       {[-2.2, -0.4, 1.4].map((x) => (
         <mesh key={x} geometry={GEO.box} material={navyDark} position={[x, 1.45, D / 2 - 0.44]} scale={[0.08, 2.7, 0.1]} />
@@ -288,11 +288,11 @@ function GrowDesk({ room }: { room: Showroom }) {
       <mesh geometry={GEO.box} material={teal} position={[0.6, 0.97, D / 2 - 1]} scale={[1.6, 0.05, 0.52]} />
       {/* letrero de la marca */}
       <mesh geometry={GEO.box} material={navyDark} position={[-0.3, H - 0.45, D / 2 - 0.42]} scale={[0.7 * sign.aspect + 0.3, 0.85, 0.12]} />
-      <mesh geometry={GEO.plane} material={litLabelMat(sign.texture)} position={[-0.3, H - 0.45, D / 2 - 0.35]} scale={[0.7 * sign.aspect, 0.7, 1]} />
+      <mesh geometry={GEO.plane} material={litLabelMat(sign.texture)} position={[-0.3, H - 0.45, D / 2 - 0.33]} scale={[0.7 * sign.aspect, 0.7, 1]} />
       {/* pantalla con gráfica de barras (lado derecho del frente) */}
       <mesh geometry={GEO.box} material={white} position={[W / 2 - 0.65, 1.45, D / 2 - 0.45]} scale={[1, 1.4, 0.08]} />
       {[0.35, 0.6, 0.85, 1.1].map((h, i) => (
-        <mesh key={i} geometry={GEO.box} material={teal} position={[W / 2 - 1 + i * 0.23, 0.85 + h / 2, D / 2 - 0.4]} scale={[0.14, h, 0.02]} />
+        <mesh key={i} geometry={GEO.box} material={teal} position={[W / 2 - 1 + i * 0.23, 0.85 + h / 2, D / 2 - 0.37]} scale={[0.14, h, 0.02]} />
       ))}
       {/* jardín vertical y aletas verdes en el costado */}
       {[0, 1, 2, 3].map((i) => (
