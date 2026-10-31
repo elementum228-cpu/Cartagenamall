@@ -260,19 +260,35 @@ function bell(ac: AudioContext, out: AudioNode, at: number, freq: number, level:
   }
 }
 
+let welcome: { ac: AudioContext; gain: GainNode } | null = null
+
+/** Apaga la bienvenida con un desvanecimiento corto (al aparecer el mall o al volver a la puerta). */
+export function stopCartagena(seconds = 0.5) {
+  if (!welcome) return
+  const { ac, gain } = welcome
+  const now = ac.currentTime
+  gain.gain.cancelScheduledValues(now)
+  gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now)
+  gain.gain.linearRampToValueAtTime(0.0001, now + seconds)
+  welcome = null
+}
+
 /**
- * Bienvenida a Cartagena al cruzar la puerta (~7 s): el mar Caribe, una campana lejana y una
- * frase corta de cuerdas punteadas con bajo y guacharaca en ritmo de cumbia, que se desvanece.
+ * Bienvenida a Cartagena al cruzar la puerta (~3 s): el mar Caribe, una campana lejana y una
+ * frase corta de cuerdas punteadas con bajo y guacharaca en ritmo de cumbia.
  */
 export async function playCartagena() {
   const r = await ready()
   if (!r) return
   const { ac, out, t } = r
   const mix = ac.createGain()
+  // acompaña solo el cruce de la puerta: se apaga al aparecer el mall (stopCartagena) y, por si
+  // acaso, a los 3,4 s como máximo; no queda música de fondo.
   mix.gain.setValueAtTime(1, t)
-  mix.gain.setValueAtTime(1, t + 4.2)
-  mix.gain.linearRampToValueAtTime(0.0001, t + 7)
+  mix.gain.setValueAtTime(1, t + 2.9)
+  mix.gain.linearRampToValueAtTime(0.0001, t + 3.4)
   mix.connect(out)
+  welcome = { ac, gain: mix }
 
   // olas: dos marejadas suaves con espuma
   for (const [start, len] of [
