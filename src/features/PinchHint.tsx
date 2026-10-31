@@ -67,41 +67,34 @@ export function PinchHint({ hidden }: { hidden: boolean }) {
   const on = visible && !learned && !hidden && !tour
   return (
     <div
-      className="pointer-events-none absolute top-1/2 left-1/2 z-20 flex flex-col items-center gap-3"
-      style={{ opacity: on ? 1 : 0, transform: `translate(-50%, -50%) scale(${on ? 1 : 0.85})`, transition: 'opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 1.4, 0.4, 1)' }}
+      className="pointer-events-none absolute top-1/2 left-1/2 z-20 flex flex-col items-center gap-1.5 text-white"
+      style={{ opacity: on ? 1 : 0, transform: `translate(-50%, -50%) scale(${on ? 1 : 0.92})`, transition: 'opacity 0.6s ease, transform 0.6s ease' }}
       aria-hidden={!on}
       role="status"
     >
-      <div className="relative grid size-32 place-items-center rounded-full bg-ink/35 backdrop-blur-sm">
-        <span className="pinch-ring absolute inset-0 rounded-full border-2 border-white/60" />
-        <PinchHand />
-      </div>
-      <p className="rounded-full bg-white/95 px-4 py-2 text-sm font-extrabold text-ink shadow-float">{desktop ? 'Usa la rueda o pellizca para acercarte' : 'Pellizca para acercarte'}</p>
+      <PinchIcon />
+      <p className="text-[13px] font-semibold tracking-wide [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">{desktop ? 'Rueda o pellizca para acercarte' : 'Pellizca para acercarte'}</p>
     </div>
   )
 }
 
-/** Mano con pulgar e índice que se separan (gesto de zoom), con los toques marcados en la punta. */
-function PinchHand() {
+/** Ícono de línea clásico del gesto de zoom: mano con índice y pulgar en V, toques en las puntas y
+ * flechas que salen hacia afuera («abre los dedos para acercar»). */
+function PinchIcon() {
   return (
-    <svg viewBox="0 0 100 100" className="size-24 overflow-visible drop-shadow-[0_3px_6px_rgba(0,0,0,0.35)]" aria-hidden>
-      {/* flechas que indican «abrir» */}
-      <g className="pinch-arrows" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 22 L10 14 M10 14 L10 23 M10 14 L19 14" />
-        <path d="M82 22 L90 14 M90 14 L90 23 M90 14 L81 14" />
+    <svg viewBox="0 0 64 64" className="size-[76px] overflow-visible drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M33 34 L39 10 A3.6 3.6 0 0 1 46 11.6 L43 33 C47.5 32.4 52.5 34.6 52.5 39.5 L52.5 47 C52.5 55 47 60 40 60 L36.5 60 C32.5 60 30 57.8 28.8 54.6 L12.6 32.6 A3.6 3.6 0 0 1 18.2 28 L31 40 Z" />
+      <path d="M43 33 L43.4 40.5 M48 33.8 L48 41" strokeWidth="2" opacity="0.75" />
+      {/* toques en las puntas */}
+      <circle className="pinch-tap" cx="42.6" cy="10.4" r="5.6" strokeWidth="1.6" />
+      <circle className="pinch-tap" cx="15.2" cy="30" r="5.6" strokeWidth="1.6" />
+      {/* flechas hacia afuera */}
+      <g className="pinch-out-r" strokeWidth="2">
+        <path d="M50 4.5 L56 -1.5 M56 -1.5 L50.8 -1.5 M56 -1.5 L56 3.7" />
       </g>
-      {/* dedos (giran sobre su base: se abren y se cierran) */}
-      <g className="pinch-index" style={{ transformOrigin: '56px 64px' }}>
-        <rect x="50" y="22" width="13" height="46" rx="6.5" fill="#fff" stroke="#1f1b16" strokeWidth="3" />
-        <circle className="pinch-tap" cx="56.5" cy="27" r="9" fill="none" stroke="#f5c35c" strokeWidth="3" />
+      <g className="pinch-out-l" strokeWidth="2">
+        <path d="M9 24.5 L3 18.5 M3 18.5 L3 23.7 M3 18.5 L8.2 18.5" />
       </g>
-      <g className="pinch-thumb" style={{ transformOrigin: '44px 70px' }}>
-        <rect x="22" y="44" width="13" height="34" rx="6.5" fill="#fff" stroke="#1f1b16" strokeWidth="3" transform="rotate(-48 28 61)" />
-        <circle className="pinch-tap" cx="17" cy="51" r="9" fill="none" stroke="#f5c35c" strokeWidth="3" />
-      </g>
-      {/* palma */}
-      <path d="M38 62 C38 56 46 54 52 58 L66 60 C74 61 78 68 76 78 C74 90 64 96 52 95 C42 94 34 86 35 74 Z" fill="#fff" stroke="#1f1b16" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M63 64 L66 70 M69 66 L71 72" stroke="#1f1b16" strokeWidth="2.5" strokeLinecap="round" opacity="0.35" />
     </svg>
   )
 }
