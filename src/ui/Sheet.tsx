@@ -5,7 +5,7 @@ import { useIsDesktop } from '../lib/useMedia'
 
 /**
  * Panel responsive: bottom sheet arrastrable en móvil, panel lateral en escritorio.
- * `modal` agrega fondo oscuro (detalle de producto). En móvil el panel ocupa ~3/4 de la pantalla y
+ * `modal` agrega fondo oscuro (detalle de producto). En móvil el panel ocupa casi toda la pantalla (86 %) y
  * difumina todo lo de atrás (barra superior y mundo 3D); tocar el fondo lo cierra. En escritorio,
  * sin `modal`, el mundo sigue usable a la izquierda del panel.
  */
@@ -60,8 +60,8 @@ export function Sheet({
             aria-label={title}
             className={
               desktop
-                ? 'glass-strong fixed top-[var(--chrome-top)] right-5 bottom-4 flex flex-col overflow-hidden rounded-[28px]'
-                : `glass-strong fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[32px] ${modal ? 'max-h-[90dvh]' : 'h-[76dvh]'}`
+                ? 'glass-sheet fixed top-[var(--chrome-top)] right-5 bottom-4 flex flex-col overflow-hidden rounded-[28px]'
+                : `glass-sheet fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[32px] ${modal ? 'max-h-[92dvh]' : 'h-[86dvh]'}`
             }
             style={{ zIndex: z + 1, width: desktop ? desktopWidth : undefined }}
             initial={desktop ? { x: desktopWidth + 40, opacity: 0.6 } : { y: '100%' }}

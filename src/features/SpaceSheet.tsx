@@ -35,7 +35,7 @@ function placeName(space: SpaceSlot) {
 function Header({ space }: { space: SpaceSlot }) {
   const color = spaceColor(space)
   return (
-    <div className="px-5 pt-3 pb-2" style={{ background: `linear-gradient(160deg, ${color}22, #fffdf9 80%)` }}>
+    <div className="px-5 pt-3 pb-2" style={{ background: `linear-gradient(180deg, ${color}18, transparent)` }}>
       <p className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color }}>
         {FLOOR_BY_ID[space.floorId].name} · {space.type === 'court' ? 'Cancha sintética' : `Espacio ${space.label}`} · disponible
       </p>

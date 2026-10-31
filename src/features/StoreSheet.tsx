@@ -42,7 +42,7 @@ function StoreHeader({ store }: { store: Store }) {
   const space = SPACE_BY_ID[spaceByStore[store.id]]
   const zone = ZONE_BY_ID[store.zoneId]
   return (
-    <div className="px-5 pt-3 pb-4" style={{ background: `linear-gradient(160deg, ${store.accentColor}, #fffdf9 85%)` }}>
+    <div className="px-5 pt-3 pb-4" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${store.brandColor} 9%, transparent), transparent)` }}>
       <div className="flex items-center gap-3.5 pr-12">
         <StoreLogo store={store} size={56} />
         <div className="min-w-0">

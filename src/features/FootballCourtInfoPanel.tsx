@@ -31,7 +31,7 @@ export function FootballCourtInfoPanel() {
 function Header() {
   const operator = useCourtOperator()
   return (
-    <div className="px-5 pt-3 pb-4" style={{ background: 'linear-gradient(160deg, #d8f0dc, #fffdf9 85%)' }}>
+    <div className="px-5 pt-3 pb-4" style={{ background: 'linear-gradient(180deg, rgb(47 158 90 / 0.1), transparent)' }}>
       <div className="flex items-center gap-3.5 pr-12">
         <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#1f7a3d] text-white shadow-soft">
           <BallIcon className="size-8" />
