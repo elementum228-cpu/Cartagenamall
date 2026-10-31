@@ -221,45 +221,6 @@ export async function playOpen() {
   knockAt(ac, out, t + 2.33, 0.25)
 }
 
-/** Cuerda punteada (Karplus-Strong): suena a tiple o guitarra, sin archivos de audio. */
-function pluck(ac: AudioContext, out: AudioNode, at: number, freq: number, level: number, dur = 1.6, damp = 0.996) {
-  const sr = ac.sampleRate
-  const n = Math.ceil(sr * dur)
-  const buf = ac.createBuffer(1, n, sr)
-  const d = buf.getChannelData(0)
-  const period = Math.max(2, Math.round(sr / freq))
-  for (let i = 0; i < period; i++) d[i] = Math.random() * 2 - 1
-  for (let i = period; i < n; i++) d[i] = damp * 0.5 * (d[i - period] + d[i - period - 1 >= 0 ? i - period - 1 : 0])
-  const src = ac.createBufferSource()
-  src.buffer = buf
-  const lp = ac.createBiquadFilter()
-  lp.type = 'lowpass'
-  lp.frequency.value = Math.min(5000, freq * 6)
-  const g = ac.createGain()
-  g.gain.setValueAtTime(level, at)
-  g.gain.setTargetAtTime(0, at + dur * 0.7, dur * 0.12)
-  src.connect(lp).connect(g).connect(out)
-  src.start(at)
-}
-
-/** Campana lejana (parciales inarmónicos), como las de la Catedral al fondo. */
-function bell(ac: AudioContext, out: AudioNode, at: number, freq: number, level: number) {
-  for (const [m, v, dec] of [
-    [0.5, 0.5, 4],
-    [1, 1, 3.2],
-    [2.0, 0.45, 2.2],
-    [2.76, 0.35, 1.6],
-    [5.4, 0.15, 0.9],
-  ]) {
-    const o = ac.createOscillator()
-    o.type = 'sine'
-    o.frequency.value = freq * m
-    o.connect(env(ac, at, level * v, dec, 0.01)).connect(out)
-    o.start(at)
-    o.stop(at + dec + 0.05)
-  }
-}
-
 let welcome: { ac: AudioContext; gain: GainNode } | null = null
 
 /**
@@ -276,9 +237,66 @@ export function stopCartagena(seconds = 2.4) {
   welcome = null
 }
 
+/** Sala con eco suave (respuesta al impulso sintética): da la sensación de un vestíbulo amplio. */
+function hall(ac: AudioContext, seconds = 2.6) {
+  const len = Math.ceil(ac.sampleRate * seconds)
+  const buf = ac.createBuffer(2, len, ac.sampleRate)
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c)
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6)
+  }
+  const conv = ac.createConvolver()
+  conv.buffer = buf
+  return conv
+}
+
+/** Voz de colchón (pad): dos osciladores suaves apenas desafinados, filtro cálido y entrada lenta. */
+function padVoice(ac: AudioContext, out: AudioNode, at: number, freq: number, level: number, attack: number, hold: number) {
+  const g = ac.createGain()
+  g.gain.setValueAtTime(0.0001, at)
+  g.gain.linearRampToValueAtTime(level, at + attack)
+  g.gain.setValueAtTime(level, at + hold)
+  g.gain.setTargetAtTime(0.0001, at + hold, 0.9)
+  const lp = ac.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.Q.value = 0.4
+  lp.frequency.setValueAtTime(600, at)
+  lp.frequency.linearRampToValueAtTime(1500, at + attack + 1)
+  lp.connect(g).connect(out)
+  for (const [type, cents] of [
+    ['triangle', -5],
+    ['sine', 6],
+  ] as [OscillatorType, number][]) {
+    const o = ac.createOscillator()
+    o.type = type
+    o.frequency.value = freq
+    o.detune.value = cents
+    o.connect(lp)
+    o.start(at)
+    o.stop(at + hold + 5)
+  }
+}
+
+/** Nota de piano eléctrico: fundamental redonda con un brillo leve que se apaga primero. */
+function keys(ac: AudioContext, out: AudioNode, at: number, freq: number, level: number, dur = 2.4) {
+  for (const [m, v, d] of [
+    [1, 1, dur],
+    [2, 0.22, dur * 0.4],
+    [3, 0.06, dur * 0.25],
+  ]) {
+    const o = ac.createOscillator()
+    o.type = 'sine'
+    o.frequency.value = freq * m
+    o.connect(env(ac, at, level * v, d, 0.012)).connect(out)
+    o.start(at)
+    o.stop(at + d + 0.05)
+  }
+}
+
 /**
- * Bienvenida a Cartagena al cruzar la puerta (~3 s): el mar Caribe, una campana lejana y una
- * frase corta de cuerdas punteadas con bajo y guacharaca en ritmo de cumbia.
+ * Bienvenida al cruzar la puerta (~3 s), con aire de vestíbulo de centro comercial y no de juego:
+ * un acorde cálido que crece despacio (Fa mayor con novena), cuatro notas tranquilas de piano
+ * eléctrico, el murmullo lejano de gente y una brisa de mar, todo con eco de sala amplia.
  */
 export async function playCartagena() {
   const r = await ready()
@@ -293,59 +311,49 @@ export async function playCartagena() {
   mix.connect(out)
   welcome = { ac, gain: mix }
 
-  // olas: dos marejadas suaves con espuma
-  for (const [start, len] of [
-    [0, 3.6],
-    [2.8, 4],
-  ]) {
-    shapedNoise(ac, mix, t + start, len, 'lowpass', [380, 1400], 0.6, [
-      [len * 0.45, 0.32],
-      [len, 0],
-    ])
-    shapedNoise(ac, mix, t + start + len * 0.35, len * 0.6, 'highpass', [2500, 4200], 0.5, [
-      [len * 0.15, 0.08],
-      [len * 0.6, 0],
-    ])
-  }
-  // campana lejana
-  bell(ac, mix, t + 0.15, 392, 0.07)
+  // sala: mezcla directa + eco
+  const dry = ac.createGain()
+  dry.gain.value = 0.75
+  const wet = ac.createGain()
+  wet.gain.value = 0.45
+  const room = hall(ac)
+  dry.connect(mix)
+  room.connect(wet).connect(mix)
+  const music = ac.createGain()
+  // las voces van suaves por separado; aquí se lleva el conjunto a un volumen que se oiga en el celular
+  music.gain.value = 0.85
+  music.connect(dry)
+  music.connect(room)
 
-  // cumbia en La mayor (~96 pulsos por minuto): bajo, guacharaca y melodía
-  const beat = 60 / 96
-  const s = t + 0.55
-  const bass: [number, number][] = [
-    [0, 110],
-    [1, 82.41],
-    [2, 110],
-    [3, 82.41],
-    [4, 146.83],
-    [5, 110],
-    [6, 164.81],
-    [7, 110],
+  // acorde que crece (Fa – Do – La – Mi – Sol): elegante, sin melodía de juego
+  for (const [f, v] of [
+    [87.31, 0.12],
+    [130.81, 0.1],
+    [220, 0.07],
+    [329.63, 0.055],
+    [392, 0.045],
+  ])
+    padVoice(ac, music, t + 0.05, f, v, 1.1, 3.4)
+
+  // piano eléctrico: cuatro notas espaciadas que suben y se quedan suspendidas
+  const notes: [number, number][] = [
+    [0.55, 440],
+    [1.15, 523.25],
+    [1.75, 659.25],
+    [2.45, 783.99],
   ]
-  for (const [b, f] of bass) pluck(ac, mix, s + b * beat, f, 0.42, 1.1, 0.993)
-  // guacharaca: «chi-ki-chi» en corcheas, acento en el contratiempo
-  for (let k = 0; k < 16; k++)
-    shapedNoise(ac, mix, s + k * (beat / 2), 0.09, 'bandpass', [6500, 5200], 1.5, [
-      [0.005, k % 2 ? 0.09 : 0.05],
-      [0.08, 0],
-    ])
-  // melodía (do# = 554, mi = 659, fa# = 740, la = 880)
-  const melody: [number, number, number][] = [
-    [0.5, 659.25, 0.3],
-    [1, 554.37, 0.26],
-    [1.5, 659.25, 0.3],
-    [2, 739.99, 0.32],
-    [2.75, 659.25, 0.28],
-    [3.5, 554.37, 0.26],
-    [4, 587.33, 0.28],
-    [4.5, 659.25, 0.3],
-    [5, 739.99, 0.3],
-    [5.5, 659.25, 0.28],
-    [6, 554.37, 0.3],
-    [7, 440, 0.34],
-  ]
-  for (const [b, f, v] of melody) pluck(ac, mix, s + b * beat, f, v * 0.9, 1.6)
+  for (const [d, f] of notes) keys(ac, music, t + d, f, 0.075, 2.6)
+
+  // murmullo lejano de gente (vestíbulo) y una brisa de mar suave
+  shapedNoise(ac, mix, t, 5, 'bandpass', [420, 520], 0.8, [
+    [1.6, 0.07],
+    [3.4, 0.065],
+    [5, 0],
+  ])
+  shapedNoise(ac, mix, t + 0.2, 4.2, 'lowpass', [500, 900], 0.5, [
+    [2, 0.09],
+    [4.2, 0],
+  ])
 }
 
 /** Soplo suave al pasar de un paso a otro del recorrido guiado. */
@@ -358,9 +366,10 @@ export async function playWhoosh() {
   ])
 }
 
-/** Destello final del recorrido: arpegio punteado ascendente. */
+/** Final del recorrido y sellos: dos notas suaves de piano eléctrico (un «listo» sobrio). */
 export async function playSparkle() {
   const r = await ready()
   if (!r) return
-  ;[880, 1108.73, 1318.51, 1760].forEach((f, i) => pluck(r.ac, r.out, r.t + i * 0.07, f, 0.22, 1.2))
+  keys(r.ac, r.out, r.t, 659.25, 0.07, 1.6)
+  keys(r.ac, r.out, r.t + 0.12, 987.77, 0.05, 1.8)
 }
