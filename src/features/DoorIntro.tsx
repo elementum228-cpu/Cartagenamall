@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { doorSoundOn, playCartagena, playKnockOnce, playOpen, setDoorSound, stopCartagena, unlockDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
 import { useUI } from '../state/ui'
+import { startTour, tourDone } from './GuidedTour'
 
 // Portón de bienvenida: antes de ver el mall aparece la puerta colonial de la fortaleza. Hay que
 // tocarla tres veces (cada toque suena, la puerta tiembla y se cuela más luz); al tercero las hojas
@@ -23,7 +24,7 @@ type Phase = 'idle' | 'open' | 'through' | 'done'
 /** Toques necesarios para abrir. */
 const KNOCKS = 3
 /** Momento (ms desde el último toque) en que empieza cada fase. */
-const TIMELINE = { open: 600, cartagena: 1700, enter: 2000, through: 2700, done: 4400, overview: 6600 }
+const TIMELINE = { open: 600, cartagena: 1700, enter: 2000, through: 2700, done: 4400, tour: 4900, overview: 6600 }
 const HINTS = [`Toca la puerta ${KNOCKS} veces para entrar`, '¡Otra vez!', '¡Una más!']
 const EASE = 'cubic-bezier(0.65, 0, 0.25, 1)'
 
@@ -93,12 +94,15 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       stopCartagena()
       setPhase('done')
     })
-    // tras mostrar de cerca el primer piso, la cámara se aleja a la vista «Fortaleza» (todo el mall),
-    // salvo que la persona ya haya tocado algo (otro piso, una tienda, la cancha…)
-    at(TIMELINE.overview, () => {
+    // La primera vez: recorrido guiado (termina en la vista «Fortaleza»). Las siguientes: tras
+    // mostrar de cerca el primer piso, la cámara se aleja a «Fortaleza». En ambos casos, solo si la
+    // persona no tocó nada mientras tanto (otro piso, una tienda, la cancha…).
+    const untouched = () => {
       const ui = useUI.getState()
-      if (ui.focus?.kind === 'enter' && !ui.overview && !ui.selectedSpaceId && !ui.openStoreId && !ui.courtOpen) ui.setOverview(true)
-    })
+      return ui.focus?.kind === 'enter' && !ui.overview && !ui.selectedSpaceId && !ui.openStoreId && !ui.courtOpen
+    }
+    if (!tourDone()) at(TIMELINE.tour, () => untouched() && startTour())
+    else at(TIMELINE.overview, () => untouched() && useUI.getState().setOverview(true))
   }
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])

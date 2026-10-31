@@ -159,6 +159,10 @@ select:not([multiple]):disabled {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
+@keyframes tour-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
 @keyframes door-rays {
   to { transform: rotate(360deg); }
 }

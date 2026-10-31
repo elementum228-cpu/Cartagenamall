@@ -38,6 +38,9 @@ interface UIState {
   /** Cambia cada vez que se pide ver de nuevo el portón de bienvenida. */
   doorNonce: number
   showDoor: () => void
+  /** Paso del recorrido guiado (null: sin recorrido). */
+  tourStep: number | null
+  setTourStep: (step: number | null) => void
   /** Espacio seleccionado (tienda activa o local disponible). */
   selectedSpaceId: string | null
   /** Tienda abierta en ficha sin pasar por el mapa (modo Comprar). */
@@ -72,6 +75,8 @@ export const useUI = create<UIState>()((set, get) => ({
     set({ activeFloor: id, overview: false, selectedSpaceId: null, focus: { kind: 'floor', nonce: Date.now() + Math.random() } })
   },
   doorNonce: 0,
+  tourStep: null,
+  setTourStep: (step) => set(step === null ? { tourStep: null } : { tourStep: step, selectedSpaceId: null, openStoreId: null, courtOpen: false }),
   // de vuelta a la vista de la fortaleza: al abrir la puerta otra vez la cámara entra de nuevo
   showDoor: () =>
     set({ doorNonce: Date.now(), overview: true, activeFloor: 'P1', selectedSpaceId: null, openStoreId: null, courtOpen: false, focus: { kind: 'overview', nonce: Date.now() + Math.random() } }),

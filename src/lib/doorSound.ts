@@ -262,14 +262,17 @@ function bell(ac: AudioContext, out: AudioNode, at: number, freq: number, level:
 
 let welcome: { ac: AudioContext; gain: GainNode } | null = null
 
-/** Apaga la bienvenida con un desvanecimiento corto (al aparecer el mall o al volver a la puerta). */
-export function stopCartagena(seconds = 0.5) {
+/**
+ * Apaga la bienvenida con un desvanecimiento suave (curva natural, como bajar una perilla): al
+ * aparecer el mall o, rápido, al volver a la puerta.
+ */
+export function stopCartagena(seconds = 2.4) {
   if (!welcome) return
   const { ac, gain } = welcome
   const now = ac.currentTime
   gain.gain.cancelScheduledValues(now)
   gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now)
-  gain.gain.linearRampToValueAtTime(0.0001, now + seconds)
+  gain.gain.setTargetAtTime(0, now, seconds / 4)
   welcome = null
 }
 
@@ -282,11 +285,11 @@ export async function playCartagena() {
   if (!r) return
   const { ac, out, t } = r
   const mix = ac.createGain()
-  // acompaña solo el cruce de la puerta: se apaga al aparecer el mall (stopCartagena) y, por si
-  // acaso, a los 3,4 s como máximo; no queda música de fondo.
+  // acompaña solo el cruce de la puerta: al aparecer el mall se desvanece despacio (stopCartagena)
+  // y, por si acaso, a los 5,5 s ya no suena; no queda música de fondo.
   mix.gain.setValueAtTime(1, t)
-  mix.gain.setValueAtTime(1, t + 2.9)
-  mix.gain.linearRampToValueAtTime(0.0001, t + 3.4)
+  mix.gain.setValueAtTime(1, t + 3.2)
+  mix.gain.linearRampToValueAtTime(0.0001, t + 5.5)
   mix.connect(out)
   welcome = { ac, gain: mix }
 
@@ -343,4 +346,21 @@ export async function playCartagena() {
     [7, 440, 0.34],
   ]
   for (const [b, f, v] of melody) pluck(ac, mix, s + b * beat, f, v * 0.9, 1.6)
+}
+
+/** Soplo suave al pasar de un paso a otro del recorrido guiado. */
+export async function playWhoosh() {
+  const r = await ready()
+  if (!r) return
+  shapedNoise(r.ac, r.out, r.t, 0.7, 'bandpass', [500, 2600], 1.1, [
+    [0.25, 0.16],
+    [0.7, 0],
+  ])
+}
+
+/** Destello final del recorrido: arpegio punteado ascendente. */
+export async function playSparkle() {
+  const r = await ready()
+  if (!r) return
+  ;[880, 1108.73, 1318.51, 1760].forEach((f, i) => pluck(r.ac, r.out, r.t + i * 0.07, f, 0.22, 1.2))
 }

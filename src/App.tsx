@@ -2,6 +2,7 @@ import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { BrowserRouter, Link, MemoryRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { DoorIntro } from './features/DoorIntro'
+import { GuidedTour } from './features/GuidedTour'
 import { ExploreView } from './features/ExploreView'
 import { ProductSheet } from './features/ProductSheet'
 import { SecretPromoModal } from './features/SecretPromoModal'
@@ -111,6 +112,7 @@ function Shell() {
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />
+      <GuidedTour />
       <DoorIntro auto={startedAtHome} />
     </div>
   )

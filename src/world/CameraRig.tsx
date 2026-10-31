@@ -32,6 +32,9 @@ function fitZoomFor(w: number, h: number) {
   return Math.min(w / (w < h ? 60 : 64), h / 44)
 }
 
+/** Parte de la pantalla (desde arriba) que deja libre el panel inferior en celulares. */
+const MOBILE_SHEET_FREE = 0.26
+
 export function CameraRig() {
   const controls = useRef<MapControlsImpl>(null)
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera
@@ -227,7 +230,7 @@ export function CameraRig() {
       if (desktop) target.addScaledVector(SCREEN_RIGHT, DESKTOP_PANEL / 2 / zoom)
       else {
         const canvasTop = gl.domElement.getBoundingClientRect().top
-        const visible = Math.max(120, window.innerHeight * 0.4 - canvasTop)
+        const visible = Math.max(120, window.innerHeight * MOBILE_SHEET_FREE - canvasTop)
         target.addScaledVector(TOWARD_CAMERA, (size.height / 2 - visible / 2) / (zoom * ELEVATION_SIN))
       }
       cameraState.viewOffset.set(0, 0, 0)
@@ -244,13 +247,15 @@ export function CameraRig() {
       // El panel tapa parte del lienzo: se corre el objetivo para que la tienda quede visible.
       if (desktop) target.addScaledVector(SCREEN_RIGHT, DESKTOP_PANEL / 2 / zoom)
       else {
-        // Bottom sheet de 60 % de alto (ver ui/Sheet): la tienda se centra en la franja visible de arriba.
+        // Bottom sheet de ~76 % de alto (ver ui/Sheet): la tienda se centra en la franja visible de arriba.
         const canvasTop = gl.domElement.getBoundingClientRect().top
-        const visible = Math.max(120, window.innerHeight * 0.4 - canvasTop)
+        const visible = Math.max(120, window.innerHeight * MOBILE_SHEET_FREE - canvasTop)
         target.addScaledVector(TOWARD_CAMERA, (size.height / 2 - visible / 2) / (zoom * ELEVATION_SIN))
       }
       cameraState.viewOffset.set(target.x - so.x - space.position[0], 0, target.z - so.z - space.position[1])
-      goal.current = { target, zoom }
+      // Efecto «zoom y vuelta»: la cámara se acerca de más al local y luego se echa hacia atrás
+      // hasta encuadrarlo completo.
+      goal.current = { target, zoom: Math.min(zoom * 1.75, maxZoom * 1.15), hold: 0.12, next: { target, zoom } }
     }
     prevOverview.current = overview
     invalidate()

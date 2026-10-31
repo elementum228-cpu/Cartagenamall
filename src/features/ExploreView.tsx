@@ -1,6 +1,6 @@
 import { openCourtOrClaim } from '../football/open'
 import { AnimatePresence, motion } from 'motion/react'
-import { Castle, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut } from 'lucide-react'
+import { Castle, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FLOORS, FLOOR_OF_ZONE, ZONES } from '../config/mall'
@@ -16,6 +16,7 @@ import { Countdown } from '../ui/bits'
 import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
+import { startTour } from './GuidedTour'
 
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
 
@@ -318,6 +319,18 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       >
         <DoorOpen className="size-4" /> Ver la entrada
       </button>
+      {use3D && (
+        <button
+          className={`${item} bg-white/95`}
+          onClick={() => {
+            setOpen(false)
+            startTour()
+          }}
+          aria-label="Empezar el recorrido guiado por el mall"
+        >
+          <Route className="size-4" /> Recorrido guiado
+        </button>
+      )}
       {use3D && (
         <button
           className={`${item} ${quality !== 'high' ? 'bg-ink text-white' : 'bg-white/95'}`}

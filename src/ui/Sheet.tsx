@@ -5,7 +5,9 @@ import { useIsDesktop } from '../lib/useMedia'
 
 /**
  * Panel responsive: bottom sheet arrastrable en móvil, panel lateral en escritorio.
- * `modal` agrega fondo oscuro (detalle de producto); sin él, el mundo 3D sigue usable detrás.
+ * `modal` agrega fondo oscuro (detalle de producto). En móvil el panel ocupa ~3/4 de la pantalla y
+ * difumina todo lo de atrás (barra superior y mundo 3D); tocar el fondo lo cierra. En escritorio,
+ * sin `modal`, el mundo sigue usable a la izquierda del panel.
  */
 export function Sheet({
   open,
@@ -40,13 +42,15 @@ export function Sheet({
     <AnimatePresence>
       {open && (
         <>
-          {modal && (
+          {(modal || !desktop) && (
             <motion.div
-              className="fixed inset-0 bg-ink/35 backdrop-blur-[2px]"
+              className={`fixed inset-0 ${modal ? 'bg-ink/35 backdrop-blur-[3px]' : 'bg-ink/15 backdrop-blur-[6px]'}`}
               style={{ zIndex: z }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              // en móvil el difuminado llega un instante después: se alcanza a ver el «zoom y vuelta» al local
+              transition={modal ? undefined : { duration: 0.5, delay: 0.55 }}
               onClick={onClose}
             />
           )}
@@ -57,7 +61,7 @@ export function Sheet({
             className={
               desktop
                 ? 'fixed top-[72px] right-3 bottom-3 flex flex-col overflow-hidden rounded-3xl bg-card shadow-float'
-                : `fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[28px] bg-card shadow-float ${modal ? 'max-h-[90dvh]' : 'h-[60dvh]'}`
+                : `fixed inset-x-0 bottom-0 flex flex-col overflow-hidden rounded-t-[28px] bg-card shadow-float ${modal ? 'max-h-[90dvh]' : 'h-[76dvh]'}`
             }
             style={{ zIndex: z + 1, width: desktop ? desktopWidth : undefined }}
             initial={desktop ? { x: desktopWidth + 40, opacity: 0.6 } : { y: '100%' }}
