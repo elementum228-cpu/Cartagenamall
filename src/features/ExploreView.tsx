@@ -189,13 +189,16 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
               selectSpace(flashEvent.spaceId)
               if (use3D) requestFocus({ kind: 'space', id: flashEvent.spaceId })
             }}
-            className={`glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-2 text-[12px] font-semibold text-ink shadow-none transition active:scale-[0.98] ${flashEvent.spotlight === 'playing' ? 'ring-2 ring-amber' : ''}`}
+            // suelta, sin cápsula: ícono ámbar, descuento, tienda y contador alineados al centro
+            className="chrome-text flex h-8 items-center gap-1.5 rounded-full pr-1 text-[13px] leading-none font-semibold transition active:scale-[0.98]"
             aria-label={`Oferta relámpago −${flash.discountPercent}% en ${flashStore?.name ?? 'una tienda'}. Ver la tienda`}
           >
-            <Zap className="size-3.5 text-[#c9871c]" strokeWidth={2} /> −{flash.discountPercent}%{flashStore && <span className="max-w-28 truncate">· {flashStore.name}</span>}
-            <span className="text-ink-soft">
-              <Countdown endsAt={flash.endsAt} />
+            <span className={`grid size-6 shrink-0 place-items-center rounded-full bg-amber text-deep shadow-[0_2px_10px_rgb(247_179_75/0.55)] ${flashEvent.spotlight === 'playing' ? 'motion-safe:animate-pulse' : ''}`}>
+              <Zap className="size-3.5" strokeWidth={2.2} fill="currentColor" />
             </span>
+            <span className="font-bold">−{flash.discountPercent}%</span>
+            {flashStore && <span className="max-w-28 truncate opacity-90">{flashStore.name}</span>}
+            <Countdown endsAt={flash.endsAt} className="!font-sans !text-[12.5px] leading-none !font-semibold opacity-90" />
           </button>
         )}
         <PromoAnnouncer />
