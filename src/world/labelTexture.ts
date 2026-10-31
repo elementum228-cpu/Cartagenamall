@@ -261,7 +261,11 @@ export function getStoreSign(name: string, color: string, sub?: string, logo?: s
   texture.magFilter = THREE.LinearFilter
   if (logo) {
     const img = new Image()
+    // Logos en Supabase Storage (otro dominio): sin crossOrigin el lienzo queda «contaminado» y
+    // WebGL no puede usarlo, y el cartel se vería en blanco.
+    if (!logo.startsWith('data:')) img.crossOrigin = 'anonymous'
     img.onload = () => {
+      if (!usableImage(img)) return // se queda el cartel con el nombre
       draw(img)
       texture.needsUpdate = true
     }
@@ -270,6 +274,23 @@ export function getStoreSign(name: string, color: string, sub?: string, logo?: s
   const label = { texture, aspect: W / H }
   cache.set(key, label)
   return label
+}
+
+/**
+ * ¿Se puede dibujar la imagen sin contaminar el lienzo? Se prueba en uno aparte: un lienzo
+ * contaminado ya no se recupera y no serviría como textura.
+ */
+function usableImage(img: HTMLImageElement) {
+  try {
+    const test = document.createElement('canvas')
+    test.width = test.height = 1
+    const c = test.getContext('2d')!
+    c.drawImage(img, 0, 0, 1, 1)
+    c.getImageData(0, 0, 1, 1)
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** Cartel grande de una oferta que se está presentando: etiqueta RELÁMPAGO, descuento enorme y producto. */
