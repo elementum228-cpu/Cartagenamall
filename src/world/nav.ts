@@ -76,6 +76,8 @@ function p2Free(x: number, z: number): boolean {
   const r = AGENT_RADIUS
   const H = FOOD_LAYOUT.half - 0.6
   if (Math.abs(x) > H - r || Math.abs(z) > H - r) return false
+  // esquina recortada donde llegan las escaleras
+  if (x + z > 2 * FOOD_LAYOUT.half - FOOD_LAYOUT.arrivalCut - 0.4 - r) return false
   // fila de restaurantes del fondo y del costado (y la terraza en la esquina)
   if (z < -8.8 + r || x < -8.8 + r) return false
   const hit = (c: Circle) => Math.hypot(x - c.x, z - c.z) < c.r + r

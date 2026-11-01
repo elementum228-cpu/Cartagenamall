@@ -160,7 +160,9 @@ export const FOOD_LAYOUT = {
   /** Terraza con pérgola en la esquina del fondo. */
   terrace: { x0: -14, x1: -7.4, z0: -14, z1: -7.4 },
   /** Donde llegan las escaleras: la esquina del frente de la terraza (hacia la plaza). */
-  arrival: { x: 11.6, z: 11.6 },
+  arrival: { x: 11.2, z: 11.2 },
+  /** Esa esquina va recortada en diagonal (chaflán): la escalera llega derecho a un borde recto. */
+  arrivalCut: 4,
 } as const
 
 /**
@@ -178,7 +180,7 @@ const P2_ELEVATION = 7.2
  */
 export const ESCALATOR = { lanesX: [-0.75, 0.75], bottomZ: 9.8, topZ: 0, width: 1.5 } as const
 /** Marco de las escaleras: arriba (z local 0) en (x, z) del piso 1, girado `angle` en y. */
-export const ESCALATOR_FRAME = { x: -11.3, z: -11.3, angle: Math.PI / 4 } as const
+export const ESCALATOR_FRAME = { x: -11.75, z: -11.75, angle: Math.PI / 4 } as const
 /** De coordenadas de las escaleras a coordenadas del piso 1. */
 export function escToWorld(lx: number, lz: number): [number, number] {
   const c = Math.cos(ESCALATOR_FRAME.angle)

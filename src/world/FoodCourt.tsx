@@ -23,8 +23,26 @@ const WOOD_DECK = '#dcb78c'
 const STOOL_COLORS = ['#f2b880', '#9fd0c7', '#f4a9a0', '#c9b6e4', '#f7d488']
 const UMBRELLA_COLORS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f']
 
-/** Hueco de la baranda en la esquina del frente, donde llegan las escaleras (en diagonal). */
-const ARRIVAL_GAP = 3.8
+/** Chaflán de la esquina del frente, donde llegan las escaleras (en diagonal). */
+const CUT = FOOD_LAYOUT.arrivalCut
+const ARRIVAL_GAP = CUT - 0.2
+
+/** Caja de la losa (lado 2·half, grosor `h`) con la esquina del frente (+x, +z) recortada en diagonal. */
+function chamferedSlab(half: number, cut: number, h: number) {
+  // forma en el plano (x, −z): al girarla queda acostada con el grosor hacia arriba
+  const pts: [number, number][] = [
+    [-half, -half],
+    [half, -half],
+    [half, half - cut],
+    [half - cut, half],
+    [-half, half],
+  ]
+  const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)))
+  const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false })
+  g.rotateX(-Math.PI / 2)
+  g.translate(0, -h / 2, 0)
+  return g
+}
 
 /**
  * Columnas de la arcada frontal (coordenadas del piso). Se saltan los tramos que caerían sobre
@@ -53,6 +71,7 @@ function railing(x0: number, z0: number, x1: number, z1: number, key: string) {
 
 /** Losa con borde de piedra, muros del fondo, barandas, pérgola y columnas: todo estático. */
 function Shell() {
+  const slab = useMemo(() => ({ top: chamferedSlab(H, CUT, 0.5), band: chamferedSlab(H + 0.2, CUT, 0.6) }), [])
   const wall = mat(PALETTE.wall)
   const wood = mat(PALETTE.wood)
   // Columnas en el jardín del fondo de la fortaleza (no caen sobre tiendas del piso 1).
@@ -65,8 +84,8 @@ function Shell() {
   return (
     <group>
       {/* losa: piso claro, canto de piedra y faja inferior */}
-      <mesh geometry={GEO.box} material={mat(PALETTE.floor)} position={[0, -0.05, 0]} scale={[2 * H, 0.5, 2 * H]} receiveShadow castShadow />
-      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -0.6, 0]} scale={[2 * H + 0.4, 0.6, 2 * H + 0.4]} />
+      <mesh geometry={slab.top} material={mat(PALETTE.floor)} position={[0, -0.05, 0]} receiveShadow castShadow />
+      <mesh geometry={slab.band} material={mat(STONE_DARK)} position={[0, -0.6, 0]} />
       <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[2, 0.212, 2]} scale={[19, 0.02, 19]} receiveShadow />
       {/* terraza de madera con pérgola en la esquina del fondo */}
       <mesh geometry={GEO.box} material={mat(WOOD_DECK)} position={[(T.x0 + T.x1) / 2 + 0.2, 0.215, (T.z0 + T.z1) / 2 + 0.2]} scale={[T.x1 - T.x0 - 0.4, 0.03, T.z1 - T.z0 - 0.4]} receiveShadow />
@@ -97,8 +116,8 @@ function Shell() {
           <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -ELEV + 0.3, 0]} scale={[1.05, 0.4, 1.05]} />
         </group>
       ))}
-      <mesh geometry={GEO.box} material={mat(STONE)} position={[H - 0.3, -1.05, 0]} scale={[0.6, 0.7, 2 * H]} />
-      <mesh geometry={GEO.box} material={mat(STONE)} position={[0, -1.05, H - 0.3]} scale={[2 * H, 0.7, 0.6]} />
+      <mesh geometry={GEO.box} material={mat(STONE)} position={[H - 0.3, -1.05, -CUT / 2]} scale={[0.6, 0.7, 2 * H - CUT]} />
+      <mesh geometry={GEO.box} material={mat(STONE)} position={[-CUT / 2, -1.05, H - 0.3]} scale={[2 * H - CUT, 0.7, 0.6]} />
       {/* columnas hasta el suelo de la fortaleza */}
       {columns.map(([x, z]) => (
         <group key={`${x}${z}`} position={[x, 0, z]}>
@@ -264,7 +283,6 @@ function buildFurniture() {
       fronds.push({ p: [x + Math.sin(a) * 0.7, 0.95 + h, z + Math.cos(a) * 0.7], s: [0.45, 0.07, 1.6], r: a, rx: 0.35 })
     }
   }
-  palm(H - 1.6, H - 1.6, 2.6, 0.3)
   palm(-6.5, H - 1.6, 2.2, 1.2)
   palm(H - 1.6, -7, 2.4, 2.1)
 

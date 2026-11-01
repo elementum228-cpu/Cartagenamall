@@ -61,7 +61,9 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
   useFrame(({ clock }) => {
     const t = reduceMotion ? 0 : clock.elapsedTime
     const phase = (t * STEP_RATE) % 1
-    const stepAt = (lx: number, u: number) => o.position.set(lx, FLOOR_TOP + rise * u + 0.2, ESCALATOR.bottomZ - run * u)
+    // en los extremos los escalones se aplanan y pasan bajo la placa de peine (como una escalera real)
+    const lift = (u: number) => 0.2 * Math.min(1, Math.max(0, Math.min(u, 1 - u) / 0.07)) - 0.06
+    const stepAt = (lx: number, u: number) => o.position.set(lx, FLOOR_TOP + rise * u + lift(u), ESCALATOR.bottomZ - run * u)
     // escalones: suben en un carril y bajan en el otro (sin reciclar a la vista: el primero entra mientras el último sale)
     const m = steps.current
     if (m) {
@@ -186,8 +188,12 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
       <instancedMesh ref={riderBodies} args={[GEO.capsule, mat('#ffffff'), RIDERS]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={riderHeads} args={[GEO.sphereSmooth, mat('#ffffff'), RIDERS]} frustumCulled={false} raycast={() => null} />
       {/* rellanos: abajo en la plaza y arriba sobre la terraza */}
-      <mesh geometry={GEO.rounded} material={mat(PALETTE.metal)} position={[centerX, FLOOR_TOP + 0.05, ESCALATOR.bottomZ + 0.8]} scale={[4.2, 0.1, 1.6]} receiveShadow />
-      <mesh geometry={GEO.rounded} material={mat(PALETTE.metal)} position={[centerX, FLOOR_TOP + rise + 0.05, ESCALATOR.topZ - 0.6]} scale={[4.2, 0.1, 1.2]} receiveShadow />
+      {/* placas de peine: tapan el final de la rampa, los escalones entran por debajo */}
+      <mesh geometry={GEO.rounded} material={mat(PALETTE.metal)} position={[centerX, FLOOR_TOP + 0.07, ESCALATOR.bottomZ + 0.55]} scale={[4.2, 0.14, 2.1]} receiveShadow />
+      <mesh geometry={GEO.rounded} material={mat(PALETTE.metal)} position={[centerX, FLOOR_TOP + rise + 0.07, ESCALATOR.topZ - 0.35]} scale={[4.2, 0.14, 1.7]} receiveShadow />
+      {[ESCALATOR.bottomZ - 0.45, ESCALATOR.topZ + 0.45].map((z, i) => (
+        <mesh key={z} geometry={GEO.box} material={mat('#f5b544')} position={[centerX, FLOOR_TOP + (i ? rise : 0) + 0.145, z]} scale={[3.4, 0.01, 0.08]} />
+      ))}
       <mesh geometry={GEO.cylinder} material={mat(PALETTE.metal)} position={[centerX + 2.6, 1.1, ESCALATOR.bottomZ + 1.4]} scale={[0.08, 2.2, 0.08]} />
       </group>
       {showUpSign && (
