@@ -72,6 +72,8 @@ export interface SpaceSlot {
   /** Rotación en Y: la fachada mira hacia +z local tras rotar. */
   rotation: number
   size: [number, number]
+  /** Altura del piso donde está (p. ej. el segundo piso de Isla Tecnología). */
+  elevation?: number
 }
 
 export type StoreStatus = 'open' | 'paused'

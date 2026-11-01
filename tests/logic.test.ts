@@ -29,7 +29,7 @@ const item = (productId: string, variantId: string | null, size: string | null, 
 describe('mall layout', () => {
   it('genera los espacios desde configuración: 20 en los pasillos y 4 en servicios (piso 1), 10 en el piso 2', () => {
     expect(SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))).toHaveLength(24)
-    expect(SPACES.filter((s) => s.id.startsWith('P1-I'))).toHaveLength(10)
+    expect(SPACES.filter((s) => s.id.startsWith('P1-I'))).toHaveLength(20)
     expect(SPACES.filter((s) => s.zoneId === 'F')).toHaveLength(4)
     expect(SPACES.filter((s) => s.floorId === 'P2')).toHaveLength(10)
     for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z && !s.id.startsWith('P1-I'))).toHaveLength(5)
@@ -52,7 +52,7 @@ describe('mall layout', () => {
     expect(p2.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(4)
     expect(SPACE_TYPES.premium.monthlyPriceCOP).toBe(180_000)
     // Isla Tecnología: 10 locales de tecnología, todos disponibles
-    expect(SPACES.filter((s) => s.id.startsWith('P1-I') && !SEED_ASSIGNMENTS[s.id])).toHaveLength(10)
+    expect(SPACES.filter((s) => s.id.startsWith('P1-I') && !SEED_ASSIGNMENTS[s.id])).toHaveLength(20)
     expect(SPACES.filter((s) => s.id.startsWith('P1-I')).every((s) => s.zoneId === 'B')).toBe(true)
   })
   it('cada negocio del piso 2 tiene menú', () => {

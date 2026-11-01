@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { type ReactElement, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ISLAND, ISLAND_RING, ISLAND_RUNWAY, ISLAND_SECTORS, SPACES, insideSpace, spaceFrontPoint, toWorld } from '../config/mall'
+import { ISLAND, ISLAND_DECK as DECK, ISLAND_RING, ISLAND_RUNWAY, ISLAND_SECTORS, ISLAND_WALK, SPACES, insideSpace, spaceFrontPoint, toWorld } from '../config/mall'
 import { useIsNight } from '../lib/useIsNight'
 import { islandPlaneAnchor } from '../airport/anchor'
 import { LANDING_MS, TAKEOFF_MS, TAXI_FRAC, TOUCHDOWN, useFlight } from '../airport/flight'
@@ -12,7 +12,7 @@ import { ScreenLabel } from './Billboard'
 import { CORDON, EntranceGate, Garita, STONE, STONE_DARK } from './Fortress'
 import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
-import { GEO, PALETTE, mat } from './materials'
+import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat, nightVolumeMat } from './night'
 import { Person } from './Person'
 import { RunwayLights } from './RunwayLights'
@@ -68,17 +68,6 @@ function WallRun({ a, b, gap = 0 }: { a: [number, number]; b: [number, number]; 
   )
 }
 
-function Palm({ x, z, h, seed }: { x: number; z: number; h: number; seed: number }) {
-  return (
-    <group position={[x, 0, z]}>
-      <mesh geometry={GEO.cylinderLow} material={mat(PALETTE.trunk)} position={[0, h / 2, 0]} rotation={[0.1, seed, 0]} scale={[0.3, h, 0.3]} castShadow />
-      {Array.from({ length: 6 }, (_, k) => {
-        const a = (k / 6) * Math.PI * 2 + seed
-        return <mesh key={k} geometry={GEO.box} material={mat(PALETTE.leafDark)} position={[Math.sin(a) * 0.8, h + 0.05, Math.cos(a) * 0.8]} rotation={[0.35, a, 0]} scale={[0.5, 0.08, 1.9]} castShadow />
-      })}
-    </group>
-  )
-}
 
 /**
  * Aeropuerto de la isla (en el marco de la pista; −x local mira al mar y a la cámara): plataforma
@@ -143,8 +132,9 @@ function IslandAirport() {
       {[[PX + 3.8, -9.5], [PX + 3.8, 5.5], [PX - 3.8, 6.5]].map(([x, z]) => (
         <group key={`${x}${z}`} position={[x, 0.2, z]}>
           <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.5, 0]} scale={[0.1, 3, 0.1]} />
-          <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 3.1, 0]} scale={0.4} />
-          <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]} scale={[4, 4, 1]} />
+          <mesh geometry={GEO.box} material={glowMat('#bff6ff', 2.4, { dayGlow: 0.55 })} position={[0, 3.05, 0]} scale={[0.5, 0.12, 0.5]} />
+          <mesh geometry={GEO.box} material={glowMat(CYAN, 1.8, { dayGlow: 0.5 })} position={[0, 1.6, 0]} scale={[0.04, 2.4, 0.12]} />
+          <mesh geometry={GEO.plane} material={lightPoolMat('#7fe3f0', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]} scale={[4, 4, 1]} />
         </group>
       ))}
     </group>
@@ -308,21 +298,13 @@ function Castle() {
   }, [])
   // garitas en los salientes
   const towers = TOWERS.map((i) => pts[i])
-  // palmeras y faroles en los paseos (nunca encima de un local)
-  const palms = useMemo(() => {
-    const spots: [number, number][] = [
-      [14, -14], [-14, -14], [-14, 14], [15.5, -18.5], [-19, -17], [-20, 13], [20, -6.5], [-6, 22.5], [6, -22.5], [-23, -2], [23.5, 3],
-    ]
-    return spots
-      .map(([dx, dz], i) => ({ x: C.x + dx, z: C.z + dz, h: 3 + (i % 3) * 0.5, seed: i * 1.7 }))
-      .filter((p) => !insideSpace(p.x, p.z, 1.8))
-  }, [])
+  const walkRing = useMemo(() => new THREE.RingGeometry(ISLAND_WALK - 2, ISLAND_WALK + 2, 72), [])
   const lamps = useMemo(
     () =>
-      Array.from({ length: 8 }, (_, i) => {
-        const a = Math.PI / 4 + (i * Math.PI) / 4
-        return [C.x + Math.sin(a) * 7, C.z + Math.cos(a) * 7] as [number, number]
-      }).filter(([x, z]) => !insideSpace(x, z, 0.3)),
+      Array.from({ length: 18 }, (_, i) => {
+        const a = Math.PI / 4 + 0.17 + (i * 2 * Math.PI) / 18
+        return [C.x + Math.sin(a) * ISLAND_WALK, C.z + Math.cos(a) * ISLAND_WALK] as [number, number]
+      }).filter(([x, z]) => !insideSpace(x, z, 0.6) && !onDeck(x, z, 0.8)),
     [],
   )
   const ga = pts[GATE_EDGE]
@@ -335,7 +317,7 @@ function Castle() {
       {/* playa, talud de piedra hasta el mar y suelo del castillo */}
       <mesh geometry={shapes.beach} material={mat('#f1dfb5')} position={[C.x, -0.85, C.z]} receiveShadow />
       <mesh geometry={shapes.talud} material={mat(STONE_DARK)} position={[C.x, -1.25, C.z]} />
-      <mesh geometry={shapes.ground} material={mat('#e9dcc2')} position={[C.x, -1.6, C.z]} receiveShadow />
+      <mesh geometry={shapes.ground} material={mat('#dfe4ea')} position={[C.x, -1.6, C.z]} receiveShadow />
       {[
         [-31, 8, 1.5], [-26, -24, 1.2], [16, -30, 1.3], [30, -14, 1.1], [-4, 31, 1.2], [-25, 24, 1],
       ].map(([dx, dz, s]) => (
@@ -362,25 +344,25 @@ function Castle() {
         <Bridge from={3.9} to={Math.hypot(gm[0] - C.x, gm[1] - C.z) > 0 ? RUN.d - 4 - Math.hypot(gm[0] - C.x, gm[1] - C.z) + 0.4 : 12} />
       </group>
       {/* plaza central elevada con fuente */}
-      <mesh geometry={GEO.cylinder} material={mat('#dfe4ea')} position={[C.x, 0.1, C.z]} scale={[2 * (ISLAND_RING - 2.2), 0.2, 2 * (ISLAND_RING - 2.2)]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#cfd6df')} position={[C.x, 0.1, C.z]} scale={[2 * (ISLAND_RING - 2.6), 0.2, 2 * (ISLAND_RING - 2.6)]} receiveShadow />
+      {/* paseo entre los dos anillos de locales */}
+      <mesh geometry={walkRing} material={mat('#c3ccd7')} position={[C.x, 0.13, C.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow />
       <mesh geometry={GEO.cylinder} material={mat('#c9d1db')} position={[C.x, 0.22, C.z]} scale={[9, 0.04, 9]} receiveShadow />
       {/* camino de la plaza a la puerta (diagonal) */}
       {(() => {
         const from = ISLAND_RING - 2.4
         const to = Math.hypot(gm[0] - C.x, gm[1] - C.z) - 1
         const [mx, mz] = toWorld([0, (from + to) / 2], diag)
-        return <mesh geometry={GEO.box} material={mat('#e6d3ad')} position={[C.x + mx, 0.12, C.z + mz]} rotation={[0, diag, 0]} scale={[3.4, 0.04, to - from]} receiveShadow />
+        return <mesh geometry={GEO.box} material={mat('#c3ccd7')} position={[C.x + mx, 0.12, C.z + mz]} rotation={[0, diag, 0]} scale={[3.4, 0.04, to - from]} receiveShadow />
       })()}
       {/* faroles y palmeras de los paseos */}
       {lamps.map(([x, z]) => (
         <group key={`${x}${z}`} position={[x, 0.2, z]}>
           <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.5, 0]} scale={[0.1, 3, 0.1]} />
-          <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 3.1, 0]} scale={0.4} />
-          <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]} scale={[4, 4, 1]} />
+          <mesh geometry={GEO.box} material={glowMat('#bff6ff', 2.4, { dayGlow: 0.55 })} position={[0, 3.05, 0]} scale={[0.5, 0.12, 0.5]} />
+          <mesh geometry={GEO.box} material={glowMat(CYAN, 1.8, { dayGlow: 0.5 })} position={[0, 1.6, 0]} scale={[0.04, 2.4, 0.12]} />
+          <mesh geometry={GEO.plane} material={lightPoolMat('#7fe3f0', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]} scale={[4, 4, 1]} />
         </group>
-      ))}
-      {palms.map((p) => (
-        <Palm key={`${p.x}${p.z}`} {...p} />
       ))}
       {/* pista de aterrizaje sobre un muelle de piedra, en la diagonal frente a la puerta */}
       <group position={[C.x + runC[0], 0, C.z + runC[1]]} rotation={[0, diag + Math.PI / 2, 0]}>
@@ -476,9 +458,15 @@ function Balloon({ reduceMotion }: { reduceMotion: boolean }) {
   )
 }
 
+/** ¿El punto cae bajo la terraza del segundo piso (más `m`)? */
+function onDeck(x: number, z: number, m = 0) {
+  return Math.abs(x - (C.x + DECK.x)) < DECK.half + m && Math.abs(z - (C.z + DECK.z)) < DECK.half + m
+}
+
 /**
- * Caminos tipo circuito en el piso (de la fuente al frente de cada local, con un quiebre y un nodo),
- * anillos luminosos y tótems con pantalla entre los locales. Estático: va en el Batch.
+ * Caminos tipo circuito en el piso: de la fuente a cada local del anillo interior (con un quiebre y
+ * nodos), del paseo a cada local del anillo exterior, anillos luminosos y tótems con pantalla.
+ * Estático: va en el Batch.
  */
 function TechCircuits() {
   const line = glowMat(CYAN, 1.5, { dayGlow: 0.45 })
@@ -486,51 +474,127 @@ function TechCircuits() {
   const node = glowMat('#bff6ff', 2, { dayGlow: 0.6 })
   const screen = glowMat('#2a6bff', 1.9, { dayGlow: 0.55 })
   const screen2 = glowMat('#9b5cff', 1.9, { dayGlow: 0.55 })
-  const shops = SPACES.filter((sp) => sp.id.startsWith('P1-I'))
+  const shops = SPACES.filter((sp) => sp.id.startsWith('P1-I') && !sp.elevation)
   const Y0 = 0.235
   const seg = (ax: number, az: number, bx: number, bz: number, m: THREE.Material, k: string) => {
     const len = Math.hypot(bx - ax, bz - az)
     return <mesh key={k} geometry={GEO.box} material={m} position={[(ax + bx) / 2, Y0, (az + bz) / 2]} rotation={[0, Math.atan2(bx - ax, bz - az), 0]} scale={[0.09, 0.012, len]} />
   }
+  const dot = (x: number, z: number, r: number, k: string) => <mesh key={k} geometry={GEO.cylinder} material={node} position={[x, Y0 + 0.01, z]} scale={[r, 0.02, r]} />
+  const at = (a: number, r: number): [number, number] => [C.x + Math.sin(a) * r, C.z + Math.cos(a) * r]
   const out: ReactElement[] = []
   shops.forEach((sp, k) => {
     const [fx, fz] = spaceFrontPoint(sp, 0.4)
     const a = Math.atan2(fx - C.x, fz - C.z)
-    const r0 = 3.6
-    const rm = 7
-    // tramo radial, quiebre de 45° y llegada al local
-    const [x0, z0] = [C.x + Math.sin(a) * r0, C.z + Math.cos(a) * r0]
-    const bend = a + (k % 2 ? 0.16 : -0.16)
-    const [x1, z1] = [C.x + Math.sin(bend) * rm, C.z + Math.cos(bend) * rm]
-    out.push(seg(x0, z0, x1, z1, line, `a${k}`), seg(x1, z1, fx, fz, line, `b${k}`))
-    out.push(<mesh key={`n${k}`} geometry={GEO.cylinder} material={node} position={[x1, Y0 + 0.01, z1]} scale={[0.32, 0.02, 0.32]} />)
-    out.push(<mesh key={`m${k}`} geometry={GEO.cylinder} material={node} position={[fx, Y0 + 0.01, fz]} scale={[0.42, 0.02, 0.42]} />)
-    // ramal corto que se abre al costado
-    const side = bend + (k % 2 ? 0.35 : -0.35)
-    const [x2, z2] = [C.x + Math.sin(side) * (rm + 1.6), C.z + Math.cos(side) * (rm + 1.6)]
-    out.push(seg(x1, z1, x2, z2, lineDim, `c${k}`))
-    out.push(<mesh key={`o${k}`} geometry={GEO.cylinder} material={node} position={[x2, Y0 + 0.01, z2]} scale={[0.22, 0.02, 0.22]} />)
+    const inner = Math.hypot(sp.position[0] - C.x, sp.position[1] - C.z) < ISLAND_WALK
+    if (inner) {
+      const bend = a + (k % 2 ? 0.18 : -0.18)
+      const [x0, z0] = at(a, 3.6)
+      const [x1, z1] = at(bend, 6.4)
+      out.push(seg(x0, z0, x1, z1, line, `a${k}`), seg(x1, z1, fx, fz, line, `b${k}`), dot(x1, z1, 0.32, `n${k}`))
+    } else {
+      // del paseo al frente del local, con un ramal corto al costado
+      const [x1, z1] = at(a + (k % 2 ? 0.08 : -0.08), ISLAND_WALK)
+      out.push(seg(x1, z1, fx, fz, line, `a${k}`), dot(x1, z1, 0.3, `n${k}`))
+      const [x2, z2] = at(a + (k % 2 ? 0.2 : -0.2), ISLAND_WALK - 1.2)
+      out.push(seg(x1, z1, x2, z2, lineDim, `c${k}`), dot(x2, z2, 0.2, `o${k}`))
+    }
+    out.push(dot(fx, fz, 0.42, `m${k}`))
   })
-  // tótems con pantalla entre locales (anillo de 9,8), sin estorbar el camino de la puerta
-  const totems = Array.from({ length: 10 }, (_, k) => Math.PI / 4 + (2 * Math.PI * (k + 1.5)) / 11).filter((a) => Math.abs(Math.atan2(Math.sin(a - Math.PI / 4), Math.cos(a - Math.PI / 4))) > 0.4)
+  // tótems con pantalla: en el paseo y entre los locales del anillo interior
+  const spots: [number, number, number][] = []
+  for (let k = 0; k < 20; k++) {
+    const a = Math.PI / 4 + 0.32 + (k * 2 * Math.PI) / 20
+    const [x, z] = at(a, ISLAND_WALK + (k % 2 ? 1.3 : -1.3))
+    if (!insideSpace(x, z, 0.8) && !onDeck(x, z, 1) && Math.abs(Math.atan2(Math.sin(a - Math.PI / 4), Math.cos(a - Math.PI / 4))) > 0.3) spots.push([x, z, a])
+  }
   return (
     <group>
       {out}
-      {[4.6, 10.2].map((r) => (
-        <mesh key={r} geometry={GEO.torus} material={r < 5 ? line : lineDim} position={[C.x, Y0, C.z]} rotation={[Math.PI / 2, 0, 0]} scale={[r, r, 0.35]} />
+      {[4.6, ISLAND_RING - 2.6, ISLAND_WALK - 1.9, ISLAND_WALK + 1.9].map((r, i) => (
+        <mesh key={r} geometry={GEO.torus} material={i === 0 ? line : lineDim} position={[C.x, Y0, C.z]} rotation={[Math.PI / 2, 0, 0]} scale={[r, r, 0.3]} />
       ))}
-      {totems.map((a, k) => {
-        const x = C.x + Math.sin(a) * 9.8
-        const z = C.z + Math.cos(a) * 9.8
-        return (
-          <group key={k} position={[x, 0.2, z]} rotation={[0, a + Math.PI, 0]}>
-            <mesh geometry={GEO.box} material={mat('#1c2433')} position={[0, 1.05, 0]} scale={[0.75, 2.1, 0.22]} castShadow />
-            <mesh geometry={GEO.box} material={k % 2 ? screen2 : screen} position={[0, 1.2, 0.12]} scale={[0.6, 1.5, 0.02]} />
-            <mesh geometry={GEO.box} material={k % 2 ? screen : screen2} position={[0, 1.2, -0.12]} scale={[0.6, 1.5, 0.02]} />
-            <mesh geometry={GEO.box} material={node} position={[0, 0.05, 0]} scale={[0.95, 0.05, 0.4]} />
+      {spots.map(([x, z, a], k) => (
+        <group key={k} position={[x, 0.2, z]} rotation={[0, a + Math.PI / 2, 0]}>
+          <mesh geometry={GEO.box} material={mat('#1c2433')} position={[0, 1.05, 0]} scale={[0.75, 2.1, 0.22]} castShadow />
+          <mesh geometry={GEO.box} material={k % 2 ? screen2 : screen} position={[0, 1.2, 0.12]} scale={[0.6, 1.5, 0.02]} />
+          <mesh geometry={GEO.box} material={k % 2 ? screen : screen2} position={[0, 1.2, -0.12]} scale={[0.6, 1.5, 0.02]} />
+          <mesh geometry={GEO.box} material={node} position={[0, 0.05, 0]} scale={[0.95, 0.05, 0.4]} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/**
+ * Segundo piso: terraza cuadrada sobre columnas en la esquina del fondo, con losa, canto de piedra,
+ * barandas de vidrio con borde luminoso hacia el frente, y escaleras eléctricas en diagonal desde la
+ * plaza hasta su esquina del frente. Estático (va en el Batch).
+ */
+const ESC_BOTTOM = 4.3
+const ESC_TOP = Math.SQRT2 * (-DECK.x - DECK.half) + 0.1
+function IslandDeck() {
+  const E = DECK.elevation
+  const cx = C.x + DECK.x
+  const cz = C.z + DECK.z
+  const H = DECK.half
+  const glass = mat('#bfe6ff', { opacity: 0.35 })
+  const edge = glowMat(CYAN, 1.8, { dayGlow: 0.5 })
+  const dark = mat('#1c2433')
+  // escaleras: en el marco de la diagonal hacia la terraza (−x, −z)
+  const ang = -3 * Math.PI / 4
+  const run = ESC_TOP - ESC_BOTTOM
+  const len = Math.hypot(run, E)
+  const tilt = Math.atan2(E, run)
+  return (
+    <group>
+      {/* losa, canto y faja */}
+      <mesh geometry={GEO.box} material={mat('#dfe4ea')} position={[cx, E - 0.05, cz]} scale={[2 * H, 0.5, 2 * H]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[cx, E - 0.55, cz]} scale={[2 * H + 0.3, 0.5, 2 * H + 0.3]} />
+      <mesh geometry={GEO.box} material={edge} position={[cx, E - 0.28, cz]} scale={[2 * H + 0.34, 0.06, 2 * H + 0.34]} />
+      {/* columnas hasta el suelo */}
+      {[-1, 1].flatMap((sx) =>
+        [-1, 1].map((sz) => (
+          <group key={`${sx}${sz}`} position={[cx + sx * (H - 0.6), 0, cz + sz * (H - 0.6)]}>
+            <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, (E - 0.8) / 2 + 0.2, 0]} scale={[0.9, E - 0.6, 0.9]} castShadow />
+            <mesh geometry={GEO.box} material={edge} position={[0, (E - 0.8) / 2 + 0.2, 0]} scale={[0.92, 0.12, 0.92]} />
           </group>
-        )
-      })}
+        )),
+      )}
+      {/* barandas de vidrio en los dos lados del frente, con hueco para las escaleras en la esquina */}
+      {[
+        [cx + H - 0.1, cz - 1.4, 0.1, 2 * H - 2.8],
+        [cx - 1.4, cz + H - 0.1, 2 * H - 2.8, 0.1],
+      ].map(([x, z, w, d]) => (
+        <group key={`${x}${z}`}>
+          <mesh geometry={GEO.box} material={glass} position={[x, E + 0.65, z]} scale={[w, 0.9, d]} />
+          <mesh geometry={GEO.box} material={edge} position={[x, E + 1.12, z]} scale={[w + 0.04, 0.06, d + 0.04]} />
+        </group>
+      ))}
+      {/* piso con rejilla luminosa */}
+      {[-2, 0, 2].map((o) => (
+        <group key={o}>
+          <mesh geometry={GEO.box} material={glowMat('#5b8cff', 1.2, { dayGlow: 0.35 })} position={[cx + o, E + 0.21, cz]} scale={[0.06, 0.01, 2 * H - 1]} />
+          <mesh geometry={GEO.box} material={glowMat('#5b8cff', 1.2, { dayGlow: 0.35 })} position={[cx, E + 0.21, cz + o]} scale={[2 * H - 1, 0.01, 0.06]} />
+        </group>
+      ))}
+      {/* escaleras eléctricas: dos carriles con vidrio y pasamanos luminosos */}
+      <group position={[C.x, 0, C.z]} rotation={[0, ang, 0]}>
+        {[-0.8, 0.8].map((lx) => (
+          <group key={lx} position={[lx, 0.2 + E / 2, ESC_BOTTOM + run / 2]} rotation={[-tilt, 0, 0]}>
+            <mesh geometry={GEO.box} material={mat('#c9ccd1')} position={[0, -0.25, 0]} scale={[1.5, 0.5, len]} castShadow />
+            <mesh geometry={GEO.box} material={mat('#8f959d')} position={[0, 0.02, 0]} scale={[1.3, 0.04, len]} />
+            {[-1, 1].map((s) => (
+              <group key={s}>
+                <mesh geometry={GEO.box} material={glass} position={[s * 0.75, 0.45, 0]} scale={[0.05, 0.85, len]} />
+                <mesh geometry={GEO.box} material={edge} position={[s * 0.75, 0.9, 0]} scale={[0.1, 0.06, len + 0.3]} />
+              </group>
+            ))}
+          </group>
+        ))}
+        <mesh geometry={GEO.box} material={dark} position={[0, 0.25, ESC_BOTTOM - 0.7]} scale={[3.6, 0.1, 1.4]} />
+        <mesh geometry={GEO.box} material={dark} position={[0, E + 0.25, ESC_TOP + 0.6]} scale={[3.6, 0.1, 1.2]} />
+      </group>
     </group>
   )
 }
@@ -585,11 +649,11 @@ function HoloFountain({ reduceMotion }: { reduceMotion: boolean }) {
 function SectorLabels() {
   const night = useIsNight()
   const shops = useMemo(() => SPACES.filter((sp) => sp.id.startsWith('P1-I')), [])
-  const labels = useMemo(() => ISLAND_SECTORS.map((name) => getGlassPill(name, { dot: CYAN, dark: night })), [night])
+  const labels = useMemo(() => shops.map((_, k) => getGlassPill(ISLAND_SECTORS[k % ISLAND_SECTORS.length], { dot: CYAN, dark: night })), [night, shops])
   return (
     <>
       {shops.map((sp, k) => (
-        <ScreenLabel key={sp.id} label={labels[k]} position={[sp.position[0], 5.2, sp.position[1]]} pixelHeight={22} minZoomRatio={1.05} priority={LABEL_PRIORITY.section} />
+        <ScreenLabel key={sp.id} label={labels[k]} position={[sp.position[0], 5.2 + (sp.elevation ?? 0), sp.position[1]]} pixelHeight={22} minZoomRatio={1.05} priority={LABEL_PRIORITY.section} />
       ))}
     </>
   )
@@ -603,6 +667,7 @@ export function Island({ reduceMotion }: { reduceMotion: boolean }) {
       <Batch version="isla-mall">
         <Castle />
         <TechCircuits />
+        <IslandDeck />
       </Batch>
       <IslandPlane />
       <HoloFountain reduceMotion={reduceMotion} />

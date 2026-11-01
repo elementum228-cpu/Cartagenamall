@@ -340,28 +340,46 @@ const DISTRICT_SPACES: SpaceSlot[] = (
  */
 export const ISLAND = { x: 160, z: -160, r: 26, half: 21 } as const
 /**
- * Locales de Isla Tecnología: una isla de una sola categoría (tecnología, como el pasillo B). Diez
- * locales en anillo alrededor de la plaza holográfica, con la fachada hacia el centro, dejando
- * libre la diagonal de la puerta (+x, +z). Cada uno sugiere un rubro (celulares, gaming…), pero se
- * rentan como cualquier local del mall.
+ * Locales de Isla Tecnología: una isla de una sola categoría (tecnología, como el pasillo B), que
+ * usa toda la isla. Planta baja: un anillo interior alrededor de la plaza holográfica y otro junto a
+ * las murallas, con un paseo entre los dos; todos miran al centro. Segundo piso: una terraza en la
+ * esquina del fondo (sin tapar locales), con escaleras eléctricas desde la plaza. Cada local sugiere
+ * un rubro, pero se rentan como cualquier local del mall. (Posiciones calculadas para no chocar
+ * entre sí, con la terraza ni con las murallas.)
  */
 export const ISLAND_SECTORS = ['Celulares', 'Gaming', 'Smart Home', 'Servicio técnico', 'Audio', 'Realidad virtual', 'Drones y cámaras', 'Computación', 'Accesorios', 'Wearables'] as const
-export const ISLAND_RING = 14
-const ISLAND_SPACES: SpaceSlot[] = ISLAND_SECTORS.map((_, k) => {
-  // 11 posiciones alrededor; la que cae en la puerta (ángulo π/4) queda libre
-  const a = Math.PI / 4 + (2 * Math.PI * (k + 1)) / 11
-  const [dx, dz] = toWorld([0, ISLAND_RING], a)
-  return {
-    id: `P1-I${k + 1}`,
-    floorId: 'P1',
-    zoneId: 'B' as ZoneId,
-    type: 'local' as SpaceType,
-    label: `IT-${String(k + 1).padStart(2, '0')}`,
-    position: [ISLAND.x + dx, ISLAND.z + dz] as [number, number],
-    rotation: a + Math.PI,
-    size: SPACE_TYPES.local.size,
-  }
-})
+/** Radios de los dos anillos de la planta baja y del paseo entre ellos. */
+export const ISLAND_RING = 11.5
+export const ISLAND_OUTER = 19.5
+export const ISLAND_WALK = 15.5
+/** Segundo piso: terraza cuadrada (centro, medio lado, altura). */
+export const ISLAND_DECK = { x: -13.8, z: -13.8, half: 5.8, elevation: 5 } as const
+const ISLAND_GROUND: [number, number, number][] = [
+  [0.92, 11.46, 3.2216], [11.45, 1.09, 4.6179], [9.47, -6.53, 5.316], [3.06, -11.09, 6.0141], [-11.13, 2.9, 8.1085], [-6.66, 9.37, 8.8066],
+  [6.69, 18.32, 3.4916], [18.09, 7.29, 4.3294], [19.49, -0.7, 4.7482], [17.52, -8.56, 5.1671], [12.52, -14.95, 5.586], [5.36, -18.75, 6.0049],
+  [-18.92, 4.74, 8.0993], [-15.35, 12.02, 8.5181], [-9.14, 17.23, 8.937], [-1.34, 19.45, 9.3559],
+]
+const D = ISLAND_DECK
+const ISLAND_UPPER: { type: SpaceType; at: [number, number]; rot: number }[] = [
+  { type: 'local', at: [D.x + 2.8, D.z - D.half + 2.8], rot: 0 },
+  { type: 'local', at: [D.x - D.half + 2.8, D.z + 2.8], rot: Math.PI / 2 },
+  { type: 'island', at: [D.x - D.half + 2.3, D.z - D.half + 2.3], rot: Math.PI / 4 },
+  { type: 'island', at: [D.x + 1.3, D.z + 1.3], rot: Math.PI / 4 },
+]
+const ISLAND_SPACES: SpaceSlot[] = [
+  ...ISLAND_GROUND.map(([dx, dz, rot]) => ({ type: 'local' as SpaceType, at: [dx, dz] as [number, number], rot, elevation: 0 })),
+  ...ISLAND_UPPER.map((u) => ({ ...u, elevation: D.elevation })),
+].map((t, k) => ({
+  id: `P1-I${k + 1}`,
+  floorId: 'P1',
+  zoneId: 'B' as ZoneId,
+  type: t.type,
+  label: `IT-${String(k + 1).padStart(2, '0')}`,
+  position: [ISLAND.x + t.at[0], ISLAND.z + t.at[1]] as [number, number],
+  rotation: t.rot,
+  size: SPACE_TYPES[t.type].size,
+  ...(t.elevation ? { elevation: t.elevation } : {}),
+}))
 
 /** Pista de la isla: centro (x, z), giro del marco (z local = a lo largo de la pista) y medidas. */
 export const ISLAND_RUNWAY = (() => {

@@ -114,7 +114,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
   )
 
   return (
-    <group position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]} userData={{ audit: store ? `tienda-${space.type}` : 'vacio', spaceId: space.id }}>
+    <group position={[space.position[0], 0.2 + (space.elevation ?? 0), space.position[1]]} rotation={[0, space.rotation, 0]} userData={{ audit: store ? `tienda-${space.type}` : 'vacio', spaceId: space.id }}>
       <mesh ref={halo} visible={false} geometry={GEO.ring} material={haloMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0.4]} userData={{ dynamic: true }} raycast={() => null} />
       <mesh ref={highlight} geometry={GEO.plane} material={highlightMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0.4]} scale={[w + 1.2, d + 1.6, 1]} />
       <group
