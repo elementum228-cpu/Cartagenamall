@@ -16,3 +16,11 @@ describe('temporadas', () => {
     expect(resolveSeason('auto', new Date(2026, 9, 31))).toBe('halloween')
   })
 })
+
+describe('prueba local de temporada', () => {
+  it('el botón del mapa manda sobre la elección compartida, solo en este dispositivo', () => {
+    expect(resolveSeason('none', new Date(2026, 5, 1), 'halloween')).toBe('halloween')
+    expect(resolveSeason('halloween', new Date(2026, 5, 1), 'none')).toBe('none')
+    expect(resolveSeason('none', new Date(2026, 9, 31), null)).toBe('none')
+  })
+})

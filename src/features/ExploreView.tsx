@@ -1,6 +1,6 @@
 import { openCourtOrClaim } from '../football/open'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { BookOpen, Castle, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
+import { BookOpen, Castle, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -15,7 +15,7 @@ import { useIsDesktop } from '../lib/useMedia'
 import { useCatalog } from '../state/catalog'
 import { usePersonal } from '../state/personal'
 import { PASSPORT_STAMPS, usePassport } from '../state/passport'
-import { useSeason } from '../state/season'
+import { useSeason, useSeasonSettings } from '../state/season'
 import { usePrefs, useUI } from '../state/ui'
 import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
@@ -493,6 +493,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
         <DoorOpen className="size-4" /> Ver la entrada
       </button>
       <InstallButton className={item} onDone={() => setOpen(false)} />
+      {use3D && <HalloweenToggle className={item} />}
       {use3D && (
         <button
           className={item}
@@ -605,5 +606,20 @@ function PromoAnnouncer() {
     <p className="sr-only" aria-live="polite">
       {event && store ? `Nueva oferta relámpago en ${store.name}: −${event.discount}%.` : ''}
     </p>
+  )
+}
+
+/** Prueba el tema de Halloween en este dispositivo (para mostrar que el mall se puede tematizar). */
+function HalloweenToggle({ className }: { className: string }) {
+  const on = useSeason() === 'halloween'
+  return (
+    <button
+      className={`${className} ${on ? '!bg-[#e8761c] !text-white' : ''}`}
+      onClick={() => useSeasonSettings.getState().setPreview(on ? 'none' : 'halloween')}
+      aria-pressed={on}
+      aria-label={on ? 'Quitar el tema de Halloween' : 'Ver el mall con tema de Halloween'}
+    >
+      <Ghost className="size-4" /> {on ? 'Quitar Halloween' : 'Tema Halloween'}
+    </button>
   )
 }

@@ -2,9 +2,10 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { safeStorage } from './storage'
 
-// Temporadas del mall (decoración especial): automática según la fecha, o la que elija el
-// administrador (se comparte con todos por la base de datos, ver remote/sync). Para previsualizar,
-// ?temporada=halloween o ?temporada=ninguna en la dirección.
+// Temporadas del mall (decoración especial). Por defecto el mall se ve normal; el administrador
+// puede fijar una temporada o dejarla automática por fecha (se comparte con todos por la base de
+// datos, ver remote/sync). Además, el botón «Tema Halloween» de las opciones del mapa la prueba solo
+// en este dispositivo (para mostrarla en una demo). ?temporada=halloween también la previsualiza.
 
 export type Season = 'none' | 'halloween'
 export type SeasonMode = 'auto' | Season
@@ -16,12 +17,19 @@ export const SEASONS: { id: Season; name: string; window?: { from: [number, numb
 ]
 
 interface SeasonState {
+  /** Elección del administrador (compartida). */
   mode: SeasonMode
+  /** Prueba local de una temporada (solo este dispositivo, no se comparte). */
+  preview: Season | null
   setMode: (mode: SeasonMode) => void
+  setPreview: (season: Season | null) => void
 }
 
 export const useSeasonSettings = create<SeasonState>()(
-  persist((set) => ({ mode: 'auto', setMode: (mode) => set({ mode }) }), { name: 'cm:season:v1', storage: safeStorage }),
+  persist(
+    (set) => ({ mode: 'none', preview: null, setMode: (mode) => set({ mode }), setPreview: (preview) => set({ preview }) }),
+    { name: 'cm:season:v2', storage: safeStorage },
+  ),
 )
 
 /** Temporada que toca por fecha. */
@@ -44,13 +52,15 @@ function fromUrl(): Season | null {
 }
 const urlSeason = fromUrl()
 
-export function resolveSeason(mode: SeasonMode, date = new Date()): Season {
+export function resolveSeason(mode: SeasonMode, date = new Date(), preview: Season | null = null): Season {
   if (urlSeason) return urlSeason
+  if (preview) return preview
   return mode === 'auto' ? seasonByDate(date) : mode
 }
 
 /** Temporada activa ahora (se reevalúa si cambia la elección del administrador). */
 export function useSeason(): Season {
   const mode = useSeasonSettings((s) => s.mode)
-  return resolveSeason(mode)
+  const preview = useSeasonSettings((s) => s.preview)
+  return resolveSeason(mode, new Date(), preview)
 }
