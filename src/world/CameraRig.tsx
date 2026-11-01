@@ -25,7 +25,9 @@ const DESKTOP_PANEL = 420
 const OVERVIEW_ZOOM = 0.54
 /** En pantallas verticales la fortaleza se encuadra más cerca (se recortan apenas las puntas de los baluartes). */
 const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
-const OVERVIEW_BOUNDS = 40
+/** Vista general y piso 1: se puede recorrer todo, incluidos el muelle, los barcos y el mar alrededor. */
+const OVERVIEW_BOUNDS = 66
+const P1_BOUNDS = 62
 /** Alcance de la cámara con el muelle turístico abierto. */
 const HARBOR_BOUNDS = 70
 const TOWARD_CAMERA = new THREE.Vector3(1, 0, 1).normalize()
@@ -113,7 +115,7 @@ export function CameraRig() {
   }, [hasSelection])
   const fit = fitZoomFor(size.width, size.height)
   const overviewOn = useUI((s) => s.overview)
-  const minZoom = fit * (overviewOn ? 0.5 : 0.85)
+  const minZoom = fit * (overviewOn ? 0.4 : 0.6)
   const maxZoom = Math.max(fit * 7, 40)
 
   // Encuadre inicial y al cambiar el tamaño de la ventana.
@@ -340,7 +342,7 @@ export function CameraRig() {
     const { activeFloor, overview, harbor, shipOpen, focus: lastFocus } = useUI.getState()
     const center = overview ? overviewCenter() : floorOrigin(FLOOR_BY_ID[activeFloor], false)
     // con el muelle abierto se puede ir hasta él (queda por fuera de la muralla)
-    const bound = Math.max(overview ? OVERVIEW_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0)
+    const bound = Math.max(overview ? OVERVIEW_BOUNDS : activeFloor === 'P1' ? P1_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0)
     const cx = THREE.MathUtils.clamp(t.x, center.x - bound, center.x + bound)
     const cz = THREE.MathUtils.clamp(t.z, center.z - bound, center.z + bound)
     if (cx !== t.x || cz !== t.z) {
