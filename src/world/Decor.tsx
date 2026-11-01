@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { ESCALATOR, worldToEsc, P1, toWorld } from '../config/mall'
+import { ESCALATOR, insideSpace, worldToEsc, P1, toWorld } from '../config/mall'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat } from './night'
 import { onCourt } from '../football/config'
@@ -51,6 +51,7 @@ const bushes: Inst[] = []
 export const DECOR_FOOTPRINTS: { x: number; z: number; r: number }[] = []
 
 function bench(x: number, z: number, rot: number) {
+  if (insideSpace(x, z, 0.6)) return
   const c = Math.cos(rot)
   const s = Math.sin(rot)
   const back = (d: number): [number, number] => [x - s * d, z - c * d]
@@ -62,12 +63,15 @@ function bench(x: number, z: number, rot: number) {
 }
 
 function plant(x: number, z: number, size = 1, y = Y) {
+  if (insideSpace(x, z, 0.6)) return
   pots.push({ p: [x, y + 0.3 * size, z], s: [0.7 * size, 0.6 * size, 0.7 * size] })
   DECOR_FOOTPRINTS.push({ x, z, r: 0.5 * size })
   foliage.push({ p: [x, y + 0.95 * size, z], s: [1 * size, 1.15 * size, 1 * size] })
 }
 
 function palm(x: number, z: number, h: number, y = Y, seed = 0) {
+  // la copa abre ~1,7: lejos de los locales
+  if (insideSpace(x, z, 1.8)) return
   const lean = 0.08 + (seed % 3) * 0.04
   trunks.push({ p: [x, y + h / 2, z], s: [0.32, h, 0.32], r: [lean, seed, 0] })
   DECOR_FOOTPRINTS.push({ x, z, r: 0.3 })
@@ -80,6 +84,7 @@ function palm(x: number, z: number, h: number, y = Y, seed = 0) {
 }
 
 function lamp(x: number, z: number) {
+  if (insideSpace(x, z, 0.2)) return
   lampPoles.push({ p: [x, Y + 1.3, z], s: [0.1, 2.6, 0.1] })
   DECOR_FOOTPRINTS.push({ x, z, r: 0.15 })
   lampHeads.push({ p: [x, Y + 2.7, z], s: [0.4, 0.4, 0.4] })
@@ -151,7 +156,7 @@ for (let q = 0; q < 4; q++) {
     const a = base + (i - 3) * 0.12
     const r = 13.5 + (i % 2) * 2
     if (onEntrancePath(Math.sin(a) * r, Math.cos(a) * r) || onDistrict(Math.sin(a) * r, Math.cos(a) * r) || underEscalator(Math.sin(a) * r, Math.cos(a) * r) || onCourt(Math.sin(a) * r, Math.cos(a) * r, 1)) continue
-    bushes.push({ p: [Math.sin(a) * r, 0.45, Math.cos(a) * r], s: [1.3, 1, 1.3] })
+    if (!insideSpace(Math.sin(a) * r, Math.cos(a) * r, 0.9)) bushes.push({ p: [Math.sin(a) * r, 0.45, Math.cos(a) * r], s: [1.3, 1, 1.3] })
   }
 }
 

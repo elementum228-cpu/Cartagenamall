@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
+import { FLOOR_BY_ID, FOOD_LAYOUT, insideSpace, onP1Walkway } from '../config/mall'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
@@ -275,6 +275,7 @@ function buildFurniture() {
 
   // Palmeras pequeñas en macetas grandes
   const palm = (x: number, z: number, h: number, seed: number) => {
+    if (insideSpace(x, z, 1.6, 'P2')) return
     pots.push({ p: [x, 0.55, z], s: [1.2, 0.7, 1.2] })
     footprints.push({ x, z, r: 0.7 })
     trunks.push({ p: [x, 0.9 + h / 2, z], s: [0.26, h, 0.26], r: seed })

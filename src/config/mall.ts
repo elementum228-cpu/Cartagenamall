@@ -338,6 +338,24 @@ export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOO
 /** Piso 1 (en cruz): lo usan la estructura, decoración y ambiente específicos de esa planta. */
 export const P1 = FLOORS[0]
 export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES]
+
+/**
+ * ¿El punto (x, z) cae dentro de un local o isla (más `margin` alrededor)? Las zonas de locales
+ * se dejan limpias: ni palmeras, ni matas, ni bancas dentro; la decoración va en los recorridos.
+ */
+export function insideSpace(x: number, z: number, margin = 0, floorId: FloorId = 'P1'): boolean {
+  for (const sp of SPACES) {
+    if (sp.floorId !== floorId) continue
+    const c = Math.cos(sp.rotation)
+    const s = Math.sin(sp.rotation)
+    const dx = x - sp.position[0]
+    const dz = z - sp.position[1]
+    const lx = dx * c - dz * s
+    const lz = dx * s + dz * c
+    if (Math.abs(lx) < sp.size[0] / 2 + margin && Math.abs(lz) < sp.size[1] / 2 + margin) return true
+  }
+  return false
+}
 /**
  * La cancha sintética es un espacio más (se reclama y el administrador le asigna el negocio que la
  * opera), pero no está en SPACES: tiene su propio mundo 3D y no entra en pasillos ni recorridos.

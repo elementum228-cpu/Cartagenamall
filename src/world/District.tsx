@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { DISTRICT_PLAZA, DISTRICT_ZONE } from '../config/mall'
+import { DISTRICT_PLAZA, DISTRICT_ZONE, insideSpace } from '../config/mall'
 import { SHOWROOMS, SHOWROOM_IDS, type Showroom, type ShowroomId } from '../district/showrooms'
 import { useIsNight } from '../lib/useIsNight'
 import { useUI } from '../state/ui'
@@ -143,10 +143,19 @@ function Extras() {
         <mesh geometry={GEO.plane} material={litLabelMat(sign.texture)} position={[0, 1.8, 0.16]} scale={[0.5 * sign.aspect, 0.5, 1]} />
       </group>
       {/* palmeras, jardineras y faroles */}
-      <Palm x={-28.4} z={18.3} h={3.6} seed={0.4} />
-      <Palm x={-28.4} z={28.6} h={3.2} seed={2.1} />
-      <Palm x={-19.4} z={11.2} h={3.8} seed={3.3} />
-      <Palm x={-10.9} z={18.9} h={3.3} seed={5.1} />
+      {(
+        [
+          [-28.4, 18.3, 3.6, 0.4],
+          [-28.4, 28.6, 3.2, 2.1],
+          [-19.4, 11.2, 3.8, 3.3],
+          [-10.9, 18.9, 3.3, 5.1],
+        ] as const
+      )
+        // los espacios de la zona quedan limpios: ninguna palmera encima
+        .filter(([x, z]) => !insideSpace(x, z, 1.8))
+        .map(([x, z, h, seed]) => (
+          <Palm key={`${x}${z}`} x={x} z={z} h={h} seed={seed} />
+        ))}
       <Planter x={-21.2} z={18.4} />
       <Planter x={-17.6} z={18.4} flowers="#f7b34b" />
       <Planter x={-23.4} z={24.6} w={0.9} />
