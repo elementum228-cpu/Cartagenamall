@@ -252,7 +252,7 @@ function Shore({ sparse }: { sparse: boolean }) {
   const data = useMemo(() => {
     const palms: [number, number, number][] = [
       [-40, 26, 3.6],
-      [-27, 39, 3.2],
+      [-30, 37.5, 3.2],
       [40, -26, 3.6],
       [27, -39, 3.0],
       [37, 37, 3.4],
@@ -262,7 +262,7 @@ function Shore({ sparse }: { sparse: boolean }) {
     ]
     const rocks: [number, number, number][] = [
       [-44, 12, 1.6],
-      [-3, 45, 1.3],
+      [4, 47, 1.3],
       [44, -12, 1.5],
       [12, -44, 1.2],
       [-42, -36, 1.8],

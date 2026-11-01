@@ -1,24 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import { BOATS, BOAT_IDS, CATEGORY_LABEL, HARBOR } from '../src/tourism/config'
+import { BASIN, BOATS, BOAT_IDS, CATEGORY_LABEL, HARBOR, LAUNCH_IDS, PIRATE_BERTH } from '../src/tourism/config'
 import { PLACEHOLDER_EXPERIENCES } from '../src/tourism/data'
 import { experiencesFor } from '../src/tourism/store'
 import type { ExperienceCategory } from '../src/tourism/types'
 
 describe('muelle turístico', () => {
-  it('exactamente dos lanchas, separadas y frente al muelle', () => {
-    expect(BOAT_IDS).toEqual(['mar', 'bahia'])
-    const [a, b] = BOAT_IDS.map((id) => BOATS[id].position)
+  it('dos lanchas y el barco pirata, separados y dentro de la dársena', () => {
+    expect(LAUNCH_IDS).toEqual(['mar', 'bahia'])
+    expect(BOAT_IDS).toEqual(['mar', 'bahia', 'pirata'])
+    const [a, b] = LAUNCH_IDS.map((id) => BOATS[id].position)
     expect(Math.hypot(a[0] - b[0], a[1] - b[1])).toBeGreaterThan(7)
-    for (const id of BOAT_IDS) expect(BOATS[id].position[1]).toBeGreaterThan(HARBOR.outerZ)
+    for (const id of BOAT_IDS) {
+      const [x, z] = BOATS[id].position
+      expect(x).toBeGreaterThan(BASIN.x0)
+      expect(x).toBeLessThan(BASIN.x1)
+      expect(z).toBeGreaterThan(HARBOR.headZ)
+      expect(z).toBeLessThan(HARBOR.endZ)
+    }
+    // el barco (manga ~3,2) cabe entre el malecón y las lanchas
+    expect(PIRATE_BERTH[0] - 1.6).toBeGreaterThan(BASIN.x0)
+    expect(BOATS.mar.position[0] - PIRATE_BERTH[0]).toBeGreaterThan(8)
   })
 
-  it('las seis categorías existen y cada una tiene al menos un plan de ejemplo', () => {
+  it('las siete categorías existen y cada una tiene al menos un plan de ejemplo', () => {
     const cats = Object.keys(CATEGORY_LABEL) as ExperienceCategory[]
-    expect(cats).toHaveLength(6)
+    expect(cats).toHaveLength(7)
     for (const c of cats) expect(PLACEHOLDER_EXPERIENCES.some((e) => e.category === c)).toBe(true)
     // ninguna lancha deja una categoría sin mostrar
     const shown = new Set(BOAT_IDS.flatMap((id) => BOATS[id].categories))
-    expect(shown.size).toBe(6)
+    expect(shown.size).toBe(7)
   })
 
   it('los datos de ejemplo no inventan precios ni contactos', () => {

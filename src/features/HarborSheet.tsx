@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Anchor, ChevronLeft, ChevronRight, Clock, Info, MapPin, MessageCircle, Palmtree, Sailboat, Star, Sunset, Users, Wine, type LucideIcon } from 'lucide-react'
+import { Anchor, ChevronLeft, ChevronRight, Clock, Info, MapPin, MessageCircle, Palmtree, PartyPopper, Ship, Sailboat, Star, Sunset, Users, Wine, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { formatCOP } from '../lib/format'
 import { useUI } from '../state/ui'
@@ -13,8 +13,8 @@ import { Sheet } from '../ui/Sheet'
 // «Ver experiencias» la lista de operadores y planes, filtrable por categoría. En celular ocupa como
 // máximo el 70 % de la pantalla; en escritorio es un panel lateral que deja el mapa a la vista.
 
-const BOAT_ICON: Record<BoatId, LucideIcon> = { mar: Palmtree, bahia: Sunset }
-const CATEGORY_ICON: Record<ExperienceCategory, LucideIcon> = { islas: Palmtree, transporte: Anchor, bahia: Sailboat, atardecer: Sunset, romantico: Wine, yates: Sailboat }
+const BOAT_ICON: Record<BoatId, LucideIcon> = { mar: Palmtree, bahia: Sunset, pirata: Ship }
+const CATEGORY_ICON: Record<ExperienceCategory, LucideIcon> = { islas: Palmtree, transporte: Anchor, bahia: Sailboat, atardecer: Sunset, romantico: Wine, yates: Sailboat, eventos: PartyPopper }
 const STATUS: Record<Experience['status'], { label: string; cls: string }> = {
   available: { label: 'Disponible', cls: 'bg-emerald-100 text-emerald-800' },
   soon: { label: 'Próximamente', cls: 'bg-amber/25 text-[#8a5a12]' },

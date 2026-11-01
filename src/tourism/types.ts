@@ -1,9 +1,9 @@
 // Muelle turístico: lanchas, categorías y experiencias de operadores de Cartagena. Son datos, no
 // interfaz: la UI los lee de useTourism, y luego se conectarán agencias reales (base de datos).
 
-export type ExperienceCategory = 'islas' | 'transporte' | 'bahia' | 'atardecer' | 'romantico' | 'yates'
+export type ExperienceCategory = 'islas' | 'transporte' | 'bahia' | 'atardecer' | 'romantico' | 'yates' | 'eventos'
 export type ExperienceStatus = 'available' | 'soldout' | 'soon'
-export type BoatId = 'mar' | 'bahia'
+export type BoatId = 'mar' | 'bahia' | 'pirata'
 
 export interface Experience {
   id: string

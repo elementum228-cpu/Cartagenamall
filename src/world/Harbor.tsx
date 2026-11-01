@@ -4,66 +4,74 @@ import * as THREE from 'three'
 import { useIsNight } from '../lib/useIsNight'
 import { useUI } from '../state/ui'
 import { trackHarbor } from '../tourism/store'
-import { BOATS, BOAT_IDS, HARBOR, SEA_Y, HARBOR_END_Z, HARBOR_FRONT_Z } from '../tourism/config'
+import { BASIN, BOATS, HARBOR, LAUNCH_IDS, SEA_Y } from '../tourism/config'
 import type { BoatConfig } from '../tourism/types'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
-import { Person } from './Person'
-import { TourBoat } from './TourBoat'
 import { cameraState } from './cameraState'
 import { CORDON, STONE, STONE_DARK, WallLantern } from './Fortress'
 import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
+import { Person } from './Person'
+import { PirateShip } from './PirateShip'
 
-// Muelle turístico: una puerta en arco abierta en la muralla del frente izquierdo, un muelle de
-// madera hacia el mar y dos lanchas que se pueden tocar (planes de mar e islas / bahía al
-// atardecer). Lo estático va en Batch; las lanchas, la gente y los indicadores se animan.
+// Muelle turístico al estilo del Muelle de los Pegasos: puerta en arco en la muralla, plaza de piedra
+// con los pegasos de bronce sobre pedestales, dos malecones que abrazan una dársena abierta al mar,
+// dos lanchas amarradas que se pueden tocar y el barco pirata de eventos (navega, ver PirateShip).
+// Lo estático va en Batch; lanchas, gente, luces y barco se animan.
 
 const H = HARBOR
 const WT = 2.2
 const WATER_Y = SEA_Y
-const WOOD = '#9a6b45'
-const WOOD_DARK = '#6e4a30'
-const WOOD_LIGHT = '#b98a5e'
-const IRON = '#2f3437'
-const MARBLE = '#ece6da'
 const ARCH_W = 2
 const ARCH_H = 2.1
+const IRON = '#2f3437'
+const WOOD_LIGHT = '#b98a5e'
+const BRONZE = '#4f5d55'
+const BRONZE_LIGHT = '#66766c'
+const PAVE = '#dccaa6'
+const PAVE_LINE = '#b5674d'
+const COPING = '#efe4cc'
+const PEDESTAL = '#e9dfc7'
 /** Las lanchas son un poco más grandes que la gente: se leen desde lejos. */
 const BOAT_SCALE = 1.35
-/** Fin del paseo (z) y plataforma del final, donde atracan las lanchas y el bote de paseo. */
-const END_Z = HARBOR_END_Z
-const PW = H.platformWidth
-const PD = H.platformDepth
-const FRONT_Z = HARBOR_FRONT_Z
-/** Arranque de la cubierta de madera (después del rellano de piedra). */
-const DECK_Z0 = H.outerZ + 1.1
-const DECK_LEN = END_Z - DECK_Z0
-
-/** Pilotes (x, z): a los lados del paseo cada ~2,2 y en el borde de la plataforma. */
-const POSTS: [number, number][] = (() => {
-  const out: [number, number][] = []
-  for (let z = DECK_Z0 + 0.3; z <= END_Z - 0.2; z += 2.2) for (const s of [-1, 1]) out.push([H.x + s * (H.width / 2 + 0.05), z])
-  for (const s of [-1, 1]) {
-    out.push([H.x + s * (PW / 2), END_Z + 0.2], [H.x + s * (PW / 2), FRONT_Z - 0.2], [H.x + s * 2.4, FRONT_Z - 0.1])
-  }
-  return out
-})()
-
-/** Faroles del paseo (x, z): a ambos lados y en las esquinas de la plataforma. */
-const LAMPS: [number, number][] = [
-  ...[DECK_Z0 + 2.2, DECK_Z0 + 5.8, DECK_Z0 + 9.4].flatMap((z) => [-1, 1].map((s) => [H.x + s * (H.width / 2 + 0.05), z] as [number, number])),
-  ...[-1, 1].map((s) => [H.x + s * (PW / 2 - 0.3), FRONT_Z - 0.3] as [number, number]),
+const QW = H.quayWidth
+/** Ejes de los dos malecones (x) y su largo. */
+const WEST_X = H.west + QW / 2
+const EAST_X = H.east - QW / 2
+const QUAY_LEN = H.endZ - H.headZ
+const QUAY_MID = H.headZ + QUAY_LEN / 2
+const HEAD_DEPTH = H.headZ - H.outerZ
+/** Pedestales de los pegasos, frente a la dársena. */
+const PEGASI: [number, number, number][] = [
+  [H.x - 4.6, H.headZ - 1.35, 0.25],
+  [H.x + 4.6, H.headZ - 1.35, -0.25],
 ]
+
+/** Faroles altos (x, z): a lo largo de los dos malecones y en la plaza. */
+const LAMPS: [number, number][] = [
+  ...[3, 7.5, 12, 16.2].flatMap((dz) => [
+    [H.west + 0.45, H.headZ + dz] as [number, number],
+    [H.east - 0.45, H.headZ + dz] as [number, number],
+  ]),
+  [H.west + 0.6, H.outerZ + 0.7],
+  [H.east - 0.6, H.outerZ + 0.7],
+]
+/** Bolardos en el borde de la dársena. */
+const BOLLARDS: [number, number][] = [2, 5, 8, 11, 14, 16.4].flatMap((dz) => [
+  [BASIN.x0 - 0.25, H.headZ + dz] as [number, number],
+  [BASIN.x1 + 0.25, H.headZ + dz] as [number, number],
+])
 
 /** Gente esperando junto a las lanchas (x, z, color de ropa, giro). */
 const WAITING: [number, number, string, number][] = [
-  [H.x - 4.1, END_Z + 1.2, '#e07a5f', -1.3],
-  [H.x - 3.5, END_Z + 1.9, '#3d7ea6', -1.9],
-  [H.x + 3.9, END_Z + 0.9, '#f2cc8f', 1.4],
-  [H.x + 4.2, END_Z + 1.8, '#6c5b7b', 1.9],
+  [EAST_X - 0.6, BOATS.mar.position[1] - 0.8, '#e07a5f', -1.6],
+  [EAST_X + 0.2, BOATS.mar.position[1] - 0.3, '#3d7ea6', -1.9],
+  [EAST_X - 0.5, BOATS.bahia.position[1] + 0.6, '#f2cc8f', -1.4],
+  [EAST_X + 0.4, BOATS.bahia.position[1] + 1.1, '#6c5b7b', -2.0],
+  [H.x + 1.4, H.headZ - 0.6, '#2a9d8f', 0.3],
 ]
 
 /** Puerta en arco sobre la muralla (local: la cara exterior mira a +z). */
@@ -100,200 +108,224 @@ function SeaGate() {
 }
 
 /**
- * Pegaso de mármol sobre su pedestal, como los del Muelle de los Pegasos: caballo encabritado con
- * las alas abiertas (local: mira a +z). De noche lo ilumina un foco desde el pie.
+ * Pegaso de bronce, como los del Muelle de los Pegasos: caballo encabritado con las alas abiertas
+ * sobre un pedestal claro (local: mira a +z). De noche lo iluminan focos desde el pie.
  */
 function Pegasus() {
-  const m = mat(MARBLE, { rough: 0.55 })
-  const shade = mat('#d9d1c2', { rough: 0.6 })
+  const m = mat(BRONZE, { rough: 0.5 })
+  const shade = mat(BRONZE_LIGHT, { rough: 0.55 })
   return (
     <group>
-      {/* pedestal de piedra con cornisa */}
-      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, 0.65, 0]} scale={[1.3, 1.3, 1.9]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 1.35, 0]} scale={[1.5, 0.14, 2.1]} />
-      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, 0.1, 0]} scale={[1.5, 0.2, 2.1]} />
+      {/* pedestal alto de piedra clara con zócalo y cornisa */}
+      <mesh geometry={GEO.box} material={mat(PEDESTAL)} position={[0, 1, 0]} scale={[1.9, 2, 1.9]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(COPING)} position={[0, 2.05, 0]} scale={[2.05, 0.12, 2.05]} />
+      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, 0.08, 0]} scale={[2.1, 0.16, 2.1]} />
       {/* caballo encabritado: todo gira sobre las patas traseras */}
-      <group position={[0, 1.42, -0.45]} rotation={[-0.42, 0, 0]}>
+      <group position={[0, 2.1, -0.55]} rotation={[-0.45, 0, 0]} scale={1.45}>
         {[-1, 1].map((s) => (
-          <mesh key={s} geometry={GEO.cylinderLow} material={m} position={[s * 0.17, 0.36, 0]} scale={[0.13, 0.72, 0.13]} castShadow />
+          <mesh key={s} geometry={GEO.cylinderLow} material={m} position={[s * 0.17, 0.36, 0]} scale={[0.14, 0.72, 0.14]} castShadow />
         ))}
-        <mesh geometry={GEO.sphereSmooth} material={m} position={[0, 0.82, 0.42]} scale={[0.46, 0.46, 1.1]} castShadow />
+        <mesh geometry={GEO.sphereSmooth} material={m} position={[0, 0.82, 0.42]} scale={[0.48, 0.48, 1.1]} castShadow />
         {/* patas delanteras al aire */}
         {[-1, 1].map((s) => (
-          <mesh key={s} geometry={GEO.box} material={m} position={[s * 0.15, 0.78, 1.0]} rotation={[s > 0 ? -1.1 : -0.7, 0, 0]} scale={[0.11, 0.55, 0.11]} castShadow />
+          <mesh key={s} geometry={GEO.box} material={m} position={[s * 0.15, 0.78, 1.0]} rotation={[s > 0 ? -1.1 : -0.7, 0, 0]} scale={[0.12, 0.58, 0.12]} castShadow />
         ))}
         {/* cuello, cabeza y crin */}
-        <mesh geometry={GEO.box} material={m} position={[0, 1.2, 0.86]} rotation={[0.45, 0, 0]} scale={[0.22, 0.72, 0.32]} castShadow />
-        <mesh geometry={GEO.box} material={m} position={[0, 1.55, 1.12]} rotation={[1.05, 0, 0]} scale={[0.2, 0.5, 0.24]} castShadow />
-        <mesh geometry={GEO.box} material={shade} position={[0, 1.3, 0.72]} rotation={[0.45, 0, 0]} scale={[0.08, 0.66, 0.14]} />
+        <mesh geometry={GEO.box} material={m} position={[0, 1.2, 0.86]} rotation={[0.45, 0, 0]} scale={[0.24, 0.74, 0.34]} castShadow />
+        <mesh geometry={GEO.box} material={m} position={[0, 1.55, 1.12]} rotation={[1.05, 0, 0]} scale={[0.21, 0.52, 0.25]} castShadow />
+        <mesh geometry={GEO.box} material={shade} position={[0, 1.32, 0.7]} rotation={[0.45, 0, 0]} scale={[0.1, 0.7, 0.18]} />
         {[-1, 1].map((s) => (
           <mesh key={s} geometry={GEO.cone} material={m} position={[s * 0.07, 1.74, 0.98]} scale={[0.07, 0.14, 0.07]} />
         ))}
-        {/* cola */}
-        <mesh geometry={GEO.box} material={shade} position={[0, 0.7, -0.2]} rotation={[0.6, 0, 0]} scale={[0.09, 0.55, 0.12]} />
+        {/* cola abundante */}
+        <mesh geometry={GEO.sphere} material={shade} position={[0, 0.55, -0.25]} rotation={[0.6, 0, 0]} scale={[0.22, 0.7, 0.3]} />
         {/* alas abiertas hacia arriba y atrás, con dos capas de plumas */}
         {[-1, 1].map((s) => (
-          <group key={s} position={[s * 0.2, 1.0, 0.45]} rotation={[0.25, 0, s * 0.7]}>
-            <mesh geometry={GEO.box} material={m} position={[s * 0.55, 0, 0]} scale={[1.1, 0.05, 0.6]} castShadow />
-            <mesh geometry={GEO.box} material={shade} position={[s * 0.85, 0.02, -0.28]} rotation={[0, s * 0.25, 0]} scale={[0.75, 0.04, 0.42]} />
+          <group key={s} position={[s * 0.2, 1.0, 0.45]} rotation={[0.35, 0, s * 0.75]}>
+            <mesh geometry={GEO.box} material={m} position={[s * 0.6, 0, 0]} scale={[1.2, 0.05, 0.62]} castShadow />
+            <mesh geometry={GEO.box} material={shade} position={[s * 0.95, 0.02, -0.3]} rotation={[0, s * 0.25, 0]} scale={[0.8, 0.04, 0.44]} />
           </group>
         ))}
       </group>
-      {/* foco al pie (se enciende de noche) */}
-      <mesh geometry={GEO.box} material={glowMat('#ffe2a8', 2.2)} position={[0, 0.25, 1.08]} scale={[0.5, 0.12, 0.06]} />
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffe2a8', 0.8)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 1.6]} scale={[2.6, 2.2, 1]} />
+      {/* focos al pie (se encienden de noche) */}
+      <mesh geometry={GEO.box} material={glowMat('#ffe2a8', 2.2)} position={[0, 0.3, 1.0]} scale={[0.7, 0.12, 0.06]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffe2a8', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 1.4]} scale={[3.4, 2.6, 1]} />
     </group>
   )
 }
 
-/** Farol de paseo: poste de hierro y farola que se enciende de noche, con su halo en la madera. */
+/** Farol alto de paseo: poste de hierro y farola que se enciende de noche, con su halo en el piso. */
 function Lamp({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, H.deckY, z]}>
-      <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 0.08, 0]} scale={[0.26, 0.16, 0.26]} />
-      <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.2, 0]} scale={[0.09, 2.3, 0.09]} />
-      <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 2.5, 0]} scale={0.42} />
-      <mesh geometry={GEO.cone} material={mat(IRON)} position={[0, 2.78, 0]} scale={[0.4, 0.2, 0.4]} />
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} scale={[3.4, 3.4, 1]} />
+      <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 0.1, 0]} scale={[0.3, 0.2, 0.3]} />
+      <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.6, 0]} scale={[0.1, 3.1, 0.1]} />
+      <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 3.3, 0]} scale={0.46} />
+      <mesh geometry={GEO.cone} material={mat(IRON)} position={[0, 3.62, 0]} scale={[0.44, 0.22, 0.44]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} scale={[4.2, 4.2, 1]} />
     </group>
   )
 }
 
-/** Muelle: paseo amplio de madera con pilotes, barandas, faroles, plataforma final y paso interior. */
-function Dock() {
-  const planks = Math.floor(DECK_LEN / 0.55)
-  const midZ = DECK_Z0 + DECK_LEN / 2
+/** Jardinera baja con borde amarillo (como las del muelle real). */
+function Planter({ x, z, w, d }: { x: number; z: number; w: number; d: number }) {
+  return (
+    <group position={[x, H.deckY, z]}>
+      <mesh geometry={GEO.box} material={mat('#e8c53a')} position={[0, 0.15, 0]} scale={[w, 0.3, d]} />
+      <mesh geometry={GEO.box} material={mat('#4f8a3c')} position={[0, 0.42, 0]} scale={[w - 0.2, 0.5, d - 0.2]} castShadow />
+    </group>
+  )
+}
+
+/** Plaza, malecones, pegasos, faroles, jardineras y paso interior. */
+function Quays() {
+  const pave = mat(PAVE)
+  const line = mat(PAVE_LINE)
+  const coping = mat(COPING)
+  const base = mat(STONE[1])
+  const blockY = (H.deckY - 0.02 + WATER_Y - 0.8) / 2
+  const blockH = H.deckY - 0.02 - (WATER_Y - 0.8)
+  const W = H.east - H.west
   return (
     <group>
-      {/* paso interior: de la plaza a la puerta */}
+      {/* paso interior: de la plaza del mall a la puerta */}
       <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[H.x, 0.03, H.wallZ - WT / 2 - 2.6]} scale={[ARCH_W + 0.6, 0.06, 5.2]} receiveShadow />
       {[-1, 1].map((s) => (
         <mesh key={s} geometry={GEO.box} material={mat(STONE_DARK)} position={[H.x + s * (ARCH_W / 2 + 0.45), 0.1, H.wallZ - WT / 2 - 2.6]} scale={[0.22, 0.2, 5.2]} />
       ))}
-      {/* rellano de piedra al salir, ancho: aquí están los pegasos */}
-      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[H.x, H.deckY - 0.12, H.outerZ + 0.6]} scale={[H.width + 5.4, 0.5, 1.3]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat(CORDON)} position={[H.x, H.deckY + 0.14, H.outerZ + 1.22]} scale={[H.width + 5.4, 0.04, 0.1]} />
-      {/* cubierta y tablones */}
-      <mesh geometry={GEO.box} material={mat(WOOD)} position={[H.x, H.deckY - 0.08, midZ]} scale={[H.width, 0.16, DECK_LEN]} castShadow receiveShadow />
-      {Array.from({ length: planks }, (_, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? WOOD_LIGHT : WOOD)} position={[H.x, H.deckY + 0.01, DECK_Z0 + 0.3 + i * 0.55]} scale={[H.width - 0.06, 0.03, 0.42]} receiveShadow />
+      {/* cuerpos de piedra: plaza y los dos malecones */}
+      <mesh geometry={GEO.box} material={base} position={[H.x, blockY, H.outerZ + HEAD_DEPTH / 2]} scale={[W, blockH, HEAD_DEPTH]} receiveShadow />
+      {[WEST_X, EAST_X].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={base} position={[x, blockY, QUAY_MID]} scale={[QW, blockH, QUAY_LEN]} castShadow receiveShadow />
       ))}
-      {/* bordillos laterales de madera oscura */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} geometry={GEO.box} material={mat(WOOD_DARK)} position={[H.x + s * (H.width / 2 - 0.06), H.deckY + 0.05, midZ]} scale={[0.12, 0.1, DECK_LEN]} />
+      {/* piso de baldosa clara con líneas terracota */}
+      <mesh geometry={GEO.box} material={pave} position={[H.x, H.deckY - 0.03, H.outerZ + HEAD_DEPTH / 2]} scale={[W - 0.3, 0.06, HEAD_DEPTH - 0.1]} receiveShadow />
+      {[0.9, 2.1, 3.3].map((dz) => (
+        <mesh key={dz} geometry={GEO.box} material={line} position={[H.x, H.deckY + 0.005, H.outerZ + dz]} scale={[W - 0.6, 0.012, 0.07]} />
       ))}
-      {/* plataforma del final */}
-      <mesh geometry={GEO.box} material={mat(WOOD)} position={[H.x, H.deckY - 0.08, END_Z + PD / 2]} scale={[PW, 0.16, PD]} castShadow receiveShadow />
-      {Array.from({ length: Math.floor(PD / 0.55) }, (_, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? WOOD : WOOD_LIGHT)} position={[H.x, H.deckY + 0.01, END_Z + 0.3 + i * 0.55]} scale={[PW - 0.08, 0.03, 0.42]} receiveShadow />
-      ))}
-      {/* borde de atraque (frente) con defensas */}
-      <mesh geometry={GEO.box} material={mat(WOOD_DARK)} position={[H.x, H.deckY - 0.12, FRONT_Z + 0.04]} scale={[PW, 0.3, 0.1]} />
-      {[-3.2, -1.2, 1.2, 3.2].map((dx) => (
-        <mesh key={dx} geometry={GEO.cylinderLow} material={mat('#2e3135')} position={[H.x + dx, H.deckY - 0.2, FRONT_Z + 0.12]} rotation={[0, 0, Math.PI / 2]} scale={[0.22, 0.6, 0.22]} />
-      ))}
-      {/* pilotes con remate */}
-      {POSTS.map(([x, z]) => (
-        <group key={`${x}${z}`}>
-          <mesh geometry={GEO.cylinderLow} material={mat(WOOD_DARK)} position={[x, (WATER_Y - 0.8 + H.deckY + 0.75) / 2, z]} scale={[0.22, H.deckY + 0.75 - WATER_Y + 0.8, 0.22]} castShadow />
-          <mesh geometry={GEO.cylinderLow} material={mat(CORDON)} position={[x, H.deckY + 0.78, z]} scale={[0.26, 0.06, 0.26]} />
+      {[WEST_X, EAST_X].map((x) => (
+        <group key={x}>
+          <mesh geometry={GEO.box} material={pave} position={[x, H.deckY - 0.03, QUAY_MID]} scale={[QW - 0.3, 0.06, QUAY_LEN - 0.3]} receiveShadow />
+          {[-0.75, 0.75].map((dx) => (
+            <mesh key={dx} geometry={GEO.box} material={line} position={[x + dx, H.deckY + 0.005, QUAY_MID]} scale={[0.07, 0.012, QUAY_LEN - 0.6]} />
+          ))}
         </group>
       ))}
-      {/* barandas: a los lados del paseo y en la parte de atrás de la plataforma */}
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <mesh geometry={GEO.box} material={mat('#d9c39b')} position={[H.x + s * (H.width / 2 + 0.05), H.deckY + 0.55, midZ]} scale={[0.05, 0.05, DECK_LEN - 0.4]} />
-          <mesh geometry={GEO.box} material={mat('#d9c39b')} position={[H.x + s * (H.width / 2 + 0.05), H.deckY + 0.3, midZ]} scale={[0.04, 0.04, DECK_LEN - 0.4]} />
-          <mesh geometry={GEO.box} material={mat('#d9c39b')} position={[H.x + s * (H.width / 2 + PW / 2) / 2, H.deckY + 0.55, END_Z + 0.2]} scale={[(PW - H.width) / 2, 0.05, 0.05]} />
-        </group>
+      {/* bordes claros sobre el agua: frente de la plaza, costados y puntas de los malecones */}
+      <mesh geometry={GEO.box} material={coping} position={[H.x, H.deckY + 0.02, H.headZ - 0.12]} scale={[BASIN.x1 - BASIN.x0, 0.12, 0.25]} />
+      {[BASIN.x0 + 0.12, BASIN.x1 - 0.12, H.west + 0.12, H.east - 0.12].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={coping} position={[x, H.deckY + 0.02, (x === BASIN.x0 + 0.12 || x === BASIN.x1 - 0.12 ? QUAY_MID : (H.outerZ + H.endZ) / 2)]} scale={[0.25, 0.12, x === BASIN.x0 + 0.12 || x === BASIN.x1 - 0.12 ? QUAY_LEN : H.endZ - H.outerZ]} />
       ))}
-      {/* faroles */}
-      {LAMPS.map(([x, z]) => (
-        <Lamp key={`${x}${z}`} x={x} z={z} />
+      {[WEST_X, EAST_X].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={coping} position={[x, H.deckY + 0.02, H.endZ - 0.12]} scale={[QW, 0.12, 0.25]} />
       ))}
-      {/* pegasos a la entrada del paseo, mirando al mar */}
-      {[-1, 1].map((s) => (
-        <group key={s} position={[H.x + s * (H.width / 2 + 1.55), H.deckY + 0.13, H.outerZ + 0.75]} rotation={[0, s * 0.2, 0]} scale={0.95}>
+      {/* pegasos */}
+      {PEGASI.map(([x, z, r]) => (
+        <group key={x} position={[x, H.deckY, z]} rotation={[0, r, 0]}>
           <Pegasus />
         </group>
       ))}
-      {/* bolardos, rollo de cuerda y bancas en la plataforma */}
+      {/* jardineras: junto a los pedestales y en el frente de la plaza */}
+      {PEGASI.map(([x, z]) => (
+        <Planter key={x} x={x + (x < H.x ? -2.3 : 2.3)} z={z + 0.2} w={2.2} d={1.2} />
+      ))}
+      <Planter x={H.x} z={H.headZ - 0.85} w={4.4} d={0.9} />
+      {/* faroles y bolardos */}
+      {LAMPS.map(([x, z]) => (
+        <Lamp key={`${x}${z}`} x={x} z={z} />
+      ))}
+      {BOLLARDS.map(([x, z]) => (
+        <mesh key={`${x}${z}`} geometry={GEO.cylinderLow} material={mat('#3a3d42')} position={[x, H.deckY + 0.16, z]} scale={[0.26, 0.32, 0.26]} />
+      ))}
+      {/* llantas como defensas en el borde de las lanchas */}
+      {LAUNCH_IDS.flatMap((id) =>
+        [-1.2, 1.2].map((dz) => (
+          <mesh key={`${id}${dz}`} geometry={GEO.torus} material={mat('#26282b')} position={[BASIN.x1 - 0.05, -0.05, BOATS[id].position[1] + dz]} rotation={[0, Math.PI / 2, 0]} scale={0.24} />
+        )),
+      )}
+      {/* bancas en la plaza */}
       {[-1, 1].map((s) => (
-        <group key={s}>
-          <mesh geometry={GEO.cylinderLow} material={mat('#3a3d42')} position={[H.x + s * 1.6, H.deckY + 0.14, FRONT_Z - 0.35]} scale={[0.28, 0.28, 0.28]} />
-          <mesh geometry={GEO.box} material={mat(WOOD_DARK)} position={[H.x + s * 3.6, H.deckY + 0.24, END_Z + 0.55]} scale={[1.5, 0.12, 0.45]} />
-          <mesh geometry={GEO.box} material={mat(IRON)} position={[H.x + s * 3.6, H.deckY + 0.1, END_Z + 0.55]} scale={[1.3, 0.2, 0.3]} />
+        <group key={s} position={[H.x + s * 8.6, H.deckY, H.outerZ + 0.55]}>
+          <mesh geometry={GEO.box} material={mat('#8a5a3a')} position={[0, 0.3, 0]} scale={[1.8, 0.1, 0.5]} />
+          <mesh geometry={GEO.box} material={mat(IRON)} position={[0, 0.13, 0]} scale={[1.5, 0.26, 0.3]} />
         </group>
       ))}
-      <mesh geometry={GEO.cylinder} material={mat('#d8c39c')} position={[H.x - 1.4, H.deckY + 0.1, DECK_Z0 + 1.4]} scale={[0.42, 0.18, 0.42]} />
     </group>
   )
 }
 
 /**
- * Luces de los peldaños: una línea cálida en cada tablón alterno. De noche una ola de luz corre
- * desde el mar hacia la puerta, como invitando a entrar. De día no se ven.
+ * Luces del piso: líneas cálidas a lo ancho de los malecones y por el centro de la plaza. De noche
+ * una ola de luz corre desde la boca de la dársena hasta la puerta, como invitando a entrar.
  */
-function StepLights({ reduceMotion }: { reduceMotion: boolean }) {
-  const n = Math.floor(DECK_LEN / 1.1)
+function WalkLights({ reduceMotion }: { reduceMotion: boolean }) {
   const group = useRef<THREE.Group>(null)
+  const strips = useMemo(() => {
+    const out: { x: number; z: number; w: number; d: number; along: boolean }[] = []
+    // en los malecones: de la punta hacia la plaza; d = distancia a la puerta caminando
+    for (let z = H.endZ - 0.8; z > H.headZ + 0.4; z -= 1.3) {
+      for (const x of [WEST_X, EAST_X]) out.push({ x, z, w: QW - 0.9, d: z - H.outerZ + Math.abs(x - H.x), along: false })
+    }
+    // en la plaza: del frente hacia la puerta, por el centro
+    for (let z = H.headZ - 1.9; z > H.outerZ + 0.3; z -= 0.7) out.push({ x: H.x, z, w: 2.4, d: z - H.outerZ, along: false })
+    return out
+  }, [])
+  const maxD = Math.max(...strips.map((s) => s.d))
   const mats = useMemo(
     () =>
-      Array.from({ length: n }, () => ({
+      strips.map(() => ({
         core: new THREE.MeshBasicMaterial({ color: '#ffd27a', transparent: true, opacity: 0, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }),
         halo: new THREE.MeshBasicMaterial({ color: '#ffb455', transparent: true, opacity: 0, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }),
       })),
-    [n],
+    [strips],
   )
   useFrame(({ clock }) => {
     const night = nightState.t
     if (group.current) group.current.visible = night > 0.02
     if (night <= 0.02) return
-    // la ola baja de i = n-1 (el mar) a i = 0 (la puerta) y vuelve a empezar
-    const head = reduceMotion ? -10 : (1 - ((clock.elapsedTime * 0.32) % 1)) * (n + 4) - 2
-    mats.forEach((m, i) => {
-      const wave = Math.exp(-((i - head) ** 2) / 1.6)
-      m.core.opacity = night * (0.45 + 0.55 * wave)
-      m.halo.opacity = night * (0.12 + 0.38 * wave)
+    // la ola baja desde la boca (d máxima) hasta la puerta (d = 0) y vuelve a empezar
+    const head = reduceMotion ? -99 : (1 - ((clock.elapsedTime * 0.16) % 1)) * (maxD + 6) - 3
+    strips.forEach((s, i) => {
+      const wave = Math.exp(-((s.d - head) ** 2) / 4)
+      mats[i].core.opacity = night * (0.4 + 0.6 * wave)
+      mats[i].halo.opacity = night * (0.1 + 0.4 * wave)
     })
   })
   return (
     <group ref={group} visible={false}>
-      {mats.map((m, i) => {
-        const z = DECK_Z0 + 0.3 + (2 * i + 1) * 0.55 - 0.275
-        return (
-          <group key={i} position={[H.x, H.deckY + 0.035, z]}>
-            <mesh geometry={GEO.box} material={m.core} scale={[H.width - 0.5, 0.012, 0.07]} />
-            <mesh geometry={GEO.plane} material={m.halo} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} scale={[H.width - 0.2, 0.55, 1]} />
-          </group>
-        )
-      })}
+      {strips.map((s, i) => (
+        <group key={i} position={[s.x, H.deckY + 0.04, s.z]}>
+          <mesh geometry={GEO.box} material={mats[i].core} scale={[s.w, 0.012, 0.08]} />
+          <mesh geometry={GEO.plane} material={mats[i].halo} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} scale={[s.w + 0.4, 0.7, 1]} />
+        </group>
+      ))}
     </group>
   )
 }
 
 export { Person }
 
-/** Gente en el muelle: unos esperan junto a las lanchas y otros pasean por el paseo. */
+/** Gente en el muelle: unos esperan junto a las lanchas y otros pasean por el malecón este. */
 function DockPeople({ reduceMotion }: { reduceMotion: boolean }) {
   const walkers = useRef<(THREE.Group | null)[]>([])
   const routes = useMemo(
     () => [
-      { x: H.x + 0.8, speed: 0.07, phase: 0 },
-      { x: H.x - 0.9, speed: 0.055, phase: 0.9 },
-      { x: H.x + 0.2, speed: 0.08, phase: 1.5 },
+      { x: EAST_X + 0.7, speed: 0.045, phase: 0 },
+      { x: EAST_X + 0.1, speed: 0.035, phase: 0.9 },
+      { x: WEST_X - 0.9, speed: 0.04, phase: 1.5 },
     ],
     [],
   )
   useFrame(({ clock }) => {
     if (reduceMotion) return
-    const span = END_Z + 1.2 - DECK_Z0 - 0.4
+    const z0 = H.headZ + 0.6
+    const span = H.endZ - 1 - z0
     routes.forEach((r, i) => {
       const g = walkers.current[i]
       if (!g) return
       const t = (clock.elapsedTime * r.speed + r.phase) % 2
       const u = t < 1 ? t : 2 - t
-      g.position.z = DECK_Z0 + 0.4 + u * span
+      g.position.z = z0 + u * span
       g.position.y = H.deckY + Math.abs(Math.sin(clock.elapsedTime * 6 + i)) * 0.03
       g.rotation.y = t < 1 ? 0 : Math.PI
     })
@@ -306,7 +338,7 @@ function DockPeople({ reduceMotion }: { reduceMotion: boolean }) {
         </group>
       ))}
       {routes.map((r, i) => (
-        <group key={i} ref={(g) => void (walkers.current[i] = g)} position={[r.x, H.deckY, DECK_Z0 + 1 + i * 3]}>
+        <group key={i} ref={(g) => void (walkers.current[i] = g)} position={[r.x, H.deckY, H.headZ + 2 + i * 4]}>
           <Person color={['#81b29a', '#e9c46a', '#5e8fd8'][i]} skin={['#e5b48f', '#8d5a3b', '#c58c64'][i]} />
         </group>
       ))}
@@ -440,21 +472,19 @@ function Boat({ boat, selected, reduceMotion }: { boat: BoatConfig; selected: bo
   )
 }
 
-/** Cuerdas de amarre: de los pilotes del costado de la plataforma a la proa y la popa de cada lancha. */
+/** Cuerdas de amarre: de los bolardos del malecón este a la proa y la popa de cada lancha. */
 function MooringLines() {
   const lines = useMemo(
     () =>
-      BOAT_IDS.flatMap((id) => {
+      LAUNCH_IDS.flatMap((id) => {
         const b = BOATS[id]
-        const side = Math.sign(b.position[0] - H.x)
-        const postX = H.x + side * (PW / 2)
         return [
-          [FRONT_Z - 0.2, 1.3],
-          [END_Z + 0.2, -1.5],
-        ].map(([postZ, lz]) => {
-          const from = new THREE.Vector3(postX, H.deckY + 0.72, postZ)
-          // punto del casco en el costado que mira a la plataforma
-          const lx = -side * 0.55
+          [1.6, 1.3],
+          [-1.8, -1.5],
+        ].map(([dz, lz]) => {
+          const from = new THREE.Vector3(BASIN.x1 + 0.25, H.deckY + 0.3, b.position[1] + dz)
+          // punto del casco en el costado que da al malecón (+x)
+          const lx = 0.55
           const c = Math.cos(b.rotation)
           const sn = Math.sin(b.rotation)
           const to = new THREE.Vector3(b.position[0] + (lx * c + lz * sn) * BOAT_SCALE, WATER_Y + 0.62, b.position[1] + (-lx * sn + lz * c) * BOAT_SCALE)
@@ -479,23 +509,23 @@ function MooringLines() {
 export function Harbor({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const selected = useUI((s) => s.harbor?.boat ?? null)
-  const label = useMemo(() => getGlassPill('Muelle turístico', { dot: '#13b9ad', sub: 'Tours y experiencias', dark: night }), [night])
+  const label = useMemo(() => getGlassPill('Muelle turístico', { dot: '#13b9ad', sub: 'Lanchas y barco pirata', dark: night }), [night])
   return (
     <group>
-      <Batch version="muelle">
+      <Batch version="muelle-pegasos">
         <SeaGate />
-        <Dock />
+        <Quays />
         <MooringLines />
       </Batch>
-      <StepLights reduceMotion={reduceMotion} />
+      <WalkLights reduceMotion={reduceMotion} />
       <DockPeople reduceMotion={reduceMotion} />
-      <TourBoat reduceMotion={reduceMotion} />
-      {BOAT_IDS.map((id) => (
+      {LAUNCH_IDS.map((id) => (
         <Boat key={id} boat={BOATS[id]} selected={selected === id} reduceMotion={reduceMotion} />
       ))}
+      <PirateShip reduceMotion={reduceMotion} selected={selected === 'pirata'} />
       {!selected && <ScreenLabel
         label={label}
-        position={[H.x, 7.4, H.wallZ + 0.5]}
+        position={[H.x, 7.8, H.headZ - 1]}
         pixelHeight={30}
         maxZoomRatio={1.6}
         priority={LABEL_PRIORITY.corridor + 5}
