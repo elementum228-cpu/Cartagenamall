@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ChevronRight, Plane, PlaneLanding, PlaneTakeoff, Ticket, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { FLYING_MS, useFlight } from './flight'
+import { FLYING_MS, TAKEOFF_MS, TAXI_FRAC, useFlight } from './flight'
 
 // Pantallas del viaje a Isla Descuento: terminal con tablero de salidas y tiquete gratis, pase de
 // abordar, aviso de despegue, pantalla de vuelo (cargando, pero volando) y bienvenida a la isla.
@@ -190,8 +190,14 @@ function BoardingPassScreen() {
   )
 }
 
-/** Mientras el avión rueda y despega en el mapa: un aviso discreto arriba. */
+/** Mientras el avión rueda y despega en el mapa: un aviso discreto arriba que cuenta qué pasa. */
 function TakeoffNotice() {
+  const [phase, setPhase] = useState(0)
+  useEffect(() => {
+    const ids = [window.setTimeout(() => setPhase(1), TAKEOFF_MS * TAXI_FRAC * 0.82), window.setTimeout(() => setPhase(2), TAKEOFF_MS * TAXI_FRAC)]
+    return () => ids.forEach(clearTimeout)
+  }, [])
+  const text = ['Rodando hacia la cabecera de la pista…', 'En posición. Listos para despegar', 'Despegando de Cartagena Mall…'][phase]
   return (
     <motion.div
       className="pointer-events-none fixed inset-x-0 top-[max(14px,env(safe-area-inset-top))] z-[80] flex justify-center"
@@ -201,7 +207,10 @@ function TakeoffNotice() {
       transition={SPRING}
     >
       <span className="flex items-center gap-2 rounded-full bg-[#0d2a3f]/85 px-4 py-2.5 text-[14px] font-semibold text-white shadow-lg backdrop-blur-xl">
-        <PlaneTakeoff className="size-4 text-[#f5c542]" /> Despegando de Cartagena Mall…
+        <PlaneTakeoff className="size-4 text-[#f5c542]" />
+        <motion.span key={phase} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+          {text}
+        </motion.span>
       </span>
     </motion.div>
   )

@@ -373,3 +373,6 @@ export async function playSparkle() {
   keys(r.ac, r.out, r.t, 659.25, 0.07, 1.6)
   keys(r.ac, r.out, r.t + 0.12, 987.77, 0.05, 1.8)
 }
+
+/** Para otros sonidos de la app (aeropuerto): mismo contexto, salida y botón de silencio. */
+export { ready as soundReady, noise as noiseSource }

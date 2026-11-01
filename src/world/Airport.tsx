@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { airportAnchor } from '../airport/anchor'
-import { TAKEOFF_MS, useFlight } from '../airport/flight'
+import { TAKEOFF_MS, TAXI_FRAC, useFlight } from '../airport/flight'
 import { AIRPORT, AIRPORT_GATE_Z, PLANE, RUNWAY, TERMINAL, TOWER } from '../airport/config'
 import { CORDON, Garita, STONE, STONE_DARK, WallLantern } from './Fortress'
 import { useIsNight } from '../lib/useIsNight'
@@ -404,14 +404,44 @@ function Travelers({ reduceMotion }: { reduceMotion: boolean }) {
   )
 }
 
+/** Recorrido de rodaje (x, z): de la manga a la pista y hasta la cabecera del fondo. */
+const TAXI: [number, number][] = [
+  [PLANE.x, PLANE.z],
+  [PLANE.x, PLANE.z - 3],
+  [RUNWAY.x - 1.5, PLANE.z - 6],
+  [RUNWAY.x, PLANE.z - 8],
+  [RUNWAY.x, RUNWAY.z0 + 3],
+]
+const tmp = new THREE.Vector3()
+/** Punto a una fracción u de una polilínea (velocidad constante) y su rumbo. */
+function along(pts: [number, number][], u: number, out: THREE.Vector3) {
+  let total = 0
+  for (let k = 1; k < pts.length; k++) total += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1])
+  let d = Math.min(1, Math.max(0, u)) * total
+  for (let k = 1; k < pts.length; k++) {
+    const [ax, az] = pts[k - 1]
+    const [bx, bz] = pts[k]
+    const len = Math.hypot(bx - ax, bz - az)
+    if (d <= len || k === pts.length - 1) {
+      const f = Math.min(1, d / (len || 1))
+      out.set(ax + (bx - ax) * f, 0, az + (bz - az) * f)
+      return Math.atan2(bx - ax, bz - az)
+    }
+    d -= len
+  }
+  return 0
+}
+
 /**
  * El avión de la plataforma: quieto junto a la manga y, al despegar, rueda hasta la pista, acelera
  * y se eleva sobre el mar. Mientras se está en la isla no se ve (está allá).
  */
 function MallPlane() {
   const g = useRef<THREE.Group>(null)
+  const head = useRef(0)
+  const rolling = useFlight((s) => s.step === 'takeoff')
   const shadow = useRef<THREE.Mesh>(null)
-  useFrame(() => {
+  useFrame((_, dt) => {
     const p = g.current
     if (!p) return
     const { step, world, takeoffAt, direction } = useFlight.getState()
@@ -419,28 +449,52 @@ function MallPlane() {
     p.visible = !away
     if (shadow.current) shadow.current.visible = !away
     if (step !== 'takeoff') {
+      head.current = 0
       p.position.set(PLANE.x, Y, PLANE.z)
       p.rotation.set(0, 0, 0)
       if (shadow.current) shadow.current.position.set(PLANE.x, Y + 0.02, PLANE.z)
       return
     }
     const t = Math.min(1, (performance.now() - takeoffAt) / TAKEOFF_MS)
-    // 0–0,22: rueda de lado hasta el eje de la pista; luego acelera por la pista y despega
-    const a = Math.min(1, t / 0.22)
-    const x = PLANE.x + (RUNWAY.x - PLANE.x) * (a * a * (3 - 2 * a))
-    const b = Math.max(0, (t - 0.22) / 0.78)
-    const z = PLANE.z + (RUNWAY.z1 + 40 - PLANE.z) * b * b
-    const lift = Math.max(0, z - (RUNWAY.z1 - 6))
-    const y = Y + Math.pow(lift, 1.25) * 0.32
+    let x: number, z: number, heading: number, lift = 0, pitch = 0
+    if (t < TAXI_FRAC * 0.82) {
+      // rodaje: de la manga a la calle de rodaje y por la pista hasta la cabecera del fondo
+      const u = t / (TAXI_FRAC * 0.82)
+      const target = along(TAXI, u * u * (3 - 2 * u), tmp)
+      x = tmp.x
+      z = tmp.z
+      // primero retrocede empujado (sin girar); luego gira suave hacia donde rueda
+      const want = z > PLANE.z - 2.95 ? 0 : target
+      let dh = want - head.current
+      dh = Math.atan2(Math.sin(dh), Math.cos(dh))
+      head.current += dh * Math.min(1, dt * 4)
+      heading = head.current
+    } else if (t < TAXI_FRAC) {
+      // giro de 180° en la cabecera para quedar mirando la pista
+      const u = (t - TAXI_FRAC * 0.82) / (TAXI_FRAC * 0.18)
+      x = TAXI[TAXI.length - 1][0]
+      z = TAXI[TAXI.length - 1][1]
+      heading = Math.PI - Math.PI * (u * u * (3 - 2 * u))
+      head.current = heading
+    } else {
+      // carrera de despegue: acelera, rota y se eleva sobre el mar
+      const b = (t - TAXI_FRAC) / (1 - TAXI_FRAC)
+      x = RUNWAY.x
+      z = TAXI[TAXI.length - 1][1] + (RUNWAY.z1 + 60 - TAXI[TAXI.length - 1][1]) * b * b
+      heading = 0
+      lift = Math.max(0, z - (RUNWAY.z1 - 7))
+      pitch = -Math.min(0.3, lift * 0.035)
+    }
+    const y = Y + Math.pow(lift, 1.2) * 0.3
     p.position.set(x, y, z)
-    p.rotation.set(-Math.min(0.32, lift * 0.03), Math.sin(a * Math.PI) * 0.35, 0)
+    p.rotation.set(pitch, heading, 0)
     if (shadow.current) shadow.current.position.set(x + lift * 0.15, Y + 0.02, z)
   })
   return (
     <>
       <mesh ref={shadow} geometry={GEO.sphere} material={mat('#0b2a33', { opacity: 0.22 })} position={[PLANE.x, Y + 0.02, PLANE.z]} scale={[7, 0.02, 9]} />
       <group ref={g} position={[PLANE.x, Y, PLANE.z]}>
-        <AirplaneModel />
+        <AirplaneModel stairs={!rolling} />
       </group>
     </>
   )
