@@ -390,6 +390,7 @@ export function FlightLayer() {
   // en la isla se esconden los controles propios del mall (categorías, pisos, botón principal)
   useEffect(() => {
     document.documentElement.classList.toggle('island-on', world === 'island')
+    return () => document.documentElement.classList.remove('island-on')
   }, [world])
   return (
     <AnimatePresence>

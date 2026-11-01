@@ -23,6 +23,8 @@ import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
 import { ShipPill, ShipTestButton } from '../ship/ShipLayer'
 import { usePirateShip } from '../state/pirate'
+import { useAirportFeature } from '../state/airportFeature'
+import { useFlight } from '../airport/flight'
 import { BOATS, BOAT_IDS } from '../tourism/config'
 import { startTour } from './GuidedTour'
 import { PinchHint } from './PinchHint'
@@ -503,6 +505,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       <InstallButton className={item} onDone={() => setOpen(false)} />
       {use3D && <HalloweenToggle className={item} />}
       {use3D && <PirateToggle className={item} />}
+      {use3D && <AirportToggle className={item} />}
       {use3D && (
         <button
           className={item}
@@ -640,6 +643,32 @@ function PirateToggle({ className }: { className: string }) {
   return (
     <button className={className} onClick={() => setParked(!parked)} aria-pressed={parked} aria-label={parked ? 'Poner a navegar el barco pirata' : 'Dejar quieto el barco pirata en el muelle'}>
       {parked ? <Sailboat className="size-4" /> : <Anchor className="size-4" />} {parked ? 'Barco pirata: navegar' : 'Barco pirata: quieto'}
+    </button>
+  )
+}
+
+/** Muestra u oculta el aeropuerto y la Isla Tecnología (con sus vuelos). */
+function AirportToggle({ className }: { className: string }) {
+  const enabled = useAirportFeature((s) => s.enabled)
+  const setEnabled = useAirportFeature((s) => s.setEnabled)
+  return (
+    <button
+      className={enabled ? `${className} !bg-deep/85 !text-white` : className}
+      aria-pressed={enabled}
+      aria-label={enabled ? 'Ocultar el aeropuerto y la Isla Tecnología' : 'Mostrar el aeropuerto y la Isla Tecnología'}
+      onClick={() => {
+        const on = !enabled
+        if (!on) {
+          // al apagarlo: de vuelta al mall, sin vuelo en curso ni ventanas del aeropuerto
+          useFlight.getState().cancel()
+          useFlight.setState({ world: 'mall', step: null, returnOpen: false })
+          useUI.getState().openAirport(false)
+          useUI.getState().setOverview(true)
+        } else useUI.getState().requestFocus({ kind: 'airport' })
+        setEnabled(on)
+      }}
+    >
+      <Plane className="size-4" /> {enabled ? 'Aeropuerto: ocultar' : 'Aeropuerto: mostrar'}
     </button>
   )
 }

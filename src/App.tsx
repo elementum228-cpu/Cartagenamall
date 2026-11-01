@@ -14,6 +14,19 @@ import { ShowroomSheet } from './features/ShowroomSheet'
 import { ShipLayer } from './ship/ShipLayer'
 import { FlyInvite } from './airport/FlyInvite'
 import { FlightLayer } from './airport/FlightLayer'
+import { useAirportFeature } from './state/airportFeature'
+
+/** Invitación y pantallas de vuelo: solo con el aeropuerto habilitado. */
+function AirportLayers() {
+  const on = useAirportFeature((s) => s.enabled)
+  if (!on) return null
+  return (
+    <>
+      <FlyInvite />
+      <FlightLayer />
+    </>
+  )
+}
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
@@ -126,8 +139,7 @@ function Shell() {
       <HarborSheet />
       <ShowroomSheet />
       <ShipLayer />
-      <FlyInvite />
-      <FlightLayer />
+      <AirportLayers />
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />

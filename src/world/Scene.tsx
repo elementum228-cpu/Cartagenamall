@@ -19,6 +19,7 @@ import { useLabelDeclutter } from './labels'
 import { Lighting } from './Lighting'
 import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
+import { useAirportFeature } from '../state/airportFeature'
 import { Airport } from './Airport'
 import { Island } from './Island'
 import { Harbor } from './Harbor'
@@ -47,6 +48,7 @@ function modeFor(floor: FloorConfig, active: FloorConfig, overview: boolean): Fl
 export function Scene({ quality, night }: { quality: Quality; night: boolean }) {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const season = useSeason()
+  const airportOn = useAirportFeature((s) => s.enabled)
   const assignments = useCatalog((s) => s.assignments)
   const products = useCatalog((s) => s.products)
   const promotions = useCatalog((s) => s.promotions)
@@ -137,8 +139,8 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       <group dispose={null}>
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
         <Harbor reduceMotion={reduceMotion} />
-        <Airport reduceMotion={reduceMotion} />
-        <Island reduceMotion={reduceMotion} />
+        {airportOn && <Airport reduceMotion={reduceMotion} />}
+        {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
         <Batch version="jardines">
