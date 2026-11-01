@@ -1,8 +1,10 @@
 import { Volume2, VolumeX } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { animate, motion, useMotionValue, useTransform, type MotionValue } from 'motion/react'
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { doorSoundOn, playCartagena, playKnockOnce, playOpen, setDoorSound, stopCartagena, unlockDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
 import { useUI } from '../state/ui'
+import { useSeason } from '../state/season'
 import { startTour, tourDone } from './GuidedTour'
 
 // Portón de bienvenida: antes de ver el mall aparece la puerta colonial de la fortaleza. Hay que
@@ -42,7 +44,13 @@ export function DoorIntro({ auto }: { auto: boolean }) {
   const [knocks, setKnocks] = useState(0)
   const timers = useRef<number[]>([])
   const started = useRef(false)
+  // golpe natural: cada hoja cede hacia adentro y rebota (más la del lado que se toca); la puerta
+  // entera se sacude apenas
+  const kickL = useMotionValue(0)
+  const kickR = useMotionValue(0)
+  const doorX = useMotionValue(0)
   const doorNonce = useUI((s) => s.doorNonce)
+  const halloween = useSeason() === 'halloween'
 
   // «Ver la entrada»: el portón vuelve a aparecer cerrado
   useEffect(() => {
@@ -56,13 +64,28 @@ export function DoorIntro({ auto }: { auto: boolean }) {
   }, [doorNonce])
   const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  const knock = () => {
+  const knock = (e?: MouseEvent<HTMLElement>) => {
     if (phase !== 'idle' || started.current) return
     unlockDoorSound()
     const n = knocks + 1
     // cada golpe un poco más decidido
     void playKnockOnce(0.8 + n * 0.1)
     setKnocks(n)
+    if (!reduce) {
+      // ¿de qué lado tocó? (con teclado, al centro: las dos hojas por igual)
+      let side = 0
+      if (e && e.clientX) {
+        const r = e.currentTarget.getBoundingClientRect()
+        side = e.clientX < r.left + r.width / 2 ? -1 : 1
+      }
+      const deg = 3 + n * 1.6
+      const swing = (mv: MotionValue<number>, k: number) =>
+        animate(mv, [0, deg * k, -deg * k * 0.32, deg * k * 0.1, 0], { duration: 0.65, times: [0, 0.15, 0.42, 0.72, 1], ease: 'easeOut' })
+      swing(kickL, side > 0 ? 0.4 : 1)
+      swing(kickR, side < 0 ? 0.4 : 1)
+      animate(doorX, [0, (side || 1) * 2.5, -(side || 1) * 1, 0], { duration: 0.4, ease: 'easeOut' })
+      navigator.vibrate?.(12)
+    }
     if (n >= KNOCKS) open()
   }
 
@@ -133,13 +156,16 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       <div
         className="absolute inset-0 flex flex-col items-center justify-center"
         style={{
-          background: 'radial-gradient(120% 90% at 50% 0%, #f0dcb4 0%, #dcc497 45%, #b99a68 100%)',
+          background: halloween
+            ? 'radial-gradient(120% 90% at 50% 0%, #f7b267 0%, #b5655e 38%, #4b2a52 75%, #2a1838 100%)'
+            : 'radial-gradient(120% 90% at 50% 0%, #f0dcb4 0%, #dcc497 45%, #b99a68 100%)',
           transform: through && !reduce ? 'scale(3.4)' : 'scale(1)',
           transformOrigin: '50% 52%',
           transition: `transform 1.7s ${EASE}`,
         }}
       >
         <StoneWall />
+        {halloween && <HalloweenSky />}
         <div className="relative z-10 flex flex-col items-center px-4">
           {/* letrero sobre el portón */}
           <div
@@ -152,21 +178,22 @@ export function DoorIntro({ auto }: { auto: boolean }) {
             }}
           >
             <p className="text-[clamp(20px,5.5vw,34px)] leading-none font-extrabold tracking-[0.06em]">{MALL.name.toUpperCase()}</p>
-            <p className="mt-1 text-[clamp(11px,2.6vw,14px)] font-semibold opacity-80">{MALL.tagline}</p>
+            <p className="mt-1 text-[clamp(11px,2.6vw,14px)] font-semibold opacity-80">{halloween ? 'Temporada de Halloween' : MALL.tagline}</p>
           </div>
 
           {/* portón con arco */}
-          <button
+          <motion.button
             type="button"
-            onClick={knock}
+            onClick={(e) => knock(e)}
             aria-label={`Tocar la puerta para entrar al centro comercial (${knocks} de ${KNOCKS} toques)`}
             className="group relative cursor-pointer outline-none focus-visible:ring-4 focus-visible:ring-white/70"
             style={{
               width: 'min(78vw, 46vh, 440px)',
               aspectRatio: '3 / 4',
               borderRadius: ARCH,
-              // entrada suave; luego, un temblor por golpe (alterna dos nombres para reiniciarlo)
-              animation: phase !== 'idle' ? 'none' : knocks ? `door-knock-${knocks % 2} 0.45s ease-out` : 'door-rise 1s 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              // entrada suave; luego cada golpe mueve la puerta (motion: hojas y sacudida)
+              animation: phase !== 'idle' || knocks ? 'none' : 'door-rise 1s 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              x: doorX,
             }}
           >
             {/* marco de piedra clara */}
@@ -190,8 +217,20 @@ export function DoorIntro({ auto }: { auto: boolean }) {
                 }}
               />
               <Fanlight lit={opened} />
-              <Leaf side="left" opened={opened} reduce={reduce} knocks={knocks} />
-              <Leaf side="right" opened={opened} reduce={reduce} knocks={knocks} />
+              <Leaf side="left" opened={opened} reduce={reduce} knocks={knocks} kick={kickL} />
+              <Leaf side="right" opened={opened} reduce={reduce} knocks={knocks} kick={kickR} />
+              {/* polvo que cae del marco con cada golpe */}
+              {knocks > 0 && !opened && (
+                <div key={knocks} className="pointer-events-none absolute inset-x-0 top-[28%]" aria-hidden>
+                  {[18, 34, 52, 66, 81].map((x, i) => (
+                    <span
+                      key={x}
+                      className="absolute size-[3px] rounded-full bg-[#e9d6ad]"
+                      style={{ left: `${x}%`, animation: `door-dust ${0.9 + (i % 3) * 0.25}s ${i * 0.04}s ease-in forwards` }}
+                    />
+                  ))}
+                </div>
+              )}
               {/* rendija de luz entre las hojas (respira; con cada golpe se cuela más luz) */}
               <div
                 className="absolute bottom-0 left-1/2 h-[72%] -translate-x-1/2"
@@ -212,10 +251,16 @@ export function DoorIntro({ auto }: { auto: boolean }) {
                 <Lantern delay={s < 0 ? 0 : 0.7} />
               </span>
             ))}
-          </button>
+          </motion.button>
 
           {/* escalinata */}
-          <div className="mt-[5%] flex flex-col items-center" style={{ animation: 'door-rise 1s 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both' }}>
+          <div className="relative mt-[5%] flex flex-col items-center" style={{ animation: 'door-rise 1s 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both' }}>
+            {halloween &&
+              [-1, 1].map((s) => (
+                <span key={s} className="absolute bottom-full mb-[-6px]" style={{ [s < 0 ? 'left' : 'right']: '2%' }}>
+                  <PumpkinIcon size={s < 0 ? 46 : 38} delay={s < 0 ? 0 : 0.6} />
+                </span>
+              ))}
             <div className="h-3 rounded-sm" style={{ width: 'min(86vw, 52vh, 500px)', background: '#c4a87a' }} />
             <div className="h-3 rounded-sm" style={{ width: 'min(94vw, 58vh, 560px)', background: '#b3966a' }} />
           </div>
@@ -277,7 +322,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
 }
 
 /** Una hoja de madera con tableros, clavos de hierro y aldaba de bronce; gira sobre su bisagra. */
-function Leaf({ side, opened, reduce, knocks }: { side: 'left' | 'right'; opened: boolean; reduce: boolean; knocks: number }) {
+function Leaf({ side, opened, reduce, knocks, kick }: { side: 'left' | 'right'; opened: boolean; reduce: boolean; knocks: number; kick: MotionValue<number> }) {
   const s = side === 'left' ? -1 : 1
   const studs: [number, number][] = []
   for (let r = 0; r < 6; r++) for (let c = 0; c < 3; c++) studs.push([18 + c * 32, 9 + r * 16.4])
@@ -287,11 +332,21 @@ function Leaf({ side, opened, reduce, knocks }: { side: 'left' | 'right'; opened
     transform: opened ? `rotateY(${s * (reduce ? 0 : 104)}deg)` : 'rotateY(0deg)',
     opacity: opened && reduce ? 0 : 1,
     transition: `transform 2.4s cubic-bezier(0.45, 0, 0.2, 1), opacity 0.3s`,
-    background: `linear-gradient(${side === 'left' ? 90 : 270}deg, ${WOOD_DARK}, ${WOOD} 30%, ${WOOD} 85%, ${WOOD_DARK})`,
-    boxShadow: opened ? `${-s * 18}px 0 30px rgba(40,25,10,0.45)` : 'none',
+    transformStyle: 'preserve-3d',
   }
+  // el golpe gira la hoja sobre la misma bisagra, hacia adentro (como al abrir)
+  const rotateY = useTransform(kick, (v) => s * v)
   return (
     <div className="absolute bottom-0 h-[72%] w-1/2" style={style}>
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          rotateY,
+          transformOrigin: `${side} center`,
+          background: `linear-gradient(${side === 'left' ? 90 : 270}deg, ${WOOD_DARK}, ${WOOD} 30%, ${WOOD} 85%, ${WOOD_DARK})`,
+          boxShadow: opened ? `${-s * 18}px 0 30px rgba(40,25,10,0.45)` : 'none',
+        }}
+      >
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full">
         {[
           [10, 6, 80, 40],
@@ -326,6 +381,7 @@ function Leaf({ side, opened, reduce, knocks }: { side: 'left' | 'right'; opened
             : `door-sway 3.2s ${side === 'left' ? 0 : 0.4}s ease-in-out infinite`,
         }}
       />
+      </motion.div>
     </div>
   )
 }
@@ -343,29 +399,114 @@ function Fanlight({ lit }: { lit: boolean }) {
   )
 }
 
-/** Lo que se alcanza a ver al abrir: la plaza con la fuente y los locales de colores. */
+/**
+ * Lo que se alcanza a ver al abrir: un pasillo del mall en perspectiva, con locales a lado y lado
+ * (letrero de color, toldo a rayas y vitrina encendida), gente paseando, luces colgantes y la plaza
+ * con su fuente y palmera al fondo.
+ */
 function MallGlimpse({ lit }: { lit: boolean }) {
+  // paredes: la línea de arriba y la de abajo van del borde (f = 0) al fondo (f = 1)
+  const wallX = (f: number) => 38 * f
+  const top = (f: number) => 12 + 32 * f
+  const bottom = (f: number) => 97 - 39 * f
+  const pt = (side: number, f: number, v: number) => {
+    const x = wallX(f)
+    const y = top(f) + (bottom(f) - top(f)) * v
+    return `${side < 0 ? x : 100 - x},${y}`
+  }
+  const quad = (side: number, f0: number, f1: number, v0: number, v1: number) => [pt(side, f0, v0), pt(side, f1, v0), pt(side, f1, v1), pt(side, f0, v1)].join(' ')
+  const cuts = [0, 0.4, 0.64, 0.79, 0.89, 0.96]
+  const colors = ['#e0735f', '#3b82a6', '#c2607f', '#5f9a6e', '#7a6ff0', '#e09a1f', '#2bb3b1', '#d0784f']
+  const shops = [-1, 1].flatMap((side, si) =>
+    cuts.slice(0, -1).map((f0, i) => ({ side, f0: f0 + 0.008, f1: cuts[i + 1] - 0.008, color: colors[(i * 2 + si) % colors.length], i })),
+  )
+  const people: [number, number, number, string][] = [
+    [30, 86, 1, '#3d7ea6'],
+    [66, 80, 0.85, '#e07a5f'],
+    [43, 71, 0.6, '#81b29a'],
+    [58, 66, 0.45, '#6c5b7b'],
+    [52, 75, 0.7, '#f2cc8f'],
+  ]
   return (
     <svg
       viewBox="0 0 100 100"
-      preserveAspectRatio="xMidYMax slice"
+      preserveAspectRatio="xMidYMid slice"
       className="absolute inset-0 size-full"
-      style={{ opacity: lit ? 0.9 : 0.5, transform: lit ? 'scale(1)' : 'scale(0.92)', transformOrigin: '50% 80%', transition: `opacity 1.6s, transform 2.6s ${EASE}` }}
+      style={{ opacity: lit ? 1 : 0.55, transform: lit ? 'scale(1)' : 'scale(0.94)', transformOrigin: '50% 52%', transition: `opacity 1.6s, transform 2.6s ${EASE}` }}
+      aria-hidden
     >
-      <rect x="0" y="62" width="100" height="38" fill="#f3e3c3" />
-      {[
-        [4, 40, 22, '#e0735f'],
-        [28, 46, 18, '#2bb3b1'],
-        [54, 44, 18, '#c2607f'],
-        [74, 40, 22, '#5f9a6e'],
-      ].map(([x, y, w, c], i) => (
-        <g key={i}>
-          <rect x={x as number} y={y as number} width={w as number} height={62 - (y as number)} fill="#fbf4e6" />
-          <rect x={x as number} y={y as number} width={w as number} height="5" fill={c as string} />
+      <defs>
+        <linearGradient id="dg-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff7e3" />
+          <stop offset="1" stopColor="#ffe2ad" />
+        </linearGradient>
+        <linearGradient id="dg-floor" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f3e3c3" />
+          <stop offset="1" stopColor="#e8d2a8" />
+        </linearGradient>
+        <linearGradient id="dg-glass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff6d8" />
+          <stop offset="1" stopColor="#ffd796" />
+        </linearGradient>
+      </defs>
+      {/* techo con claraboya y vigas */}
+      <polygon points="0,0 100,0 62,44 38,44" fill="url(#dg-sky)" />
+      {[0, 25, 50, 75, 100].map((x) => (
+        <line key={x} x1={x} y1="0" x2={38 + (x / 100) * 24} y2="44" stroke="#e7cf9f" strokeWidth="0.6" />
+      ))}
+      {/* piso con juntas que fugan al fondo */}
+      <polygon points="0,100 100,100 62,58 38,58" fill="url(#dg-floor)" />
+      {[0, 20, 40, 60, 80, 100].map((x) => (
+        <line key={x} x1={x} y1="100" x2={38 + (x / 100) * 24} y2="58" stroke="#dcc39a" strokeWidth="0.4" />
+      ))}
+      {[66, 74, 85].map((y) => (
+        <line key={y} x1={((y - 58) / 42) * -38 + 38} y1={y} x2={100 - (((y - 58) / 42) * -38 + 38)} y2={y} stroke="#dcc39a" strokeWidth="0.4" />
+      ))}
+      {/* fondo: plaza con fuente y palmera */}
+      <rect x="38" y="44" width="24" height="14" fill="#fbf1dc" />
+      <ellipse cx="50" cy="57" rx="7" ry="1.6" fill="#7cc7c0" />
+      <rect x="49.3" y="52" width="1.4" height="5" fill="#e9dcc2" />
+      <rect x="56.5" y="47" width="0.7" height="10" fill="#a07a55" />
+      {[0, 1, 2, 3, 4].map((k) => (
+        <ellipse key={k} cx={56.85 + Math.cos(k * 1.25) * 2.2} cy={46.6 + Math.sin(k * 1.25) * 0.7} rx="2.3" ry="0.6" transform={`rotate(${k * 72 - 20} ${56.85 + Math.cos(k * 1.25) * 2.2} ${46.6 + Math.sin(k * 1.25) * 0.7})`} fill="#5f9a6e" />
+      ))}
+      {/* paredes del pasillo y los locales */}
+      {[-1, 1].map((side) => (
+        <polygon key={side} points={quad(side, 0, 1, 0, 1)} fill="#efe2c8" />
+      ))}
+      {shops.map(({ side, f0, f1, color, i }) => (
+        <g key={`${side}${i}`}>
+          <polygon points={quad(side, f0, f1, 0.08, 1)} fill="#fbf4e6" />
+          <polygon points={quad(side, f0, f1, 0.08, 0.2)} fill={color} />
+          {/* toldo a rayas */}
+          {[0, 1, 2, 3].map((k) => (
+            <polygon key={k} points={quad(side, f0 + ((f1 - f0) * k) / 4, f0 + ((f1 - f0) * (k + 1)) / 4, 0.2, 0.29)} fill={k % 2 ? '#ffffff' : color} opacity={0.92} />
+          ))}
+          {/* vitrina encendida y puerta */}
+          <polygon points={quad(side, f0 + (f1 - f0) * 0.08, f0 + (f1 - f0) * 0.62, 0.36, 0.9)} fill="url(#dg-glass)" />
+          <polygon points={quad(side, f0 + (f1 - f0) * 0.7, f0 + (f1 - f0) * 0.92, 0.42, 1)} fill="#d9b98a" />
+          {/* letras del letrero */}
+          <polygon points={quad(side, f0 + (f1 - f0) * 0.18, f0 + (f1 - f0) * 0.7, 0.125, 0.155)} fill="#ffffff" opacity={0.85} />
         </g>
       ))}
-      <ellipse cx="50" cy="80" rx="16" ry="5" fill="#7cc7c0" />
-      <rect x="48" y="68" width="4" height="12" fill="#e9dcc2" />
+      {/* luces colgantes a lo largo del pasillo */}
+      {[0.15, 0.4, 0.6, 0.75, 0.86].map((f, i) => {
+        const y = top(f) + 3 - f * 1.5
+        return (
+          <g key={i}>
+            <line x1="50" y1={y - 4 + f * 2} x2="50" y2={y} stroke="#b08c5a" strokeWidth="0.25" />
+            <circle cx="50" cy={y} r={1.6 - f * 1.1} fill="#fff1c4" style={{ filter: 'drop-shadow(0 0 1.2px #ffd27a)' }} />
+          </g>
+        )
+      })}
+      {/* gente paseando */}
+      {people.map(([x, y, s, c], i) => (
+        <g key={i} transform={`translate(${x} ${y}) scale(${s})`}>
+          <ellipse cx="0" cy="0.4" rx="2" ry="0.5" fill="rgba(80,58,30,0.18)" />
+          <rect x="-1.1" y="-6.2" width="2.2" height="6.2" rx="1.1" fill={c} />
+          <circle cx="0" cy="-7.4" r="1.05" fill="#c58c64" />
+        </g>
+      ))}
     </svg>
   )
 }
@@ -399,6 +540,42 @@ function StoneWall() {
         ))}
       </div>
       <div className="absolute inset-x-0 bottom-0 h-1/4" style={{ background: 'linear-gradient(transparent, rgba(80,58,30,0.35))' }} />
+    </div>
+  )
+}
+
+/** Calabaza tallada con la cara encendida (temporada de Halloween). */
+function PumpkinIcon({ size, delay }: { size: number; delay: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden>
+      <path d="M20 6 q1 -4 4 -4" stroke="#5b6b2a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <ellipse cx="20" cy="23" rx="17" ry="13" fill="#e8761c" />
+      <ellipse cx="13" cy="23" rx="7" ry="12.5" fill="#d2661a" />
+      <ellipse cx="27" cy="23" rx="7" ry="12.5" fill="#d2661a" />
+      <ellipse cx="20" cy="23" rx="6" ry="13" fill="#ef8a2c" />
+      <g fill="#ffd36b" style={{ animation: `door-flicker 1.6s ${delay}s ease-in-out infinite` }}>
+        <path d="M10 20 L16 20 L13 15 Z" />
+        <path d="M24 20 L30 20 L27 15 Z" />
+        <path d="M11 26 L14 29 L17 26 L20 29 L23 26 L26 29 L29 26 Q20 35 11 26 Z" />
+      </g>
+    </svg>
+  )
+}
+
+/** Cielo de Halloween sobre la fortaleza: luna y murciélagos que cruzan. */
+function HalloweenSky() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      <div className="absolute top-[9%] right-[12%] size-16 rounded-full sm:size-24" style={{ background: 'radial-gradient(circle at 40% 40%, #fff6dc, #ffd98a 60%, #f0a95a)', boxShadow: '0 0 60px 18px rgba(255,200,120,0.35)' }} />
+      {[
+        [18, 0, 1],
+        [26, 2.5, 0.8],
+        [12, 5, 0.65],
+      ].map(([top, delay, s], i) => (
+        <svg key={i} className="absolute" width={46 * s} height={22 * s} viewBox="0 0 46 22" style={{ top: `${top}%`, left: '-10%', animation: `door-bat 9s ${delay}s linear infinite` }}>
+          <path d="M23 9 C19 2 11 1 2 6 C8 6 10 9 11 13 C14 10 18 11 20 15 L23 12 L26 15 C28 11 32 10 35 13 C36 9 38 6 44 6 C35 1 27 2 23 9 Z" fill="#241a2e" />
+        </svg>
+      ))}
     </div>
   )
 }

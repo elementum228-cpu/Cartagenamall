@@ -4,6 +4,7 @@ import { isDemoPromotion } from '../promotions/demo'
 import { useCatalog } from '../state/catalog'
 import { useClaims } from '../state/claims'
 import { useSpacePricing, type Pricing } from '../state/spacePricing'
+import { useSeasonSettings, type SeasonMode } from '../state/season'
 import { useOrders } from '../state/orders'
 import { useReservations, type CourtReservation } from '../state/reservations'
 import { useUI } from '../state/ui'
@@ -286,6 +287,22 @@ export async function loadPricing() {
   applyRemote(() => useSpacePricing.setState({ types: doc?.types ?? {}, spaces: doc?.spaces ?? {} }))
 }
 
+/** Temporada elegida por el administrador (decoración del mall), en mall_settings «season». */
+export async function loadSeason() {
+  if (!supabase || !pricingTable) return
+  const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'season').maybeSingle()
+  if (error) return
+  const mode = (data as Doc<{ mode: SeasonMode }> | null)?.doc?.mode
+  if (mode) applyRemote(() => useSeasonSettings.setState({ mode }))
+}
+
+function pushSeason(mode: SeasonMode) {
+  enqueue(async () => {
+    const { error } = await supabase!.from('mall_settings').upsert({ key: 'season', doc: { mode } })
+    if (error) throw new Error(error.message)
+  })
+}
+
 function pushPricing(p: Pricing) {
   enqueue(async () => {
     const { error } = await supabase!.from('mall_settings').upsert({ key: 'pricing', doc: { types: p.types, spaces: p.spaces } })
@@ -302,6 +319,7 @@ export function startRemoteSync() {
   const db = supabase
   void loadCatalog()
   void loadPricing()
+  void loadSeason()
 
   useCatalog.subscribe((next, prev) => {
     if (applying || !signedIn()) return
@@ -310,6 +328,10 @@ export function startRemoteSync() {
   useSpacePricing.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || (next.types === prev.types && next.spaces === prev.spaces)) return
     pushPricing(next)
+  })
+  useSeasonSettings.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.mode === prev.mode) return
+    pushSeason(next.mode)
   })
   useOrders.subscribe((next, prev) => {
     if (applying || next.orders === prev.orders) return
@@ -343,6 +365,9 @@ export function startRemoteSync() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'promotions' }, reload)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'space_assignments' }, reload)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'mall_settings' }, () => void loadPricing())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mall_settings' }, () => {
+      void loadPricing()
+      void loadSeason()
+    })
     .subscribe()
 }

@@ -15,6 +15,7 @@ import { useIsDesktop } from '../lib/useMedia'
 import { useCatalog } from '../state/catalog'
 import { usePersonal } from '../state/personal'
 import { PASSPORT_STAMPS, usePassport } from '../state/passport'
+import { useSeason } from '../state/season'
 import { usePrefs, useUI } from '../state/ui'
 import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
@@ -103,6 +104,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const setHintSeen = usePrefs((s) => s.setHintSeen)
   const promotions = useCatalog((s) => s.promotions)
   const discovered = usePersonal((s) => s.discovered)
+  const season = useSeason()
   const passportDone = usePassport((s) => PASSPORT_STAMPS.filter((p) => s.stamps[p.id]).length)
   const now = useNow()
   const secretTotal = promotions.filter((p) => p.type === 'secret' && isPromotionLive(p, now)).length
@@ -216,6 +218,14 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             {flashStore && <span className="max-w-28 truncate opacity-90">{flashStore.name}</span>}
             <Countdown endsAt={flash.endsAt} className="!font-sans !text-[12.5px] leading-none !font-semibold opacity-90" />
           </button>
+        )}
+        {season === 'halloween' && (
+          <span className="chrome-text flex h-8 items-center gap-1.5 pr-1 text-[12.5px] leading-none font-semibold">
+            <span className="grid size-6 place-items-center rounded-full bg-[#e8761c] text-white shadow-[0_2px_10px_rgb(232_118_28/0.5)]">
+              <Moon className="size-3.5" strokeWidth={2.2} />
+            </span>
+            Temporada de Halloween
+          </span>
         )}
         <PromoAnnouncer />
       </div>

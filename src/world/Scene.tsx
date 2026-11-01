@@ -21,6 +21,8 @@ import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
 import { Harbor } from './Harbor'
 import { District } from './District'
+import { Halloween } from './Halloween'
+import { useSeason } from '../state/season'
 import { MallFloor, type FloorMode } from './MallFloor'
 import { SecretMarkers } from './SecretMarkers'
 import { TreasureMarkers } from './TreasureMarkers'
@@ -42,6 +44,7 @@ function modeFor(floor: FloorConfig, active: FloorConfig, overview: boolean): Fl
 
 export function Scene({ quality, night }: { quality: Quality; night: boolean }) {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const season = useSeason()
   const assignments = useCatalog((s) => s.assignments)
   const products = useCatalog((s) => s.products)
   const promotions = useCatalog((s) => s.promotions)
@@ -133,6 +136,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
         <Harbor reduceMotion={reduceMotion} />
         <District reduceMotion={reduceMotion} />
+        {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
         <Batch version="jardines">
           <Diorama />
         </Batch>

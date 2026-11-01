@@ -305,18 +305,6 @@ select:not([multiple]):disabled {
   from { opacity: 0; transform: translateY(18px) scale(0.97); }
   to { opacity: 1; transform: none; }
 }
-@keyframes door-knock-0 {
-  0%, 100% { transform: none; }
-  20% { transform: translateX(-4px) rotate(-0.5deg) scale(0.995); }
-  45% { transform: translateX(3px) rotate(0.3deg); }
-  70% { transform: translateX(-1px); }
-}
-@keyframes door-knock-1 {
-  0%, 100% { transform: none; }
-  20% { transform: translateX(-4px) rotate(-0.5deg) scale(0.995); }
-  45% { transform: translateX(3px) rotate(0.3deg); }
-  70% { transform: translateX(-1px); }
-}
 @keyframes door-hit-0 {
   0% { transform: rotate(0deg); }
   25% { transform: rotate(-24deg); }
@@ -359,6 +347,17 @@ select:not([multiple]):disabled {
 @keyframes tour-fill {
   from { width: 0; }
   to { width: 100%; }
+}
+@keyframes door-bat {
+  0% { transform: translate(0, 0) scaleY(1); }
+  25% { transform: translate(30vw, -12px) scaleY(0.6); }
+  50% { transform: translate(60vw, 8px) scaleY(1); }
+  75% { transform: translate(90vw, -6px) scaleY(0.6); }
+  100% { transform: translate(125vw, 4px) scaleY(1); }
+}
+@keyframes door-dust {
+  0% { transform: translateY(0); opacity: 0.9; }
+  100% { transform: translateY(140px); opacity: 0; }
 }
 @keyframes door-rays {
   to { transform: rotate(360deg); }

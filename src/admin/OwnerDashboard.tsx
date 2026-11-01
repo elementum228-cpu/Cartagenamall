@@ -10,6 +10,7 @@ import { useClaims } from '../state/claims'
 import { spacePrice, typePrice, useSpacePricing, validPrice } from '../state/spacePricing'
 import { useUI } from '../state/ui'
 import { StoreLogo } from '../ui/bits'
+import { SEASONS, resolveSeason, useSeasonSettings, type SeasonMode } from '../state/season'
 
 // Vista del dueño del centro comercial: ocupación e ingresos de un vistazo, precios por tipo de
 // espacio, amenidades y la lista de todos los espacios con su precio editable.
@@ -57,6 +58,7 @@ export function OwnerDashboard() {
         <h2 className="text-xl font-extrabold tracking-tight">Gestión del centro comercial</h2>
         <p className="text-sm text-ink-soft">Todos los espacios y amenidades del mall, su ocupación y el precio mensual de cada uno. Los precios que cambies se ven al instante en el mapa y en las fichas para reclamar.</p>
       </div>
+      <SeasonPicker />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <Kpi label="Espacios en arriendo" value={rows.length} />
@@ -327,6 +329,39 @@ function SpaceList({ rows }: { rows: Row[] }) {
                 ))}
             </ul>
           </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** Temporada del mall: decoración especial para todos los visitantes (automática por fecha o fija). */
+function SeasonPicker() {
+  const mode = useSeasonSettings((s) => s.mode)
+  const setMode = useSeasonSettings((s) => s.setMode)
+  const active = resolveSeason(mode)
+  const options: { id: SeasonMode; label: string; hint: string }[] = [
+    { id: 'auto', label: 'Automática', hint: 'Según la fecha (Halloween: 15 de octubre a 2 de noviembre)' },
+    ...SEASONS.map((s) => ({ id: s.id as SeasonMode, label: s.name, hint: s.id === 'none' ? 'Mall sin decoración especial' : 'Siempre activa hasta que la cambies' })),
+  ]
+  return (
+    <section className="rounded-3xl border border-line bg-card p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="font-bold">Temporada del mall</p>
+        <p className="text-xs text-ink-soft">
+          Ahora: <b className="text-ink">{SEASONS.find((s) => s.id === active)?.name}</b>
+        </p>
+      </div>
+      <p className="text-xs text-ink-soft">Decoración especial en el mapa y en la entrada, para todos los visitantes.</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {options.map((o) => (
+          <label key={o.id} className={`flex cursor-pointer flex-col gap-0.5 rounded-2xl border p-3 text-sm transition ${mode === o.id ? 'border-brand bg-brand/5' : 'border-line hover:bg-sand'}`}>
+            <span className="flex items-center gap-2 font-bold">
+              <input type="radio" name="season" className="accent-brand" checked={mode === o.id} onChange={() => setMode(o.id)} />
+              {o.label}
+            </span>
+            <span className="text-[11px] leading-snug text-ink-soft">{o.hint}</span>
+          </label>
         ))}
       </div>
     </section>
