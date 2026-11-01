@@ -37,9 +37,9 @@ function Header({ space }: { space: SpaceSlot }) {
   return (
     <div className="px-5 pt-3 pb-2" style={{ background: `linear-gradient(180deg, ${color}18, transparent)` }}>
       <p className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color }}>
-        {FLOOR_BY_ID[space.floorId].name} · {space.type === 'court' ? 'Cancha sintética' : `Espacio ${space.label}`} · disponible
+        {FLOOR_BY_ID[space.floorId].name} · {space.type === 'court' ? 'Zona de deportes' : `Espacio ${space.label}`} · disponible
       </p>
-      <h2 className="mt-1 pr-12 text-2xl font-extrabold tracking-tight">{space.type === 'court' ? '¡Opera la cancha del mall!' : '¡Tu negocio podría estar aquí!'}</h2>
+      <h2 className="mt-1 pr-12 text-2xl font-extrabold tracking-tight">{space.type === 'court' ? '¡Opera la zona de deportes!' : '¡Tu negocio podría estar aquí!'}</h2>
     </div>
   )
 }
@@ -58,7 +58,7 @@ function Body({ space }: { space: SpaceSlot }) {
         <CheckCircle2 className="mx-auto size-14 text-brand" />
         <h3 className="mt-3 text-xl font-extrabold">Solicitud enviada</h3>
         <p className="mt-1 text-sm text-ink-soft">
-          Tu solicitud <b className="text-ink">{requestId}</b> para {space.type === 'court' ? 'la cancha sintética' : `el espacio ${space.label}`} quedó registrada.
+          Tu solicitud <b className="text-ink">{requestId}</b> para {space.type === 'court' ? 'la zona de deportes' : `el espacio ${space.label}`} quedó registrada.
         </p>
         <p className="mx-auto mt-4 max-w-xs rounded-2xl bg-sand p-3 text-[13px] text-ink-soft">
           El local <b>no se activa automáticamente</b>: el equipo de Cartagena Mall revisará la solicitud y te contactará. No se ha realizado ningún cobro.
@@ -119,7 +119,7 @@ function Body({ space }: { space: SpaceSlot }) {
         </p>
       )}
       <button className={`${btn.primary} w-full`} onClick={() => setStep('form')}>
-        <StoreIcon className="size-4" /> {space.type === 'court' ? 'Reclamar la cancha' : 'Reclamar este espacio'}
+        <StoreIcon className="size-4" /> {space.type === 'court' ? 'Reclamar la zona de deportes' : 'Reclamar este espacio'}
       </button>
     </div>
   )
@@ -182,7 +182,7 @@ function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: s
       }}
     >
       <p className="text-sm text-ink-soft">
-        Solicitud para {space.type === 'court' ? 'la' : 'el espacio'} <b className="text-ink">{space.type === 'court' ? 'cancha sintética' : space.label}</b> ({placeName(space)}).
+        Solicitud para {space.type === 'court' ? 'la' : 'el espacio'} <b className="text-ink">{space.type === 'court' ? 'zona de deportes' : space.label}</b> ({placeName(space)}).
       </p>
       <label className="block">
         <span className="mb-1 block text-sm font-semibold">Nombre del negocio</span>

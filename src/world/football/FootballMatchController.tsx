@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { COURT, FENCE_Z, courtToWorld } from '../../football/config'
+import { COURT, COURTS, FENCE_Z, courtToWorld } from '../../football/config'
 import { KICK_TIME, MatchSim } from '../../football/match'
 import { useUI, type Quality } from '../../state/ui'
 import { cameraState } from '../cameraState'
@@ -26,8 +26,8 @@ const SPECTATORS: { x: number; z: number; seated: boolean; look: PersonLook }[] 
   { x: COURT_BENCHES[0][0] - 0.45, z: COURT_BENCHES[0][1] - 0.05, seated: true, look: { shirt: '#f4f1ea', shorts: '#3b82a6', skin: SKIN[1], hair: HAIR[0] } },
   { x: COURT_BENCHES[0][0] + 0.45, z: COURT_BENCHES[0][1] - 0.05, seated: true, look: { shirt: '#c2607f', shorts: '#2f3e4e', skin: SKIN[2], hair: HAIR[3] } },
   { x: COURT_BENCHES[1][0], z: COURT_BENCHES[1][1] - 0.05, seated: true, look: { shirt: '#5f9a6e', shorts: '#2f3e4e', skin: SKIN[0], hair: HAIR[2] } },
-  { x: -6.6, z: FENCE_Z + 0.75, seated: false, look: { shirt: '#f5b544', shorts: '#2f3e4e', skin: SKIN[3], hair: HAIR[1] } },
-  { x: 6.4, z: FENCE_Z + 0.8, seated: false, look: { shirt: '#6b5b95', shorts: '#3a4450', skin: SKIN[2], hair: null } },
+  { x: -5.6, z: FENCE_Z + 0.55, seated: false, look: { shirt: '#f5b544', shorts: '#2f3e4e', skin: SKIN[3], hair: HAIR[1] } },
+  { x: 5.4, z: FENCE_Z + 0.6, seated: false, look: { shirt: '#6b5b95', shorts: '#3a4450', skin: SKIN[2], hair: null } },
 ]
 
 /** Balón low-poly: icosaedro con caras blancas y negras (se lee como balón de fútbol). */
@@ -44,8 +44,9 @@ function ballGeometry() {
   return g
 }
 
-export function FootballMatchController({ quality, reduceMotion }: { quality: Quality; reduceMotion: boolean }) {
-  const sim = useMemo(() => new MatchSim(2026), [])
+export function FootballMatchController({ quality, reduceMotion, court = 0 }: { quality: Quality; reduceMotion: boolean; court?: number }) {
+  // cada cancha juega su propio partido (otra semilla: no se mueven igual)
+  const sim = useMemo(() => new MatchSim(2026 + court * 977), [court])
   const looks = useMemo<PersonLook[]>(
     () => [
       ...sim.players.map((p, i) => ({
@@ -94,14 +95,14 @@ export function FootballMatchController({ quality, reduceMotion }: { quality: Qu
     const every = lod === 'high' ? 1 : lod === 'medium' ? 2 : 3
     if (frame.current % every !== 0) return
     const t = state.clock.elapsedTime
-    const rot = COURT.rotation
+    const rot = COURTS[court].rotation
     const y0 = COURT.y + 0.07
     const ms = meshes.current
 
     sim.players.forEach((p, k) => {
       const pose = FootballPlayer.pose(p.anim, t, p.phase, 1 - p.kickT / KICK_TIME, lod)
       q.setFromAxisAngle(axis.set(0, 1, 0), p.heading + rot)
-      const [wx, wz] = courtToWorld(p.x, p.z)
+      const [wx, wz] = courtToWorld(p.x, p.z, court)
       root.compose(new THREE.Vector3(wx, y0, wz), q, new THREE.Vector3(1, 1, 1))
       writePerson(ms, k, root, pose, looks[k].hair !== null)
     })
@@ -125,7 +126,7 @@ export function FootballMatchController({ quality, reduceMotion }: { quality: Qu
         seated: s.seated,
       }
       q.setFromAxisAngle(axis.set(0, 1, 0), heading + rot)
-      const [wx, wz] = courtToWorld(s.x, s.z)
+      const [wx, wz] = courtToWorld(s.x, s.z, court)
       root.compose(new THREE.Vector3(wx, COURT.y + (s.seated ? 0.05 : 0.02), wz), q, new THREE.Vector3(1, 1, 1))
       writePerson(ms, k, root, pose, looks[k].hair !== null)
     })
@@ -133,7 +134,7 @@ export function FootballMatchController({ quality, reduceMotion }: { quality: Qu
 
     // balón: posición, altura y rodadura sobre su eje
     const b = sim.ball
-    const [bx, bz] = courtToWorld(b.x, b.z)
+    const [bx, bz] = courtToWorld(b.x, b.z, court)
     if (ball.current) {
       ball.current.position.set(bx, COURT.y + 0.18 + b.y, bz)
       // eje de rodadura llevado al piso (mismo giro que la cancha)

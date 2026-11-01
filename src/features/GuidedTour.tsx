@@ -392,7 +392,7 @@ function useTourSteps(): Step[] {
         kicker: 'Bienvenido a',
         title: MALL.name,
         body: <>Un centro comercial dentro de una fortaleza amurallada, como el Centro Histórico. Te mostramos lo que hay en menos de un minuto.</>,
-        chips: [`${totalStores} tiendas`, '2 pisos', 'Cancha sintética', 'Ofertas escondidas'],
+        chips: [`${totalStores} tiendas`, '2 pisos', 'Zona de deportes', 'Ofertas escondidas'],
         go: () => ui().enterMall(),
       },
       zoneStep('A'),
@@ -417,13 +417,13 @@ function useTourSteps(): Step[] {
         icon: Trophy,
         color: COURT_COLOR,
         kicker: 'Amenidad · Piso 1',
-        title: 'Cancha sintética',
+        title: 'Zona de deportes',
         body: court ? (
           <>
-            Fútbol 5 con iluminación nocturna, operada por <b className="font-semibold text-ink">{court.name}</b>. Reserva tu hora desde el mall.
+            Dos canchas de fútbol 5 (A y B) con iluminación nocturna, operadas por <b className="font-semibold text-ink">{court.name}</b>. Reserva la que esté libre desde el mall.
           </>
         ) : (
-          <>Fútbol 5 con iluminación nocturna, lista para un negocio que la opere: {formatCOP(spacePrice(pricing, COURT_SPACE))}/mes.</>
+          <>Dos canchas de fútbol 5 (A y B) con iluminación nocturna, listas para un negocio que las opere: {formatCOP(spacePrice(pricing, COURT_SPACE))}/mes.</>
         ),
         go: () => {
           ui().setFloor('P1')

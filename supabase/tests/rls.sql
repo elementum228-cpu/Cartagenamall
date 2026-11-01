@@ -202,4 +202,21 @@ do $$ begin
   assert (public.demo_enter('UNICO-12345', 'celular-nuevo') ->> 'ok')::boolean, 'liberado: lo toma el siguiente';
 end $$;
 reset role;
+
+-- 9. Dos canchas: el mismo horario se reserva una vez por cancha
+select pg_temp.como(null);
+do $$ begin
+  insert into public.court_reservations (id, day, hour, court, doc) values ('RES-B', '2026-11-01', 19, 'B', '{}');
+  assert (select count(*) from public.court_taken_hours('2026-11-01', 'B')) = 1, 'cancha B ocupada a las 19';
+  assert (select count(*) from public.court_taken_hours('2026-11-01', 'A')) = 1, 'cancha A sigue con su reserva';
+  begin
+    insert into public.court_reservations (id, day, hour, court, doc) values ('RES-B2', '2026-11-01', 19, 'B', '{}');
+    raise exception 'no se puede reservar dos veces la cancha B';
+  exception when unique_violation then null; end;
+  begin
+    insert into public.court_reservations (id, day, hour, court, doc) values ('RES-C', '2026-11-01', 20, 'C', '{}');
+    raise exception 'solo existen las canchas A y B';
+  exception when check_violation then null; end;
+end $$;
+reset role;
 select 'OK: reglas de acceso verificadas' as resultado;

@@ -39,7 +39,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'productos', label: 'Productos' },
   { id: 'promociones', label: 'Promociones' },
   { id: 'pedidos', label: 'Pedidos' },
-  { id: 'cancha', label: 'Cancha' },
+  { id: 'cancha', label: 'Deportes' },
   { id: 'invitaciones', label: 'Invitaciones' },
   { id: 'integraciones', label: 'Integraciones' },
 ]
@@ -147,7 +147,7 @@ function SpacesAdmin() {
       ))}
       <section>
         <h2 className="mb-2 flex items-center gap-2 text-sm font-extrabold">
-          <span className="size-3 rounded-full" style={{ background: COURT_COLOR }} /> {FLOOR_BY_ID.P1.name} · Cancha sintética
+          <span className="size-3 rounded-full" style={{ background: COURT_COLOR }} /> {FLOOR_BY_ID.P1.name} · Zona de deportes (canchas A y B)
         </h2>
         <p className="mb-2 text-xs text-ink-soft">Libre, se muestra vacía con «TU NEGOCIO AQUÍ». Al asignarle un negocio se activa: partido, reservas por hora y su nombre en el cartel.</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

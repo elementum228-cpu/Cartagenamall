@@ -2,7 +2,7 @@ import { MapControls } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { COURT, FENCE_X as COURT_FENCE_X } from '../football/config'
+import { COURT, SPORTS_HALF } from '../football/config'
 import type { MapControls as MapControlsImpl } from 'three-stdlib'
 import { FLOOR_BY_ID, FLOOR_OF_ZONE, GATE, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import { floorOrigin, liveOrigins, overviewCenter } from './floors'
@@ -229,7 +229,7 @@ export function CameraRig() {
     } else if (focus.kind === 'court') {
       // como un local: se encuadra la cancha completa dejando lugar al panel (lateral o inferior)
       const usable = desktop ? size.width - DESKTOP_PANEL : size.width
-      const zoom = THREE.MathUtils.clamp((usable * 0.85) / (2 * (COURT_FENCE_X + 1.5) * 1.15), fit * 1.2, fit * 2.4)
+      const zoom = THREE.MathUtils.clamp((usable * 0.85) / (2 * (Math.max(...SPORTS_HALF) + 1) * 1.15), fit * 1.1, fit * 2.4)
       const so = floorOrigin(FLOOR_BY_ID.P1, overview)
       cameraState.groundY = so.y
       const target = new THREE.Vector3(so.x + COURT.center[0], so.y, so.z + COURT.center[1])

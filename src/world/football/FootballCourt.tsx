@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { COURT, FENCE_X, FENCE_Z, HALF_L, HALF_W } from '../../football/config'
+import { COURT, COURTS, FENCE_X, FENCE_Z, HALF_L, HALF_W } from '../../football/config'
 import { COURT_COLOR } from '../../football/open'
 import { COURT_SPACE } from '../../config/mall'
 import { useSpacePrice } from '../../state/spacePricing'
@@ -15,15 +15,16 @@ import { GEO, PALETTE, mat } from '../materials'
 import { dimLabelMat, glowMat, lightPoolMat } from '../night'
 import { useIsNight } from '../../lib/useIsNight'
 
-// Cancha sintética de fútbol 5 (estática, fusionada con Batch): césped a franjas, líneas,
-// círculo central, áreas, dos arcos con red, cerramiento de malla con acceso lateral, bancas,
-// cuatro torres de iluminación y el cartel CANCHA SINTÉTICA. Coordenadas locales: centro del campo.
+// Zona de deportes: dos canchas sintéticas de fútbol 5 (A y B) enfrentadas, cada una estática y
+// fusionada con Batch: césped a franjas, líneas, círculo central, áreas, dos arcos con red,
+// cerramiento de malla con acceso hacia el pasillo central, bancas y cuatro torres de iluminación.
+// Coordenadas locales de cada cancha: centro del campo.
 
 const TURF = ['#3f9a4a', '#46a552']
 const LINE = '#f4f6f2'
 const NET = new THREE.MeshStandardMaterial({ color: '#1f2a2e', transparent: true, opacity: 0.42, roughness: 0.9, depthWrite: false, side: THREE.DoubleSide })
 const GOAL_NET = new THREE.MeshStandardMaterial({ color: '#ffffff', transparent: true, opacity: 0.38, roughness: 0.9, depthWrite: false, side: THREE.DoubleSide })
-const RING = new THREE.RingGeometry(1.42, 1.52, 40)
+const RING = new THREE.RingGeometry(1.12, 1.22, 40)
 const SPOT = new THREE.CircleGeometry(0.1, 12)
 /** Puerta del cerramiento (lado que mira al pasillo B y a la cámara). */
 const GATE_W = 1.6
@@ -147,31 +148,76 @@ export function FootballCourtLighting() {
 
 /** Bancas fuera del cerramiento, del lado de la puerta (donde se sientan los acompañantes). */
 export const COURT_BENCHES: [number, number][] = [
-  [-3.4, FENCE_Z + 1.25],
-  [3.4, FENCE_Z + 1.25],
+  [-3.4, FENCE_Z + 0.85],
+  [3.4, FENCE_Z + 0.85],
 ]
 
 /** Cartel de la cancha según su estado: operada por un negocio, libre o con solicitud en revisión. */
 function courtSign(operator: string | null, pending: boolean, price: number) {
-  if (operator) return getLabel('CANCHA SINTÉTICA', { bg: COURT_COLOR, fg: '#fff', sub: `${operator} · toca para reservar` })
-  if (pending) return getLabel('EN REVISIÓN', { bg: '#f5b544', fg: '#3b2a05', sub: 'Cancha · solicitud enviada' })
-  return getLabel('TU NEGOCIO AQUÍ', { bg: COURT_COLOR, fg: '#fff', sub: `Cancha sintética · ${formatCOP(price)}/mes` })
+  if (operator) return getLabel('ZONA DE DEPORTES', { bg: COURT_COLOR, fg: '#fff', sub: `${operator} · toca para reservar` })
+  if (pending) return getLabel('EN REVISIÓN', { bg: '#f5b544', fg: '#3b2a05', sub: 'Zona de deportes · solicitud enviada' })
+  return getLabel('TU NEGOCIO AQUÍ', { bg: COURT_COLOR, fg: '#fff', sub: `Zona de deportes · ${formatCOP(price)}/mes` })
 }
 
 /**
- * Cancha completa. `selected` resalta el perímetro; `onOpen` abre su panel (al tocar la cancha o
- * su cartel). Sin negocio que la opere (`operator` null) queda vacía, con un tótem grande para
- * reclamarla. La geometría estática va en Batch: pocas llamadas de dibujo.
+ * Zona de deportes completa: las dos canchas, su rótulo y, si está libre, el tótem para reclamarla.
+ * `selected` resalta los perímetros; `onOpen` abre su panel (al tocar una cancha o el rótulo). Sin
+ * negocio que la opere (`operator` null) las canchas quedan vacías.
  */
 export function FootballCourt({ selected, onOpen, interactive, operator, pending }: { selected: boolean; onOpen: () => void; interactive: boolean; operator: string | null; pending: boolean }) {
   const price = useSpacePrice(COURT_SPACE.id)
   const sign = courtSign(operator, pending, price)
-  // rótulo flotante discreto (el cartel grande va sobre la malla y en el tótem)
   const night = useIsNight()
-  const pill = getGlassPill('Cancha sintética', { dot: COURT_COLOR, dark: night, sub: operator ? `${operator} · reserva tu hora` : pending ? 'Solicitud en revisión' : `Disponible · ${formatCOP(price)}/mes` })
-  const wood = mat(PALETTE.wood)
+  // corto a propósito: en la vista general del celular tiene que caber junto a Moda y Tecnología
+  const pill = getGlassPill('Zona de deportes', { dot: COURT_COLOR, dark: night, sub: pending && !operator ? 'Solicitud en revisión' : 'Canchas A y B' })
   return (
-    <group position={[COURT.center[0], COURT.y, COURT.center[1]]} rotation={[0, COURT.rotation, 0]}>
+    <group>
+      {COURTS.map((c, i) => (
+        <OneCourt key={c.id} index={i} selected={selected} onOpen={onOpen} interactive={interactive} operator={operator} pending={pending} sign={sign} price={price} />
+      ))}
+      {/* rótulo de toda la zona: se ve desde la vista general */}
+      <ScreenLabel
+        label={pill}
+        // flota alto sobre las canchas: en la vista general del celular queda por encima de la fila de
+        // Moda (no cabe al lado). Solo de lejos; de cerca se leen «Cancha A» y «Cancha B».
+        position={[COURT.center[0] - 1.5, 32, COURT.center[1] + 1]}
+        maxZoomRatio={1.35}
+        pixelHeight={33}
+        lit
+        priority={LABEL_PRIORITY.corridorOverview - 3}
+        onClick={interactive ? onOpen : undefined}
+      />
+    </group>
+  )
+}
+
+/** Una cancha (A o B). El cartel y el tótem de la zona van en la A, la que mira a la cámara. */
+function OneCourt({
+  index,
+  selected,
+  onOpen,
+  interactive,
+  operator,
+  pending,
+  sign,
+  price,
+}: {
+  index: number
+  selected: boolean
+  onOpen: () => void
+  interactive: boolean
+  operator: string | null
+  pending: boolean
+  sign: ReturnType<typeof getLabel>
+  price: number
+}) {
+  const court = COURTS[index]
+  const night = useIsNight()
+  const name = useMemo(() => getGlassPill(court.name, { dot: COURT_COLOR, sub: 'Fútbol 5', dark: night }), [court.name, night])
+  const wood = mat(PALETTE.wood)
+  const main = index === 0
+  return (
+    <group position={[court.center[0], COURT.y, court.center[1]]} rotation={[0, court.rotation, 0]}>
       <group
         onClick={(e) => {
           if (!interactive || cameraState.handMode || e.delta > 8) return
@@ -181,7 +227,7 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
         onPointerOver={() => interactive && (document.body.style.cursor = 'pointer')}
         onPointerOut={() => (document.body.style.cursor = '')}
       >
-        <Batch version={`cancha:${operator ?? ''}:${pending}:${price}`}>
+        <Batch version={`cancha-${court.id}:${operator ?? ''}:${pending}:${price}`}>
           {/* base de concreto y césped a franjas */}
           <mesh geometry={GEO.box} material={mat('#cfc6b6')} position={[0, -0.04, 0]} scale={[2 * FENCE_X + 0.7, 0.14, 2 * FENCE_Z + 0.7]} receiveShadow />
           {Array.from({ length: 8 }, (_, i) => {
@@ -192,9 +238,13 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
           <Goal side={-1} />
           <Goal side={1} />
           <Fence />
-          {/* cartel físico sobre la malla, del lado de la puerta */}
-          <mesh geometry={GEO.box} material={mat(pending && !operator ? '#f5b544' : COURT_COLOR)} position={[-4.4, 1.55, FENCE_Z + 0.05]} scale={[2.3 * sign.aspect * 0.42 + 0.12, 1.08, 0.05]} />
-          <mesh geometry={GEO.plane} material={dimLabelMat(sign.texture)} position={[-4.4, 1.55, FENCE_Z + 0.085]} scale={[2.3 * sign.aspect * 0.42, 0.97, 1]} />
+          {/* cartel físico sobre la malla, del lado de la puerta (solo en la cancha que mira a la cámara) */}
+          {main && (
+            <>
+              <mesh geometry={GEO.box} material={mat(pending && !operator ? '#f5b544' : COURT_COLOR)} position={[-3.6, 1.55, FENCE_Z + 0.05]} scale={[2.3 * sign.aspect * 0.42 + 0.12, 1.08, 0.05]} />
+              <mesh geometry={GEO.plane} material={dimLabelMat(sign.texture)} position={[-3.6, 1.55, FENCE_Z + 0.085]} scale={[2.3 * sign.aspect * 0.42, 0.97, 1]} />
+            </>
+          )}
           {/* bancas para acompañantes */}
           {COURT_BENCHES.map(([x, z]) => (
             <group key={x} position={[x, 0, z]}>
@@ -205,9 +255,9 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
           ))}
           <FootballCourtLighting />
         </Batch>
-        {!operator && <ClaimTotem label={sign} pending={pending} />}
+        {main && !operator && <ClaimTotem label={sign} pending={pending} />}
       </group>
-      {/* resalte del perímetro al seleccionar la cancha */}
+      {/* resalte del perímetro al seleccionar la zona */}
       {selected && (
         <group>
           {[
@@ -220,7 +270,7 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
           ))}
         </group>
       )}
-      <ScreenLabel label={pill} position={[0, COURT.fenceHeight + 2.6, FENCE_Z]} pixelHeight={35} maxZoomRatio={1.6} lit priority={LABEL_PRIORITY.corridor + 5} onClick={interactive ? onOpen : undefined} />
+      <ScreenLabel label={name} position={[0, COURT.fenceHeight + 1.6, 0]} pixelHeight={30} minZoomRatio={1.35} priority={LABEL_PRIORITY.section} onClick={interactive ? onOpen : undefined} />
     </group>
   )
 }
@@ -242,7 +292,7 @@ function ClaimTotem({ label, pending }: { label: ReturnType<typeof getLabel>; pe
   const S = 2.2
   const y = 3.4
   return (
-    <group position={[0, 0, FENCE_Z + 1.5]}>
+    <group position={[0, 0, FENCE_Z + 1.45]}>
       <mesh ref={ring} geometry={GEO.ring} material={ringMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} />
       <group ref={totem}>
         <mesh geometry={GEO.cylinder} material={mat(PALETTE.metal)} position={[0, y / 2, 0]} scale={[0.15, y, 0.15]} />

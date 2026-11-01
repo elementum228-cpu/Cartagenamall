@@ -177,7 +177,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         })}
         <button onClick={() => openCourtOrClaim(use3D)} aria-pressed={courtActive} className={chip(courtActive)}>
           <Trophy className="size-4" strokeWidth={1.8} />
-          Cancha
+          Deportes
         </button>
       </div>
 

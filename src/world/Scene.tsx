@@ -180,7 +180,8 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                         pending={courtPending}
                       />
                       {/* partido solo con un negocio operando la cancha; libre, se ve vacía */}
-                      {courtOperator && <FootballMatchController quality={quality} reduceMotion={reduceMotion} />}
+                      {courtOperator && <FootballMatchController quality={quality} reduceMotion={reduceMotion} court={0} />}
+                      {courtOperator && <FootballMatchController quality={quality} reduceMotion={reduceMotion} court={1} />}
                       <TechDistrictDecor zoneId="B" angle={ZONE_BY_ID.B.angle} offers={techOffers} />
                     </>
                   ) : (

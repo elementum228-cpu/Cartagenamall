@@ -10,6 +10,8 @@ export interface CourtReservation {
   /** 'AAAA-MM-DD' */
   day: string
   hour: number
+  /** Cancha reservada (las reservas anteriores a las dos canchas son de la A). */
+  court?: 'A' | 'B'
   name: string
   whatsapp: string
   players: number

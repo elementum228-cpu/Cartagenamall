@@ -1,4 +1,4 @@
-import { COURT, FENCE_X, FENCE_Z } from '../football/config'
+import { COURT, SPORTS_HALF } from '../football/config'
 import type { FloorConfig, FloorId, MallConfig, SpaceSlot, SpaceType, SpaceTypeInfo, ZoneConfig, ZoneId } from '../domain/types'
 
 // ── Geometría base ──────────────────────────────────────────────────────────────
@@ -36,10 +36,10 @@ export const SPACE_TYPES: Record<SpaceType, SpaceTypeInfo> = {
   },
   court: {
     type: 'court',
-    name: 'Cancha sintética',
+    name: 'Zona de deportes',
     monthlyPriceCOP: 450_000,
-    size: [2 * FENCE_X, 2 * FENCE_Z],
-    features: ['Cancha de fútbol 5 con césped, arcos y malla', 'Iluminación nocturna y bancas', 'Reservas por hora desde el mall', 'Cartel con tu marca sobre la malla', 'Precio por hora definido por ti'],
+    size: [2 * SPORTS_HALF[0], 2 * SPORTS_HALF[1]],
+    features: ['Dos canchas de fútbol 5 (A y B) con césped, arcos y malla', 'Iluminación nocturna y bancas', 'Reservas por hora desde el mall', 'Cartel con tu marca sobre la malla', 'Precio por hora definido por ti'],
   },
 }
 
@@ -323,9 +323,9 @@ export const COURT_SPACE: SpaceSlot = {
   floorId: 'P1',
   zoneId: 'B',
   type: 'court',
-  label: 'Cancha',
+  label: 'Deportes',
   position: COURT.center,
-  rotation: COURT.rotation,
+  rotation: 0,
   size: SPACE_TYPES.court.size,
 }
 export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries([...SPACES, COURT_SPACE].map((s) => [s.id, s]))

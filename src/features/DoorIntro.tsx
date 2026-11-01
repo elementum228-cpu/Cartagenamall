@@ -49,6 +49,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
   const kickL = useMotionValue(0)
   const kickR = useMotionValue(0)
   const doorX = useMotionValue(0)
+  const doorTilt = useMotionValue(0)
   const doorNonce = useUI((s) => s.doorNonce)
   const halloween = useSeason() === 'halloween'
 
@@ -59,6 +60,8 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     stopCartagena(0.2)
     timers.current = []
     started.current = false
+    kickL.set(0)
+    kickR.set(0)
     setKnocks(0)
     setPhase('idle')
   }, [doorNonce])
@@ -78,12 +81,19 @@ export function DoorIntro({ auto }: { auto: boolean }) {
         const r = e.currentTarget.getBoundingClientRect()
         side = e.clientX < r.left + r.width / 2 ? -1 : 1
       }
-      const deg = 3 + n * 1.6
-      const swing = (mv: MotionValue<number>, k: number) =>
-        animate(mv, [0, deg * k, -deg * k * 0.32, deg * k * 0.1, 0], { duration: 0.65, times: [0, 0.15, 0.42, 0.72, 1], ease: 'easeOut' })
-      swing(kickL, side > 0 ? 0.4 : 1)
-      swing(kickR, side < 0 ? 0.4 : 1)
-      animate(doorX, [0, (side || 1) * 2.5, -(side || 1) * 1, 0], { duration: 0.4, ease: 'easeOut' })
+      // cada golpe empuja más fuerte y la deja un poco más entreabierta: como si estuviera cediendo
+      const deg = 6 + n * 4
+      const rest = n * 2.5
+      const swing = (mv: MotionValue<number>, k: number) => {
+        const from = mv.get()
+        const r = rest * (0.6 + 0.4 * k)
+        animate(mv, [from, r + deg * k, r - deg * k * 0.35, r + deg * k * 0.12, r], { duration: 0.75, times: [0, 0.14, 0.42, 0.72, 1], ease: 'easeOut' })
+      }
+      swing(kickL, side > 0 ? 0.45 : 1)
+      swing(kickR, side < 0 ? 0.45 : 1)
+      const dir = side || 1
+      animate(doorX, [0, dir * (3 + n * 2), -dir * (1 + n * 0.6), 0], { duration: 0.45, ease: 'easeOut' })
+      animate(doorTilt, [0, dir * (0.4 + n * 0.25), -dir * 0.15, 0], { duration: 0.5, ease: 'easeOut' })
       navigator.vibrate?.(12)
     }
     if (n >= KNOCKS) open()
@@ -194,6 +204,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
               // entrada suave; luego cada golpe mueve la puerta (motion: hojas y sacudida)
               animation: phase !== 'idle' || knocks ? 'none' : 'door-rise 1s 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both',
               x: doorX,
+              rotate: doorTilt,
             }}
           >
             {/* marco de piedra clara */}
@@ -202,7 +213,10 @@ export function DoorIntro({ auto }: { auto: boolean }) {
               style={{ background: '#f5ead2', borderRadius: '50% 50% 12px 12px / 34% 34% 12px 12px', border: '3px solid #e2cfa7' }}
             />
             {/* vano: el interior iluminado */}
-            <div className="absolute inset-0 overflow-hidden" style={{ borderRadius: ARCH, perspective: 1100 }}>
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{ borderRadius: ARCH, perspective: 1100, clipPath: `inset(0 round ${ARCH})`, WebkitClipPath: `inset(0 round ${ARCH})` }}
+            >
               <div className="absolute inset-0" style={{ background: 'radial-gradient(70% 60% at 50% 62%, #fff6dc 0%, #ffd08a 45%, #e59a4c 100%)' }} />
               <MallGlimpse lit={opened} />
               {/* rayos de luz que giran despacio */}

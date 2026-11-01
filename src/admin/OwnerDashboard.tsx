@@ -189,7 +189,7 @@ function Amenities({ rows }: { rows: Row[] }) {
               <Trophy className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-extrabold">Cancha sintética · Fútbol 5</p>
+              <p className="font-extrabold">Zona de deportes · Canchas A y B</p>
               <p className="text-xs text-ink-soft">{FLOOR_BY_ID.P1.name} · Jardín de la fortaleza</p>
             </div>
             <Status row={court} />

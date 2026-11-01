@@ -1,7 +1,7 @@
 import { useCourtOperator } from '../football/open'
 import { CalendarDays, Check, Clock, Info, Shirt, Trophy, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { COURT_INFO, demoTaken, priceAt } from '../football/config'
+import { COURTS, COURT_INFO, demoTaken, priceAt, type CourtId } from '../football/config'
 import { appClock } from '../lib/clock'
 import { formatCOP } from '../lib/format'
 import { useReservations } from '../state/reservations'
@@ -22,7 +22,7 @@ export function FootballCourtInfoPanel() {
   const open = useUI((s) => s.courtOpen)
   const close = () => useUI.getState().openCourt(false)
   return (
-    <Sheet open={open} onClose={close} title="Cancha sintética" header={<Header />}>
+    <Sheet open={open} onClose={close} title="Zona de deportes" header={<Header />}>
       {open && <Body />}
     </Sheet>
   )
@@ -37,7 +37,7 @@ function Header() {
           <BallIcon className="size-8" />
         </div>
         <div className="min-w-0">
-          <h2 className="truncate text-xl font-extrabold tracking-tight">CANCHA SINTÉTICA</h2>
+          <h2 className="truncate text-xl font-extrabold tracking-tight">ZONA DE DEPORTES</h2>
           <p className="text-[13px] text-ink-soft">
             {operator ? <>Opera: <b className="text-ink">{operator.name}</b> · </> : null}
             {COURT_INFO.category} · Recreación
@@ -142,6 +142,7 @@ function Booking() {
   const [name, setName] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [players, setPlayers] = useState('10')
+  const [court, setCourt] = useState<CourtId>('A')
   const d = days[day]
   const key = dayKey(d)
   const now = new Date(appClock.now())
@@ -152,18 +153,34 @@ function Booking() {
     if (!remoteEnabled()) return
     let alive = true
     setTaken(null)
-    void courtTakenHours(key).then((hours) => alive && setTaken(new Set(hours ?? [])))
+    void courtTakenHours(key, court).then((hours) => alive && setTaken(new Set(hours ?? [])))
     return () => {
       alive = false
     }
-  }, [key, reservations])
-  const mine = (h: number) => reservations.some((r) => r.day === key && r.hour === h && r.status === 'pending')
-  const isTaken = (h: number) => (remoteEnabled() ? (taken?.has(h) ?? false) : demoTaken(key, h))
+  }, [key, court, reservations])
+  const mine = (h: number) => reservations.some((r) => r.day === key && r.hour === h && (r.court ?? 'A') === court && r.status === 'pending')
+  const isTaken = (h: number) => (remoteEnabled() ? (taken?.has(h) ?? false) : demoTaken(key, h, court))
   const state = (h: number) => (day === 0 && h <= now.getHours() ? 'past' : mine(h) ? 'mine' : isTaken(h) ? 'taken' : 'free')
   const valid = hour !== null && name.trim().length > 1 && whatsapp.replace(/\D/g, '').length >= 7
 
   return (
     <div className="space-y-3">
+      {/* cancha A o B */}
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Cancha">
+        {COURTS.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => {
+              setCourt(c.id)
+              setHour(null)
+            }}
+            aria-pressed={court === c.id}
+            className={`rounded-2xl border px-3 py-2.5 text-sm font-extrabold transition ${court === c.id ? 'border-[#1f7a3d] bg-[#1f7a3d] text-white' : 'border-line bg-white'}`}
+          >
+            {c.name}
+          </button>
+        ))}
+      </div>
       <div className="scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5" role="group" aria-label="Día">
         {days.map((dd, i) => (
           <button
@@ -204,7 +221,7 @@ function Booking() {
       {hour !== null && (
         <div className="space-y-3 rounded-3xl border border-line bg-white p-4">
           <p className="flex items-center gap-2 text-sm font-bold">
-            <Clock className="size-4 text-[#1f7a3d]" /> {DAY_NAMES[d.getDay()]} {d.getDate()} · {hourLabel(hour)} · {formatCOP(priceAt(hour))}
+            <Clock className="size-4 text-[#1f7a3d]" /> Cancha {court} · {DAY_NAMES[d.getDay()]} {d.getDate()} · {hourLabel(hour)} · {formatCOP(priceAt(hour))}
           </p>
           <label className="block">
             <span className="mb-1 block text-xs font-bold text-ink-soft">Nombre de quien reserva</span>
@@ -230,12 +247,12 @@ function Booking() {
             className={`${btn.primary} w-full`}
             disabled={!valid}
             onClick={() => {
-              const r = add({ day: key, hour, name: name.trim(), whatsapp: whatsapp.trim(), players: Number(players), price: priceAt(hour) })
+              const r = add({ day: key, hour, court, name: name.trim(), whatsapp: whatsapp.trim(), players: Number(players), price: priceAt(hour) })
               toast(`Reserva ${r.id} enviada: pendiente de confirmación (demostración, sin cobro).`, 'success')
               setHour(null)
             }}
           >
-            <CalendarDays className="size-4" /> Reservar cancha
+            <CalendarDays className="size-4" /> Reservar cancha {court}
           </button>
           <p className="text-[11px] text-ink-soft">Demostración: no hay pago. La cancha confirmaría la reserva por WhatsApp.</p>
         </div>
@@ -263,7 +280,7 @@ function MyReservations() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold">
-                  {DAY_NAMES[date.getDay()]} {dd} · {hourLabel(r.hour)}
+                  Cancha {r.court ?? 'A'} · {DAY_NAMES[date.getDay()]} {dd} · {hourLabel(r.hour)}
                 </span>
                 <span className="block text-xs text-ink-soft">
                   <span className="font-mono">{r.id}</span> · {r.players} jugadores · {formatCOP(r.price)} · Pendiente de confirmación
