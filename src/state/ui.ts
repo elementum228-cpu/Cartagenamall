@@ -43,6 +43,8 @@ interface UIState {
   setOverview: (on: boolean) => void
   /** Desde la vista de la fortaleza: entrar al piso 1 pasando por la puerta. */
   enterMall: () => void
+  /** Tras la puerta: la cámara cruza el portón y termina en la vista general del mall. */
+  arriveMall: () => void
   /** Cambia cada vez que se pide ver de nuevo el portón de bienvenida. */
   doorNonce: number
   showDoor: () => void
@@ -108,6 +110,7 @@ export const useUI = create<UIState>()((set, get) => ({
   // de vuelta a la vista de la fortaleza: al abrir la puerta otra vez la cámara entra de nuevo
   showDoor: () =>
     set({ doorNonce: Date.now(), overview: true, activeFloor: 'P1', selectedSpaceId: null, openStoreId: null, courtOpen: false, focus: { kind: 'overview', nonce: Date.now() + Math.random() } }),
+  arriveMall: () => set({ overview: true, activeFloor: 'P1', selectedSpaceId: null, focus: { kind: 'enter', nonce: Date.now() + Math.random() } }),
   enterMall: () => set({ overview: false, activeFloor: 'P1', selectedSpaceId: null, focus: { kind: 'enter', nonce: Date.now() + Math.random() } }),
   setOverview: (on) => set({ overview: on, selectedSpaceId: null, focus: { kind: on ? 'overview' : 'home', nonce: Date.now() + Math.random() } }),
   selectedSpaceId: null,

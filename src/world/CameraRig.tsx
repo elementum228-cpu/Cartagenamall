@@ -196,7 +196,14 @@ export function CameraRig() {
         target: gate,
         zoom: THREE.MathUtils.clamp(fit * 2.4, minZoom, maxZoom),
         hold: 0.35,
-        next: { target: origin, zoom: fit * floor.homeZoom * 1.15 },
+        // al entrar se termina en la vista general (todo el mall); si se pidió un piso, en ese piso
+        next: overview
+          ? (() => {
+              // el mismo encuadre de la vista general, llevado al nivel del suelo (y = 0)
+              const c = overviewCenter()
+              return { target: c.clone().addScaledVector(ISO_DIR, -c.y / ISO_DIR.y), zoom: fit * overviewZoomFor(size.width, size.height) }
+            })()
+          : { target: origin, zoom: fit * floor.homeZoom * 1.15 },
       }
     } else if (focus.kind === 'overview') {
       goal.current = { target: overviewCenter(), zoom: fit * overviewZoomFor(size.width, size.height) }

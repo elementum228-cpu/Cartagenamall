@@ -108,7 +108,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     }
     if (reduce) {
       void playCartagena()
-      useUI.getState().enterMall()
+      useUI.getState().arriveMall()
       setPhase('through')
       timers.current.push(window.setTimeout(() => setPhase('done'), 400))
       return
@@ -118,7 +118,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       setPhase('open')
       void playOpen()
     })
-    at(TIMELINE.enter, () => useUI.getState().enterMall())
+    at(TIMELINE.enter, () => useUI.getState().arriveMall())
     // la música y el mar empiezan cuando entra la luz, antes de cruzar
     at(TIMELINE.cartagena, () => void playCartagena())
     at(TIMELINE.through, () => setPhase('through'))
@@ -132,10 +132,10 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     // persona no tocó nada mientras tanto (otro piso, una tienda, la cancha…).
     const untouched = () => {
       const ui = useUI.getState()
-      return ui.focus?.kind === 'enter' && !ui.overview && !ui.selectedSpaceId && !ui.openStoreId && !ui.courtOpen
+      return ui.focus?.kind === 'enter' && ui.overview && !ui.selectedSpaceId && !ui.openStoreId && !ui.courtOpen
     }
+    // la primera vez, el recorrido guiado; las siguientes ya se queda en la vista general
     if (!tourDone()) at(TIMELINE.tour, () => untouched() && startTour())
-    else at(TIMELINE.overview, () => untouched() && useUI.getState().setOverview(true))
   }
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
