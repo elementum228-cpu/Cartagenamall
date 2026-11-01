@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ESCALATOR, ESCALATOR_STEP_RATE, ESCALATOR_STEPS, FLOOR_BY_ID } from '../config/mall'
+import { ESCALATOR, ESCALATOR_FRAME, ESCALATOR_STEP_RATE, ESCALATOR_STEPS, FLOOR_BY_ID, escToWorld } from '../config/mall'
 import { useUI } from '../state/ui'
 import { cameraState } from './cameraState'
 import { ScreenLabel } from './Billboard'
@@ -147,6 +147,8 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
   const up = getLabel('PISO 2 ↑', { bg: '#d4842e', fg: '#fff', sub: 'Zona de comida' })
   const down = getLabel('PISO 1 ↓', { bg: '#0f766e', fg: '#fff', sub: 'Plaza y tiendas' })
   const rail = mat('#3a4450')
+  const upSign = escToWorld(centerX + 2.6, ESCALATOR.bottomZ + 1.4)
+  const downSign = escToWorld(centerX, ESCALATOR.topZ - 1.2)
 
   /** Subir o bajar según el piso en el que se esté. */
   const toggleFloor = () => {
@@ -164,6 +166,8 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
       onPointerOver={() => (document.body.style.cursor = 'pointer')}
       onPointerOut={() => (document.body.style.cursor = '')}
     >
+      {/* todo en el marco de las escaleras (suben en diagonal hacia la esquina de la terraza) */}
+      <group position={[ESCALATOR_FRAME.x, 0, ESCALATOR_FRAME.z]} rotation={[0, ESCALATOR_FRAME.angle, 0]}>
       {ESCALATOR.lanesX.map((lx) => (
         // El cuerpo corre a lo largo de z y sube hacia −z.
         <group key={lx} position={[lx, midY, midZ]} rotation={[angle, 0, 0]}>
@@ -185,10 +189,11 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
       <mesh geometry={GEO.rounded} material={mat(PALETTE.metal)} position={[centerX, FLOOR_TOP + 0.05, ESCALATOR.bottomZ + 0.8]} scale={[4.2, 0.1, 1.6]} receiveShadow />
       <mesh geometry={GEO.rounded} material={mat(PALETTE.metal)} position={[centerX, FLOOR_TOP + rise + 0.05, ESCALATOR.topZ - 0.6]} scale={[4.2, 0.1, 1.2]} receiveShadow />
       <mesh geometry={GEO.cylinder} material={mat(PALETTE.metal)} position={[centerX + 2.6, 1.1, ESCALATOR.bottomZ + 1.4]} scale={[0.08, 2.2, 0.08]} />
+      </group>
       {showUpSign && (
-        <ScreenLabel label={up} position={[centerX + 2.6, 2.8, ESCALATOR.bottomZ + 1.4]} pixelHeight={28} minZoomRatio={1.1} priority={LABEL_PRIORITY.section} onClick={() => useUI.getState().setFloor('P2')} />
+        <ScreenLabel label={up} position={[upSign[0], 2.8, upSign[1]]} pixelHeight={28} minZoomRatio={1.1} priority={LABEL_PRIORITY.section} onClick={() => useUI.getState().setFloor('P2')} />
       )}
-      <DownSign label={down} position={[centerX, FLOOR_TOP + rise + 2.4, ESCALATOR.topZ - 1.2]} />
+      <DownSign label={down} position={[downSign[0], FLOOR_TOP + rise + 2.4, downSign[1]]} />
     </group>
   )
 }

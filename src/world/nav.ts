@@ -1,4 +1,4 @@
-import { ESCALATOR, FLOORS, FOOD_LAYOUT, LAYOUT, SPACES, onP1Walkway, spaceFrontPoint } from '../config/mall'
+import { ESCALATOR, FLOORS, escToWorld, worldToEsc, FOOD_LAYOUT, LAYOUT, SPACES, onP1Walkway, spaceFrontPoint } from '../config/mall'
 import type { FloorId } from '../domain/types'
 import { DECOR_FOOTPRINTS } from './Decor'
 import { FOOD_FOOTPRINTS } from './FoodCourt'
@@ -24,16 +24,20 @@ interface Circle {
 export const ESCALATOR_ENDS = (() => {
   const [up, down] = ESCALATOR.lanesX
   const p2 = FLOORS.find((f) => f.id === 'P2')!.offset
-  const top = ESCALATOR.topZ - 0.6
+  const top = ESCALATOR.topZ - 0.9
+  const onP2 = (lx: number, lz: number): Point => {
+    const [x, z] = escToWorld(lx, lz)
+    return [x - p2[0], z - p2[1]]
+  }
   return {
     /** Piso 1, al pie del carril que sube. */
-    upStart: [up, ESCALATOR.bottomZ + 1.2] as Point,
+    upStart: escToWorld(up, ESCALATOR.bottomZ + 1.2) as Point,
     /** Piso 2, al salir del carril que sube. */
-    upEnd: [up - p2[0], top - p2[1]] as Point,
+    upEnd: onP2(up, top),
     /** Piso 2, al entrar al carril que baja. */
-    downStart: [down - p2[0], top - p2[1]] as Point,
+    downStart: onP2(down, top),
     /** Piso 1, al salir del carril que baja. */
-    downEnd: [down, ESCALATOR.bottomZ + 1.2] as Point,
+    downEnd: escToWorld(down, ESCALATOR.bottomZ + 1.2) as Point,
   }
 })()
 
@@ -43,7 +47,8 @@ function p1Free(x: number, z: number): boolean {
   // fuente (con los bombillos del borde)
   if (Math.hypot(x, z) < 2.85 + r) return false
   // cuerpo de las escaleras (el pie, en la plaza, sí se pisa)
-  if (x > ESCALATOR.lanesX[0] - ESCALATOR.width / 2 - r && x < ESCALATOR.lanesX[1] + ESCALATOR.width / 2 + r && z > ESCALATOR.topZ - r && z < ESCALATOR.bottomZ + r) return false
+  const [ex, ez] = worldToEsc(x, z)
+  if (ex > ESCALATOR.lanesX[0] - ESCALATOR.width / 2 - r && ex < ESCALATOR.lanesX[1] + ESCALATOR.width / 2 + r && ez > ESCALATOR.topZ - r && ez < ESCALATOR.bottomZ + r) return false
   // islas comerciales del pasillo
   for (const sp of SPACES) {
     if (sp.floorId !== 'P1' || sp.type !== 'island') continue

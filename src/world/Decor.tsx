@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { ESCALATOR, P1, toWorld } from '../config/mall'
+import { ESCALATOR, worldToEsc, P1, toWorld } from '../config/mall'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat } from './night'
 import { onCourt } from '../football/config'
@@ -116,8 +116,10 @@ for (const zone of P1.zones) {
 
 // Plaza central
 /** Zona de la plaza que ocupan las escaleras eléctricas (no se decora). */
-const onEscalator = (x: number, z: number) =>
-  x > ESCALATOR.lanesX[0] - ESCALATOR.width && x < ESCALATOR.lanesX[1] + ESCALATOR.width && z > ESCALATOR.topZ && z < ESCALATOR.bottomZ + 2
+const onEscalator = (wx: number, wz: number) => {
+  const [x, z] = worldToEsc(wx, wz)
+  return x > ESCALATOR.lanesX[0] - ESCALATOR.width && x < ESCALATOR.lanesX[1] + ESCALATOR.width && z > ESCALATOR.topZ && z < ESCALATOR.bottomZ + 2
+}
 /** Camino interior de la puerta a la plaza (cuadrante del frente, sobre la diagonal x = z). */
 const onEntrancePath = (x: number, z: number) => x > 8 && z > 8 && Math.abs(x - z) < 4.5
 /** Esquina entre Lifestyle y Belleza: zona de servicios, con su propia decoración (District). */
@@ -125,7 +127,7 @@ const onDistrict = (x: number, z: number) => x < -9.8 && z > 9.8
 
 for (let i = 0; i < 4; i++) {
   const a = Math.PI / 4 + (i * Math.PI) / 2
-  bench(Math.sin(a) * 5.2, Math.cos(a) * 5.2, a + Math.PI)
+  if (!onEscalator(Math.sin(a) * 5.2, Math.cos(a) * 5.2)) bench(Math.sin(a) * 5.2, Math.cos(a) * 5.2, a + Math.PI)
   const [px, pz] = [Math.sin(a) * 7.6, Math.cos(a) * 7.6]
   if (!onEscalator(px, pz)) palm(px, pz, 3.6, Y, i * 1.7)
   for (const d of [0.45, -0.45]) {

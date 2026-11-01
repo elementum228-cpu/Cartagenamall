@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ESCALATOR, ESCALATOR_STEP_RATE, ESCALATOR_STEPS, FLOOR_BY_ID } from '../config/mall'
+import { ESCALATOR, ESCALATOR_FRAME, ESCALATOR_STEP_RATE, ESCALATOR_STEPS, FLOOR_BY_ID, escToWorld } from '../config/mall'
 import type { FloorId } from '../domain/types'
 import { useUI } from '../state/ui'
 import { GEO, mat } from './materials'
@@ -169,8 +169,9 @@ export function Travelers({ count }: { count: number }) {
           bob = Math.abs(Math.sin(t * 6 + i)) * 0.05
           if (follow(a, dt, a.speed)) {
             // al pie del carril (en coordenadas del piso donde está)
-            const x = lane(a.dir) - (a.floor === 'P2' ? p2[0] : 0)
-            const z = a.dir === 'up' ? ESCALATOR.bottomZ : ESCALATOR.topZ - p2[1]
+            const [ex, ez] = escToWorld(lane(a.dir), a.dir === 'up' ? ESCALATOR.bottomZ : ESCALATOR.topZ)
+            const x = ex - (a.floor === 'P2' ? p2[0] : 0)
+            const z = ez - (a.floor === 'P2' ? p2[1] : 0)
             a.path = [[a.x, a.z], [x, z]]
             a.next = 1
             a.state = 'stepOn'
@@ -191,8 +192,9 @@ export function Travelers({ count }: { count: number }) {
             // baja de la escalera: queda en el otro piso, a un paso del carril
             a.floor = a.dir === 'up' ? 'P2' : 'P1'
             const end = a.dir === 'up' ? ESCALATOR_ENDS.upEnd : ESCALATOR_ENDS.downEnd
-            const x = lane(a.dir) - (a.floor === 'P2' ? p2[0] : 0)
-            const z = a.dir === 'up' ? ESCALATOR.topZ - p2[1] : ESCALATOR.bottomZ
+            const [ex, ez] = escToWorld(lane(a.dir), a.dir === 'up' ? ESCALATOR.topZ : ESCALATOR.bottomZ)
+            const x = ex - (a.floor === 'P2' ? p2[0] : 0)
+            const z = ez - (a.floor === 'P2' ? p2[1] : 0)
             a.x = x
             a.z = z
             a.path = [[x, z], end]
@@ -216,10 +218,9 @@ export function Travelers({ count }: { count: number }) {
       if (a.state === 'riding' || onEscalator) {
         // sobre el escalón: coordenadas del piso 1
         const u = a.dir === 'up' ? a.u : 1 - a.u
-        wx = lane(a.dir)
-        wz = ESCALATOR.bottomZ - run * u
+        ;[wx, wz] = escToWorld(lane(a.dir), ESCALATOR.bottomZ - run * u)
         wy = FLOOR_TOP + rise * u + 0.23
-        a.heading = turnTowards(a.heading, a.dir === 'up' ? Math.PI : 0, TURN * dt)
+        a.heading = turnTowards(a.heading, (a.dir === 'up' ? Math.PI : 0) + ESCALATOR_FRAME.angle, TURN * dt)
       } else if (a.floor === 'P2') {
         wx = a.x + p2[0]
         wz = a.z + p2[1]

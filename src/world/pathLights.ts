@@ -1,4 +1,4 @@
-import { ESCALATOR, FOOD_LAYOUT, P1, toWorld } from '../config/mall'
+import { ESCALATOR, worldToEsc, FOOD_LAYOUT, P1, toWorld } from '../config/mall'
 import type { FloorId } from '../domain/types'
 
 /**
@@ -23,8 +23,10 @@ export interface PathLight {
 const WARM = '#ffd29a'
 const AMBER = '#ffbf73'
 
-const onEscalator = (x: number, z: number) =>
-  x > ESCALATOR.lanesX[0] - ESCALATOR.width - 0.6 && x < ESCALATOR.lanesX[1] + ESCALATOR.width + 0.6 && z > ESCALATOR.topZ - 1 && z < ESCALATOR.bottomZ + 2.5
+const onEscalator = (wx: number, wz: number) => {
+  const [x, z] = worldToEsc(wx, wz)
+  return x > ESCALATOR.lanesX[0] - ESCALATOR.width - 0.6 && x < ESCALATOR.lanesX[1] + ESCALATOR.width + 0.6 && z > ESCALATOR.topZ - 1 && z < ESCALATOR.bottomZ + 2.5
+}
 
 function p1Lights(): PathLight[] {
   const out: PathLight[] = []

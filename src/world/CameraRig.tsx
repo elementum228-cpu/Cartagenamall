@@ -22,7 +22,7 @@ interface Goal {
 
 const DESKTOP_PANEL = 420
 /** Zoom de la vista general (ambos pisos) y su límite de desplazamiento. */
-const OVERVIEW_ZOOM = 0.6
+const OVERVIEW_ZOOM = 0.54
 /** En pantallas verticales la fortaleza se encuadra más cerca (se recortan apenas las puntas de los baluartes). */
 const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
 const OVERVIEW_BOUNDS = 40

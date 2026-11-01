@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ESCALATOR, FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
+import { FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
@@ -23,9 +23,8 @@ const WOOD_DECK = '#dcb78c'
 const STOOL_COLORS = ['#f2b880', '#9fd0c7', '#f4a9a0', '#c9b6e4', '#f7d488']
 const UMBRELLA_COLORS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f']
 
-/** Escaleras (coordenadas del piso 1) llevadas a coordenadas de este piso. */
-const ARRIVAL_X0 = ESCALATOR.lanesX[0] - OFFSET[0] - ESCALATOR.width
-const ARRIVAL_X1 = ESCALATOR.lanesX[1] - OFFSET[0] + ESCALATOR.width
+/** Hueco de la baranda en la esquina del frente, donde llegan las escaleras (en diagonal). */
+const ARRIVAL_GAP = 3.8
 
 /**
  * Columnas de la arcada frontal (coordenadas del piso). Se saltan los tramos que caerían sobre
@@ -34,9 +33,10 @@ const ARRIVAL_X1 = ESCALATOR.lanesX[1] - OFFSET[0] + ESCALATOR.width
 const ARCADE: [number, number][] = ([
   ...[-4, 0.5, 5, 9.5].map((z): [number, number] => [H - 0.6, z]),
   ...[-4, 0.5, 5].map((x): [number, number] => [x, H - 0.6]),
-  [H - 0.6, H - 0.6],
   // Una columna nunca se apoya sobre la plaza o un pasillo del piso 1: ahí camina la gente.
-] as [number, number][]).filter(([x, z]) => !onP1Walkway(x + OFFSET[0], z + OFFSET[1], 0.8))
+] as [number, number][]).filter(
+  ([x, z]) => !onP1Walkway(x + OFFSET[0], z + OFFSET[1], 0.8) && Math.hypot(x - FOOD_LAYOUT.arrival.x, z - FOOD_LAYOUT.arrival.z) > 3.5,
+)
 
 /** Baranda de vidrio y piedra recta de (x0,z0) a (x1,z1). */
 function railing(x0: number, z0: number, x1: number, z1: number, key: string) {
@@ -57,9 +57,9 @@ function Shell() {
   const wood = mat(PALETTE.wood)
   // Columnas en el jardín del fondo de la fortaleza (no caen sobre tiendas del piso 1).
   const columns: [number, number][] = [
-    [-13, -13],
-    [4, -13],
-    [-13, 4],
+    [-6.5, -6.5],
+    [4, -6.5],
+    [-6.5, 4],
     [4, 4],
   ]
   return (
@@ -88,9 +88,8 @@ function Shell() {
       <mesh geometry={GEO.box} material={wall} position={[0, WALL_H / 2 + 0.2, -H + 0.2]} scale={[2 * H, WALL_H, 0.4]} castShadow />
       <mesh geometry={GEO.box} material={wall} position={[-H + 0.2, WALL_H / 2 + 0.2, 0]} scale={[0.4, WALL_H, 2 * H]} castShadow />
       {/* barandas hacia la plaza; abiertas donde llegan las escaleras */}
-      {railing(H - 0.2, -H + 0.4, H - 0.2, H - 0.2, 'este')}
-      {railing(-H + 0.4, H - 0.2, ARRIVAL_X0, H - 0.2, 'frente-a')}
-      {railing(ARRIVAL_X1, H - 0.2, H - 0.2, H - 0.2, 'frente-b')}
+      {railing(H - 0.2, -H + 0.4, H - 0.2, H - ARRIVAL_GAP, 'este')}
+      {railing(-H + 0.4, H - 0.2, H - ARRIVAL_GAP, H - 0.2, 'frente')}
       {/* arcada bajo los bordes que dan a la plaza: el piso se lee elevado desde la fortaleza */}
       {ARCADE.map(([x, z]) => (
         <group key={`a${x}${z}`} position={[x, 0, z]}>
@@ -107,6 +106,42 @@ function Shell() {
           <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -ELEV + 0.35, 0]} scale={[1.4, 0.5, 1.4]} />
           <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -1.05, 0]} scale={[1.3, 0.3, 1.3]} />
         </group>
+      ))}
+      <Keep />
+    </group>
+  )
+}
+
+/**
+ * Torreón: la parte de la terraza que sale por fuera de la muralla se apoya en un macizo de piedra
+ * que baja hasta el mar, con zócalo en talud y cordón, como si el castillo creciera en esa esquina.
+ */
+function Keep() {
+  // cara exterior de la muralla, en coordenadas de este piso
+  const wall = -31 - 1.1 - OFFSET[0]
+  const bottom = -ELEV - 1.3
+  const top = -0.9
+  const h = top - bottom
+  const stone = mat('#c7a574')
+  const dark = mat('#9c7d55')
+  const cordon = mat('#e6d2a8')
+  const E = H + 0.2
+  const parts: { x: number; z: number; w: number; d: number }[] = [
+    { x: (-E + wall) / 2, z: 0, w: wall + E, d: 2 * E },
+    { x: (wall + E) / 2, z: (-E + wall) / 2, w: E - wall, d: wall + E },
+  ]
+  return (
+    <group>
+      {parts.map((p, i) => (
+        <group key={i}>
+          <mesh geometry={GEO.box} material={stone} position={[p.x, bottom + h / 2, p.z]} scale={[p.w, h, p.d]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={dark} position={[p.x, bottom + 0.9, p.z]} scale={[p.w + 0.5, 1.8, p.d + 0.5]} />
+          <mesh geometry={GEO.box} material={cordon} position={[p.x, top - 0.25, p.z]} scale={[p.w + 0.12, 0.16, p.d + 0.12]} />
+        </group>
+      ))}
+      {/* troneras en la cara que mira al frente */}
+      {[-12.6, -10.2].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={dark} position={[x, -ELEV / 2, E + 0.01]} scale={[0.35, 1.1, 0.04]} />
       ))}
     </group>
   )

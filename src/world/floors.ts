@@ -12,7 +12,7 @@ export function floorOrigin(floor: FloorConfig, _overview = false): THREE.Vector
 
 /** Centro de la vista general de la fortaleza (un poco hacia el fondo, donde está la terraza). */
 export function overviewCenter(): THREE.Vector3 {
-  return new THREE.Vector3(-1.5, 2.5, -1.5)
+  return new THREE.Vector3(-5.5, 2.5, -5.5)
 }
 
 /** Origen animado actual de cada piso (lo actualiza MallFloor; lo leen ofertas escondidas). */

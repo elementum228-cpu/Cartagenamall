@@ -153,8 +153,8 @@ export function FloorPlanBase({ floor }: { floor: FloorConfig }) {
           <text x={(TR.x0 + TR.x1) / 2} y={(TR.z0 + TR.z1) / 2 + 0.4} textAnchor="middle" fontSize={1.1} fontWeight={800} fill="#8a6340">
             TERRAZA
           </text>
-          <rect x={FOOD_LAYOUT.arrival.x - 2.2} y={FH - 1.6} width={4.4} height={1.6} fill="#cfd6da" />
-          <text x={FOOD_LAYOUT.arrival.x} y={FH - 0.5} textAnchor="middle" fontSize={0.75} fontWeight={700} fill="#5b6670">
+          <rect x={FH - 3.4} y={FH - 3.4} width={3.4} height={3.4} fill="#cfd6da" />
+          <text x={FH - 1.7} y={FH - 1.5} textAnchor="middle" fontSize={0.7} fontWeight={700} fill="#5b6670">
             Escaleras
           </text>
         </>

@@ -159,18 +159,40 @@ export const FOOD_LAYOUT = {
   half: 14,
   /** Terraza con pérgola en la esquina del fondo. */
   terrace: { x0: -14, x1: -7.4, z0: -14, z1: -7.4 },
-  /** Donde llegan las escaleras (borde frontal). */
-  arrival: { x: 10.5, z: 13 },
+  /** Donde llegan las escaleras: la esquina del frente de la terraza (hacia la plaza). */
+  arrival: { x: 11.6, z: 11.6 },
 } as const
 
-const P2_OFFSET: [number, number] = [-16, -16]
+/**
+ * El piso 2 va sobre la esquina del fondo de la fortaleza, entre los pasillos de Moda y Lifestyle
+ * sin taparlos: su losa empieza justo donde terminan esos locales (|x|, |z| > 9.5) y se apoya,
+ * hacia afuera, en un torreón que agranda el castillo sobre el baluarte del fondo.
+ */
+const P2_OFFSET: [number, number] = [-23.75, -23.75]
 const P2_ELEVATION = 7.2
 
 /**
- * Escaleras eléctricas, en coordenadas del piso 1: suben desde la plaza hacia el fondo (−z)
- * hasta el borde frontal de la terraza del piso 2.
+ * Escaleras eléctricas, en su propio marco: dos carriles a lo largo de z local que suben hacia −z
+ * (del pie, en la plaza, a la esquina de la terraza). El marco gira 45°: suben en diagonal entre
+ * Moda y Lifestyle, sin pasar sobre ningún local.
  */
-export const ESCALATOR = { lanesX: [-6.25, -4.75], bottomZ: 6.6, topZ: -3.2, width: 1.5 } as const
+export const ESCALATOR = { lanesX: [-0.75, 0.75], bottomZ: 9.8, topZ: 0, width: 1.5 } as const
+/** Marco de las escaleras: arriba (z local 0) en (x, z) del piso 1, girado `angle` en y. */
+export const ESCALATOR_FRAME = { x: -11.3, z: -11.3, angle: Math.PI / 4 } as const
+/** De coordenadas de las escaleras a coordenadas del piso 1. */
+export function escToWorld(lx: number, lz: number): [number, number] {
+  const c = Math.cos(ESCALATOR_FRAME.angle)
+  const s = Math.sin(ESCALATOR_FRAME.angle)
+  return [ESCALATOR_FRAME.x + lx * c + lz * s, ESCALATOR_FRAME.z - lx * s + lz * c]
+}
+/** De coordenadas del piso 1 a coordenadas de las escaleras. */
+export function worldToEsc(x: number, z: number): [number, number] {
+  const c = Math.cos(ESCALATOR_FRAME.angle)
+  const s = Math.sin(ESCALATOR_FRAME.angle)
+  const dx = x - ESCALATOR_FRAME.x
+  const dz = z - ESCALATOR_FRAME.z
+  return [dx * c - dz * s, dx * s + dz * c]
+}
 /** Marcha de las escaleras: escalones por segundo y cantidad de escalones por carril (carril 0 sube). */
 export const ESCALATOR_STEP_RATE = 0.9
 export const ESCALATOR_STEPS = 16
@@ -361,7 +383,6 @@ export const FORTRESS = {
   garitas: [
     [-34.6, 34.6],
     [34.6, -34.6],
-    [-34.6, -34.6],
     [-31, 6],
   ] as [number, number][],
   cannons: [
