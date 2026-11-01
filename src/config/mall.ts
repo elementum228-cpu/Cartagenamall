@@ -366,6 +366,12 @@ const ISLAND_SPACES: SpaceSlot[] = ZONES_P1.flatMap((zone, zi) =>
     }
   }),
 )
+/** Pista de la isla: centro (x, z), giro del marco (z local = a lo largo de la pista) y medidas. */
+export const ISLAND_RUNWAY = (() => {
+  const [dx, dz] = toWorld([0, 40], Math.PI / 4)
+  return { x: ISLAND.x + dx, z: ISLAND.z + dz, rot: Math.PI / 4 + Math.PI / 2, len: 30, w: 4 }
+})()
+
 /** ¿Es un local de la Isla de los Descuentos? */
 export const isIslandSpace = (sp: Pick<SpaceSlot, 'id'>) => sp.id.startsWith('P1-I')
 

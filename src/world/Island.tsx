@@ -1,9 +1,10 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ISLAND, ISLAND_WING, P1, insideSpace, toWorld } from '../config/mall'
+import { ISLAND, ISLAND_RUNWAY, ISLAND_WING, P1, insideSpace, toWorld } from '../config/mall'
 import type { ZoneConfig } from '../domain/types'
 import { useIsNight } from '../lib/useIsNight'
+import { LANDING_MS, TOUCHDOWN, useFlight } from '../airport/flight'
 import { AirplaneModel } from './Airport'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -111,6 +112,129 @@ function Palm({ x, z, h, seed }: { x: number; z: number; h: number; seed: number
         const a = (k / 6) * Math.PI * 2 + seed
         return <mesh key={k} geometry={GEO.box} material={mat(PALETTE.leafDark)} position={[Math.sin(a) * 0.8, h + 0.05, Math.cos(a) * 0.8]} rotation={[0.35, a, 0]} scale={[0.5, 0.08, 1.9]} castShadow />
       })}
+    </group>
+  )
+}
+
+/**
+ * Aeropuerto de la isla (en el marco de la pista; −x local mira al mar y a la cámara): plataforma
+ * de piedra, terminal con vidrio y letrero, torre de control con baliza y faroles.
+ */
+function islandSign() {
+  const c = document.createElement('canvas')
+  c.width = 1024
+  c.height = 300
+  const g = c.getContext('2d')!
+  g.fillStyle = '#16325c'
+  g.beginPath()
+  g.roundRect(0, 0, 1024, 300, 48)
+  g.fill()
+  g.fillStyle = '#ffffff'
+  g.font = '700 150px system-ui, sans-serif'
+  g.textBaseline = 'middle'
+  g.fillText('✈', 50, 150)
+  g.font = '800 104px system-ui, sans-serif'
+  g.fillText('AEROPUERTO', 250, 110)
+  g.fillStyle = '#ffb3cb'
+  g.font = '600 56px system-ui, sans-serif'
+  g.fillText('Isla de los Descuentos', 254, 215)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+  return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
+}
+
+function IslandAirport() {
+  const sign = useMemo(() => islandSign(), [])
+  const glass = glowMat('#ffd9a0', 1.9, { dayGlow: 0.22 })
+  const PX = -8.5
+  return (
+    <group>
+      {/* plataforma de piedra junto a la pista */}
+      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[PX, -0.6, -2]} scale={[10, 1.6, 18]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={[PX, 0.17, -2]} scale={[10.1, 0.08, 18.1]} />
+      <mesh geometry={GEO.box} material={mat('#d6d8d6')} position={[PX, 0.2, -2]} scale={[9.6, 0.02, 17.6]} receiveShadow />
+      {/* terminal */}
+      <group position={[PX - 1, 0.2, 1]}>
+        <mesh geometry={GEO.box} material={mat('#f4f1ea')} position={[0, 1.5, 0]} scale={[5.5, 3, 8]} castShadow receiveShadow />
+        {[1, -1].map((s) => (
+          <mesh key={s} geometry={GEO.box} material={glass} position={[s * 2.77, 1.35, 0]} scale={[0.04, 2, 7.2]} />
+        ))}
+        <mesh geometry={GEO.box} material={mat('#3c4651')} position={[0, 3.12, 0]} scale={[6.6, 0.24, 9]} castShadow />
+        <mesh geometry={GEO.box} material={mat('#e85a8a')} position={[0, 2.95, 0]} scale={[6.62, 0.1, 9.02]} />
+        <mesh geometry={GEO.plane} material={sign} position={[-3.32, 3.9, 0]} rotation={[0, -Math.PI / 2, 0]} scale={[5.2, 1.52, 1]} />
+        <mesh geometry={GEO.plane} material={sign} position={[3.32, 3.9, 0]} rotation={[0, Math.PI / 2, 0]} scale={[5.2, 1.52, 1]} />
+        <mesh geometry={GEO.box} material={mat('#2f3437')} position={[0, 3.6, 0]} scale={[0.12, 0.8, 4]} />
+      </group>
+      {/* torre de control */}
+      <group position={[PX - 0.5, 0.2, -8]}>
+        <mesh geometry={GEO.cylinder} material={mat('#f4f1ea')} position={[0, 3, 0]} scale={[1.2, 6, 1.2]} castShadow />
+        <mesh geometry={GEO.cylinder} material={mat('#e85a8a')} position={[0, 4.4, 0]} scale={[1.28, 0.2, 1.28]} />
+        <mesh geometry={GEO.cylinder} material={mat('#3c4651')} position={[0, 6.1, 0]} scale={[2.2, 0.22, 2.2]} />
+        <mesh geometry={GEO.cylinder} material={glowMat('#bfe6ff', 1.8, { dayGlow: 0.3 })} position={[0, 6.75, 0]} scale={[2, 1.05, 2]} />
+        <mesh geometry={GEO.cylinder} material={mat('#3c4651')} position={[0, 7.38, 0]} scale={[2.4, 0.2, 2.4]} castShadow />
+        <mesh geometry={GEO.sphereSmooth} material={glowMat('#ff4d4d', 2.6, { dayGlow: 0.6 })} position={[0, 8, 0]} scale={0.24} />
+      </group>
+      {/* faroles */}
+      {[[PX + 3.8, -9.5], [PX + 3.8, 5.5], [PX - 3.8, 6.5]].map(([x, z]) => (
+        <group key={`${x}${z}`} position={[x, 0.2, z]}>
+          <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.5, 0]} scale={[0.1, 3, 0.1]} />
+          <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 3.1, 0]} scale={0.4} />
+          <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]} scale={[4, 4, 1]} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/**
+ * El avión en la isla: aterriza (llega bajando desde el mar, toca la pista, frena) y queda en la
+ * pista. Fuera del aterrizaje se ve estacionado donde frenó. Marco de la pista: nariz hacia −z.
+ */
+const PARK_Z = 2
+function IslandPlane() {
+  const g = useRef<THREE.Group>(null)
+  const shadow = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    const p = g.current
+    if (!p) return
+    const { step, landingAt, world } = useFlight.getState()
+    let z = PARK_Z
+    let y = 0.2
+    let pitch = 0
+    const landing = step === 'landing'
+    p.visible = landing || world === 'island' || step === 'arrived'
+    if (landing) {
+      const t = Math.min(1, (performance.now() - landingAt) / LANDING_MS)
+      const TD = RUN.len / 2 - 3
+      if (t < TOUCHDOWN) {
+        // aproximación: baja en línea recta desde el mar
+        const u = t / TOUCHDOWN
+        z = TD + 55 * (1 - u)
+        y = 0.2 + 13 * Math.pow(1 - u, 1.15)
+        pitch = 0.04 + (u > 0.8 ? (u - 0.8) * 0.6 : 0)
+      } else {
+        // carrera de frenado
+        const u = (t - TOUCHDOWN) / (1 - TOUCHDOWN)
+        const e = 1 - (1 - u) * (1 - u)
+        z = TD + (PARK_Z - TD) * e
+        pitch = Math.max(0, 0.12 - u * 0.6)
+      }
+    }
+    p.position.set(0.6, y, z)
+    p.rotation.set(pitch, Math.PI, 0)
+    if (shadow.current) {
+      shadow.current.visible = p.visible
+      shadow.current.position.set(0.6 + (y - 0.2) * 0.15, 0.24, z)
+      shadow.current.scale.set(7 / (1 + (y - 0.2) * 0.08), 0.02, 9 / (1 + (y - 0.2) * 0.08))
+    }
+  })
+  return (
+    <group position={[ISLAND_RUNWAY.x, 0, ISLAND_RUNWAY.z]} rotation={[0, ISLAND_RUNWAY.rot, 0]}>
+      <mesh ref={shadow} geometry={GEO.sphere} material={mat('#0b2a33', { opacity: 0.22 })} />
+      <group ref={g}>
+        <AirplaneModel stairs={false} />
+      </group>
     </group>
   )
 }
@@ -238,10 +362,7 @@ function Castle() {
             <mesh key={`${s}${i}`} geometry={GEO.sphere} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.35 })} position={[0.6 + s * (RUN.w / 2 + 0.25), 0.32, -RUN.len / 2 + (i * RUN.len) / 8]} scale={0.2} />
           )),
         )}
-        {/* el avión que te trajo */}
-        <group position={[-2.6, 0.2, -4]} rotation={[0, Math.PI, 0]}>
-          <AirplaneModel />
-        </group>
+        <IslandAirport />
       </group>
       {/* focos de las garitas hacia el cielo (de noche) */}
       {[pts[2], pts[13], pts[20]].map(([x, z], i) => (
@@ -333,6 +454,7 @@ export function Island({ reduceMotion }: { reduceMotion: boolean }) {
           <Wing key={z.id} zone={z} />
         ))}
       </Batch>
+      <IslandPlane />
       <Strollers reduceMotion={reduceMotion} />
       <Balloon reduceMotion={reduceMotion} />
       <ScreenLabel label={label} position={[C.x - 3, 12, C.z - 3]} pixelHeight={38} maxZoomRatio={2.6} priority={LABEL_PRIORITY.floorSign + 5} />

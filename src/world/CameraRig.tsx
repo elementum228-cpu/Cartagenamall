@@ -10,7 +10,7 @@ import { useUI } from '../state/ui'
 import { HARBOR_FOCUS, SHIP_BERTH } from '../tourism/config'
 import { AIRPORT_FOCUS } from '../airport/config'
 import { useFlight } from '../airport/flight'
-import { ISLAND } from '../config/mall'
+import { ISLAND, ISLAND_RUNWAY } from '../config/mall'
 import { SHOWROOMS } from '../district/showrooms'
 import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR, cameraState } from './cameraState'
 
@@ -192,7 +192,10 @@ export function CameraRig() {
     const origin = floorOrigin(floor, overview)
     cameraState.groundY = overview ? overviewCenter().y : origin.y
     const onIsland = useFlight.getState().world === 'island'
-    if (focus.kind === 'island' || (focus.kind === 'home' && onIsland)) {
+    if (focus.kind === 'islandRunway') {
+      // la pista de la isla completa, con su aeropuerto y algo de mar para ver llegar el avión
+      goal.current = { target: new THREE.Vector3(ISLAND_RUNWAY.x + 3, 0, ISLAND_RUNWAY.z + 3), zoom: fit * (size.width < size.height ? 1.6 : 1.5) }
+    } else if (focus.kind === 'island' || (focus.kind === 'home' && onIsland)) {
       // la isla completa, centrada, un poco más cerca que la vista general
       goal.current = { target: new THREE.Vector3(ISLAND.x + 2, 0, ISLAND.z), zoom: fit * (size.width < size.height ? 1.15 : 0.9) }
     } else if (focus.kind === 'home') {
@@ -358,7 +361,7 @@ export function CameraRig() {
     const island = useFlight.getState().world === 'island'
     const center = island ? new THREE.Vector3(ISLAND.x, 0, ISLAND.z) : overview ? overviewCenter() : floorOrigin(FLOOR_BY_ID[activeFloor], false)
     // con el muelle abierto se puede ir hasta él (queda por fuera de la muralla)
-    const bound = island ? 42 : Math.max(overview ? OVERVIEW_BOUNDS : activeFloor === 'P1' ? P1_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0)
+    const bound = island ? 60 : Math.max(overview ? OVERVIEW_BOUNDS : activeFloor === 'P1' ? P1_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0)
     const cx = THREE.MathUtils.clamp(t.x, center.x - bound, center.x + bound)
     const cz = THREE.MathUtils.clamp(t.z, center.z - bound, center.z + bound)
     if (cx !== t.x || cz !== t.z) {

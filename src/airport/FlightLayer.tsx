@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ChevronRight, Plane, PlaneLanding, PlaneTakeoff, Ticket, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { FLYING_MS, TAKEOFF_MS, TAXI_FRAC, useFlight } from './flight'
+import { FLYING_MS, LANDING_MS, TAKEOFF_MS, TAXI_FRAC, TOUCHDOWN, useFlight } from './flight'
 
 // Pantallas del viaje a Isla Descuento: terminal con tablero de salidas y tiquete gratis, pase de
 // abordar, aviso de despegue, pantalla de vuelo (cargando, pero volando) y bienvenida a la isla.
@@ -216,6 +216,31 @@ function TakeoffNotice() {
   )
 }
 
+/** Durante el aterrizaje en la isla: aviso arriba. */
+function LandingNotice() {
+  const [touched, setTouched] = useState(false)
+  useEffect(() => {
+    const id = window.setTimeout(() => setTouched(true), LANDING_MS * TOUCHDOWN)
+    return () => clearTimeout(id)
+  }, [])
+  return (
+    <motion.div
+      className="pointer-events-none fixed inset-x-0 top-[max(14px,env(safe-area-inset-top))] z-[80] flex justify-center"
+      initial={{ y: -40, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -40, opacity: 0 }}
+      transition={SPRING}
+    >
+      <span className="flex items-center gap-2 rounded-full bg-[#0d2a3f]/85 px-4 py-2.5 text-[14px] font-semibold text-white shadow-lg backdrop-blur-xl">
+        <PlaneLanding className="size-4 text-[#f5c542]" />
+        <motion.span key={String(touched)} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+          {touched ? '¡Aterrizamos! Frenando en la pista…' : 'Aproximación a la Isla de los Descuentos…'}
+        </motion.span>
+      </span>
+    </motion.div>
+  )
+}
+
 /** Pantalla de vuelo: cielo, nubes que pasan, el avión meciéndose y la ruta que avanza (cargando). */
 function Flying() {
   const back = useFlight((s) => s.direction) === 'back'
@@ -319,6 +344,7 @@ export function FlightLayer() {
       {step === 'pass' && <BoardingPassScreen key="pass" />}
       {step === 'takeoff' && <TakeoffNotice key="takeoff" />}
       {step === 'flying' && <Flying key="flying" />}
+      {step === 'landing' && <LandingNotice key="landing" />}
       {step === 'arrived' && <Arrived key="arrived" />}
       {step === null && world === 'island' && <IslandHud key="hud" />}
     </AnimatePresence>

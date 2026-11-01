@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { usePassport } from '../state/passport'
-import { playCabinChime, playTakeoffEngine } from './sounds'
+import { playCabinChime, playLanding, playTakeoffEngine } from './sounds'
 import { useUI } from '../state/ui'
 
 // Viaje a Isla Descuento: terminal (tiquete gratis) → pase de abordar → despegue del avión en la
 // pista → pantalla de vuelo (cargando, pero volando) → llegada a la isla. Y el regreso al mall.
 
-export type FlightStep = 'terminal' | 'pass' | 'takeoff' | 'flying' | 'arrived'
+export type FlightStep = 'terminal' | 'pass' | 'takeoff' | 'flying' | 'landing' | 'arrived'
 export interface BoardingPass {
   name: string
   flight: string
@@ -25,6 +25,8 @@ interface FlightState {
   pass: BoardingPass | null
   /** Cuándo empezó el despegue (ms de performance.now), para animar el avión. */
   takeoffAt: number
+  /** Cuándo empezó el aterrizaje en la isla. */
+  landingAt: number
   start: () => void
   getTicket: (name: string) => void
   takeoff: () => void
@@ -38,6 +40,9 @@ interface FlightState {
 export const TAKEOFF_MS = 13000
 export const TAXI_FRAC = 0.5
 export const FLYING_MS = 4600
+/** Aterrizaje en la isla: aproximación hasta TOUCHDOWN (fracción) y luego frenado. */
+export const LANDING_MS = 9000
+export const TOUCHDOWN = 0.5
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 let timers: number[] = []
 const later = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms))
@@ -52,6 +57,7 @@ export const useFlight = create<FlightState>()((set, get) => ({
   direction: 'to',
   pass: null,
   takeoffAt: 0,
+  landingAt: 0,
   start: () => {
     clear()
     useUI.getState().openAirport(false)
@@ -78,11 +84,20 @@ export const useFlight = create<FlightState>()((set, get) => ({
       later(700, () => {
         set({ world: 'island' })
         useUI.setState({ overview: false, activeFloor: 'P1', selectedSpaceId: null, openStoreId: null, peek: false })
-        useUI.getState().requestFocus({ kind: 'island' })
+        useUI.getState().requestFocus({ kind: 'islandRunway' })
       })
       later(r ? 1200 : FLYING_MS, () => {
-        set({ step: 'arrived' })
-        usePassport.getState().stamp('ISLA')
+        const arrive = () => {
+          set({ step: 'arrived' })
+          useUI.getState().requestFocus({ kind: 'island' })
+          usePassport.getState().stamp('ISLA')
+        }
+        if (r) return arrive()
+        // aterrizaje: la cámara mira la pista de la isla y el avión baja, toca y frena
+        set({ step: 'landing', landingAt: performance.now() })
+        useUI.getState().requestFocus({ kind: 'islandRunway' })
+        void playLanding(LANDING_MS / 1000, TOUCHDOWN)
+        later(LANDING_MS + 400, arrive)
       })
     })
   },

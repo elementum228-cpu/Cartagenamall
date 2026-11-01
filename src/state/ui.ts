@@ -27,6 +27,8 @@ export type FocusInput =
   | { kind: 'airport' }
   /** Isla Descuento completa (al aterrizar o al volver al inicio estando allá). */
   | { kind: 'island' }
+  /** La pista y el aeropuerto de la isla (para ver el aterrizaje). */
+  | { kind: 'islandRunway' }
   /** Encuadra una vitrina de la zona de servicios (con lugar para su ficha). */
   | { kind: 'showroom'; id: ShowroomId }
 
