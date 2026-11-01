@@ -332,7 +332,7 @@ export function FortressEnvironment({ onEnter, sparse = false }: { onEnter: () =
     <group>
       <Batch version="fortaleza">
         {/* mar turquesa y suelo interior de arena */}
-        <mesh geometry={GEO.cylinder} material={WATER} position={[0, -1.3, 0]} scale={[420, 1.6, 420]} receiveShadow />
+        <mesh geometry={GEO.cylinder} material={WATER} position={[0, -1.3, 0]} scale={[1000, 1.6, 1000]} receiveShadow />
         <mesh geometry={GEO.box} material={mat(PALETTE.sand)} position={[0, -0.35, 0]} scale={[2 * S - 0.5, 0.7, 2 * S - 0.5]} receiveShadow />
         {/* murallas (las esquinas con baluarte o puerta se resuelven aparte) */}
         <WallRun from={[-S + 3, -S]} to={[S - 3, -S]} outward={[0, -1]} />

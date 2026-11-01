@@ -333,11 +333,49 @@ const DISTRICT_SPACES: SpaceSlot[] = (
   size: SPACE_TYPES[t.type].size,
 }))
 
+/**
+ * Isla Descuento: una isla de una sola planta, lejos en el mar (se llega en avión desde el
+ * aeropuerto). Locales en anillo alrededor de una plaza, mirando al centro, e islas comerciales.
+ * Usa las coordenadas del piso 1 (está al nivel del mar, como el resto de la fortaleza).
+ */
+export const ISLAND = { x: 160, z: -160, r: 26 } as const
+export const ISLAND_ZONE: ZoneConfig = {
+  id: 'I',
+  name: 'Isla Descuento',
+  color: '#f59e0b',
+  angle: 0,
+  focus: [ISLAND.x, ISLAND.z],
+  categories: [
+    { id: 'ofertas-isla', name: 'Ofertas de la isla', zoneId: 'I' },
+    { id: 'emprendimientos', name: 'Emprendimientos', zoneId: 'I' },
+  ],
+}
+/** Locales de la isla: 10 en anillo (radio 13, fachada al centro) y 4 islas comerciales. */
+const ISLAND_SPACES: SpaceSlot[] = [
+  ...Array.from({ length: 10 }, (_, i) => {
+    const a = (i / 10) * Math.PI * 2 + Math.PI / 10
+    return { type: 'local' as SpaceType, at: [ISLAND.x + Math.sin(a) * 13.5, ISLAND.z + Math.cos(a) * 13.5] as [number, number], rotation: a + Math.PI }
+  }),
+  ...Array.from({ length: 4 }, (_, i) => {
+    const a = Math.PI / 4 + (i * Math.PI) / 2
+    return { type: 'island' as SpaceType, at: [ISLAND.x + Math.sin(a) * 6.4, ISLAND.z + Math.cos(a) * 6.4] as [number, number], rotation: a + Math.PI }
+  }),
+].map((t, i) => ({
+  id: `P1-I${i + 1}`,
+  floorId: 'P1',
+  zoneId: 'I',
+  type: t.type,
+  label: `I-${String(i + 1).padStart(2, '0')}`,
+  position: t.at,
+  rotation: t.rotation,
+  size: SPACE_TYPES[t.type].size,
+}))
+
 export const FLOORS = MALL.floors
 export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))
 /** Piso 1 (en cruz): lo usan la estructura, decoración y ambiente específicos de esa planta. */
 export const P1 = FLOORS[0]
-export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES]
+export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES]
 
 /**
  * ¿El punto (x, z) cae dentro de un local o isla (más `margin` alrededor)? Las zonas de locales
@@ -371,9 +409,9 @@ export const COURT_SPACE: SpaceSlot = {
   size: SPACE_TYPES.court.size,
 }
 export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries([...SPACES, COURT_SPACE].map((s) => [s.id, s]))
-export const ZONES: ZoneConfig[] = [...FLOORS.flatMap((f) => f.zones), DISTRICT_ZONE]
+export const ZONES: ZoneConfig[] = [...FLOORS.flatMap((f) => f.zones), DISTRICT_ZONE, ISLAND_ZONE]
 export const ZONE_BY_ID = Object.fromEntries(ZONES.map((z) => [z.id, z])) as Record<ZoneId, ZoneConfig>
-export const FLOOR_OF_ZONE = Object.fromEntries([...FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id])), [DISTRICT_ZONE.id, 'P1']]) as Record<ZoneId, FloorId>
+export const FLOOR_OF_ZONE = Object.fromEntries([...FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id])), [DISTRICT_ZONE.id, 'P1'], [ISLAND_ZONE.id, 'P1']]) as Record<ZoneId, FloorId>
 export const CATEGORIES = ZONES.flatMap((z) => z.categories)
 export const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]))
 

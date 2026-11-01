@@ -9,6 +9,8 @@ import { floorOrigin, liveOrigins, overviewCenter } from './floors'
 import { useUI } from '../state/ui'
 import { HARBOR_FOCUS, SHIP_BERTH } from '../tourism/config'
 import { AIRPORT_FOCUS } from '../airport/config'
+import { useFlight } from '../airport/flight'
+import { ISLAND } from '../config/mall'
 import { SHOWROOMS } from '../district/showrooms'
 import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR, cameraState } from './cameraState'
 
@@ -189,7 +191,11 @@ export function CameraRig() {
     const floor = FLOOR_BY_ID[activeFloor]
     const origin = floorOrigin(floor, overview)
     cameraState.groundY = overview ? overviewCenter().y : origin.y
-    if (focus.kind === 'home') {
+    const onIsland = useFlight.getState().world === 'island'
+    if (focus.kind === 'island' || (focus.kind === 'home' && onIsland)) {
+      // la isla completa, centrada, un poco más cerca que la vista general
+      goal.current = { target: new THREE.Vector3(ISLAND.x + 2, 0, ISLAND.z), zoom: fit * (size.width < size.height ? 1.05 : 1.2) }
+    } else if (focus.kind === 'home') {
       goal.current = overview ? { target: overviewCenter(), zoom: fit * overviewZoomFor(size.width, size.height) } : { target: origin, zoom: fit * floor.homeZoom }
     } else if (focus.kind === 'enter') {
       // Estado 2 (puerta) → estado 3 (plaza del piso 1).
@@ -349,9 +355,10 @@ export function CameraRig() {
     }
     // Límites del piso activo (o de la vista general): no se puede "salir" del mall arrastrando.
     const { activeFloor, overview, harbor, shipOpen, focus: lastFocus } = useUI.getState()
-    const center = overview ? overviewCenter() : floorOrigin(FLOOR_BY_ID[activeFloor], false)
+    const island = useFlight.getState().world === 'island'
+    const center = island ? new THREE.Vector3(ISLAND.x, 0, ISLAND.z) : overview ? overviewCenter() : floorOrigin(FLOOR_BY_ID[activeFloor], false)
     // con el muelle abierto se puede ir hasta él (queda por fuera de la muralla)
-    const bound = Math.max(overview ? OVERVIEW_BOUNDS : activeFloor === 'P1' ? P1_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0)
+    const bound = island ? 42 : Math.max(overview ? OVERVIEW_BOUNDS : activeFloor === 'P1' ? P1_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0)
     const cx = THREE.MathUtils.clamp(t.x, center.x - bound, center.x + bound)
     const cz = THREE.MathUtils.clamp(t.z, center.z - bound, center.z + bound)
     if (cx !== t.x || cz !== t.z) {

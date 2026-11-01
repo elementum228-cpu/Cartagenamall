@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { airportAnchor } from '../airport/anchor'
+import { TAKEOFF_MS, useFlight } from '../airport/flight'
 import { AIRPORT, AIRPORT_GATE_Z, PLANE, RUNWAY, TERMINAL, TOWER } from '../airport/config'
 import { CORDON, Garita, STONE, STONE_DARK, WallLantern } from './Fortress'
 import { useIsNight } from '../lib/useIsNight'
@@ -206,15 +207,14 @@ function Tower({ beacon }: { beacon: { current: THREE.Mesh | null } }) {
   )
 }
 
-/** Avión blanco de línea con franja turquesa (local: nariz hacia +z). */
-function Airplane() {
+/** Avión blanco de línea con franja turquesa (local: nariz hacia +z, ruedas en y = 0). */
+export function AirplaneModel({ stairs = true }: { stairs?: boolean }) {
   const white = mat('#fbfbfa', { rough: 0.45 })
   const teal = mat(TEAL, { rough: 0.5 })
   const dark = mat('#2c333b')
   const windows = glowMat('#cfe8ff', 1.6, { dayGlow: 0.15 })
   return (
-    <group position={[PLANE.x, Y, PLANE.z]}>
-      <mesh geometry={GEO.sphere} material={mat('#0b2a33', { opacity: 0.22 })} position={[0, 0.02, 0]} scale={[7, 0.02, 9]} />
+    <group>
       {/* fuselaje, nariz y cola */}
       <mesh geometry={GEO.cylinder} material={white} position={[0, 1.25, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1.15, 7, 1.15]} castShadow />
       <mesh geometry={GEO.sphereSmooth} material={white} position={[0, 1.25, 3.5]} scale={[1.15, 1.15, 1.9]} castShadow />
@@ -243,7 +243,7 @@ function Airplane() {
         <mesh key={`${x}${z}`} geometry={GEO.cylinderLow} material={dark} position={[x, y, z]} rotation={[0, 0, Math.PI / 2]} scale={[0.36, 0.25, 0.36]} />
       ))}
       {/* escalerilla en la puerta del lado del mar */}
-      <mesh geometry={GEO.box} material={mat('#e9e4d8')} position={[1.25, 0.55, 2.0]} rotation={[0, 0, 0.62]} scale={[1.7, 0.12, 0.7]} />
+      {stairs && <mesh geometry={GEO.box} material={mat('#e9e4d8')} position={[1.25, 0.55, 2.0]} rotation={[0, 0, 0.62]} scale={[1.7, 0.12, 0.7]} />}
       {/* luces de punta de ala */}
       <mesh geometry={GEO.sphereSmooth} material={glowMat('#ff4d4d', 2.4, { dayGlow: 0.4 })} position={[-3.45, 1.0, -0.9]} scale={0.14} />
       <mesh geometry={GEO.sphereSmooth} material={glowMat('#3ddc84', 2.4, { dayGlow: 0.4 })} position={[3.45, 1.0, -0.9]} scale={0.14} />
@@ -336,6 +336,48 @@ function Travelers({ reduceMotion }: { reduceMotion: boolean }) {
   )
 }
 
+/**
+ * El avión de la plataforma: quieto junto a la manga y, al despegar, rueda hasta la pista, acelera
+ * y se eleva sobre el mar. Mientras se está en la isla no se ve (está allá).
+ */
+function MallPlane() {
+  const g = useRef<THREE.Group>(null)
+  const shadow = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    const p = g.current
+    if (!p) return
+    const { step, world, takeoffAt, direction } = useFlight.getState()
+    const away = world === 'island' || (step === 'flying' && direction === 'to') || step === 'arrived'
+    p.visible = !away
+    if (shadow.current) shadow.current.visible = !away
+    if (step !== 'takeoff') {
+      p.position.set(PLANE.x, Y, PLANE.z)
+      p.rotation.set(0, 0, 0)
+      if (shadow.current) shadow.current.position.set(PLANE.x, Y + 0.02, PLANE.z)
+      return
+    }
+    const t = Math.min(1, (performance.now() - takeoffAt) / TAKEOFF_MS)
+    // 0–0,22: rueda de lado hasta el eje de la pista; luego acelera por la pista y despega
+    const a = Math.min(1, t / 0.22)
+    const x = PLANE.x + (RUNWAY.x - PLANE.x) * (a * a * (3 - 2 * a))
+    const b = Math.max(0, (t - 0.22) / 0.78)
+    const z = PLANE.z + (RUNWAY.z1 + 40 - PLANE.z) * b * b
+    const lift = Math.max(0, z - (RUNWAY.z1 - 6))
+    const y = Y + Math.pow(lift, 1.25) * 0.32
+    p.position.set(x, y, z)
+    p.rotation.set(-Math.min(0.32, lift * 0.03), Math.sin(a * Math.PI) * 0.35, 0)
+    if (shadow.current) shadow.current.position.set(x + lift * 0.15, Y + 0.02, z)
+  })
+  return (
+    <>
+      <mesh ref={shadow} geometry={GEO.sphere} material={mat('#0b2a33', { opacity: 0.22 })} position={[PLANE.x, Y + 0.02, PLANE.z]} scale={[7, 0.02, 9]} />
+      <group ref={g} position={[PLANE.x, Y, PLANE.z]}>
+        <AirplaneModel />
+      </group>
+    </>
+  )
+}
+
 export function Airport({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const open = useUI((s) => s.airportOpen)
@@ -358,10 +400,10 @@ export function Airport({ reduceMotion }: { reduceMotion: boolean }) {
       <Batch version="aeropuerto">
         <Ground />
         <Terminal />
-        <Airplane />
         <Extras />
       </Batch>
       <Tower beacon={beacon} />
+      <MallPlane />
       <Travelers reduceMotion={reduceMotion} />
       {/* área táctil: terminal, torre y avión */}
       <mesh

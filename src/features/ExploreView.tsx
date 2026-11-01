@@ -1,6 +1,6 @@
 import { openCourtOrClaim } from '../football/open'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { Anchor, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
+import { Anchor, Plane, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -154,11 +154,12 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
       {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
           fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
       <div
-        className={`scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
+        className={`island-hide scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
         role="toolbar"
         aria-label="Categorías del mall"
       >
-        {ZONES.map((z) => {
+        {/* Isla Descuento no va en la fila: se llega en avión desde el aeropuerto */}
+        {ZONES.filter((z) => z.id !== 'I').map((z) => {
           const Icon = ZONE_ICON[z.id]
           return (
             <button
@@ -183,11 +184,13 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         </button>
       </div>
 
-      <FloorSelector use3D={use3D} dimmed={dimmed} />
+      <div className="island-hide">
+        <FloorSelector use3D={use3D} dimmed={dimmed} />
+      </div>
 
       {/* descubrimientos y oferta relámpago: pills discretas */}
       <div
-        className={`pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+        className={`island-hide pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
       >
         <Link to="/ofertas" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
           <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
@@ -272,6 +275,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             <AnimatePresence mode="popLayout" initial={false}>
               {use3D && !peekId && (
                 <motion.div
+                  className="island-hide"
                   key={overview ? 'enter' : 'overview'}
                   initial={{ opacity: 0, scale: 0.9, filter: 'blur(6px)' }}
                   animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
@@ -320,7 +324,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   )
 }
 
-const ZONE_ICON: Record<ZoneId, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils, F: Scissors }
+const ZONE_ICON: Record<ZoneId, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils, F: Scissors, I: Plane }
 
 /** Resorte suave al estilo de las apps nativas: rápido al arrancar, sin rebote brusco al llegar. */
 const SPRING = { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } as const

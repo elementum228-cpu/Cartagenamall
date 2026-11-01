@@ -3,10 +3,11 @@ import { ChevronRight, Plane, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useUI } from '../state/ui'
 import { airportAnchor } from './anchor'
+import { useFlight } from './flight'
 
 /**
  * Invitación a volar: tarjeta de vidrio que flota sobre el aeropuerto (sigue la cámara) cuando se
- * toca. Propuesta de diseño: «Volar ahora» aún no despega (llega en la siguiente fase).
+ * toca. «Volar ahora» entra a la terminal (tiquete, pase de abordar y vuelo a Isla Descuento).
  */
 export function FlyInvite() {
   const open = useUI((s) => s.airportOpen)
@@ -47,7 +48,7 @@ export function FlyInvite() {
             <p className="mt-1 text-[13.5px] text-white/80">Conoce más locales</p>
             <button
               className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#1fc7b6] to-[#0f8f86] text-[16px] font-semibold shadow-[0_8px_24px_rgb(19_185_173/0.45)] transition active:scale-[0.98]"
-              onClick={() => useUI.getState().toast('Propuesta de diseño: el vuelo a Isla Descuento llega en la siguiente fase.')}
+              onClick={() => useFlight.getState().start()}
             >
               <Plane className="size-5" /> Volar ahora <ChevronRight className="size-5" />
             </button>

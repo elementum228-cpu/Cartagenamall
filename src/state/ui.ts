@@ -25,6 +25,8 @@ export type FocusInput =
   | { kind: 'ship' }
   /** El aeropuerto (con su invitación a volar a Isla Descuento). */
   | { kind: 'airport' }
+  /** Isla Descuento completa (al aterrizar o al volver al inicio estando allá). */
+  | { kind: 'island' }
   /** Encuadra una vitrina de la zona de servicios (con lugar para su ficha). */
   | { kind: 'showroom'; id: ShowroomId }
 

@@ -388,3 +388,6 @@ select:not([multiple]):disabled {
 @media (prefers-reduced-motion: reduce) {
   .pinch-tap, .pinch-out-r, .pinch-out-l { animation: none; opacity: 1; }
 }
+
+/* En Isla Descuento: se esconden los controles propios del mall (categorías, pisos, botón principal). */
+.island-on .island-hide { display: none !important; }
