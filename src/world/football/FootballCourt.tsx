@@ -170,24 +170,21 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
   const night = useIsNight()
   // corto a propósito (≈ 80 px): en la vista general del celular solo cabe así entre Moda, Tecnología
   // y el borde de la pantalla
-  const pill = getGlassPill('Deportes', { dot: COURT_COLOR, dark: night, sub: pending && !operator ? 'En revisión' : 'Canchas A y B' })
+  const sub = pending && !operator ? 'En revisión' : 'Canchas A y B'
+  // de lejos (vista general del celular) solo cabe el nombre corto; al acercarse, el completo
+  const short = getGlassPill('Deportes', { dot: COURT_COLOR, dark: night, sub })
+  const full = getGlassPill('Zona de deportes', { dot: COURT_COLOR, dark: night, sub })
+  const labelAt: [number, number, number] = [COURTS[0].center[0] + 1.35, COURT.fenceHeight + 1.6, COURTS[0].center[1] - 6.2]
   return (
     <group>
       {COURTS.map((c, i) => (
         <OneCourt key={c.id} index={i} selected={selected} onOpen={onOpen} interactive={interactive} operator={operator} pending={pending} sign={sign} price={price} />
       ))}
-      {/* rótulo de toda la zona: se ve desde la vista general */}
-      <ScreenLabel
-        label={pill}
-        // sobre el fondo de la cancha A, apenas por encima de la malla: el único lugar donde no choca con
-        // Moda ni Tecnología en la vista general del celular. Solo de lejos; de cerca, «Cancha A» y «B».
-        position={[COURTS[0].center[0] + 1.35, COURT.fenceHeight + 1.6, COURTS[0].center[1] - 6.2]}
-        maxZoomRatio={1.35}
-        pixelHeight={33}
-        lit
-        priority={LABEL_PRIORITY.corridorOverview - 3}
-        onClick={interactive ? onOpen : undefined}
-      />
+      {/* rótulo de toda la zona, sobre el fondo de la cancha A y apenas por encima de la malla: el
+          único lugar donde no choca con Moda ni Tecnología en la vista general del celular. De muy
+          cerca se leen «Cancha A» y «Cancha B». */}
+      <ScreenLabel label={short} position={labelAt} maxZoomRatio={0.9} pixelHeight={33} lit priority={LABEL_PRIORITY.corridorOverview - 3} onClick={interactive ? onOpen : undefined} />
+      <ScreenLabel label={full} position={labelAt} minZoomRatio={0.9} maxZoomRatio={1.35} pixelHeight={33} lit priority={LABEL_PRIORITY.corridorOverview - 3} onClick={interactive ? onOpen : undefined} />
     </group>
   )
 }
