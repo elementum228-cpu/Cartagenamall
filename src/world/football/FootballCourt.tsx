@@ -168,8 +168,9 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
   const price = useSpacePrice(COURT_SPACE.id)
   const sign = courtSign(operator, pending, price)
   const night = useIsNight()
-  // corto a propósito: en la vista general del celular tiene que caber junto a Moda y Tecnología
-  const pill = getGlassPill('Zona de deportes', { dot: COURT_COLOR, dark: night, sub: pending && !operator ? 'Solicitud en revisión' : 'Canchas A y B' })
+  // corto a propósito (≈ 80 px): en la vista general del celular solo cabe así entre Moda, Tecnología
+  // y el borde de la pantalla
+  const pill = getGlassPill('Deportes', { dot: COURT_COLOR, dark: night, sub: pending && !operator ? 'En revisión' : 'Canchas A y B' })
   return (
     <group>
       {COURTS.map((c, i) => (
@@ -178,9 +179,9 @@ export function FootballCourt({ selected, onOpen, interactive, operator, pending
       {/* rótulo de toda la zona: se ve desde la vista general */}
       <ScreenLabel
         label={pill}
-        // flota alto sobre las canchas: en la vista general del celular queda por encima de la fila de
-        // Moda (no cabe al lado). Solo de lejos; de cerca se leen «Cancha A» y «Cancha B».
-        position={[COURT.center[0] - 1.5, 32, COURT.center[1] + 1]}
+        // sobre el fondo de la cancha A, apenas por encima de la malla: el único lugar donde no choca con
+        // Moda ni Tecnología en la vista general del celular. Solo de lejos; de cerca, «Cancha A» y «B».
+        position={[COURTS[0].center[0] + 1.35, COURT.fenceHeight + 1.6, COURTS[0].center[1] - 6.2]}
         maxZoomRatio={1.35}
         pixelHeight={33}
         lit
