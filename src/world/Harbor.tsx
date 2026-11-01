@@ -4,16 +4,18 @@ import * as THREE from 'three'
 import { useIsNight } from '../lib/useIsNight'
 import { useUI } from '../state/ui'
 import { trackHarbor } from '../tourism/store'
-import { BOATS, BOAT_IDS, HARBOR } from '../tourism/config'
+import { BOATS, BOAT_IDS, HARBOR, SEA_Y, HARBOR_END_Z, HARBOR_FRONT_Z } from '../tourism/config'
 import type { BoatConfig } from '../tourism/types'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
+import { Person } from './Person'
+import { TourBoat } from './TourBoat'
 import { cameraState } from './cameraState'
 import { CORDON, STONE, STONE_DARK, WallLantern } from './Fortress'
 import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
-import { glowMat, lightPoolMat } from './night'
+import { glowMat, lightPoolMat, nightState } from './night'
 
 // Muelle turístico: una puerta en arco abierta en la muralla del frente izquierdo, un muelle de
 // madera hacia el mar y dos lanchas que se pueden tocar (planes de mar e islas / bahía al
@@ -21,28 +23,47 @@ import { glowMat, lightPoolMat } from './night'
 
 const H = HARBOR
 const WT = 2.2
-const WATER_Y = -0.5
+const WATER_Y = SEA_Y
 const WOOD = '#9a6b45'
 const WOOD_DARK = '#6e4a30'
 const WOOD_LIGHT = '#b98a5e'
+const IRON = '#2f3437'
+const MARBLE = '#ece6da'
 const ARCH_W = 2
 const ARCH_H = 2.1
-/** Fin del muelle (z) y su plataforma en T, donde se amarran las lanchas. */
-const END_Z = H.outerZ + H.length
+/** Las lanchas son un poco más grandes que la gente: se leen desde lejos. */
+const BOAT_SCALE = 1.35
+/** Fin del paseo (z) y plataforma del final, donde atracan las lanchas y el bote de paseo. */
+const END_Z = HARBOR_END_Z
+const PW = H.platformWidth
+const PD = H.platformDepth
+const FRONT_Z = HARBOR_FRONT_Z
+/** Arranque de la cubierta de madera (después del rellano de piedra). */
+const DECK_Z0 = H.outerZ + 1.1
+const DECK_LEN = END_Z - DECK_Z0
 
-/** Pilotes del muelle (x, z), a los lados, cada ~2 unidades. */
+/** Pilotes (x, z): a los lados del paseo cada ~2,2 y en el borde de la plataforma. */
 const POSTS: [number, number][] = (() => {
   const out: [number, number][] = []
-  for (let z = H.outerZ + 1.2; z <= END_Z - 0.3; z += 2.1) for (const s of [-1, 1]) out.push([H.x + s * (H.width / 2 + 0.05), z])
-  for (const s of [-1, 1]) out.push([H.x + s * 2.35, END_Z + 0.6])
+  for (let z = DECK_Z0 + 0.3; z <= END_Z - 0.2; z += 2.2) for (const s of [-1, 1]) out.push([H.x + s * (H.width / 2 + 0.05), z])
+  for (const s of [-1, 1]) {
+    out.push([H.x + s * (PW / 2), END_Z + 0.2], [H.x + s * (PW / 2), FRONT_Z - 0.2], [H.x + s * 2.4, FRONT_Z - 0.1])
+  }
   return out
 })()
 
-/** Gente esperando en el muelle (x, z, color de ropa, giro). */
+/** Faroles del paseo (x, z): a ambos lados y en las esquinas de la plataforma. */
+const LAMPS: [number, number][] = [
+  ...[DECK_Z0 + 2.2, DECK_Z0 + 5.8, DECK_Z0 + 9.4].flatMap((z) => [-1, 1].map((s) => [H.x + s * (H.width / 2 + 0.05), z] as [number, number])),
+  ...[-1, 1].map((s) => [H.x + s * (PW / 2 - 0.3), FRONT_Z - 0.3] as [number, number]),
+]
+
+/** Gente esperando junto a las lanchas (x, z, color de ropa, giro). */
 const WAITING: [number, number, string, number][] = [
-  [H.x - 0.6, END_Z - 0.2, '#e07a5f', 0.6],
-  [H.x + 0.7, END_Z + 0.4, '#3d7ea6', -2.4],
-  [H.x + 1.6, END_Z + 0.9, '#f2cc8f', 2.8],
+  [H.x - 4.1, END_Z + 1.2, '#e07a5f', -1.3],
+  [H.x - 3.5, END_Z + 1.9, '#3d7ea6', -1.9],
+  [H.x + 3.9, END_Z + 0.9, '#f2cc8f', 1.4],
+  [H.x + 4.2, END_Z + 1.8, '#6c5b7b', 1.9],
 ]
 
 /** Puerta en arco sobre la muralla (local: la cara exterior mira a +z). */
@@ -50,7 +71,7 @@ function SeaGate() {
   const stone = mat(STONE[0])
   const trim = mat(CORDON)
   const dark = glowMat('#3a2f28', 0.25)
-  const passage = glowMat('#ffb86b', 0.9)
+  const passage = glowMat('#ffb86b', 1.4)
   const D = WT + 0.5
   return (
     <group position={[H.x, 0, H.wallZ]}>
@@ -78,10 +99,70 @@ function SeaGate() {
   )
 }
 
-/** Muelle: rellano de piedra, cubierta de tablones, pilotes, barandas de cuerda y paso interior. */
+/**
+ * Pegaso de mármol sobre su pedestal, como los del Muelle de los Pegasos: caballo encabritado con
+ * las alas abiertas (local: mira a +z). De noche lo ilumina un foco desde el pie.
+ */
+function Pegasus() {
+  const m = mat(MARBLE, { rough: 0.55 })
+  const shade = mat('#d9d1c2', { rough: 0.6 })
+  return (
+    <group>
+      {/* pedestal de piedra con cornisa */}
+      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, 0.65, 0]} scale={[1.3, 1.3, 1.9]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 1.35, 0]} scale={[1.5, 0.14, 2.1]} />
+      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, 0.1, 0]} scale={[1.5, 0.2, 2.1]} />
+      {/* caballo encabritado: todo gira sobre las patas traseras */}
+      <group position={[0, 1.42, -0.45]} rotation={[-0.42, 0, 0]}>
+        {[-1, 1].map((s) => (
+          <mesh key={s} geometry={GEO.cylinderLow} material={m} position={[s * 0.17, 0.36, 0]} scale={[0.13, 0.72, 0.13]} castShadow />
+        ))}
+        <mesh geometry={GEO.sphereSmooth} material={m} position={[0, 0.82, 0.42]} scale={[0.46, 0.46, 1.1]} castShadow />
+        {/* patas delanteras al aire */}
+        {[-1, 1].map((s) => (
+          <mesh key={s} geometry={GEO.box} material={m} position={[s * 0.15, 0.78, 1.0]} rotation={[s > 0 ? -1.1 : -0.7, 0, 0]} scale={[0.11, 0.55, 0.11]} castShadow />
+        ))}
+        {/* cuello, cabeza y crin */}
+        <mesh geometry={GEO.box} material={m} position={[0, 1.2, 0.86]} rotation={[0.45, 0, 0]} scale={[0.22, 0.72, 0.32]} castShadow />
+        <mesh geometry={GEO.box} material={m} position={[0, 1.55, 1.12]} rotation={[1.05, 0, 0]} scale={[0.2, 0.5, 0.24]} castShadow />
+        <mesh geometry={GEO.box} material={shade} position={[0, 1.3, 0.72]} rotation={[0.45, 0, 0]} scale={[0.08, 0.66, 0.14]} />
+        {[-1, 1].map((s) => (
+          <mesh key={s} geometry={GEO.cone} material={m} position={[s * 0.07, 1.74, 0.98]} scale={[0.07, 0.14, 0.07]} />
+        ))}
+        {/* cola */}
+        <mesh geometry={GEO.box} material={shade} position={[0, 0.7, -0.2]} rotation={[0.6, 0, 0]} scale={[0.09, 0.55, 0.12]} />
+        {/* alas abiertas hacia arriba y atrás, con dos capas de plumas */}
+        {[-1, 1].map((s) => (
+          <group key={s} position={[s * 0.2, 1.0, 0.45]} rotation={[0.25, 0, s * 0.7]}>
+            <mesh geometry={GEO.box} material={m} position={[s * 0.55, 0, 0]} scale={[1.1, 0.05, 0.6]} castShadow />
+            <mesh geometry={GEO.box} material={shade} position={[s * 0.85, 0.02, -0.28]} rotation={[0, s * 0.25, 0]} scale={[0.75, 0.04, 0.42]} />
+          </group>
+        ))}
+      </group>
+      {/* foco al pie (se enciende de noche) */}
+      <mesh geometry={GEO.box} material={glowMat('#ffe2a8', 2.2)} position={[0, 0.25, 1.08]} scale={[0.5, 0.12, 0.06]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffe2a8', 0.8)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 1.6]} scale={[2.6, 2.2, 1]} />
+    </group>
+  )
+}
+
+/** Farol de paseo: poste de hierro y farola que se enciende de noche, con su halo en la madera. */
+function Lamp({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, H.deckY, z]}>
+      <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 0.08, 0]} scale={[0.26, 0.16, 0.26]} />
+      <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.2, 0]} scale={[0.09, 2.3, 0.09]} />
+      <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 2.5, 0]} scale={0.42} />
+      <mesh geometry={GEO.cone} material={mat(IRON)} position={[0, 2.78, 0]} scale={[0.4, 0.2, 0.4]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} scale={[3.4, 3.4, 1]} />
+    </group>
+  )
+}
+
+/** Muelle: paseo amplio de madera con pilotes, barandas, faroles, plataforma final y paso interior. */
 function Dock() {
-  const len = H.length
-  const planks = Math.round(len / 0.55)
+  const planks = Math.floor(DECK_LEN / 0.55)
+  const midZ = DECK_Z0 + DECK_LEN / 2
   return (
     <group>
       {/* paso interior: de la plaza a la puerta */}
@@ -89,58 +170,133 @@ function Dock() {
       {[-1, 1].map((s) => (
         <mesh key={s} geometry={GEO.box} material={mat(STONE_DARK)} position={[H.x + s * (ARCH_W / 2 + 0.45), 0.1, H.wallZ - WT / 2 - 2.6]} scale={[0.22, 0.2, 5.2]} />
       ))}
-      {/* rellano de piedra al salir */}
-      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[H.x, H.deckY - 0.12, H.outerZ + 0.55]} scale={[ARCH_W + 1.8, 0.5, 1.2]} receiveShadow />
+      {/* rellano de piedra al salir, ancho: aquí están los pegasos */}
+      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[H.x, H.deckY - 0.12, H.outerZ + 0.6]} scale={[H.width + 5.4, 0.5, 1.3]} receiveShadow />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={[H.x, H.deckY + 0.14, H.outerZ + 1.22]} scale={[H.width + 5.4, 0.04, 0.1]} />
       {/* cubierta y tablones */}
-      <mesh geometry={GEO.box} material={mat(WOOD)} position={[H.x, H.deckY - 0.08, H.outerZ + 1.1 + len / 2]} scale={[H.width, 0.16, len]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(WOOD)} position={[H.x, H.deckY - 0.08, midZ]} scale={[H.width, 0.16, DECK_LEN]} castShadow receiveShadow />
       {Array.from({ length: planks }, (_, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? WOOD_LIGHT : WOOD)} position={[H.x, H.deckY + 0.01, H.outerZ + 1.35 + i * 0.55]} scale={[H.width - 0.06, 0.03, 0.42]} receiveShadow />
+        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? WOOD_LIGHT : WOOD)} position={[H.x, H.deckY + 0.01, DECK_Z0 + 0.3 + i * 0.55]} scale={[H.width - 0.06, 0.03, 0.42]} receiveShadow />
       ))}
-      {/* plataforma en T del final */}
-      <mesh geometry={GEO.box} material={mat(WOOD)} position={[H.x, H.deckY - 0.08, END_Z + 0.75]} scale={[5, 0.16, 1.7]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(WOOD_LIGHT)} position={[H.x, H.deckY + 0.01, END_Z + 0.75]} scale={[4.9, 0.03, 1.55]} receiveShadow />
-      {/* pilotes con remate y barandas de cuerda entre ellos */}
+      {/* bordillos laterales de madera oscura */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} geometry={GEO.box} material={mat(WOOD_DARK)} position={[H.x + s * (H.width / 2 - 0.06), H.deckY + 0.05, midZ]} scale={[0.12, 0.1, DECK_LEN]} />
+      ))}
+      {/* plataforma del final */}
+      <mesh geometry={GEO.box} material={mat(WOOD)} position={[H.x, H.deckY - 0.08, END_Z + PD / 2]} scale={[PW, 0.16, PD]} castShadow receiveShadow />
+      {Array.from({ length: Math.floor(PD / 0.55) }, (_, i) => (
+        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? WOOD : WOOD_LIGHT)} position={[H.x, H.deckY + 0.01, END_Z + 0.3 + i * 0.55]} scale={[PW - 0.08, 0.03, 0.42]} receiveShadow />
+      ))}
+      {/* borde de atraque (frente) con defensas */}
+      <mesh geometry={GEO.box} material={mat(WOOD_DARK)} position={[H.x, H.deckY - 0.12, FRONT_Z + 0.04]} scale={[PW, 0.3, 0.1]} />
+      {[-3.2, -1.2, 1.2, 3.2].map((dx) => (
+        <mesh key={dx} geometry={GEO.cylinderLow} material={mat('#2e3135')} position={[H.x + dx, H.deckY - 0.2, FRONT_Z + 0.12]} rotation={[0, 0, Math.PI / 2]} scale={[0.22, 0.6, 0.22]} />
+      ))}
+      {/* pilotes con remate */}
       {POSTS.map(([x, z]) => (
         <group key={`${x}${z}`}>
-          <mesh geometry={GEO.cylinderLow} material={mat(WOOD_DARK)} position={[x, (WATER_Y - 0.8 + H.deckY + 0.75) / 2, z]} scale={[0.2, H.deckY + 0.75 - WATER_Y + 0.8, 0.2]} castShadow />
-          <mesh geometry={GEO.cylinderLow} material={mat(CORDON)} position={[x, H.deckY + 0.78, z]} scale={[0.24, 0.06, 0.24]} />
+          <mesh geometry={GEO.cylinderLow} material={mat(WOOD_DARK)} position={[x, (WATER_Y - 0.8 + H.deckY + 0.75) / 2, z]} scale={[0.22, H.deckY + 0.75 - WATER_Y + 0.8, 0.22]} castShadow />
+          <mesh geometry={GEO.cylinderLow} material={mat(CORDON)} position={[x, H.deckY + 0.78, z]} scale={[0.26, 0.06, 0.26]} />
         </group>
       ))}
+      {/* barandas: a los lados del paseo y en la parte de atrás de la plataforma */}
       {[-1, 1].map((s) => (
-        <mesh key={s} geometry={GEO.box} material={mat('#d9c39b')} position={[H.x + s * (H.width / 2 + 0.05), H.deckY + 0.52, H.outerZ + 1.2 + (END_Z - 0.3 - H.outerZ - 1.2) / 2]} scale={[0.04, 0.04, END_Z - H.outerZ - 1.5]} />
+        <group key={s}>
+          <mesh geometry={GEO.box} material={mat('#d9c39b')} position={[H.x + s * (H.width / 2 + 0.05), H.deckY + 0.55, midZ]} scale={[0.05, 0.05, DECK_LEN - 0.4]} />
+          <mesh geometry={GEO.box} material={mat('#d9c39b')} position={[H.x + s * (H.width / 2 + 0.05), H.deckY + 0.3, midZ]} scale={[0.04, 0.04, DECK_LEN - 0.4]} />
+          <mesh geometry={GEO.box} material={mat('#d9c39b')} position={[H.x + s * (H.width / 2 + PW / 2) / 2, H.deckY + 0.55, END_Z + 0.2]} scale={[(PW - H.width) / 2, 0.05, 0.05]} />
+        </group>
       ))}
-      {/* farol al final del muelle */}
-      <mesh geometry={GEO.cylinderLow} material={mat(WOOD_DARK)} position={[H.x - 2.35, H.deckY + 1.05, END_Z + 0.6]} scale={[0.14, 0.7, 0.14]} />
-      <WallLantern x={H.x - 2.35} y={H.deckY + 1.55} z={END_Z + 0.6} />
-      {/* bolardos y una caja de cuerda: detalles cálidos */}
-      <mesh geometry={GEO.cylinderLow} material={mat('#3a3d42')} position={[H.x + 1.9, H.deckY + 0.14, END_Z + 0.3]} scale={[0.28, 0.28, 0.28]} />
-      <mesh geometry={GEO.cylinder} material={mat('#d8c39c')} position={[H.x - 0.8, H.deckY + 0.1, H.outerZ + 2.2]} scale={[0.42, 0.18, 0.42]} />
+      {/* faroles */}
+      {LAMPS.map(([x, z]) => (
+        <Lamp key={`${x}${z}`} x={x} z={z} />
+      ))}
+      {/* pegasos a la entrada del paseo, mirando al mar */}
+      {[-1, 1].map((s) => (
+        <group key={s} position={[H.x + s * (H.width / 2 + 1.55), H.deckY + 0.13, H.outerZ + 0.75]} rotation={[0, s * 0.2, 0]} scale={0.95}>
+          <Pegasus />
+        </group>
+      ))}
+      {/* bolardos, rollo de cuerda y bancas en la plataforma */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh geometry={GEO.cylinderLow} material={mat('#3a3d42')} position={[H.x + s * 1.6, H.deckY + 0.14, FRONT_Z - 0.35]} scale={[0.28, 0.28, 0.28]} />
+          <mesh geometry={GEO.box} material={mat(WOOD_DARK)} position={[H.x + s * 3.6, H.deckY + 0.24, END_Z + 0.55]} scale={[1.5, 0.12, 0.45]} />
+          <mesh geometry={GEO.box} material={mat(IRON)} position={[H.x + s * 3.6, H.deckY + 0.1, END_Z + 0.55]} scale={[1.3, 0.2, 0.3]} />
+        </group>
+      ))}
+      <mesh geometry={GEO.cylinder} material={mat('#d8c39c')} position={[H.x - 1.4, H.deckY + 0.1, DECK_Z0 + 1.4]} scale={[0.42, 0.18, 0.42]} />
     </group>
   )
 }
 
-/** Una persona en miniatura (mismo estilo que los visitantes del mall). */
-export function Person({ color, skin }: { color: string; skin: string }) {
-  return (
-    <group>
-      <mesh geometry={GEO.capsule} material={mat(color)} position={[0, 0.43, 0]} castShadow />
-      <mesh geometry={GEO.sphereSmooth} material={mat(skin)} position={[0, 0.95, 0]} scale={0.36} castShadow />
-    </group>
+/**
+ * Luces de los peldaños: una línea cálida en cada tablón alterno. De noche una ola de luz corre
+ * desde el mar hacia la puerta, como invitando a entrar. De día no se ven.
+ */
+function StepLights({ reduceMotion }: { reduceMotion: boolean }) {
+  const n = Math.floor(DECK_LEN / 1.1)
+  const group = useRef<THREE.Group>(null)
+  const mats = useMemo(
+    () =>
+      Array.from({ length: n }, () => ({
+        core: new THREE.MeshBasicMaterial({ color: '#ffd27a', transparent: true, opacity: 0, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }),
+        halo: new THREE.MeshBasicMaterial({ color: '#ffb455', transparent: true, opacity: 0, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }),
+      })),
+    [n],
   )
-}
-
-/** Gente en el muelle: tres esperan su lancha y una va y viene por la cubierta. */
-function DockPeople({ reduceMotion }: { reduceMotion: boolean }) {
-  const walker = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
-    const g = walker.current
-    if (!g || reduceMotion) return
-    const span = END_Z - H.outerZ - 2.2
-    const t = (clock.elapsedTime * 0.09) % 2
-    const u = t < 1 ? t : 2 - t
-    g.position.z = H.outerZ + 1.4 + u * span
-    g.position.y = H.deckY + Math.abs(Math.sin(clock.elapsedTime * 6)) * 0.03
-    g.rotation.y = t < 1 ? 0 : Math.PI
+    const night = nightState.t
+    if (group.current) group.current.visible = night > 0.02
+    if (night <= 0.02) return
+    // la ola baja de i = n-1 (el mar) a i = 0 (la puerta) y vuelve a empezar
+    const head = reduceMotion ? -10 : (1 - ((clock.elapsedTime * 0.32) % 1)) * (n + 4) - 2
+    mats.forEach((m, i) => {
+      const wave = Math.exp(-((i - head) ** 2) / 1.6)
+      m.core.opacity = night * (0.45 + 0.55 * wave)
+      m.halo.opacity = night * (0.12 + 0.38 * wave)
+    })
+  })
+  return (
+    <group ref={group} visible={false}>
+      {mats.map((m, i) => {
+        const z = DECK_Z0 + 0.3 + (2 * i + 1) * 0.55 - 0.275
+        return (
+          <group key={i} position={[H.x, H.deckY + 0.035, z]}>
+            <mesh geometry={GEO.box} material={m.core} scale={[H.width - 0.5, 0.012, 0.07]} />
+            <mesh geometry={GEO.plane} material={m.halo} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} scale={[H.width - 0.2, 0.55, 1]} />
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+export { Person }
+
+/** Gente en el muelle: unos esperan junto a las lanchas y otros pasean por el paseo. */
+function DockPeople({ reduceMotion }: { reduceMotion: boolean }) {
+  const walkers = useRef<(THREE.Group | null)[]>([])
+  const routes = useMemo(
+    () => [
+      { x: H.x + 0.8, speed: 0.07, phase: 0 },
+      { x: H.x - 0.9, speed: 0.055, phase: 0.9 },
+      { x: H.x + 0.2, speed: 0.08, phase: 1.5 },
+    ],
+    [],
+  )
+  useFrame(({ clock }) => {
+    if (reduceMotion) return
+    const span = END_Z + 1.2 - DECK_Z0 - 0.4
+    routes.forEach((r, i) => {
+      const g = walkers.current[i]
+      if (!g) return
+      const t = (clock.elapsedTime * r.speed + r.phase) % 2
+      const u = t < 1 ? t : 2 - t
+      g.position.z = DECK_Z0 + 0.4 + u * span
+      g.position.y = H.deckY + Math.abs(Math.sin(clock.elapsedTime * 6 + i)) * 0.03
+      g.rotation.y = t < 1 ? 0 : Math.PI
+    })
   })
   return (
     <group>
@@ -149,9 +305,11 @@ function DockPeople({ reduceMotion }: { reduceMotion: boolean }) {
           <Person color={c} skin={i % 2 ? '#c58c64' : '#8d5a3b'} />
         </group>
       ))}
-      <group ref={walker} position={[H.x + 0.45, H.deckY, H.outerZ + 2]}>
-        <Person color="#81b29a" skin="#e5b48f" />
-      </group>
+      {routes.map((r, i) => (
+        <group key={i} ref={(g) => void (walkers.current[i] = g)} position={[r.x, H.deckY, DECK_Z0 + 1 + i * 3]}>
+          <Person color={['#81b29a', '#e9c46a', '#5e8fd8'][i]} skin={['#e5b48f', '#8d5a3b', '#c58c64'][i]} />
+        </group>
+      ))}
     </group>
   )
 }
@@ -222,6 +380,7 @@ function Boat({ boat, selected, reduceMotion }: { boat: BoatConfig; selected: bo
 
   return (
     <group position={[bx, WATER_Y, bz]} rotation={[0, boat.rotation, 0]}>
+      <group scale={BOAT_SCALE}>
       {/* sombra, brillo de selección y ondas sobre el agua */}
       <mesh geometry={GEO.sphere} material={mats.shadow} position={[0, 0.02, 0]} scale={[1.7, 0.02, 3.6]} />
       <mesh ref={glow} geometry={GEO.sphere} material={mats.glow} position={[0, 0.04, 0]} scale={[2.6, 0.02, 4.8]} visible={false} />
@@ -245,9 +404,12 @@ function Boat({ boat, selected, reduceMotion }: { boat: BoatConfig; selected: bo
         )}
         <mesh geometry={GEO.box} material={mats.accent} position={[0, 1.42, -0.35]} scale={[1.3, 0.08, 1.6]} castShadow />
         <mesh geometry={GEO.box} material={mats.white} position={[0, 1.36, -0.35]} scale={[1.32, 0.04, 1.62]} />
+        {/* luz de cortesía bajo el toldo (de noche) */}
+        <mesh geometry={GEO.box} material={glowMat('#fff1c9', 1.6)} position={[0, 1.33, -0.35]} scale={[1.1, 0.02, 1.4]} />
+      </group>
       </group>
       {/* indicador táctil: anillo de color con centro y pulso lento, sobre el agua junto a la popa */}
-      <group ref={spot} position={[0, 0.08, -2.05]}>
+      <group ref={spot} position={[0, 0.08, -2.05 * BOAT_SCALE]}>
         <mesh ref={pulse} geometry={GEO.ring} material={mats.pulse} rotation={[-Math.PI / 2, 0, 0]} />
         <mesh geometry={GEO.ring} material={mats.spot} rotation={[-Math.PI / 2, 0, 0]} />
         <mesh geometry={GEO.sphere} material={mats.spotFill} scale={[0.95, 0.04, 0.95]} />
@@ -256,7 +418,7 @@ function Boat({ boat, selected, reduceMotion }: { boat: BoatConfig; selected: bo
       <mesh
         ref={hit}
         geometry={GEO.sphere}
-        position={[0, 0.5, -0.4]}
+        position={[0, 0.6, -0.6]}
         onClick={(e) => {
           if (cameraState.handMode || e.delta > 8) return
           e.stopPropagation()
@@ -278,18 +440,29 @@ function Boat({ boat, selected, reduceMotion }: { boat: BoatConfig; selected: bo
   )
 }
 
-/** Cuerdas de amarre: de un pilote de la T a la proa de cada lancha. */
+/** Cuerdas de amarre: de los pilotes del costado de la plataforma a la proa y la popa de cada lancha. */
 function MooringLines() {
   const lines = useMemo(
     () =>
-      BOAT_IDS.map((id, i) => {
+      BOAT_IDS.flatMap((id) => {
         const b = BOATS[id]
-        const from = new THREE.Vector3(H.x + (i === 0 ? -2.35 : 2.35), H.deckY + 0.7, END_Z + 0.6)
-        const bow = new THREE.Vector3(b.position[0] + Math.sin(b.rotation) * 1.3, WATER_Y + 0.55, b.position[1] + Math.cos(b.rotation) * 1.3)
-        const mid = from.clone().add(bow).multiplyScalar(0.5)
-        const len = from.distanceTo(bow)
-        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), bow.clone().sub(from).normalize())
-        return { mid, len, q }
+        const side = Math.sign(b.position[0] - H.x)
+        const postX = H.x + side * (PW / 2)
+        return [
+          [FRONT_Z - 0.2, 1.3],
+          [END_Z + 0.2, -1.5],
+        ].map(([postZ, lz]) => {
+          const from = new THREE.Vector3(postX, H.deckY + 0.72, postZ)
+          // punto del casco en el costado que mira a la plataforma
+          const lx = -side * 0.55
+          const c = Math.cos(b.rotation)
+          const sn = Math.sin(b.rotation)
+          const to = new THREE.Vector3(b.position[0] + (lx * c + lz * sn) * BOAT_SCALE, WATER_Y + 0.62, b.position[1] + (-lx * sn + lz * c) * BOAT_SCALE)
+          const mid = from.clone().add(to).multiplyScalar(0.5)
+          const len = from.distanceTo(to)
+          const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize())
+          return { mid, len, q }
+        })
       }),
     [],
   )
@@ -314,7 +487,9 @@ export function Harbor({ reduceMotion }: { reduceMotion: boolean }) {
         <Dock />
         <MooringLines />
       </Batch>
+      <StepLights reduceMotion={reduceMotion} />
       <DockPeople reduceMotion={reduceMotion} />
+      <TourBoat reduceMotion={reduceMotion} />
       {BOAT_IDS.map((id) => (
         <Boat key={id} boat={BOATS[id]} selected={selected === id} reduceMotion={reduceMotion} />
       ))}

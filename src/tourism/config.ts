@@ -13,15 +13,28 @@ export const HARBOR = {
   wallZ: S,
   /** Cara exterior de la muralla, donde arranca el muelle. */
   outerZ: S + WT / 2,
-  /** Largo y ancho del muelle de madera. */
-  length: 8.5,
-  width: 2.4,
+  /** Largo y ancho del muelle de madera (paseo amplio, al estilo del Muelle de los Pegasos). */
+  length: 12,
+  width: 4,
+  /** Plataforma del final, donde atracan las lanchas: ancho (x) y fondo (z). */
+  platformWidth: 10,
+  platformDepth: 3,
   /** Altura de la cubierta del muelle. */
   deckY: 0.12,
 } as const
 
+/** Nivel del mar alrededor de la fortaleza (donde flotan las lanchas). */
+export const SEA_Y = -0.5
+
+/** Fin del muelle (z), donde empieza la plataforma. */
+export const HARBOR_END_Z = HARBOR.outerZ + HARBOR.length
+/** Borde de mar de la plataforma. */
+export const HARBOR_FRONT_Z = HARBOR_END_Z + HARBOR.platformDepth
+/** Atracadero del bote de paseo, frente a la plataforma (x, z); atraca mirando a +x. */
+export const TOUR_BERTH: [number, number] = [HARBOR.x, HARBOR_FRONT_Z + 1.25]
+
 /** Punto al que mira la cámara al tocar una lancha. */
-export const HARBOR_FOCUS: [number, number] = [HARBOR.x + 1, HARBOR.outerZ + 3.5]
+export const HARBOR_FOCUS: [number, number] = [HARBOR.x + 1, HARBOR.outerZ + 7]
 
 export const CATEGORY_LABEL: Record<ExperienceCategory, string> = {
   islas: 'Islas y pasadías',
@@ -40,8 +53,8 @@ export const BOATS: Record<BoatId, BoatConfig> = {
     subtitle: 'Barú, Tierra Bomba e Islas del Rosario',
     description: 'Pasadías en isla, playas de arena blanca, lanchas privadas y transporte marítimo desde la ciudad.',
     categories: ['islas', 'transporte', 'yates'],
-    position: [HARBOR.x - 4.4, HARBOR.outerZ + 7.4],
-    rotation: 0.12,
+    position: [HARBOR.x - 6.4, HARBOR.outerZ + HARBOR.length + 1.1],
+    rotation: 0.06,
   },
   bahia: {
     id: 'bahia',
@@ -50,8 +63,8 @@ export const BOATS: Record<BoatId, BoatConfig> = {
     subtitle: 'Tours, cenas y planes románticos',
     description: 'Recorridos por la bahía, yates, cenas a bordo, fiestas y el atardecer frente a las murallas.',
     categories: ['bahia', 'atardecer', 'romantico', 'yates'],
-    position: [HARBOR.x + 4.4, HARBOR.outerZ + 7.6],
-    rotation: -0.1,
+    position: [HARBOR.x + 6.4, HARBOR.outerZ + HARBOR.length + 1.1],
+    rotation: -0.06,
   },
 }
 export const BOAT_IDS = Object.keys(BOATS) as BoatId[]
