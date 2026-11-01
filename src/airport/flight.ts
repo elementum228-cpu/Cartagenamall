@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { usePassport } from '../state/passport'
 import { useUI } from '../state/ui'
 
 // Viaje a Isla Descuento: terminal (tiquete gratis) → pase de abordar → despegue del avión en la
@@ -72,7 +73,10 @@ export const useFlight = create<FlightState>()((set, get) => ({
         useUI.setState({ overview: false, activeFloor: 'P1', selectedSpaceId: null, openStoreId: null, peek: false })
         useUI.getState().requestFocus({ kind: 'island' })
       })
-      later(r ? 1200 : FLYING_MS, () => set({ step: 'arrived' }))
+      later(r ? 1200 : FLYING_MS, () => {
+        set({ step: 'arrived' })
+        usePassport.getState().stamp('ISLA')
+      })
     })
   },
   explore: () => set({ step: null }),

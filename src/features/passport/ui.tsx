@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { PASSPORT_STAMPS } from '../../state/passport'
 
 /** Ícono de cada sello del pasaporte. */
-export const STAMP_ICON: Record<string, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils, F: Scissors, I: Plane, CANCHA: Trophy, BARCO: Ship, GEMA: Search, TESORO: MapIcon }
+export const STAMP_ICON: Record<string, LucideIcon> = { A: Shirt, B: Smartphone, C: Sparkles, D: Gem, E: Utensils, F: Scissors, ISLA: Plane, CANCHA: Trophy, BARCO: Ship, GEMA: Search, TESORO: MapIcon }
 
 export const stampInfo = (id: string) => PASSPORT_STAMPS.find((s) => s.id === id)
 

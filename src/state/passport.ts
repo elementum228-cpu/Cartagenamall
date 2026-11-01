@@ -14,8 +14,9 @@ import { useUI } from './ui'
 
 /** Sellos del pasaporte, en orden. */
 export const PASSPORT_STAMPS: { id: string; name: string; hint: string; color: string; zone?: string }[] = [
-  ...ZONES.map((z) => ({ id: z.id, name: z.name, hint: z.id === 'F' ? 'Visita un negocio de la zona Soporte' : z.id === 'I' ? 'Vuela a Isla Descuento y visita un local' : `Visita una tienda del ${z.id === 'E' ? 'Piso 2' : `pasillo ${z.id}`}`, color: z.color, zone: z.id })),
+  ...ZONES.map((z) => ({ id: z.id, name: z.name, hint: z.id === 'F' ? 'Visita un negocio de la zona Soporte' : `Visita una tienda del ${z.id === 'E' ? 'Piso 2' : `pasillo ${z.id}`}`, color: z.color, zone: z.id })),
   { id: 'CANCHA', name: 'Zona de deportes', hint: 'Abre la zona de deportes en el mapa', color: '#2f9e5a' },
+  { id: 'ISLA', name: 'Isla de los Descuentos', hint: 'Vuela a la Isla de los Descuentos desde el aeropuerto', color: '#e85a8a' },
   { id: 'BARCO', name: 'A bordo', hint: 'Abre el barco de los descuentos cuando esté en el muelle', color: '#16325c' },
   { id: 'GEMA', name: 'Cazador de gemas', hint: 'Encuentra una oferta escondida', color: '#e39a2d' },
   { id: 'TESORO', name: 'Búsqueda del tesoro', hint: 'Resuelve las 3 pistas de la semana', color: '#062c42' },

@@ -10,7 +10,6 @@ import { useSpacePrice } from '../state/spacePricing'
 import { isHighlighted } from '../lib/storeHighlight'
 import { TECH, TechCounter, TechEmptyModule, TechScreen, type ScreenMessage } from './TechDistrict'
 import { ScreenLabel } from './Billboard'
-import { OutletModule } from './OutletModule'
 import { LABEL_PRIORITY } from './labels'
 import { cameraState } from './cameraState'
 import { GEO, GLASS, PALETTE, mat, shade } from './materials'
@@ -539,8 +538,7 @@ function AvailableSpace({ space, zoneColor, pending, price }: { space: SpaceSlot
     <group>
       <mesh geometry={GEO.box} material={mat(shade(zoneColor, 0.85))} position={[0, 0.04, 0]} scale={[w, 0.08, d]} receiveShadow />
       {!isIsland && space.zoneId === 'B' && <TechEmptyModule w={w} d={d} H={H} />}
-      {!isIsland && space.zoneId === 'I' && <OutletModule w={w} d={d} seed={Number(space.id.replace(/\D/g, '')) || 0} />}
-      {!isIsland && space.zoneId !== 'I' && (
+      {!isIsland && (
         <>
           <mesh geometry={GEO.box} material={ghost} position={[0, H / 2, -d / 2 + 0.1]} scale={[w, H, 0.2]} />
           <mesh geometry={GEO.box} material={ghost} position={[-w / 2 + 0.1, H / 2, 0]} scale={[0.2, H, d]} />

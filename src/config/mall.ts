@@ -339,53 +339,35 @@ const DISTRICT_SPACES: SpaceSlot[] = (
  * outlet repartidos alrededor. Usa las coordenadas del piso 1 (al nivel del mar).
  */
 export const ISLAND = { x: 160, z: -160, r: 26, half: 21 } as const
-export const ISLAND_ZONE: ZoneConfig = {
-  id: 'I',
-  name: 'Isla de los Descuentos',
-  color: '#e85a8a',
-  angle: 0,
-  focus: [ISLAND.x, ISLAND.z],
-  categories: [
-    { id: 'outlet', name: 'Outlet', zoneId: 'I' },
-    { id: 'ofertas-isla', name: 'Ofertas de la isla', zoneId: 'I' },
-    { id: 'emprendimientos', name: 'Emprendimientos', zoneId: 'I' },
-  ],
-}
 /**
- * Locales de la isla (relativos al centro): repartidos alrededor de la plaza, con la fachada hacia
- * la fuente, y dejando libre el camino de la puerta (lado +x). Islas comerciales cerca de la fuente.
+ * Locales de la isla: un mini-mall con cuatro pasillos cortos que salen de la plaza central, uno por
+ * sector (los mismos del mall: Moda, Tecnología, Belleza y Lifestyle, en la misma dirección que en
+ * la fortaleza). Dos locales por lado mirando al pasillo. La puerta queda en la diagonal (+x, +z).
  */
-const ISLAND_SLOTS: { type: SpaceType; at: [number, number] }[] = [
-  { type: 'local', at: [0, -13.5] },
-  { type: 'local', at: [-10, -10] },
-  { type: 'local', at: [8, -12.5] },
-  { type: 'local', at: [-13.5, 0] },
-  { type: 'local', at: [-10, 10] },
-  { type: 'local', at: [0, 13.5] },
-  { type: 'local', at: [8, 12.5] },
-  { type: 'local', at: [14.5, -5] },
-  { type: 'local', at: [14.5, 5] },
-  { type: 'island', at: [-5.2, -5.2] },
-  { type: 'island', at: [-5.2, 5.2] },
-  { type: 'island', at: [5.4, -5.6] },
-  { type: 'island', at: [5.4, 5.6] },
-]
-const ISLAND_SPACES: SpaceSlot[] = ISLAND_SLOTS.map((t, i) => {
-  const [dx, dz] = t.at
-  // fachada (+z local) mirando a la fuente; los dos junto a la puerta miran al camino
-  const toward = Math.abs(dx) > 13 ? [0, -Math.sign(dz)] : [-dx, -dz]
-  const rotation = Math.atan2(toward[0], toward[1])
-  return {
-    id: `P1-I${i + 1}`,
-    floorId: 'P1',
-    zoneId: 'I' as ZoneId,
-    type: t.type,
-    label: `I-${String(i + 1).padStart(2, '0')}`,
-    position: [ISLAND.x + dx, ISLAND.z + dz] as [number, number],
-    rotation,
-    size: SPACE_TYPES[t.type].size,
-  }
-})
+export const ISLAND_WING = { corridorHalf: 2.5, near: 11, far: 17, end: 20 } as const
+const ISLAND_SPACES: SpaceSlot[] = ZONES_P1.flatMap((zone, zi) =>
+  [
+    [-5, ISLAND_WING.near, Math.PI / 2],
+    [5, ISLAND_WING.near, -Math.PI / 2],
+    [-5, ISLAND_WING.far, Math.PI / 2],
+    [5, ISLAND_WING.far, -Math.PI / 2],
+  ].map(([lx, lz, facing], k) => {
+    const [dx, dz] = toWorld([lx, lz], zone.angle)
+    const n = zi * 4 + k + 1
+    return {
+      id: `P1-I${n}`,
+      floorId: 'P1',
+      zoneId: zone.id,
+      type: 'local' as SpaceType,
+      label: `I${zone.id}-${String(k + 1).padStart(2, '0')}`,
+      position: [ISLAND.x + dx, ISLAND.z + dz] as [number, number],
+      rotation: zone.angle + facing,
+      size: SPACE_TYPES.local.size,
+    }
+  }),
+)
+/** ¿Es un local de la Isla de los Descuentos? */
+export const isIslandSpace = (sp: Pick<SpaceSlot, 'id'>) => sp.id.startsWith('P1-I')
 
 export const FLOORS = MALL.floors
 export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))
@@ -425,9 +407,9 @@ export const COURT_SPACE: SpaceSlot = {
   size: SPACE_TYPES.court.size,
 }
 export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries([...SPACES, COURT_SPACE].map((s) => [s.id, s]))
-export const ZONES: ZoneConfig[] = [...FLOORS.flatMap((f) => f.zones), DISTRICT_ZONE, ISLAND_ZONE]
+export const ZONES: ZoneConfig[] = [...FLOORS.flatMap((f) => f.zones), DISTRICT_ZONE]
 export const ZONE_BY_ID = Object.fromEntries(ZONES.map((z) => [z.id, z])) as Record<ZoneId, ZoneConfig>
-export const FLOOR_OF_ZONE = Object.fromEntries([...FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id])), [DISTRICT_ZONE.id, 'P1'], [ISLAND_ZONE.id, 'P1']]) as Record<ZoneId, FloorId>
+export const FLOOR_OF_ZONE = Object.fromEntries([...FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id])), [DISTRICT_ZONE.id, 'P1']]) as Record<ZoneId, FloorId>
 export const CATEGORIES = ZONES.flatMap((z) => z.categories)
 export const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]))
 

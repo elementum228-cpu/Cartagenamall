@@ -1,32 +1,107 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ISLAND, insideSpace } from '../config/mall'
+import { ISLAND, ISLAND_WING, P1, insideSpace, toWorld } from '../config/mall'
+import type { ZoneConfig } from '../domain/types'
 import { useIsNight } from '../lib/useIsNight'
 import { AirplaneModel } from './Airport'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { CORDON, Garita, STONE, STONE_DARK } from './Fortress'
-import { getGlassPill } from './labelTexture'
+import { getGlassPill, getZoneSign } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
-import { GEO, PALETTE, mat } from './materials'
-import { glowMat, lightPoolMat, nightVolumeMat } from './night'
+import { GEO, PALETTE, mat, shade } from './materials'
+import { dimLabelMat, glowMat, lightPoolMat, nightVolumeMat } from './night'
 import { Person } from './Person'
 
-// Isla de los Descuentos: un castillo-isla de una sola planta. Murallas con almenas y garitas en las
-// esquinas, puerta en arco hacia la pista (lado +x), plaza con fuente, locales outlet de colores
-// repartidos (los pone Scene, como cualquier espacio), palmeras y faroles en los paseos, focos que
-// barren el cielo de noche y un globo aerostático con el %.
+// Isla de los Descuentos: un castillo-isla de forma irregular (sigue la costa, con baluartes) que
+// por dentro es un mini-mall de una planta: plaza con fuente y cuatro pasillos por sector (Moda,
+// Tecnología, Belleza, Lifestyle) con sus arcos de color, como en la fortaleza. Los locales los pone
+// Scene (mismo estilo que el resto del mall). Base de piedra con talud, murallas con almenas,
+// garitas, puerta en la diagonal hacia la pista, playa, rocas, focos de noche y un globo con el %.
 
 const C = { x: ISLAND.x, z: ISLAND.z }
-const HALF = ISLAND.half
 const WT = 1.6
-const WH = 3
+const WH = 3.2
 const PINK = '#e85a8a'
 const IRON = '#2f3437'
-const GATE_W = 4.2
-/** Pista de la isla (eje x, de z0 a z1), frente a la puerta. */
-const STRIP = { x: C.x + HALF + 9, z0: C.z - 15, z1: C.z + 15, w: 4 }
+const PLAZA = 7.5
+const W = ISLAND_WING
+const WW = W.corridorHalf + 5.4
+/**
+ * Contorno del castillo (relativo al centro), en sentido horario visto desde arriba. Irregular:
+ * baluartes que salen hacia el mar y entrantes, como una fortaleza que sigue la costa.
+ */
+const OUTLINE: [number, number][] = [
+  [0, -27], [9, -25.5], [12.5, -28.5], [19, -22], [24.5, -13], [28, -9], [27, 2], [24.5, 10],
+  [21, 13], // puerta: entre este vértice y el siguiente
+  [13, 21], [10, 24.5], [2, 27], [-9, 28], [-13, 25], [-22, 19.5], [-26, 10], [-29, 4], [-27, -7],
+  [-24.5, -14], [-19, -22], [-22, -26.5], [-11, -26],
+]
+const GATE_EDGE = 8
+/** Vértices con garita (los salientes). */
+const TOWERS = [2, 5, 13, 16, 20]
+
+/** Tramo de muralla con almenas y cordón entre dos puntos del contorno (en el mundo). */
+function WallRun({ a, b, gap = 0 }: { a: [number, number]; b: [number, number]; gap?: number }) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+  const rot = Math.atan2(b[0] - a[0], b[1] - a[1])
+  const segs = gap > 0 ? [[-len / 2, -gap / 2], [gap / 2, len / 2]] : [[-len / 2, len / 2]]
+  return (
+    <group position={[(a[0] + b[0]) / 2, 0, (a[1] + b[1]) / 2]} rotation={[0, rot, 0]}>
+      {segs.map(([z0, z1]) => {
+        const l = z1 - z0
+        const n = Math.max(1, Math.floor(l / 1.6))
+        const mz = (z0 + z1) / 2
+        return (
+          <group key={z0}>
+            <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, (WH - 1.6) / 2, mz]} scale={[WT, WH + 1.6, l + WT * 0.6]} castShadow receiveShadow />
+            <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, WH - 0.4, mz]} scale={[WT + 0.14, 0.14, l + WT * 0.6]} />
+            {Array.from({ length: n }, (_, k) => (
+              <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[0, WH + 0.3, mz + (k - (n - 1) / 2) * (l / n)]} scale={[0.6, 0.6, 0.85]} castShadow />
+            ))}
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+/** Pasillo de un sector: piso, camino del color de la zona, muros bajos y arco con su letrero. */
+function Wing({ zone }: { zone: ZoneConfig }) {
+  const len = W.end - PLAZA
+  const mid = PLAZA + len / 2
+  const sign = useMemo(() => getZoneSign(zone.id, zone.name.toUpperCase(), zone.color), [zone])
+  const wall = mat(PALETTE.wall)
+  const trim = mat(PALETTE.trim)
+  const CW = W.corridorHalf
+  return (
+    <group position={[C.x, 0, C.z]} rotation={[0, zone.angle, 0]}>
+      <mesh geometry={GEO.box} material={mat(PALETTE.floor)} position={[0, 0.1, mid]} scale={[WW * 2, 0.2, len]} receiveShadow />
+      <mesh geometry={GEO.box} material={mat(shade(zone.color, 0.72))} position={[0, 0.205, mid]} scale={[CW * 1.1, 0.02, len - 0.6]} receiveShadow />
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh geometry={GEO.box} material={wall} position={[s * (WW - 0.15), 0.9, mid + 0.2]} scale={[0.3, 1.4, len + 0.4]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={trim} position={[s * (WW - 0.15), 1.64, mid + 0.2]} scale={[0.4, 0.08, len + 0.5]} />
+        </group>
+      ))}
+      <mesh geometry={GEO.box} material={wall} position={[0, 0.9, W.end + 0.3]} scale={[WW * 2, 1.4, 0.3]} castShadow />
+      {/* arco de entrada del sector */}
+      <group position={[0, 0.2, PLAZA + 0.4]}>
+        {[-1, 1].map((s) => (
+          <mesh key={s} geometry={GEO.rounded} material={wall} position={[s * (CW + 0.2), 1.9, 0]} scale={[0.55, 3.8, 0.55]} castShadow />
+        ))}
+        <mesh geometry={GEO.rounded} material={mat(zone.color)} position={[0, 3.95, 0]} scale={[CW * 2 + 1.2, 0.7, 0.5]} castShadow />
+        {[1, -1].map((s) => (
+          <group key={s} position={[0, 3.95, s * 0.3]} rotation={[0, s > 0 ? 0 : Math.PI, 0]}>
+            <mesh geometry={GEO.rounded} material={mat(shade(zone.color, -0.25))} position={[0, 0, -0.04]} scale={[1.36 * sign.aspect + 0.16, 1.52, 0.08]} />
+            <mesh geometry={GEO.plane} material={dimLabelMat(sign.texture)} position={[0, 0, 0.01]} scale={[1.36 * sign.aspect, 1.36, 1]} />
+          </group>
+        ))}
+      </group>
+    </group>
+  )
+}
 
 function Palm({ x, z, h, seed }: { x: number; z: number; h: number; seed: number }) {
   return (
@@ -40,113 +115,108 @@ function Palm({ x, z, h, seed }: { x: number; z: number; h: number; seed: number
   )
 }
 
-/** Tramo de muralla de (x0,z0) a (x1,z1), con almenas y cordón. */
-function Wall({ x0, z0, x1, z1 }: { x0: number; z0: number; x1: number; z1: number }) {
-  const len = Math.hypot(x1 - x0, z1 - z0)
-  const rot = Math.atan2(x1 - x0, z1 - z0)
-  const n = Math.floor(len / 1.6)
-  return (
-    <group position={[(x0 + x1) / 2, 0, (z0 + z1) / 2]} rotation={[0, rot, 0]}>
-      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, (WH - 1.4) / 2, 0]} scale={[WT, WH + 1.4, len]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -0.7, 0]} scale={[WT + 0.7, 1.4, len + 0.4]} />
-      <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, WH - 0.35, 0]} scale={[WT + 0.12, 0.14, len]} />
-      {Array.from({ length: n }, (_, k) => (
-        <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[0, WH + 0.3, (k - (n - 1) / 2) * 1.6]} scale={[0.55, 0.6, 0.9]} castShadow />
-      ))}
-    </group>
-  )
-}
+/** Pista de aterrizaje: muelle de piedra frente a la puerta, en la diagonal. */
+const RUN = { d: 40, len: 30, w: 4 }
 
-/** Arena, murallas, garitas, puerta, plaza con fuente, palmeras, faroles, pista y muelle. */
-function Ground() {
-  const H = HALF
+function Castle() {
+  const pts = useMemo(() => OUTLINE.map(([x, z]) => [C.x + x, C.z + z] as [number, number]), [])
+  // base y suelo: polígono extruido (arena por dentro, talud de piedra por fuera)
+  const shapes = useMemo(() => {
+    const mk = (scale: number, depth: number) => {
+      const shape = new THREE.Shape(OUTLINE.map(([x, z]) => new THREE.Vector2(x * scale, -z * scale)))
+      const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false })
+      g.rotateX(-Math.PI / 2)
+      return g
+    }
+    return { ground: mk(0.97, 1.6), talud: mk(1.06, 1.1), beach: mk(1.22, 0.4) }
+  }, [])
+  // garitas en los salientes
+  const towers = TOWERS.map((i) => pts[i])
+  // palmeras y faroles en los paseos (nunca encima de un local)
   const palms = useMemo(() => {
-    const out: { x: number; z: number; h: number; seed: number }[] = []
     const spots: [number, number][] = [
-      [-5, -14.5], [5, -15.8], [-15.5, -6], [-15.5, 6], [-5, 15.8], [5, 15.8],
-      [-16, -16], [-16, 16], [16, -16], [16, 16], [-8.5, 0], [0, -8.5], [0, 8.5], [10.5, -1.8], [10.5, 1.8],
+      [14, -14], [-14, -14], [-14, 14], [15.5, -18.5], [-19, -17], [-20, 13], [20, -6.5], [-6, 22.5], [6, -22.5], [-23, -2], [23.5, 3],
     ]
-    spots.forEach(([dx, dz], i) => {
-      const x = C.x + dx
-      const z = C.z + dz
-      if (insideSpace(x, z, 1.8)) return
-      if (dx > 3 && Math.abs(dz) < 2.4) return // camino de la puerta
-      out.push({ x, z, h: 2.8 + (i % 3) * 0.6, seed: i * 1.7 })
-    })
-    return out
+    return spots
+      .map(([dx, dz], i) => ({ x: C.x + dx, z: C.z + dz, h: 3 + (i % 3) * 0.5, seed: i * 1.7 }))
+      .filter((p) => !insideSpace(p.x, p.z, 1.8))
   }, [])
   const lamps = useMemo(
     () =>
-      ([
-        [4.5, -2.6], [4.5, 2.6], [-4, 0], [0, -4], [0, 4], [-11, -11.8], [-11.8, 11], [12, -16.5], [12, 16.5],
-      ] as [number, number][])
-        .map(([dx, dz]) => [C.x + dx, C.z + dz] as [number, number])
-        .filter(([x, z]) => !insideSpace(x, z, 0.3)),
+      Array.from({ length: 8 }, (_, i) => {
+        const a = Math.PI / 4 + (i * Math.PI) / 4
+        return [C.x + Math.sin(a) * 7, C.z + Math.cos(a) * 7] as [number, number]
+      }).filter(([x, z]) => !insideSpace(x, z, 0.3)),
     [],
   )
-  const gx = C.x + H
+  const ga = pts[GATE_EDGE]
+  const gb = pts[GATE_EDGE + 1]
+  const gm: [number, number] = [(ga[0] + gb[0]) / 2, (ga[1] + gb[1]) / 2]
+  const diag = Math.PI / 4
+  const runC = toWorld([0, RUN.d], diag)
   return (
     <group>
-      {/* arena alrededor del castillo y rocas en la orilla */}
-      <mesh geometry={GEO.cylinderLow} material={mat('#f1dfb5')} position={[C.x, -0.7, C.z]} rotation={[0, Math.PI / 8, 0]} scale={[2 * (H + 6), 0.6, 2 * (H + 6)]} receiveShadow />
+      {/* playa, talud de piedra hasta el mar y suelo del castillo */}
+      <mesh geometry={shapes.beach} material={mat('#f1dfb5')} position={[C.x, -0.85, C.z]} receiveShadow />
+      <mesh geometry={shapes.talud} material={mat(STONE_DARK)} position={[C.x, -1.25, C.z]} />
+      <mesh geometry={shapes.ground} material={mat('#e9dcc2')} position={[C.x, -1.6, C.z]} receiveShadow />
       {[
-        [-H - 3, -H + 4, 1.4], [-H + 6, -H - 3.5, 1.1], [H + 2.5, -H - 2, 1.2], [-H - 2.5, H - 3, 1], [H - 4, H + 3, 1.3],
+        [-31, 8, 1.5], [-26, -24, 1.2], [16, -30, 1.3], [30, -14, 1.1], [-4, 31, 1.2], [-25, 24, 1],
       ].map(([dx, dz, s]) => (
-        <mesh key={`${dx}${dz}`} geometry={GEO.sphere} material={mat('#9c9184')} position={[C.x + dx, -0.4, C.z + dz]} scale={[s * 1.6, s, s * 1.3]} />
+        <mesh key={`${dx}${dz}`} geometry={GEO.sphere} material={mat('#9c9184')} position={[C.x + dx, -0.5, C.z + dz]} scale={[s * 1.6, s, s * 1.3]} />
       ))}
-      {/* piso del castillo y plaza */}
-      <mesh geometry={GEO.box} material={mat('#e9dcc2')} position={[C.x, -0.3, C.z]} scale={[2 * H, 0.6, 2 * H]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat('#efe6d4')} position={[C.x, 0.02, C.z]} scale={[2 * H - 2, 0.04, 2 * H - 2]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={mat('#e6d3ad')} position={[C.x, 0.05, C.z]} scale={[8.6, 0.04, 8.6]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat('#e6d3ad')} position={[C.x + (H + 4.2) / 2, 0.05, C.z]} scale={[H - 4.2, 0.04, 3]} receiveShadow />
-      {/* fuente en el centro */}
-      <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[C.x, 0.35, C.z]} scale={[5.2, 0.6, 5.2]} castShadow />
-      <mesh geometry={GEO.cylinder} material={glowMat('#5fd0e0', 0.9, { dayGlow: 0.25 })} position={[C.x, 0.62, C.z]} scale={[4.6, 0.1, 4.6]} />
-      <mesh geometry={GEO.cylinder} material={mat(STONE[1])} position={[C.x, 1.1, C.z]} scale={[0.6, 1.4, 0.6]} />
-      <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[C.x, 1.85, C.z]} scale={[2, 0.25, 2]} />
-      <mesh geometry={GEO.sphereSmooth} material={glowMat('#bff6ff', 1.6, { dayGlow: 0.4 })} position={[C.x, 2.3, C.z]} scale={[0.7, 0.9, 0.7]} />
-      <mesh geometry={GEO.plane} material={lightPoolMat('#7fe3f0', 1)} rotation={[-Math.PI / 2, 0, 0]} position={[C.x, 0.08, C.z]} scale={[10, 10, 1]} />
-      {/* murallas: la del lado +x se abre para la puerta */}
-      <Wall x0={C.x - H} z0={C.z - H} x1={C.x + H} z1={C.z - H} />
-      <Wall x0={C.x - H} z0={C.z + H} x1={C.x + H} z1={C.z + H} />
-      <Wall x0={C.x - H} z0={C.z - H} x1={C.x - H} z1={C.z + H} />
-      <Wall x0={gx} z0={C.z - H} x1={gx} z1={C.z - GATE_W / 2 - 0.6} />
-      <Wall x0={gx} z0={C.z + GATE_W / 2 + 0.6} x1={gx} z1={C.z + H} />
-      {/* garitas en las esquinas y a los lados de la puerta */}
-      {[
-        [C.x - H, C.z - H], [C.x + H, C.z - H], [C.x - H, C.z + H], [C.x + H, C.z + H],
-      ].map(([x, z]) => (
+      {/* murallas siguiendo el contorno; la de la puerta se abre */}
+      {pts.map((a, i) => {
+        const b = pts[(i + 1) % pts.length]
+        return <WallRun key={i} a={a} b={b} gap={i === GATE_EDGE ? 5 : 0} />
+      })}
+      {/* garitas sobre torres redondas en los salientes */}
+      {towers.map(([x, z]) => (
         <group key={`${x}${z}`}>
-          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[x, (WH - 1.4) / 2, z]} scale={[4, WH + 1.4, 4]} castShadow />
+          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[x, (WH - 1.6) / 2, z]} scale={[3.6, WH + 1.6, 3.6]} castShadow />
           <Garita x={x} z={z} y={WH} />
         </group>
       ))}
-      {/* puerta en arco con escalinata hacia el muelle */}
-      <group position={[gx, 0, C.z]} rotation={[0, Math.PI / 2, 0]}>
+      {/* puerta en arco con dos torres y escalinata hacia la pista */}
+      <group position={[gm[0], 0, gm[1]]} rotation={[0, diag, 0]}>
         {[-1, 1].map((s) => (
           <group key={s}>
-            <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[s * (GATE_W / 2 + 1.2), (WH + 1.2 - 1.4) / 2, 0]} scale={[2.6, WH + 2.6, 2.6]} castShadow />
-            <Garita x={s * (GATE_W / 2 + 1.2)} z={0} y={WH + 1.2} />
+            <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[s * 3.6, (WH + 1.2 - 1.6) / 2, 0]} scale={[2.8, WH + 2.8, 2.8]} castShadow />
+            <Garita x={s * 3.6} z={0} y={WH + 1.2} />
           </group>
         ))}
-        <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, WH + 0.25, 0]} scale={[GATE_W + 0.6, 1.3, WT + 0.4]} castShadow />
-        <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, WH + 0.95, 0]} scale={[GATE_W + 0.8, 0.14, WT + 0.5]} />
-        <mesh geometry={GEO.halfDisc} material={mat(CORDON)} position={[0, WH - 0.5, WT / 2 + 0.22]} rotation={[Math.PI / 2, 0, 0]} scale={[GATE_W / 2, 0.02, GATE_W / 2 - 0.4]} />
-        {/* puertas abiertas (verdes) y luz del pasaje */}
+        <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, WH + 0.2, 0]} scale={[5.6, 1.4, WT + 0.4]} castShadow />
+        <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, WH + 0.95, 0]} scale={[5.8, 0.14, WT + 0.5]} />
+        <mesh geometry={GEO.halfDisc} material={mat(CORDON)} position={[0, WH - 0.55, WT / 2 + 0.22]} rotation={[Math.PI / 2, 0, 0]} scale={[2.5, 0.02, 2.1]} />
         {[-1, 1].map((s) => (
-          <mesh key={s} geometry={GEO.box} material={mat('#2f6b4f')} position={[s * (GATE_W / 2 - 0.15), 1.4, WT / 2 + 0.5]} rotation={[0, s * 1.2, 0]} scale={[1.6, 2.8, 0.12]} />
+          <mesh key={s} geometry={GEO.box} material={mat('#2f6b4f')} position={[s * 2.2, 1.4, WT / 2 + 0.55]} rotation={[0, s * 1.2, 0]} scale={[1.6, 2.8, 0.12]} />
         ))}
-        <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.9)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 1.6]} scale={[5, 4, 1]} />
-        {/* escalinata */}
+        <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.9)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.25, 1.6]} scale={[5, 4, 1]} />
         {[0, 1, 2, 3].map((k) => (
-          <mesh key={k} geometry={GEO.box} material={mat(STONE[k % 2 ? 1 : 2])} position={[0, -0.12 - k * 0.18, WT / 2 + 0.6 + k * 0.6]} scale={[GATE_W + 1.6 - k * 0.2, 0.18, 0.6]} receiveShadow />
+          <mesh key={k} geometry={GEO.box} material={mat(STONE[k % 2 ? 1 : 2])} position={[0, -0.1 - k * 0.2, WT / 2 + 0.7 + k * 0.6]} scale={[6 - k * 0.2, 0.2, 0.6]} receiveShadow />
         ))}
+        {/* camino de piedra hasta la pista */}
+        <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, -0.75, (1.5 + RUN.d - 24 - 4) / 2]} scale={[4, 0.5, RUN.d - 24 - 4 - 1.5]} receiveShadow />
       </group>
-      {/* camino de piedra hasta la pista */}
-      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[(gx + 3.2 + STRIP.x - STRIP.w / 2 - 1.5) / 2, -0.62, C.z]} scale={[STRIP.x - STRIP.w / 2 - 1.5 - gx - 3.2, 0.5, 3.6]} receiveShadow />
+      {/* plaza central elevada con fuente */}
+      <mesh geometry={GEO.cylinder} material={mat(PALETTE.floor)} position={[C.x, 0.1, C.z]} scale={[2 * PLAZA + 1, 0.2, 2 * PLAZA + 1]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#e6d3ad')} position={[C.x, 0.22, C.z]} scale={[9, 0.04, 9]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[C.x, 0.5, C.z]} scale={[5, 0.6, 5]} castShadow />
+      <mesh geometry={GEO.cylinder} material={glowMat('#5fd0e0', 0.9, { dayGlow: 0.25 })} position={[C.x, 0.78, C.z]} scale={[4.4, 0.1, 4.4]} />
+      <mesh geometry={GEO.cylinder} material={mat(STONE[1])} position={[C.x, 1.25, C.z]} scale={[0.6, 1.4, 0.6]} />
+      <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[C.x, 2, C.z]} scale={[2, 0.25, 2]} />
+      <mesh geometry={GEO.sphereSmooth} material={glowMat('#bff6ff', 1.6, { dayGlow: 0.4 })} position={[C.x, 2.45, C.z]} scale={[0.7, 0.9, 0.7]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#7fe3f0', 1)} rotation={[-Math.PI / 2, 0, 0]} position={[C.x, 0.25, C.z]} scale={[10, 10, 1]} />
+      {/* camino de la plaza a la puerta (diagonal) */}
+      {(() => {
+        const from = PLAZA
+        const to = Math.hypot(gm[0] - C.x, gm[1] - C.z) - 1
+        const [mx, mz] = toWorld([0, (from + to) / 2], diag)
+        return <mesh geometry={GEO.box} material={mat('#e6d3ad')} position={[C.x + mx, 0.12, C.z + mz]} rotation={[0, diag, 0]} scale={[3.4, 0.04, to - from]} receiveShadow />
+      })()}
       {/* faroles y palmeras de los paseos */}
       {lamps.map(([x, z]) => (
-        <group key={`${x}${z}`} position={[x, 0, z]}>
+        <group key={`${x}${z}`} position={[x, 0.2, z]}>
           <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.5, 0]} scale={[0.1, 3, 0.1]} />
           <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 3.1, 0]} scale={0.4} />
           <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.85)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]} scale={[4, 4, 1]} />
@@ -155,23 +225,27 @@ function Ground() {
       {palms.map((p) => (
         <Palm key={`${p.x}${p.z}`} {...p} />
       ))}
-      {/* pista de aterrizaje sobre un muelle de piedra */}
-      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[STRIP.x, -0.6, C.z]} scale={[STRIP.w + 4, 1.6, STRIP.z1 - STRIP.z0 + 2]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(CORDON)} position={[STRIP.x, 0.17, C.z]} scale={[STRIP.w + 4.1, 0.08, STRIP.z1 - STRIP.z0 + 2.1]} />
-      <mesh geometry={GEO.box} material={mat('#4a525b')} position={[STRIP.x + 0.6, 0.22, C.z]} scale={[STRIP.w, 0.04, STRIP.z1 - STRIP.z0]} receiveShadow />
-      {Array.from({ length: 9 }, (_, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat('#f4f1ea')} position={[STRIP.x + 0.6, 0.25, STRIP.z0 + 2.5 + i * 3.1]} scale={[0.14, 0.01, 1.3]} />
-      ))}
-      {[-1, 1].flatMap((s) =>
-        Array.from({ length: 9 }, (_, i) => (
-          <mesh key={`${s}${i}`} geometry={GEO.sphere} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.35 })} position={[STRIP.x + 0.6 + s * (STRIP.w / 2 + 0.25), 0.32, STRIP.z0 + (i * (STRIP.z1 - STRIP.z0)) / 8]} scale={0.2} />
-        )),
-      )}
-      {/* focos de las garitas: haces de luz hacia el cielo (de noche) */}
-      {[
-        [C.x - H, C.z - H, -0.35, 0.3], [C.x + H, C.z - H, 0.3, 0.3], [C.x - H, C.z + H, -0.3, -0.35],
-      ].map(([x, z, rx, rz]) => (
-        <mesh key={`${x}${z}`} geometry={GEO.cone} material={nightVolumeMat('#fff1c9', 0.22)} position={[x, WH + 9, z]} rotation={[rx, 0, rz]} scale={[3.2, 16, 3.2]} />
+      {/* pista de aterrizaje sobre un muelle de piedra, en la diagonal frente a la puerta */}
+      <group position={[C.x + runC[0], 0, C.z + runC[1]]} rotation={[0, diag + Math.PI / 2, 0]}>
+        <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, -0.6, 0]} scale={[RUN.w + 4, 1.6, RUN.len + 2]} castShadow receiveShadow />
+        <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 0.17, 0]} scale={[RUN.w + 4.1, 0.08, RUN.len + 2.1]} />
+        <mesh geometry={GEO.box} material={mat('#4a525b')} position={[0.6, 0.22, 0]} scale={[RUN.w, 0.04, RUN.len]} receiveShadow />
+        {Array.from({ length: 9 }, (_, i) => (
+          <mesh key={i} geometry={GEO.box} material={mat('#f4f1ea')} position={[0.6, 0.25, -RUN.len / 2 + 2.5 + i * 3.1]} scale={[0.14, 0.01, 1.3]} />
+        ))}
+        {[-1, 1].flatMap((s) =>
+          Array.from({ length: 9 }, (_, i) => (
+            <mesh key={`${s}${i}`} geometry={GEO.sphere} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.35 })} position={[0.6 + s * (RUN.w / 2 + 0.25), 0.32, -RUN.len / 2 + (i * RUN.len) / 8]} scale={0.2} />
+          )),
+        )}
+        {/* el avión que te trajo */}
+        <group position={[-2.6, 0.2, -4]} rotation={[0, Math.PI, 0]}>
+          <AirplaneModel />
+        </group>
+      </group>
+      {/* focos de las garitas hacia el cielo (de noche) */}
+      {[pts[2], pts[13], pts[20]].map(([x, z], i) => (
+        <mesh key={i} geometry={GEO.cone} material={nightVolumeMat('#fff1c9', 0.22)} position={[x, WH + 9, z]} rotation={[i === 1 ? -0.3 : 0.3, 0, i === 2 ? 0.35 : -0.3]} scale={[3.2, 16, 3.2]} />
       ))}
     </group>
   )
@@ -182,11 +256,11 @@ function Strollers({ reduceMotion }: { reduceMotion: boolean }) {
   const refs = useRef<(THREE.Group | null)[]>([])
   const walkers = useMemo(
     () =>
-      ['#e07a5f', '#3d7ea6', '#f2cc8f', '#2a9d8f', '#9b5de5', '#f15bb5', '#81b29a'].map((c, i) => ({
+      ['#e07a5f', '#3d7ea6', '#f2cc8f', '#2a9d8f', '#9b5de5', '#f15bb5'].map((c, i) => ({
         c,
-        r: 9.4 + (i % 2) * 0.6,
-        speed: (0.045 + (i % 3) * 0.012) * (i % 2 ? 1 : -1),
-        phase: (i / 7) * Math.PI * 2,
+        r: 4.6 + (i % 2) * 1.2,
+        speed: (0.06 + (i % 3) * 0.015) * (i % 2 ? 1 : -1),
+        phase: (i / 6) * Math.PI * 2,
       })),
     [],
   )
@@ -196,7 +270,7 @@ function Strollers({ reduceMotion }: { reduceMotion: boolean }) {
       const g = refs.current[i]
       if (!g) return
       const a = w.phase + t * w.speed
-      g.position.set(C.x + Math.sin(a) * w.r, Math.abs(Math.sin(t * 6 + i)) * 0.03, C.z + Math.cos(a) * w.r)
+      g.position.set(C.x + Math.sin(a) * w.r, 0.24 + Math.abs(Math.sin(t * 6 + i)) * 0.03, C.z + Math.cos(a) * w.r)
       g.rotation.y = a + (w.speed > 0 ? Math.PI / 2 : -Math.PI / 2)
     })
   })
@@ -230,13 +304,13 @@ function Balloon({ reduceMotion }: { reduceMotion: boolean }) {
   useFrame(({ clock }) => {
     if (!g.current || reduceMotion) return
     const t = clock.elapsedTime
-    g.current.position.y = 17 + Math.sin(t * 0.5) * 0.8
+    g.current.position.y = 18 + Math.sin(t * 0.5) * 0.8
     g.current.rotation.y = Math.sin(t * 0.2) * 0.3
   })
   return (
-    <group ref={g} position={[C.x + HALF - 4, 17, C.z - HALF - 2]}>
+    <group ref={g} position={[C.x + 18, 18, C.z - 26]}>
       {[0, 1, 2, 3, 4, 5].map((k) => (
-        <mesh key={k} geometry={GEO.sphereSmooth} material={mat(k % 2 ? '#ffffff' : PINK, { rough: 0.6 })} rotation={[0, (k * Math.PI) / 6, 0]} scale={[3.6 - k * 0.02, 4.2, 0.9 + k * 0.5]} />
+        <mesh key={k} geometry={GEO.sphereSmooth} material={mat(k % 2 ? '#ffffff' : PINK, { rough: 0.6 })} rotation={[0, (k * Math.PI) / 6, 0]} scale={[3.6, 4.2, 0.9 + k * 0.5]} />
       ))}
       <mesh geometry={GEO.plane} material={pct} position={[0.7, 0.2, 1.75]} rotation={[0, Math.PI / 4, 0]} scale={[1.8, 1.8, 1]} />
       {[-1, 1].flatMap((sx) =>
@@ -250,19 +324,18 @@ function Balloon({ reduceMotion }: { reduceMotion: boolean }) {
 
 export function Island({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
-  const label = useMemo(() => getGlassPill('Isla de los Descuentos', { dot: PINK, sub: 'Outlet · Ofertas · Variedad', dark: night }), [night])
+  const label = useMemo(() => getGlassPill('Isla de los Descuentos', { dot: PINK, sub: 'Moda · Tecnología · Belleza · Lifestyle', dark: night }), [night])
   return (
     <group>
-      <Batch version="isla-castillo">
-        <Ground />
-        {/* avión que te trajo, junto a la pista */}
-        <group position={[STRIP.x - 3.2, 0.2, C.z - 5]}>
-          <AirplaneModel />
-        </group>
+      <Batch version="isla-mall">
+        <Castle />
+        {P1.zones.map((z) => (
+          <Wing key={z.id} zone={z} />
+        ))}
       </Batch>
       <Strollers reduceMotion={reduceMotion} />
       <Balloon reduceMotion={reduceMotion} />
-      <ScreenLabel label={label} position={[C.x - 2, 11, C.z - 2]} pixelHeight={38} maxZoomRatio={2.6} priority={LABEL_PRIORITY.floorSign + 5} />
+      <ScreenLabel label={label} position={[C.x - 3, 12, C.z - 3]} pixelHeight={38} maxZoomRatio={2.6} priority={LABEL_PRIORITY.floorSign + 5} />
     </group>
   )
 }

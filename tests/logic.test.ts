@@ -28,11 +28,11 @@ const item = (productId: string, variantId: string | null, size: string | null, 
 
 describe('mall layout', () => {
   it('genera los espacios desde configuración: 20 en los pasillos y 4 en servicios (piso 1), 10 en el piso 2', () => {
-    expect(SPACES.filter((s) => s.floorId === 'P1' && s.zoneId !== 'I')).toHaveLength(24)
-    expect(SPACES.filter((s) => s.zoneId === 'I')).toHaveLength(13)
+    expect(SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))).toHaveLength(24)
+    expect(SPACES.filter((s) => s.id.startsWith('P1-I'))).toHaveLength(16)
     expect(SPACES.filter((s) => s.zoneId === 'F')).toHaveLength(4)
     expect(SPACES.filter((s) => s.floorId === 'P2')).toHaveLength(10)
-    for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z)).toHaveLength(5)
+    for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z && !s.id.startsWith('P1-I'))).toHaveLength(5)
     expect(new Set(SPACES.map((s) => s.id)).size).toBe(SPACES.length)
   })
   it('ningún espacio se solapa con otro del mismo piso', () => {
@@ -44,15 +44,15 @@ describe('mall layout', () => {
       }
   })
   it('piso 1 conserva 5 tiendas y 19 espacios libres (4 de servicios); piso 2 tiene 6 negocios y 4 libres', () => {
-    const p1 = SPACES.filter((s) => s.floorId === 'P1' && s.zoneId !== 'I')
+    const p1 = SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))
     const p2 = SPACES.filter((s) => s.floorId === 'P2')
     expect(p1.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(5)
     expect(p1.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(19)
     expect(p2.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(6)
     expect(p2.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(4)
     expect(SPACE_TYPES.premium.monthlyPriceCOP).toBe(180_000)
-    // Isla de los Descuentos: 13 espacios, todos disponibles
-    expect(SPACES.filter((s) => s.zoneId === 'I' && !SEED_ASSIGNMENTS[s.id])).toHaveLength(13)
+    // Isla de los Descuentos: 16 espacios (4 por sector), todos disponibles
+    expect(SPACES.filter((s) => s.id.startsWith('P1-I') && !SEED_ASSIGNMENTS[s.id])).toHaveLength(16)
   })
   it('cada negocio del piso 2 tiene menú', () => {
     for (const st of SEED_STORES.filter((s) => s.zoneId === 'E')) expect(SEED_PRODUCTS.filter((p) => p.storeId === st.id).length).toBeGreaterThanOrEqual(3)

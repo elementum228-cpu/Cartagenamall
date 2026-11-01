@@ -207,46 +207,114 @@ function Tower({ beacon }: { beacon: { current: THREE.Mesh | null } }) {
   )
 }
 
-/** Avión blanco de línea con franja turquesa (local: nariz hacia +z, ruedas en y = 0). */
+/** Letrero del fuselaje (texto rojo sobre transparente), dibujado una vez. */
+let liveryMaterial: THREE.MeshBasicMaterial | null = null
+function liveryMat() {
+  if (!liveryMaterial) {
+    const c = document.createElement('canvas')
+    c.width = 1024
+    c.height = 192
+    const g = c.getContext('2d')!
+    g.fillStyle = '#e3263c'
+    g.font = '800 132px system-ui, sans-serif'
+    g.textBaseline = 'middle'
+    // ala estilizada antes del nombre
+    g.beginPath()
+    g.moveTo(40, 160)
+    g.quadraticCurveTo(120, 120, 150, 20)
+    g.quadraticCurveTo(140, 110, 70, 165)
+    g.closePath()
+    g.fill()
+    g.fillText('cartagena mall', 175, 104)
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.anisotropy = 4
+    liveryMaterial = new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false, depthWrite: false })
+  }
+  return liveryMaterial
+}
+
+/**
+ * Avión de línea de fuselaje ancho (estilo 787): blanco, motores rojos, cola roja con franja que
+ * baja por la panza, alas largas en flecha con las puntas curvadas hacia arriba y el nombre en rojo.
+ * Local: nariz hacia +z, ruedas en y = 0.
+ */
 export function AirplaneModel({ stairs = true }: { stairs?: boolean }) {
-  const white = mat('#fbfbfa', { rough: 0.45 })
-  const teal = mat(TEAL, { rough: 0.5 })
+  const white = mat('#fbfbfa', { rough: 0.4 })
+  const pale = mat('#e9eaec', { rough: 0.45 })
+  const red = mat('#e3263c', { rough: 0.45 })
   const dark = mat('#2c333b')
-  const windows = glowMat('#cfe8ff', 1.6, { dayGlow: 0.15 })
+  const windows = glowMat('#cfe8ff', 1.6, { dayGlow: 0.12 })
+  const cockpit = mat('#1e2a33', { rough: 0.3 })
+  const FY = 1.35
   return (
     <group>
-      {/* fuselaje, nariz y cola */}
-      <mesh geometry={GEO.cylinder} material={white} position={[0, 1.25, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1.15, 7, 1.15]} castShadow />
-      <mesh geometry={GEO.sphereSmooth} material={white} position={[0, 1.25, 3.5]} scale={[1.15, 1.15, 1.9]} castShadow />
-      <mesh geometry={GEO.cone} material={white} position={[0, 1.4, -4.2]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.15, 1.5, 1.0]} castShadow />
-      <mesh geometry={GEO.box} material={mat('#1e2a33')} position={[0, 1.55, 4.05]} rotation={[0.5, 0, 0]} scale={[0.75, 0.22, 0.5]} />
-      {/* franja turquesa y ventanillas */}
-      <mesh geometry={GEO.box} material={teal} position={[0, 1.02, -0.2]} scale={[1.17, 0.13, 6.6]} />
-      <mesh geometry={GEO.box} material={windows} position={[0, 1.42, 0]} scale={[1.17, 0.13, 5.4]} />
-      {/* alas en flecha, motores y estabilizadores */}
+      {/* fuselaje: cuerpo, nariz redondeada y cono de cola que sube */}
+      <mesh geometry={GEO.cylinder} material={white} position={[0, FY, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1.2, 7.6, 1.25]} castShadow />
+      <mesh geometry={GEO.sphereSmooth} material={white} position={[0, FY - 0.05, 3.8]} scale={[1.2, 1.18, 2.4]} castShadow />
+      <mesh geometry={GEO.cone} material={white} position={[0, FY + 0.15, -4.6]} rotation={[-Math.PI / 2 + 0.12, 0, 0]} scale={[1.2, 1.9, 1.05]} castShadow />
+      {/* cabina */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} geometry={GEO.box} material={cockpit} position={[s * 0.3, FY + 0.32, 4.55]} rotation={[0.55, s * 0.35, 0]} scale={[0.42, 0.16, 0.3]} />
+      ))}
+      {/* fila de ventanillas y puertas a ambos lados */}
       {[-1, 1].map((s) => (
         <group key={s}>
-          <mesh geometry={GEO.box} material={white} position={[s * 1.95, 0.95, 0.1]} rotation={[0, s * 0.38, 0]} scale={[3.4, 0.1, 1.35]} castShadow />
-          <mesh geometry={GEO.box} material={teal} position={[s * 3.55, 1.02, -0.55]} rotation={[0, s * 0.38, 0]} scale={[0.3, 0.12, 0.7]} />
-          <mesh geometry={GEO.cylinder} material={white} position={[s * 1.75, 0.62, 0.75]} rotation={[Math.PI / 2, 0, 0]} scale={[0.55, 1.25, 0.55]} castShadow />
-          <mesh geometry={GEO.cylinder} material={teal} position={[s * 1.75, 0.62, 1.38]} rotation={[Math.PI / 2, 0, 0]} scale={[0.58, 0.08, 0.58]} />
-          <mesh geometry={GEO.box} material={white} position={[s * 0.95, 1.45, -3.85]} rotation={[0, s * 0.3, 0]} scale={[1.5, 0.08, 0.7]} />
+          <mesh geometry={GEO.box} material={windows} position={[s * 0.6, FY + 0.22, 0]} scale={[0.02, 0.1, 6.4]} />
+          {[3.1, -3.3].map((z) => (
+            <mesh key={z} geometry={GEO.box} material={pale} position={[s * 0.61, FY + 0.05, z]} scale={[0.02, 0.6, 0.32]} />
+          ))}
+          {/* nombre en rojo */}
+          <mesh geometry={GEO.plane} material={liveryMat()} position={[s * 0.615, FY + 0.18, 1.5]} rotation={[0, s * (Math.PI / 2), 0]} scale={[s > 0 ? 2.6 : -2.6, 0.49, 1]} />
         </group>
       ))}
-      <mesh geometry={GEO.box} material={teal} position={[0, 2.35, -3.75]} rotation={[-0.45, 0, 0]} scale={[0.1, 1.6, 1.15]} castShadow />
-      {/* tren de aterrizaje */}
-      {[
-        [0, 0.3, 2.8],
-        [-0.9, 0.3, -0.2],
-        [0.9, 0.3, -0.2],
-      ].map(([x, y, z]) => (
-        <mesh key={`${x}${z}`} geometry={GEO.cylinderLow} material={dark} position={[x, y, z]} rotation={[0, 0, Math.PI / 2]} scale={[0.36, 0.25, 0.36]} />
+      {/* franja roja que baja de la cola por la panza trasera */}
+      <mesh geometry={GEO.box} material={red} position={[0, FY - 0.5, -3.4]} rotation={[0.18, 0, 0]} scale={[1.22, 0.32, 2.6]} />
+      <mesh geometry={GEO.box} material={red} position={[0, FY - 0.05, -4.55]} rotation={[0.35, 0, 0]} scale={[0.95, 0.5, 1.4]} />
+      {/* deriva roja con borde de ataque blanco */}
+      <mesh geometry={GEO.box} material={red} position={[0, FY + 1.65, -4.55]} rotation={[-0.55, 0, 0]} scale={[0.12, 2.4, 1.35]} castShadow />
+      <mesh geometry={GEO.box} material={white} position={[0, FY + 1.55, -3.95]} rotation={[-0.55, 0, 0]} scale={[0.13, 2.3, 0.18]} />
+      {/* estabilizadores horizontales */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} geometry={GEO.box} material={white} position={[s * 1.15, FY + 0.35, -4.7]} rotation={[0, s * 0.45, 0]} scale={[2, 0.07, 0.75]} castShadow />
       ))}
-      {/* escalerilla en la puerta del lado del mar */}
-      {stairs && <mesh geometry={GEO.box} material={mat('#e9e4d8')} position={[1.25, 0.55, 2.0]} rotation={[0, 0, 0.62]} scale={[1.7, 0.12, 0.7]} />}
-      {/* luces de punta de ala */}
-      <mesh geometry={GEO.sphereSmooth} material={glowMat('#ff4d4d', 2.4, { dayGlow: 0.4 })} position={[-3.45, 1.0, -0.9]} scale={0.14} />
-      <mesh geometry={GEO.sphereSmooth} material={glowMat('#3ddc84', 2.4, { dayGlow: 0.4 })} position={[3.45, 1.0, -0.9]} scale={0.14} />
+      {/* alas largas en flecha, con raíz gruesa y puntas que se curvan hacia arriba */}
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * 0.5, FY - 0.45, 0.4]} rotation={[0, s * 0.5, 0]}>
+          <mesh geometry={GEO.box} material={white} position={[s * 2.4, 0, 0]} rotation={[0, 0, s * 0.06]} scale={[4.8, 0.12, 1.25]} castShadow />
+          <mesh geometry={GEO.box} material={pale} position={[s * 2.4, -0.02, -0.55]} rotation={[0, 0, s * 0.06]} scale={[4.4, 0.06, 0.3]} />
+          <mesh geometry={GEO.box} material={white} position={[s * 5.1, 0.35, -0.1]} rotation={[0, 0, s * 0.55]} scale={[1.1, 0.08, 0.7]} />
+          {/* motor rojo con entrada oscura y pilón */}
+          <group position={[s * 1.9, -0.5, 0.75]} rotation={[0, -s * 0.5, 0]}>
+            <mesh geometry={GEO.box} material={pale} position={[0, 0.3, -0.3]} scale={[0.14, 0.4, 1.2]} />
+            <mesh geometry={GEO.cylinder} material={red} position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[0.85, 1.7, 0.85]} castShadow />
+            <mesh geometry={GEO.cylinder} material={mat('#c9ced4')} position={[0, 0, 0.87]} rotation={[Math.PI / 2, 0, 0]} scale={[0.87, 0.1, 0.87]} />
+            <mesh geometry={GEO.cylinder} material={dark} position={[0, 0, 0.9]} rotation={[Math.PI / 2, 0, 0]} scale={[0.68, 0.05, 0.68]} />
+            <mesh geometry={GEO.cone} material={dark} position={[0, 0, -1.05]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.5, 0.5, 0.5]} />
+          </group>
+        </group>
+      ))}
+      {/* tren de aterrizaje: patas y ruedas dobles */}
+      {(
+        [
+          [0, 3.6],
+          [-0.75, -0.3],
+          [0.75, -0.3],
+        ] as [number, number][]
+      ).map(([x, z]) => (
+        <group key={`${x}${z}`}>
+          <mesh geometry={GEO.box} material={pale} position={[x, 0.55, z]} scale={[0.1, 0.7, 0.1]} />
+          {[-0.13, 0.13].map((dz) => (
+            <mesh key={dz} geometry={GEO.cylinderLow} material={dark} position={[x, 0.2, z + dz]} rotation={[0, 0, Math.PI / 2]} scale={[0.38, 0.22, 0.38]} />
+          ))}
+        </group>
+      ))}
+      {/* escalerilla en la puerta delantera */}
+      {stairs && <mesh geometry={GEO.box} material={mat('#e9e4d8')} position={[1.35, 0.65, 3.1]} rotation={[0, 0, 0.62]} scale={[1.8, 0.12, 0.7]} />}
+      {/* luces: rojo/verde en las puntas de ala, faro blanco en la nariz */}
+      <mesh geometry={GEO.sphereSmooth} material={glowMat('#ff4d4d', 2.4, { dayGlow: 0.4 })} position={[-5.3, FY + 0.2, -2.6]} scale={0.14} />
+      <mesh geometry={GEO.sphereSmooth} material={glowMat('#3ddc84', 2.4, { dayGlow: 0.4 })} position={[5.3, FY + 0.2, -2.6]} scale={0.14} />
+      <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffffff', 2, { dayGlow: 0.3 })} position={[0, 0.85, 4.1]} scale={0.12} />
     </group>
   )
 }
