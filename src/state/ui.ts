@@ -21,6 +21,8 @@ export type FocusInput =
   | { kind: 'zoom'; factor: number }
   /** Acerca un poco la cámara al muelle turístico, sin perder el mall de vista. */
   | { kind: 'harbor' }
+  /** El barco de los descuentos atracado (con o sin su ficha abierta). */
+  | { kind: 'ship' }
   /** Encuadra una vitrina de la zona de servicios (con lugar para su ficha). */
   | { kind: 'showroom'; id: ShowroomId }
 
@@ -57,6 +59,9 @@ interface UIState {
   harbor: { boat: BoatId; view: 'card' | 'list' } | null
   /** Vitrina de marca aliada abierta (Planly, GrowDesk). */
   showroom: ShowroomId | null
+  /** Ficha del barco de los descuentos abierta. */
+  shipOpen: boolean
+  openShip: (open: boolean) => void
   /** Pista de la búsqueda del tesoro recién encontrada (abre su ventana). */
   clue: { week: number; index: number } | null
   /** Panel de la cancha sintética abierto. */
@@ -118,21 +123,28 @@ export const useUI = create<UIState>()((set, get) => ({
   peek: false,
   peekSpace: (id) => set({ selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: true, harbor: null, showroom: null }),
   openPeek: () => set({ peek: false }),
-  openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, harbor: null, showroom: null } : { openStoreId: null, selectedSpaceId: null }),
+  openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, harbor: null, showroom: null, shipOpen: false } : { openStoreId: null, selectedSpaceId: null }),
   courtOpen: false,
-  openCourt: (open) => set(open ? { courtOpen: true, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null } : { courtOpen: false }),
+  openCourt: (open) => set(open ? { courtOpen: true, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { courtOpen: false }),
   openProduct: (id) => set({ productSheetId: id }),
   openSecret: (id) => set({ secretPromoId: id }),
   openHarbor: (boat) =>
     set(
       boat
-        ? { harbor: { boat, view: 'card' }, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
+        ? { harbor: { boat, view: 'card' }, shipOpen: false, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
         : { harbor: null },
+    ),
+  shipOpen: false,
+  openShip: (open) =>
+    set(
+      open
+        ? { shipOpen: true, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'ship', nonce: Date.now() + Math.random() } }
+        : { shipOpen: false },
     ),
   openShowroom: (id) =>
     set(
       id
-        ? { showroom: id, harbor: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'showroom', id, nonce: Date.now() + Math.random() } }
+        ? { showroom: id, shipOpen: false, harbor: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'showroom', id, nonce: Date.now() + Math.random() } }
         : { showroom: null },
     ),
   setHarborView: (view) => set((s) => (s.harbor ? { harbor: { ...s.harbor, view } } : s)),

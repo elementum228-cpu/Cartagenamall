@@ -262,7 +262,7 @@ function Shore({ sparse }: { sparse: boolean }) {
     ]
     const rocks: [number, number, number][] = [
       [-44, 12, 1.6],
-      [4, 47, 1.3],
+      [8, 49, 1.3],
       [44, -12, 1.5],
       [12, -44, 1.2],
       [-42, -36, 1.8],

@@ -35,6 +35,9 @@ export const SEA_Y = -0.5
 /** Barco pirata: atraca contra el malecón oeste, con la proa hacia la boca de la dársena. */
 export const PIRATE_BERTH: [number, number] = [BASIN.x0 + 1.95, HARBOR.headZ + 8.6]
 
+/** Barco de los descuentos: atraca por fuera del malecón este, con la proa hacia la muralla. */
+export const SHIP_BERTH: [number, number] = [HARBOR.east + 2.35, HARBOR.headZ + 8.8]
+
 /** Punto al que mira la cámara al tocar una lancha o el barco. */
 export const HARBOR_FOCUS: [number, number] = [HARBOR.x - 2, HARBOR.headZ + 6]
 

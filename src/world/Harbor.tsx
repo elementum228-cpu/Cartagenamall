@@ -15,6 +15,7 @@ import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
 import { Person } from './Person'
+import { DiscountShip } from './DiscountShip'
 import { PirateShip } from './PirateShip'
 
 // Muelle turístico al estilo del Muelle de los Pegasos: puerta en arco en la muralla, plaza de piedra
@@ -523,6 +524,7 @@ export function Harbor({ reduceMotion }: { reduceMotion: boolean }) {
         <Boat key={id} boat={BOATS[id]} selected={selected === id} reduceMotion={reduceMotion} />
       ))}
       <PirateShip reduceMotion={reduceMotion} selected={selected === 'pirata'} />
+      <DiscountShip reduceMotion={reduceMotion} />
       {!selected && <ScreenLabel
         label={label}
         position={[H.x, 7.8, H.headZ - 1]}

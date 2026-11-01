@@ -11,6 +11,7 @@ import { FootballCourtInfoPanel } from './features/FootballCourtInfoPanel'
 import { StoreSheet } from './features/StoreSheet'
 import { HarborSheet } from './features/HarborSheet'
 import { ShowroomSheet } from './features/ShowroomSheet'
+import { ShipLayer } from './ship/ShipLayer'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
@@ -122,6 +123,7 @@ function Shell() {
       <FootballCourtInfoPanel />
       <HarborSheet />
       <ShowroomSheet />
+      <ShipLayer />
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />

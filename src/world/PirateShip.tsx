@@ -113,7 +113,7 @@ const GROUPS = [
   ['#9b5de5', '#f15bb5', '#f2f2f2', '#00bbf9', '#fee440', '#3d7ea6'],
 ]
 
-type P3 = [number, number, number]
+export type P3 = [number, number, number]
 const QUAY_Y = H.deckY
 const DECK_W = SEA_Y + DY
 const WEST_LANE = H.west + H.quayWidth / 2
@@ -155,7 +155,7 @@ function along(pts: P3[], u: number, out: THREE.Vector3): number {
 }
 
 /** Cuerda/palo entre dos puntos locales. */
-function Line({ a, b, r = 0.03, material }: { a: P3; b: P3; r?: number; material: THREE.Material }) {
+export function Line({ a, b, r = 0.03, material }: { a: P3; b: P3; r?: number; material: THREE.Material }) {
   const { mid, len, q } = useMemo(() => {
     const va = new THREE.Vector3(...a)
     const vb = new THREE.Vector3(...b)
@@ -169,7 +169,7 @@ function Line({ a, b, r = 0.03, material }: { a: P3; b: P3; r?: number; material
 }
 
 /** Muchas copias de una pieza en una sola llamada de dibujo. */
-function Instances({ geometry, material, items }: { geometry: THREE.BufferGeometry; material: THREE.Material; items: { p: P3; s: P3 }[] }) {
+export function Instances({ geometry, material, items }: { geometry: THREE.BufferGeometry; material: THREE.Material; items: { p: P3; s: P3 }[] }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   useLayoutEffect(() => {
     const o = new THREE.Object3D()

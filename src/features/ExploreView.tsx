@@ -21,6 +21,7 @@ import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
+import { ShipPill, ShipTestButton } from '../ship/ShipLayer'
 import { BOATS, BOAT_IDS } from '../tourism/config'
 import { startTour } from './GuidedTour'
 import { PinchHint } from './PinchHint'
@@ -35,7 +36,7 @@ export function ExploreView({ active }: { active: boolean }) {
   const use3D = webgl && !force2D
   const selectedSpaceId = useUI((s) => s.selectedSpaceId)
   const peek = useUI((s) => s.peek)
-  const harborOpen = useUI((s) => s.harbor !== null || s.showroom !== null)
+  const harborOpen = useUI((s) => s.harbor !== null || s.showroom !== null || s.shipOpen)
   const night = useIsNight() && use3D
   const root = useRef<HTMLDivElement>(null)
 
@@ -219,6 +220,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             <Countdown endsAt={flash.endsAt} className="!font-sans !text-[12.5px] leading-none !font-semibold opacity-90" />
           </button>
         )}
+        <ShipPill />
         {season === 'halloween' && (
           <span className="chrome-text flex h-8 items-center gap-1.5 pr-1 text-[12.5px] leading-none font-semibold">
             <span className="grid size-6 place-items-center rounded-full bg-[#e8761c] text-white shadow-[0_2px_10px_rgb(232_118_28/0.5)]">
@@ -482,6 +484,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       )}
       {use3D && <TimeToggle />}
       <DemoPromoButton className={item} onDone={() => setOpen(false)} />
+      {use3D && <ShipTestButton className={item} onDone={() => setOpen(false)} />}
       <button
         className={item}
         onClick={() => {

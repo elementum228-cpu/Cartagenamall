@@ -14,6 +14,8 @@ import { MAX_LOYALTY_STAMPS, MIN_LOYALTY_STAMPS, loyaltyOf } from '../state/pass
 import { Countdown, EmptyState, btn, input } from '../ui/bits'
 import { describeHideSpot } from '../promotions/hideSpot'
 import { HideSpotPicker } from './HideSpotPicker'
+import { MerchantShipEditor } from '../ship/MerchantShipEditor'
+import { isShipPromotion } from '../ship/offers'
 
 // Promociones del comerciante: las crea, pausa, relanza y borra para su propia tienda. Una oferta
 // relámpago nueva se presenta en el mall (local iluminado, cartel grande y visitantes que acuden).
@@ -38,12 +40,13 @@ const TYPE_ICON = { flash: Zap, normal: Tag, secret: Gem } as const
 
 export function MerchantPromotions({ store }: { store: Store }) {
   const promotions = useCatalog((s) => s.promotions)
-  const mine = useMemo(() => promotions.filter((p) => p.storeId === store.id), [promotions, store.id])
+  const mine = useMemo(() => promotions.filter((p) => p.storeId === store.id && !isShipPromotion(p)), [promotions, store.id])
   const [creating, setCreating] = useState(false)
   const now = useNow()
 
   return (
     <div className="space-y-3">
+      <MerchantShipEditor key={`b${store.id}`} store={store} />
       <LoyaltyEditor key={store.id} store={store} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-ink-soft">

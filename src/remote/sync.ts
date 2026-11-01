@@ -1,6 +1,10 @@
 import type { Order, Product, Promotion, SpaceClaim, Store, SubOrder } from '../domain/types'
 import { SEED_ASSIGNMENTS, SEED_PRODUCTS, SEED_STORES, createSeedPromotions } from '../data/seed'
 import { isDemoPromotion } from '../promotions/demo'
+import { isShipPromotion } from '../ship/offers'
+
+/** Promociones que viven solo en este dispositivo (demostración y barco de los descuentos). */
+const isLocalPromotion = (p: Promotion) => isDemoPromotion(p) || isShipPromotion(p)
 import { useCatalog } from '../state/catalog'
 import { useClaims } from '../state/claims'
 import { useSpacePricing, type Pricing } from '../state/spacePricing'
@@ -56,7 +60,7 @@ export async function loadCatalog() {
       stores: (s.data as Doc<Store>[]).map((r) => r.doc),
       products: (p.data as Doc<Product>[]).map((r) => r.doc),
       // la promoción de prueba es local (control de demostración), se conserva
-      promotions: [...(pr.data as Doc<Promotion>[]).map((r) => r.doc), ...local.promotions.filter(isDemoPromotion)],
+      promotions: [...(pr.data as Doc<Promotion>[]).map((r) => r.doc), ...local.promotions.filter(isLocalPromotion)],
       assignments: Object.fromEntries((a.data as { space_id: string; store_id: string }[]).map((r) => [r.space_id, r.store_id])),
     }),
   )
@@ -91,7 +95,7 @@ function pushCatalog(prev: ReturnType<typeof useCatalog.getState>, next: ReturnT
   const db = supabase!
   const stores = diff(prev.stores, next.stores)
   const products = diff(prev.products, next.products)
-  const promos = diff(prev.promotions.filter((p) => !isDemoPromotion(p)), next.promotions.filter((p) => !isDemoPromotion(p)))
+  const promos = diff(prev.promotions.filter((p) => !isLocalPromotion(p)), next.promotions.filter((p) => !isLocalPromotion(p)))
   const assignChanged = prev.assignments !== next.assignments
   if (!stores.changed.length && !stores.removed.length && !products.changed.length && !products.removed.length && !promos.changed.length && !promos.removed.length && !assignChanged) return
   enqueue(async () => {
