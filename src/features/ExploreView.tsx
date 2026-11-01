@@ -1,6 +1,6 @@
 import { openCourtOrClaim } from '../football/open'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { BookOpen, Castle, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
+import { Anchor, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -22,6 +22,7 @@ import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
 import { ShipPill, ShipTestButton } from '../ship/ShipLayer'
+import { usePirateShip } from '../state/pirate'
 import { BOATS, BOAT_IDS } from '../tourism/config'
 import { startTour } from './GuidedTour'
 import { PinchHint } from './PinchHint'
@@ -497,6 +498,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       </button>
       <InstallButton className={item} onDone={() => setOpen(false)} />
       {use3D && <HalloweenToggle className={item} />}
+      {use3D && <PirateToggle className={item} />}
       {use3D && (
         <button
           className={item}
@@ -623,6 +625,17 @@ function HalloweenToggle({ className }: { className: string }) {
       aria-label={on ? 'Quitar el tema de Halloween' : 'Ver el mall con tema de Halloween'}
     >
       <Ghost className="size-4" /> {on ? 'Quitar Halloween' : 'Tema Halloween'}
+    </button>
+  )
+}
+
+/** Deja quieto el barco pirata en el muelle o lo pone a navegar alrededor de la fortaleza. */
+function PirateToggle({ className }: { className: string }) {
+  const parked = usePirateShip((s) => s.parked)
+  const setParked = usePirateShip((s) => s.setParked)
+  return (
+    <button className={className} onClick={() => setParked(!parked)} aria-pressed={parked} aria-label={parked ? 'Poner a navegar el barco pirata' : 'Dejar quieto el barco pirata en el muelle'}>
+      {parked ? <Sailboat className="size-4" /> : <Anchor className="size-4" />} {parked ? 'Barco pirata: navegar' : 'Barco pirata: quieto'}
     </button>
   )
 }

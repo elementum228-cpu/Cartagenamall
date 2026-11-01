@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { usePirateShip } from '../state/pirate'
 import { useUI } from '../state/ui'
 import { BASIN, HARBOR, PIRATE_BERTH, SEA_Y } from '../tourism/config'
 import { trackHarbor } from '../tourism/store'
@@ -347,7 +348,9 @@ export function PirateShip({ reduceMotion, selected }: { reduceMotion: boolean; 
   const glowRef = useRef<THREE.Mesh>(null)
 
   useFrame(({ clock }) => {
-    const time = reduceMotion ? 1 : clock.elapsedTime
+    // quieto: se queda atracado con su gente a bordo y la fila esperando (sigue meciéndose)
+    const parked = usePirateShip.getState().parked
+    const time = reduceMotion || parked ? 1 : clock.elapsedTime
     const phase = time % CYCLE
     let rot = 0
     let speed = 0
@@ -360,7 +363,7 @@ export function PirateShip({ reduceMotion, selected }: { reduceMotion: boolean; 
       rot = Math.atan2(tan.x, tan.z)
       speed = speedAt(s)
     }
-    const bob = reduceMotion ? 0 : Math.sin(time * 0.9) * 0.06
+    const bob = reduceMotion ? 0 : Math.sin(clock.elapsedTime * 0.9) * 0.06
     if (ship.current) {
       ship.current.position.set(pos.x, SEA_Y, pos.z)
       ship.current.rotation.y = rot

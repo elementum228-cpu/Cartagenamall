@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { FLOOR_BY_ID, FOOD_LAYOUT, insideSpace, onP1Walkway } from '../config/mall'
+import { FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
@@ -275,19 +275,7 @@ function buildFurniture() {
   plant(T.x1 - 0.6, T.z0 + 0.9, 0.7)
   plant(T.x0 + 0.9, T.z1 - 0.6, 0.7)
 
-  // Palmeras pequeñas en macetas grandes
-  const palm = (x: number, z: number, h: number, seed: number) => {
-    if (insideSpace(x, z, 1.6, 'P2')) return
-    pots.push({ p: [x, 0.55, z], s: [1.2, 0.7, 1.2] })
-    footprints.push({ x, z, r: 0.7 })
-    trunks.push({ p: [x, 0.9 + h / 2, z], s: [0.26, h, 0.26], r: seed })
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2 + seed
-      fronds.push({ p: [x + Math.sin(a) * 0.7, 0.95 + h, z + Math.cos(a) * 0.7], s: [0.45, 0.07, 1.6], r: a, rx: 0.35 })
-    }
-  }
-  palm(-6.5, H - 1.6, 2.2, 1.2)
-  palm(H - 1.6, -7, 2.4, 2.1)
+  // Sin palmeras en la terraza: patio despejado.
 
   const lamp = (x: number, z: number) => {
     lampPoles.push({ p: [x, 1.5, z], s: [0.1, 2.6, 0.1] })
