@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { airportAnchor } from '../airport/anchor'
-import { TAKEOFF_MS, TAXI_FRAC, useFlight } from '../airport/flight'
+import { LANDING_MS, TAKEOFF_MS, TAXI_FRAC, TOUCHDOWN, useFlight } from '../airport/flight'
 import { AIRPORT, AIRPORT_GATE_Z, PLANE, RUNWAY, TERMINAL, TOWER } from '../airport/config'
 import { CORDON, Garita, STONE, STONE_DARK, WallLantern } from './Fortress'
 import { useIsNight } from '../lib/useIsNight'
@@ -413,6 +413,13 @@ const TAXI: [number, number][] = [
   [RUNWAY.x, PLANE.z - 8],
   [RUNWAY.x, RUNWAY.z0 + 3],
 ]
+/** Rodaje de llegada: del punto de frenado en la pista a la manga. */
+const TAXI_IN: [number, number][] = [
+  [RUNWAY.x, -6],
+  [RUNWAY.x, PLANE.z - 6],
+  [PLANE.x + 1.5, PLANE.z - 4],
+  [PLANE.x, PLANE.z],
+]
 const tmp = new THREE.Vector3()
 /** Punto a una fracción u de una polilínea (velocidad constante) y su rumbo. */
 function along(pts: [number, number][], u: number, out: THREE.Vector3) {
@@ -440,15 +447,51 @@ function along(pts: [number, number][], u: number, out: THREE.Vector3) {
 function MallPlane() {
   const g = useRef<THREE.Group>(null)
   const head = useRef(0)
-  const rolling = useFlight((s) => s.step === 'takeoff')
+  const rolling = useFlight((s) => s.step === 'takeoff' || s.step === 'landMall')
   const shadow = useRef<THREE.Mesh>(null)
   useFrame((_, dt) => {
     const p = g.current
     if (!p) return
-    const { step, world, takeoffAt, direction } = useFlight.getState()
-    const away = world === 'island' || (step === 'flying' && direction === 'to') || step === 'arrived'
+    const { step, world, takeoffAt, landingAt } = useFlight.getState()
+    const away = world === 'island' || step === 'flying' || step === 'arrived' || step === 'departIsland'
     p.visible = !away
     if (shadow.current) shadow.current.visible = !away
+    if (step === 'landMall') {
+      // aterrizaje: aproximación desde el mar por la cabecera del fondo, toque, frenado y rodaje a la manga
+      const t = Math.min(1, (performance.now() - landingAt) / LANDING_MS)
+      const TD = RUNWAY.z0 + 4
+      const STOP = -6
+      let x: number = RUNWAY.x
+      let z: number
+      let y = Y
+      let pitch = 0
+      let heading = 0
+      if (t < TOUCHDOWN) {
+        const u = t / TOUCHDOWN
+        z = TD - 55 * (1 - u)
+        y = Y + 13 * Math.pow(1 - u, 1.15)
+        pitch = -0.04 - (u > 0.8 ? (u - 0.8) * 0.6 : 0)
+      } else if (t < 0.78) {
+        const u = (t - TOUCHDOWN) / (0.78 - TOUCHDOWN)
+        z = TD + (STOP - TD) * (1 - (1 - u) * (1 - u))
+        pitch = -Math.max(0, 0.12 - u * 0.6)
+      } else {
+        const u = (t - 0.78) / 0.22
+        const target = along(TAXI_IN, u * u * (3 - 2 * u), tmp)
+        x = tmp.x
+        z = tmp.z
+        const want = u > 0.85 ? 0 : target
+        let dh = want - head.current
+        dh = Math.atan2(Math.sin(dh), Math.cos(dh))
+        head.current += dh * Math.min(1, dt * 5)
+        heading = head.current
+      }
+      if (t < 0.78) head.current = 0
+      p.position.set(x, y, z)
+      p.rotation.set(pitch, heading, 0)
+      if (shadow.current) shadow.current.position.set(x + (y - Y) * 0.15, Y + 0.02, z)
+      return
+    }
     if (step !== 'takeoff') {
       head.current = 0
       p.position.set(PLANE.x, Y, PLANE.z)

@@ -5,7 +5,7 @@ import { ISLAND, ISLAND_RUNWAY, ISLAND_WING, P1, insideSpace, toWorld } from '..
 import type { ZoneConfig } from '../domain/types'
 import { useIsNight } from '../lib/useIsNight'
 import { islandPlaneAnchor } from '../airport/anchor'
-import { LANDING_MS, TOUCHDOWN, useFlight } from '../airport/flight'
+import { LANDING_MS, TAKEOFF_MS, TAXI_FRAC, TOUCHDOWN, useFlight } from '../airport/flight'
 import { cameraState } from './cameraState'
 import { AirplaneModel } from './Airport'
 import { Batch } from './Batch'
@@ -202,13 +202,33 @@ function IslandPlane() {
   useFrame(({ camera, gl }) => {
     const p = g.current
     if (!p) return
-    const { step, landingAt, world } = useFlight.getState()
+    const { step, landingAt, takeoffAt, world } = useFlight.getState()
     let z = PARK_Z
     let y = 0.2
     let pitch = 0
+    let heading = Math.PI
     const landing = step === 'landing'
-    p.visible = landing || world === 'island' || step === 'arrived'
-    if (landing) {
+    p.visible = (landing || world === 'island' || step === 'arrived') && step !== 'flying'
+    if (step === 'departIsland') {
+      // despegue: gira, rueda a la cabecera (+z), vuelve a girar y despega hacia −z sobre el mar
+      const t = Math.min(1, (performance.now() - takeoffAt) / TAKEOFF_MS)
+      const HEAD = RUN.len / 2 - 2.5
+      const ease = (v: number) => v * v * (3 - 2 * v)
+      if (t < 0.12) heading = Math.PI - Math.PI * ease(t / 0.12)
+      else if (t < 0.38) {
+        heading = 0
+        z = PARK_Z + (HEAD - PARK_Z) * ease((t - 0.12) / 0.26)
+      } else if (t < TAXI_FRAC) {
+        z = HEAD
+        heading = Math.PI * ease((t - 0.38) / (TAXI_FRAC - 0.38))
+      } else {
+        const b = (t - TAXI_FRAC) / (1 - TAXI_FRAC)
+        z = HEAD - (HEAD + RUN.len / 2 + 60) * b * b
+        const lift = Math.max(0, -(RUN.len / 2 - 7) - z)
+        y = 0.2 + Math.pow(lift, 1.2) * 0.3
+        pitch = Math.min(0.3, lift * 0.035)
+      }
+    } else if (landing) {
       const t = Math.min(1, (performance.now() - landingAt) / LANDING_MS)
       const TD = RUN.len / 2 - 3
       if (t < TOUCHDOWN) {
@@ -226,7 +246,7 @@ function IslandPlane() {
       }
     }
     p.position.set(0.6, y, z)
-    p.rotation.set(pitch, Math.PI, 0)
+    p.rotation.set(pitch, heading, 0)
     // ancla en pantalla para la invitación de regreso (sobre el avión)
     p.getWorldPosition(wp)
     wp.y += 4.5

@@ -193,13 +193,13 @@ function BoardingPassScreen() {
 }
 
 /** Mientras el avión rueda y despega en el mapa: un aviso discreto arriba que cuenta qué pasa. */
-function TakeoffNotice() {
+function TakeoffNotice({ from = 'Cartagena Mall' }: { from?: string }) {
   const [phase, setPhase] = useState(0)
   useEffect(() => {
     const ids = [window.setTimeout(() => setPhase(1), TAKEOFF_MS * TAXI_FRAC * 0.82), window.setTimeout(() => setPhase(2), TAKEOFF_MS * TAXI_FRAC)]
     return () => ids.forEach(clearTimeout)
   }, [])
-  const text = ['Rodando hacia la cabecera de la pista…', 'En posición. Listos para despegar', 'Despegando de Cartagena Mall…'][phase]
+  const text = ['Rodando hacia la cabecera de la pista…', 'En posición. Listos para despegar', `Despegando de ${from}…`][phase]
   return (
     <motion.div
       className="pointer-events-none fixed inset-x-0 top-[max(14px,env(safe-area-inset-top))] z-[80] flex justify-center"
@@ -219,7 +219,7 @@ function TakeoffNotice() {
 }
 
 /** Durante el aterrizaje en la isla: aviso arriba. */
-function LandingNotice() {
+function LandingNotice({ to = 'la Isla de los Descuentos' }: { to?: string }) {
   const [touched, setTouched] = useState(false)
   useEffect(() => {
     const id = window.setTimeout(() => setTouched(true), LANDING_MS * TOUCHDOWN)
@@ -236,7 +236,7 @@ function LandingNotice() {
       <span className="flex items-center gap-2 rounded-full bg-[#0d2a3f]/85 px-4 py-2.5 text-[14px] font-semibold text-white shadow-lg backdrop-blur-xl">
         <PlaneLanding className="size-4 text-[#f5c542]" />
         <motion.span key={String(touched)} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
-          {touched ? '¡Aterrizamos! Frenando en la pista…' : 'Aproximación a la Isla de los Descuentos…'}
+          {touched ? '¡Aterrizamos! Frenando en la pista…' : `Aproximación a ${to}…`}
         </motion.span>
       </span>
     </motion.div>
@@ -398,6 +398,8 @@ export function FlightLayer() {
       {step === 'takeoff' && <TakeoffNotice key="takeoff" />}
       {step === 'flying' && <Flying key="flying" />}
       {step === 'landing' && <LandingNotice key="landing" />}
+      {step === 'departIsland' && <TakeoffNotice key="depart" from="la Isla de los Descuentos" />}
+      {step === 'landMall' && <LandingNotice key="landMall" to="Cartagena Mall" />}
       {step === 'arrived' && <Arrived key="arrived" />}
       {step === null && world === 'island' && <IslandHud key="hud" />}
       {step === null && world === 'island' && returnOpen && <ReturnInvite key="return" />}

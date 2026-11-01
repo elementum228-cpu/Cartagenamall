@@ -6,7 +6,7 @@ import { useUI } from '../state/ui'
 // Viaje a Isla Descuento: terminal (tiquete gratis) → pase de abordar → despegue del avión en la
 // pista → pantalla de vuelo (cargando, pero volando) → llegada a la isla. Y el regreso al mall.
 
-export type FlightStep = 'terminal' | 'pass' | 'takeoff' | 'flying' | 'landing' | 'arrived'
+export type FlightStep = 'terminal' | 'pass' | 'takeoff' | 'flying' | 'landing' | 'arrived' | 'departIsland' | 'landMall'
 export interface BoardingPass {
   name: string
   flight: string
@@ -109,13 +109,27 @@ export const useFlight = create<FlightState>()((set, get) => ({
   explore: () => set({ step: null }),
   flyBack: () => {
     clear()
-    set({ step: 'flying', direction: 'back', returnOpen: false })
-    later(700, () => {
-      set({ world: 'mall' })
-      useUI.setState({ selectedSpaceId: null, openStoreId: null, peek: false })
-      useUI.getState().requestFocus({ kind: 'airport' })
+    const r = reduced()
+    // despegue en la isla: rueda hasta la cabecera, gira y despega hacia el mar
+    set({ step: 'departIsland', direction: 'back', returnOpen: false, takeoffAt: performance.now() })
+    useUI.getState().requestFocus({ kind: 'islandRunway' })
+    void playCabinChime()
+    if (!r) later(900, () => void playTakeoffEngine(((TAKEOFF_MS - 900) / 1000) * TAXI_FRAC, (TAKEOFF_MS - 900) / 1000))
+    later(r ? 300 : TAKEOFF_MS, () => {
+      set({ step: 'flying' })
+      later(700, () => {
+        set({ world: 'mall' })
+        useUI.setState({ selectedSpaceId: null, openStoreId: null, peek: false })
+        useUI.getState().requestFocus({ kind: 'airport' })
+      })
+      later(r ? 1200 : 3400, () => {
+        if (r) return set({ step: null })
+        // aterrizaje en el mall: llega desde el mar, frena y rueda hasta la manga
+        set({ step: 'landMall', landingAt: performance.now() })
+        void playLanding(LANDING_MS / 1000, TOUCHDOWN)
+        later(LANDING_MS + 400, () => set({ step: null }))
+      })
     })
-    later(reduced() ? 1200 : 3200, () => set({ step: null }))
   },
   cancel: () => {
     clear()
