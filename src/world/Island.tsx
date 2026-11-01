@@ -14,6 +14,7 @@ import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat, shade } from './materials'
 import { dimLabelMat, glowMat, lightPoolMat, nightVolumeMat } from './night'
 import { Person } from './Person'
+import { RunwayLights } from './RunwayLights'
 
 // Isla de los Descuentos: un castillo-isla de forma irregular (sigue la costa, con baluartes) que
 // por dentro es un mini-mall de una planta: plaza con fuente y cuatro pasillos por sector (Moda,
@@ -359,7 +360,7 @@ function Castle() {
         ))}
         {[-1, 1].flatMap((s) =>
           Array.from({ length: 9 }, (_, i) => (
-            <mesh key={`${s}${i}`} geometry={GEO.sphere} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.35 })} position={[0.6 + s * (RUN.w / 2 + 0.25), 0.32, -RUN.len / 2 + (i * RUN.len) / 8]} scale={0.2} />
+            <mesh key={`${s}${i}`} geometry={GEO.sphere} material={mat('#cfd4da')} position={[0.6 + s * (RUN.w / 2 + 0.25), 0.32, -RUN.len / 2 + (i * RUN.len) / 8]} scale={0.2} />
           )),
         )}
         <IslandAirport />
@@ -455,6 +456,9 @@ export function Island({ reduceMotion }: { reduceMotion: boolean }) {
         ))}
       </Batch>
       <IslandPlane />
+      <group position={[ISLAND_RUNWAY.x, 0, ISLAND_RUNWAY.z]} rotation={[0, ISLAND_RUNWAY.rot, 0]}>
+        <RunwayLights cx={0.6} z0={-RUN.len / 2} z1={RUN.len / 2} w={RUN.w} y={0.22} dir={-1} />
+      </group>
       <Strollers reduceMotion={reduceMotion} />
       <Balloon reduceMotion={reduceMotion} />
       <ScreenLabel label={label} position={[C.x - 3, 12, C.z - 3]} pixelHeight={38} maxZoomRatio={2.6} priority={LABEL_PRIORITY.floorSign + 5} />

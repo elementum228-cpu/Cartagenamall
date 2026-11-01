@@ -15,6 +15,7 @@ import { LABEL_PRIORITY } from './labels'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
 import { Person } from './Person'
+import { RunwayLights } from './RunwayLights'
 
 // Aeropuerto Cartagena Mall (propuesta de diseño): plataforma de piedra por fuera de la muralla este,
 // terminal con fachada de vidrio que se enciende de noche y letrero en el techo, torre de control con
@@ -61,8 +62,8 @@ function Ground() {
   const cz = (A.z0 + A.z1) / 2
   const runLen = RUNWAY.z1 - RUNWAY.z0
   const runZ = (RUNWAY.z0 + RUNWAY.z1) / 2
-  const edgeLight = glowMat('#ffd58a', 2.6, { dayGlow: 0.35 })
-  const endLight = glowMat('#7dff9c', 2.6, { dayGlow: 0.35 })
+  const edgeLight = mat('#cfd4da')
+  const endLight = mat('#cfd4da')
   return (
     <group>
       {/* baluarte de piedra hasta el mar: zócalo en talud, muro y cordón (como la muralla) */}
@@ -95,7 +96,7 @@ function Ground() {
       {[-1.6, -0.8, 0, 0.8, 1.6].map((dx) => (
         <mesh key={dx} geometry={GEO.sphere} material={endLight} position={[RUNWAY.x + dx, Y + 0.12, RUNWAY.z1 + 0.4]} scale={0.18} />
       ))}
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffd58a', 0.5)} rotation={[-Math.PI / 2, 0, 0]} position={[RUNWAY.x, Y + 0.05, runZ]} scale={[RUNWAY.width + 3, runLen, 1]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#7fb4ff', 0.35)} rotation={[-Math.PI / 2, 0, 0]} position={[RUNWAY.x, Y + 0.05, runZ]} scale={[RUNWAY.width + 3, runLen, 1]} />
       {/* línea amarilla de rodaje: del avión a la pista */}
       <mesh geometry={GEO.box} material={mat('#f5c542')} position={[PLANE.x, Y + 0.03, (PLANE.z + RUNWAY.z1 - 2) / 2 + 1]} scale={[0.12, 0.01, RUNWAY.z1 - 2 - PLANE.z]} />
       <mesh geometry={GEO.box} material={mat('#f5c542')} position={[(PLANE.x + RUNWAY.x) / 2, Y + 0.03, RUNWAY.z1 - 1.4]} scale={[RUNWAY.x - PLANE.x, 0.01, 0.12]} />
@@ -525,6 +526,7 @@ export function Airport({ reduceMotion }: { reduceMotion: boolean }) {
         <Extras />
       </Batch>
       <Tower beacon={beacon} />
+      <RunwayLights cx={RUNWAY.x} z0={RUNWAY.z0} z1={RUNWAY.z1} w={RUNWAY.width} y={Y} dir={1} />
       <MallPlane />
       <Travelers reduceMotion={reduceMotion} />
       {/* área táctil: terminal, torre y avión */}
