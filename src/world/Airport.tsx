@@ -2,7 +2,8 @@ import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { airportAnchor } from '../airport/anchor'
-import { AIRPORT, PLANE, RUNWAY, TERMINAL, TOWER } from '../airport/config'
+import { AIRPORT, AIRPORT_GATE_Z, PLANE, RUNWAY, TERMINAL, TOWER } from '../airport/config'
+import { CORDON, Garita, STONE, STONE_DARK, WallLantern } from './Fortress'
 import { useIsNight } from '../lib/useIsNight'
 import { useUI } from '../state/ui'
 import { Batch } from './Batch'
@@ -63,9 +64,18 @@ function Ground() {
   const endLight = glowMat('#7dff9c', 2.6, { dayGlow: 0.35 })
   return (
     <group>
-      {/* bloque de piedra hasta el mar y borde claro */}
-      <mesh geometry={GEO.box} material={mat('#bfb39b')} position={[cx, (Y - 1.4) / 2, cz]} scale={[W, Y + 1.4, D]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat('#9c8c70')} position={[cx, -0.75, cz]} scale={[W + 0.4, 0.5, D + 0.4]} />
+      {/* baluarte de piedra hasta el mar: zócalo en talud, muro y cordón (como la muralla) */}
+      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[cx, (Y - 1.5) / 2, cz]} scale={[W, Y + 1.5, D]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[cx + 0.3, -0.9, cz]} scale={[W + 0.6, 1.2, D + 1.2]} />
+      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[cx + 0.15, -0.15, cz]} scale={[W + 0.3, 0.3, D + 0.6]} />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={[cx + 0.06, Y - 0.25, cz]} scale={[W + 0.12, 0.16, D + 0.12]} />
+      {/* troneras en los muros que dan al mar */}
+      {[-14, -6, 2].map((z) => (
+        <mesh key={z} geometry={GEO.box} material={mat('#4a3a2c')} position={[A.x1 + 0.01, Y / 2 - 0.2, z]} scale={[0.04, 0.6, 0.3]} />
+      ))}
+      {[36, 42].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={mat('#4a3a2c')} position={[x, Y / 2 - 0.2, A.z1 + 0.01]} scale={[0.3, 0.6, 0.04]} />
+      ))}
       {/* plataforma de concreto claro */}
       <mesh geometry={GEO.box} material={mat('#d6d8d6')} position={[(A.x0 + RUNWAY.x - RUNWAY.width / 2) / 2, Y + 0.01, cz]} scale={[RUNWAY.x - RUNWAY.width / 2 - A.x0 - 0.2, 0.02, D - 0.6]} receiveShadow />
       {/* pista: asfalto, línea central discontinua, umbrales y luces de borde */}
@@ -88,14 +98,60 @@ function Ground() {
       {/* línea amarilla de rodaje: del avión a la pista */}
       <mesh geometry={GEO.box} material={mat('#f5c542')} position={[PLANE.x, Y + 0.03, (PLANE.z + RUNWAY.z1 - 2) / 2 + 1]} scale={[0.12, 0.01, RUNWAY.z1 - 2 - PLANE.z]} />
       <mesh geometry={GEO.box} material={mat('#f5c542')} position={[(PLANE.x + RUNWAY.x) / 2, Y + 0.03, RUNWAY.z1 - 1.4]} scale={[RUNWAY.x - PLANE.x, 0.01, 0.12]} />
-      {/* borde claro sobre el agua */}
-      {[
-        [cx, A.z0 + 0.12, W, 0.25],
-        [cx, A.z1 - 0.12, W, 0.25],
-        [A.x1 - 0.12, cz, 0.25, D],
-      ].map(([x, z, w, d]) => (
-        <mesh key={`${x}${z}`} geometry={GEO.box} material={mat('#efe4cc')} position={[x, Y + 0.04, z]} scale={[w, 0.1, d]} />
+      {/* parapeto con almenas en los bordes del mar (como las murallas) */}
+      {(
+        [
+          [A.x1 - 0.25, cz, 0.5, D, 'z'],
+          [cx, A.z0 + 0.25, W, 0.5, 'x'],
+          [cx, A.z1 - 0.25, W, 0.5, 'x'],
+        ] as [number, number, number, number, 'x' | 'z'][]
+      ).map(([x, z, w, d, along]) => {
+        const len = along === 'z' ? d : w
+        const n = Math.floor(len / 1.6)
+        return (
+          <group key={`${x}${z}`}>
+            <mesh geometry={GEO.box} material={mat(STONE[1])} position={[x, Y + 0.2, z]} scale={[w, 0.4, d]} castShadow />
+            {Array.from({ length: n }, (_, k) => {
+              const off = (k - (n - 1) / 2) * 1.6
+              return <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[x + (along === 'x' ? off : 0), Y + 0.62, z + (along === 'z' ? off : 0)]} scale={along === 'z' ? [0.5, 0.45, 0.85] : [0.85, 0.45, 0.5]} castShadow />
+            })}
+          </group>
+        )
+      })}
+      {/* garitas en las esquinas del mar */}
+      <Garita x={A.x1 - 0.6} z={A.z0 + 0.6} y={Y + 0.35} />
+      <Garita x={A.x1 - 0.6} z={A.z1 - 0.6} y={Y + 0.35} />
+      {/* puerta en la muralla: del mall al aeropuerto */}
+      <AirGate />
+    </group>
+  )
+}
+
+/** Puerta en arco en la muralla (cara exterior, mira al mar), con faroles y el pasaje encendido. */
+function AirGate() {
+  const stone = mat(STONE[0])
+  const trim = mat(CORDON)
+  const dark = glowMat('#3a2f28', 0.25)
+  const passage = glowMat('#ffb86b', 1.4)
+  const W = 2
+  const Hh = 2.3
+  return (
+    <group position={[A.x0 + 0.25, Y, AIRPORT_GATE_Z]} rotation={[0, Math.PI / 2, 0]}>
+      {[-1, 1].map((s) => (
+        <mesh key={s} geometry={GEO.box} material={stone} position={[s * (W / 2 + 0.4), (Hh + 0.3) / 2, 0]} scale={[0.8, Hh + 0.3, 0.6]} castShadow />
       ))}
+      <mesh geometry={GEO.box} material={stone} position={[0, Hh + 0.75, 0]} scale={[W + 1.6, 0.9, 0.6]} castShadow />
+      <mesh geometry={GEO.box} material={trim} position={[0, Hh + 1.25, 0]} scale={[W + 1.8, 0.14, 0.7]} />
+      <mesh geometry={GEO.halfDisc} material={trim} position={[0, Hh, 0.31]} rotation={[Math.PI / 2, 0, 0]} scale={[W / 2 + 0.22, 0.02, W / 2 + 0.22]} />
+      <mesh geometry={GEO.box} material={dark} position={[0, Hh / 2, 0.32]} scale={[W, Hh, 0.02]} />
+      <mesh geometry={GEO.halfDisc} material={dark} position={[0, Hh, 0.33]} rotation={[Math.PI / 2, 0, 0]} scale={[W / 2, 0.02, W / 2]} />
+      <mesh geometry={GEO.box} material={passage} position={[0, 0.55, 0.35]} scale={[W - 0.5, 1, 0.01]} />
+      {[-1, 1].map((s) => (
+        <WallLantern key={s} x={s * (W / 2 + 0.95)} y={2.3} z={0.55} />
+      ))}
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.75)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 1.8]} scale={[4, 3.4, 1]} />
+      {/* camino de piedra hasta la entrada de la terminal */}
+      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, 0.03, 2.4]} scale={[W + 0.4, 0.04, 4]} receiveShadow />
     </group>
   )
 }
@@ -310,7 +366,7 @@ export function Airport({ reduceMotion }: { reduceMotion: boolean }) {
       {/* área táctil: terminal, torre y avión */}
       <mesh
         geometry={GEO.box}
-        position={[(A.x0 + RUNWAY.x) / 2, 2.5, (A.z0 + A.z1) / 2]}
+        position={[(A.x0 + RUNWAY.x) / 2, Y + 2.5, (A.z0 + A.z1) / 2]}
         scale={[RUNWAY.x - A.x0, 5, A.z1 - A.z0]}
         onClick={(e) => {
           if (cameraState.handMode || e.delta > 8) return

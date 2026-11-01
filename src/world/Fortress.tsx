@@ -120,7 +120,7 @@ function Bastion({ corner, reach }: { corner: [number, number]; reach: number })
 }
 
 /** Garita colonial: cuerpo octogonal de piedra y cúpula de terracota. */
-function Garita({ x, z, y }: { x: number; z: number; y: number }) {
+export function Garita({ x, z, y }: { x: number; z: number; y: number }) {
   const stone = mat(STONE[2])
   return (
     <group position={[x, y, z]} scale={1.35}>

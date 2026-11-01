@@ -12,7 +12,8 @@ export const AIRPORT = {
   x1: 53,
   z0: -22,
   z1: 10,
-  deckY: 0.12,
+  /** Plataforma elevada sobre un baluarte de piedra (como el torreón del piso 2). */
+  deckY: 1.2,
 } as const
 
 /** Pista: eje en x, ancho y largo (a lo largo de z). */
@@ -22,6 +23,9 @@ export const TERMINAL = { x: OUT + 3.6, z: -1.5, w: 7, d: 11, h: 3.4 } as const
 export const TOWER = { x: OUT + 3, z: -15.5 } as const
 /** Avión en la plataforma, con la nariz hacia +z. */
 export const PLANE = { x: 44.2, z: -2.5 } as const
+
+/** Puerta en la muralla, junto a la terminal: une el mall con el aeropuerto (z). */
+export const AIRPORT_GATE_Z = 7.2
 
 /** A dónde mira la cámara al tocar el aeropuerto. */
 export const AIRPORT_FOCUS: [number, number] = [42.5, -5]
