@@ -23,6 +23,8 @@ export type FocusInput =
   | { kind: 'harbor' }
   /** El barco de los descuentos atracado (con o sin su ficha abierta). */
   | { kind: 'ship' }
+  /** El aeropuerto (con su invitación a volar a Isla Descuento). */
+  | { kind: 'airport' }
   /** Encuadra una vitrina de la zona de servicios (con lugar para su ficha). */
   | { kind: 'showroom'; id: ShowroomId }
 
@@ -64,6 +66,9 @@ interface UIState {
   /** Ficha del barco de los descuentos abierta. */
   shipOpen: boolean
   openShip: (open: boolean) => void
+  /** Aeropuerto seleccionado: se muestra la invitación a volar. */
+  airportOpen: boolean
+  openAirport: (open: boolean) => void
   /** Pista de la búsqueda del tesoro recién encontrada (abre su ventana). */
   clue: { week: number; index: number } | null
   /** Panel de la cancha sintética abierto. */
@@ -134,20 +139,27 @@ export const useUI = create<UIState>()((set, get) => ({
   openHarbor: (boat) =>
     set(
       boat
-        ? { harbor: { boat, view: 'card' }, shipOpen: false, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
+        ? { airportOpen: false, harbor: { boat, view: 'card' }, shipOpen: false, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
         : { harbor: null },
+    ),
+  airportOpen: false,
+  openAirport: (open) =>
+    set(
+      open
+        ? { airportOpen: true, shipOpen: false, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'airport', nonce: Date.now() + Math.random() } }
+        : { airportOpen: false },
     ),
   shipOpen: false,
   openShip: (open) =>
     set(
       open
-        ? { shipOpen: true, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'ship', nonce: Date.now() + Math.random() } }
+        ? { airportOpen: false, shipOpen: true, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'ship', nonce: Date.now() + Math.random() } }
         : { shipOpen: false },
     ),
   openShowroom: (id) =>
     set(
       id
-        ? { showroom: id, shipOpen: false, harbor: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'showroom', id, nonce: Date.now() + Math.random() } }
+        ? { airportOpen: false, showroom: id, shipOpen: false, harbor: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'showroom', id, nonce: Date.now() + Math.random() } }
         : { showroom: null },
     ),
   setHarborView: (view) => set((s) => (s.harbor ? { harbor: { ...s.harbor, view } } : s)),

@@ -19,6 +19,7 @@ import { useLabelDeclutter } from './labels'
 import { Lighting } from './Lighting'
 import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
+import { Airport } from './Airport'
 import { Harbor } from './Harbor'
 import { District } from './District'
 import { Halloween } from './Halloween'
@@ -135,6 +136,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       <group dispose={null}>
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
         <Harbor reduceMotion={reduceMotion} />
+        <Airport reduceMotion={reduceMotion} />
         <District reduceMotion={reduceMotion} />
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
         <Batch version="jardines">

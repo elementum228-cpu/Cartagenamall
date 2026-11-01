@@ -8,6 +8,7 @@ import { FLOOR_BY_ID, FLOOR_OF_ZONE, GATE, SPACE_BY_ID, ZONE_BY_ID } from '../co
 import { floorOrigin, liveOrigins, overviewCenter } from './floors'
 import { useUI } from '../state/ui'
 import { HARBOR_FOCUS, SHIP_BERTH } from '../tourism/config'
+import { AIRPORT_FOCUS } from '../airport/config'
 import { SHOWROOMS } from '../district/showrooms'
 import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR, cameraState } from './cameraState'
 
@@ -233,6 +234,14 @@ export function CameraRig() {
       const zoom = fit * (desktop ? 1.9 : 2.1)
       // Un poco hacia la cámara: el cartel de la oferta, arriba del local, queda dentro del encuadre.
       const target = new THREE.Vector3(so.x + space.position[0], so.y, so.z + space.position[1]).addScaledVector(TOWARD_CAMERA, -2.5)
+      cameraState.viewOffset.set(0, 0, 0)
+      goal.current = { target, zoom }
+    } else if (focus.kind === 'airport') {
+      // el aeropuerto completo, con su invitación arriba: un poco más abajo del centro
+      const zoom = THREE.MathUtils.clamp(camera.zoom * 1.2, fit * 1.3, fit * 2)
+      const target = new THREE.Vector3(AIRPORT_FOCUS[0], 0, AIRPORT_FOCUS[1])
+      cameraState.groundY = 0
+      target.addScaledVector(TOWARD_CAMERA, -(size.height * (desktop ? 0.2 : 0.12)) / (zoom * ELEVATION_SIN))
       cameraState.viewOffset.set(0, 0, 0)
       goal.current = { target, zoom }
     } else if (focus.kind === 'court') {

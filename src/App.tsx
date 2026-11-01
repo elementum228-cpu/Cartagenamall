@@ -12,6 +12,7 @@ import { StoreSheet } from './features/StoreSheet'
 import { HarborSheet } from './features/HarborSheet'
 import { ShowroomSheet } from './features/ShowroomSheet'
 import { ShipLayer } from './ship/ShipLayer'
+import { FlyInvite } from './airport/FlyInvite'
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
@@ -124,6 +125,7 @@ function Shell() {
       <HarborSheet />
       <ShowroomSheet />
       <ShipLayer />
+      <FlyInvite />
       <ProductSheet />
       <SecretPromoModal />
       <Toasts />
