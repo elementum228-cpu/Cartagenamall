@@ -158,7 +158,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         role="toolbar"
         aria-label="Categorías del mall"
       >
-        {/* Isla Descuento no va en la fila: se llega en avión desde el aeropuerto */}
+        {/* Isla Tecnología no va en la fila: se llega en avión desde el aeropuerto */}
         {ZONES.filter((z) => z.id !== 'I').map((z) => {
           const Icon = ZONE_ICON[z.id]
           return (

@@ -5,7 +5,7 @@ import { islandPlaneAnchor } from './anchor'
 import { playCabinChime } from './sounds'
 import { FLYING_MS, LANDING_MS, TAKEOFF_MS, TAXI_FRAC, TOUCHDOWN, useFlight } from './flight'
 
-// Pantallas del viaje a Isla Descuento: terminal con tablero de salidas y tiquete gratis, pase de
+// Pantallas del viaje a Isla Tecnología: terminal con tablero de salidas y tiquete gratis, pase de
 // abordar, aviso de despegue, pantalla de vuelo (cargando, pero volando) y bienvenida a la isla.
 // Mientras se está en la isla, un botón para volver al mall en avión.
 
@@ -33,12 +33,12 @@ function Shell({ children, onClose }: { children: React.ReactNode; onClose?: () 
   )
 }
 
-/** Terminal: tablero de salidas y tiquete gratis a Isla Descuento. */
+/** Terminal: tablero de salidas y tiquete gratis a Isla Tecnología. */
 function Terminal() {
   const [name, setName] = useState('')
   const { getTicket, cancel } = useFlight.getState()
   const rows = [
-    { f: 'CM 001', to: 'Isla Descuento', gate: 'A1', st: 'Abordando', on: true },
+    { f: 'CM 001', to: 'Isla Tecnología', gate: 'A1', st: 'Abordando', on: true },
     { f: 'CM 002', to: 'Islas del Rosario', gate: 'A2', st: 'Próximamente', on: false },
     { f: 'CM 003', to: 'Barú', gate: 'B1', st: 'Próximamente', on: false },
   ]
@@ -77,12 +77,12 @@ function Terminal() {
             <span className="h-px flex-1 border-t-2 border-dashed border-[#13b9ad]/50" />
           </div>
           <div className="text-right">
-            <p className="text-[30px] leading-none font-black">IDS</p>
-            <p className="text-[12px] text-[#5b6670]">Isla Descuento</p>
+            <p className="text-[30px] leading-none font-black">ITC</p>
+            <p className="text-[12px] text-[#5b6670]">Isla Tecnología</p>
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#f4f1ea] px-4 py-3">
-          <span className="text-[14px] font-semibold">Vuelo CM 001 · Clase Descuento</span>
+          <span className="text-[14px] font-semibold">Vuelo CM 001 · Clase Tech</span>
           <span className="text-[18px] font-black text-[#0f8f86]">GRATIS</span>
         </div>
         <label className="mt-3 block">
@@ -154,8 +154,8 @@ function BoardingPassScreen() {
             </div>
             <Plane className="size-6 text-[#13b9ad]" />
             <div className="text-right">
-              <p className="text-[34px] leading-none font-black">IDS</p>
-              <p className="text-[12px] text-[#5b6670]">Isla Descuento</p>
+              <p className="text-[34px] leading-none font-black">ITC</p>
+              <p className="text-[12px] text-[#5b6670]">Isla Tecnología</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
@@ -164,7 +164,7 @@ function BoardingPassScreen() {
             {field('Puerta', pass.gate)}
             {field('Asiento', pass.seat)}
             {field('Abordaje', pass.time)}
-            {field('Clase', 'Descuento')}
+            {field('Clase', 'Tech')}
             {field('Tarifa', '$0')}
           </div>
         </div>
@@ -219,7 +219,7 @@ function TakeoffNotice({ from = 'Cartagena Mall' }: { from?: string }) {
 }
 
 /** Durante el aterrizaje en la isla: aviso arriba. */
-function LandingNotice({ to = 'la Isla de los Descuentos' }: { to?: string }) {
+function LandingNotice({ to = 'Isla Tecnología' }: { to?: string }) {
   const [touched, setTouched] = useState(false)
   useEffect(() => {
     const id = window.setTimeout(() => setTouched(true), LANDING_MS * TOUCHDOWN)
@@ -271,13 +271,13 @@ function Flying() {
         <motion.div animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
           <Plane className="size-24 rotate-45 fill-white text-[#0d2a3f] drop-shadow-[0_18px_20px_rgb(13_42_63/0.25)]" strokeWidth={1.4} />
         </motion.div>
-        <p className="mt-8 text-[22px] font-extrabold">{back ? 'Volviendo a Cartagena Mall' : 'Volando a la Isla de los Descuentos'}</p>
+        <p className="mt-8 text-[22px] font-extrabold">{back ? 'Volviendo a Cartagena Mall' : 'Volando a Isla Tecnología'}</p>
         <p className="mt-1 text-[14px] font-semibold opacity-70">{back ? 'Abróchate el cinturón…' : 'Preparando la isla para ti…'}</p>
         {/* ruta con el avión que avanza: la barra de carga */}
         <div className="mt-7 w-full max-w-[340px]">
           <div className="flex items-center justify-between text-[13px] font-black">
-            <span>{back ? 'IDS' : 'CTG'}</span>
-            <span>{back ? 'CTG' : 'IDS'}</span>
+            <span>{back ? 'ITC' : 'CTG'}</span>
+            <span>{back ? 'CTG' : 'ITC'}</span>
           </div>
           <div className="relative mt-2 h-6">
             <span className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-[#0d2a3f]/30" />
@@ -302,8 +302,8 @@ function Arrived() {
           <PlaneLanding className="size-6" />
         </span>
         <p className="text-[14px] font-semibold text-white/75">Aterrizaste en</p>
-        <p className="text-[24px] leading-tight font-extrabold text-[#f5c542]">¡Bienvenido a la Isla de los Descuentos!</p>
-        <p className="mt-1.5 text-[14px] leading-snug text-white/80">Un castillo-isla de una sola planta: outlet, ofertas, variedad y locales disponibles para tu negocio.</p>
+        <p className="text-[24px] leading-tight font-extrabold text-[#f5c542]">¡Bienvenido a Isla Tecnología!</p>
+        <p className="mt-1.5 text-[14px] leading-snug text-white/80">Una isla dedicada a la tecnología: celulares, gaming, computación, smart home y locales disponibles para tu negocio.</p>
         <button className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#1fc7b6] to-[#0f8f86] text-[16px] font-semibold shadow-[0_8px_24px_rgb(19_185_173/0.45)] transition active:scale-[0.98]" onClick={explore}>
           Explorar la isla <ChevronRight className="size-5" />
         </button>
@@ -368,7 +368,7 @@ function IslandHud() {
     <>
       <motion.div className="pointer-events-none fixed inset-x-0 top-[calc(var(--chrome-top,72px)+4px)] z-20 flex justify-center" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}>
         <span className="flex items-center gap-2 rounded-full bg-[#0d2a3f]/80 px-4 py-2 text-[14px] font-bold text-white shadow-lg backdrop-blur-xl">
-          <span className="size-2 rounded-full bg-[#e85a8a]" /> Isla de los Descuentos · toca un local
+          <span className="size-2 rounded-full bg-[#5b8cff]" /> Isla Tecnología · toca un local
         </span>
       </motion.div>
       <motion.div className="fixed inset-x-0 bottom-[calc(var(--chrome-bottom,96px)+16px)] z-20 flex justify-center px-4" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}>
@@ -398,7 +398,7 @@ export function FlightLayer() {
       {step === 'takeoff' && <TakeoffNotice key="takeoff" />}
       {step === 'flying' && <Flying key="flying" />}
       {step === 'landing' && <LandingNotice key="landing" />}
-      {step === 'departIsland' && <TakeoffNotice key="depart" from="la Isla de los Descuentos" />}
+      {step === 'departIsland' && <TakeoffNotice key="depart" from="Isla Tecnología" />}
       {step === 'landMall' && <LandingNotice key="landMall" to="Cartagena Mall" />}
       {step === 'arrived' && <Arrived key="arrived" />}
       {step === null && world === 'island' && <IslandHud key="hud" />}

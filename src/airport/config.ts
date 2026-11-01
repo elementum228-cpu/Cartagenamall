@@ -2,7 +2,7 @@ import { FORTRESS } from '../config/mall'
 
 // Aeropuerto Cartagena Mall: plataforma por fuera de la muralla este (al final del pasillo de
 // Tecnología, junto a las canchas). Terminal pegada a la muralla, torre de control, plataforma con
-// un avión y una pista paralela a la muralla. Desde aquí se vuela a Isla Descuento.
+// un avión y una pista paralela a la muralla. Desde aquí se vuela a Isla Tecnología.
 
 const OUT = FORTRESS.half + FORTRESS.wallThickness / 2
 

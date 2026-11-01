@@ -176,7 +176,7 @@ export function WallLantern({ x, y, z }: { x: number; y: number; z: number }) {
  */
 /**
  * Entrada monumental. Por defecto, la del mall (con su escalinata hacia el muelle y el paso a la
- * plaza); la Isla de los Descuentos la reusa con su propio nombre, ancho y color, sin esos caminos.
+ * plaza); Isla Tecnología la reusa con su propio nombre, ancho y color, sin esos caminos.
  */
 export function EntranceGate({
   width = GATE.width,

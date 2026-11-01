@@ -3,7 +3,7 @@ import { usePassport } from '../state/passport'
 import { playCabinChime, playLanding, playTakeoffEngine } from './sounds'
 import { useUI } from '../state/ui'
 
-// Viaje a Isla Descuento: terminal (tiquete gratis) → pase de abordar → despegue del avión en la
+// Viaje a Isla Tecnología: terminal (tiquete gratis) → pase de abordar → despegue del avión en la
 // pista → pantalla de vuelo (cargando, pero volando) → llegada a la isla. Y el regreso al mall.
 
 export type FlightStep = 'terminal' | 'pass' | 'takeoff' | 'flying' | 'landing' | 'arrived' | 'departIsland' | 'landMall'

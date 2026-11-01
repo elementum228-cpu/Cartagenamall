@@ -20,7 +20,7 @@ import { RunwayLights } from './RunwayLights'
 // Aeropuerto Cartagena Mall (propuesta de diseño): plataforma de piedra por fuera de la muralla este,
 // terminal con fachada de vidrio que se enciende de noche y letrero en el techo, torre de control con
 // baliza, un avión blanco con franja turquesa junto a la escalerilla, pista con luces de borde y gente
-// con maletas. Al tocarlo aparece la invitación a volar a Isla Descuento.
+// con maletas. Al tocarlo aparece la invitación a volar a Isla Tecnología.
 
 const A = AIRPORT
 const Y = A.deckY
@@ -548,7 +548,7 @@ export function Airport({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const open = useUI((s) => s.airportOpen)
   const beacon = useRef<THREE.Mesh>(null)
-  const label = useMemo(() => getGlassPill('Aeropuerto', { dot: '#f5c542', sub: 'Vuelos a Isla Descuento', dark: night }), [night])
+  const label = useMemo(() => getGlassPill('Aeropuerto', { dot: '#f5c542', sub: 'Vuelos a Isla Tecnología', dark: night }), [night])
   const anchor = useMemo(() => new THREE.Vector3(), [])
   useFrame(({ clock, camera, gl }) => {
     // ancla de la invitación (en pantalla) sobre la terminal

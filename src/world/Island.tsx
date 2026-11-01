@@ -1,8 +1,7 @@
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { type ReactElement, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ISLAND, ISLAND_RUNWAY, ISLAND_WING, P1, insideSpace, toWorld } from '../config/mall'
-import type { ZoneConfig } from '../domain/types'
+import { ISLAND, ISLAND_RING, ISLAND_RUNWAY, ISLAND_SECTORS, SPACES, insideSpace, spaceFrontPoint, toWorld } from '../config/mall'
 import { useIsNight } from '../lib/useIsNight'
 import { islandPlaneAnchor } from '../airport/anchor'
 import { LANDING_MS, TAKEOFF_MS, TAXI_FRAC, TOUCHDOWN, useFlight } from '../airport/flight'
@@ -11,14 +10,14 @@ import { AirplaneModel } from './Airport'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { CORDON, EntranceGate, Garita, STONE, STONE_DARK } from './Fortress'
-import { getGlassPill, getZoneSign } from './labelTexture'
+import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
-import { GEO, PALETTE, mat, shade } from './materials'
-import { dimLabelMat, glowMat, lightPoolMat, nightVolumeMat } from './night'
+import { GEO, PALETTE, mat } from './materials'
+import { glowMat, lightPoolMat, nightVolumeMat } from './night'
 import { Person } from './Person'
 import { RunwayLights } from './RunwayLights'
 
-// Isla de los Descuentos: un castillo-isla de forma irregular (sigue la costa, con baluartes) que
+// Isla Tecnología: un castillo-isla de forma irregular (sigue la costa, con baluartes) que
 // por dentro es un mini-mall de una planta: plaza con fuente y cuatro pasillos por sector (Moda,
 // Tecnología, Belleza, Lifestyle) con sus arcos de color, como en la fortaleza. Los locales los pone
 // Scene (mismo estilo que el resto del mall). Base de piedra con talud, murallas con almenas,
@@ -27,11 +26,9 @@ import { RunwayLights } from './RunwayLights'
 const C = { x: ISLAND.x, z: ISLAND.z }
 const WT = 1.6
 const WH = 3.2
-const PINK = '#e85a8a'
+const TECH_BLUE = '#5b8cff'
+const CYAN = '#38e0ff'
 const IRON = '#2f3437'
-const PLAZA = 7.5
-const W = ISLAND_WING
-const WW = W.corridorHalf + 5.4
 /**
  * Contorno del castillo (relativo al centro), en sentido horario visto desde arriba. Irregular:
  * baluartes que salen hacia el mar y entrantes, como una fortaleza que sigue la costa.
@@ -71,42 +68,6 @@ function WallRun({ a, b, gap = 0 }: { a: [number, number]; b: [number, number]; 
   )
 }
 
-/** Pasillo de un sector: piso, camino del color de la zona, muros bajos y arco con su letrero. */
-function Wing({ zone }: { zone: ZoneConfig }) {
-  const len = W.end - PLAZA
-  const mid = PLAZA + len / 2
-  const sign = useMemo(() => getZoneSign(zone.id, zone.name.toUpperCase(), zone.color), [zone])
-  const wall = mat(PALETTE.wall)
-  const trim = mat(PALETTE.trim)
-  const CW = W.corridorHalf
-  return (
-    <group position={[C.x, 0, C.z]} rotation={[0, zone.angle, 0]}>
-      <mesh geometry={GEO.box} material={mat(PALETTE.floor)} position={[0, 0.1, mid]} scale={[WW * 2, 0.2, len]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat(shade(zone.color, 0.72))} position={[0, 0.205, mid]} scale={[CW * 1.1, 0.02, len - 0.6]} receiveShadow />
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <mesh geometry={GEO.box} material={wall} position={[s * (WW - 0.15), 0.9, mid + 0.2]} scale={[0.3, 1.4, len + 0.4]} castShadow receiveShadow />
-          <mesh geometry={GEO.box} material={trim} position={[s * (WW - 0.15), 1.64, mid + 0.2]} scale={[0.4, 0.08, len + 0.5]} />
-        </group>
-      ))}
-      <mesh geometry={GEO.box} material={wall} position={[0, 0.9, W.end + 0.3]} scale={[WW * 2, 1.4, 0.3]} castShadow />
-      {/* arco de entrada del sector */}
-      <group position={[0, 0.2, PLAZA + 0.4]}>
-        {[-1, 1].map((s) => (
-          <mesh key={s} geometry={GEO.rounded} material={wall} position={[s * (CW + 0.2), 1.9, 0]} scale={[0.55, 3.8, 0.55]} castShadow />
-        ))}
-        <mesh geometry={GEO.rounded} material={mat(zone.color)} position={[0, 3.95, 0]} scale={[CW * 2 + 1.2, 0.7, 0.5]} castShadow />
-        {[1, -1].map((s) => (
-          <group key={s} position={[0, 3.95, s * 0.3]} rotation={[0, s > 0 ? 0 : Math.PI, 0]}>
-            <mesh geometry={GEO.rounded} material={mat(shade(zone.color, -0.25))} position={[0, 0, -0.04]} scale={[1.36 * sign.aspect + 0.16, 1.52, 0.08]} />
-            <mesh geometry={GEO.plane} material={dimLabelMat(sign.texture)} position={[0, 0, 0.01]} scale={[1.36 * sign.aspect, 1.36, 1]} />
-          </group>
-        ))}
-      </group>
-    </group>
-  )
-}
-
 function Palm({ x, z, h, seed }: { x: number; z: number; h: number; seed: number }) {
   return (
     <group position={[x, 0, z]}>
@@ -138,9 +99,9 @@ function islandSign() {
   g.fillText('✈', 50, 150)
   g.font = '800 104px system-ui, sans-serif'
   g.fillText('AEROPUERTO', 250, 110)
-  g.fillStyle = '#ffb3cb'
+  g.fillStyle = '#9fd8ff'
   g.font = '600 56px system-ui, sans-serif'
-  g.fillText('Isla de los Descuentos', 254, 215)
+  g.fillText('Isla Tecnología', 254, 215)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 4
@@ -164,7 +125,7 @@ function IslandAirport() {
           <mesh key={s} geometry={GEO.box} material={glass} position={[s * 2.77, 1.35, 0]} scale={[0.04, 2, 7.2]} />
         ))}
         <mesh geometry={GEO.box} material={mat('#3c4651')} position={[0, 3.12, 0]} scale={[6.6, 0.24, 9]} castShadow />
-        <mesh geometry={GEO.box} material={mat('#e85a8a')} position={[0, 2.95, 0]} scale={[6.62, 0.1, 9.02]} />
+        <mesh geometry={GEO.box} material={mat('#38bdf8')} position={[0, 2.95, 0]} scale={[6.62, 0.1, 9.02]} />
         <mesh geometry={GEO.plane} material={sign} position={[-3.32, 3.9, 0]} rotation={[0, -Math.PI / 2, 0]} scale={[5.2, 1.52, 1]} />
         <mesh geometry={GEO.plane} material={sign} position={[3.32, 3.9, 0]} rotation={[0, Math.PI / 2, 0]} scale={[5.2, 1.52, 1]} />
         <mesh geometry={GEO.box} material={mat('#2f3437')} position={[0, 3.6, 0]} scale={[0.12, 0.8, 4]} />
@@ -172,7 +133,7 @@ function IslandAirport() {
       {/* torre de control */}
       <group position={[PX - 0.5, 0.2, -8]}>
         <mesh geometry={GEO.cylinder} material={mat('#f4f1ea')} position={[0, 3, 0]} scale={[1.2, 6, 1.2]} castShadow />
-        <mesh geometry={GEO.cylinder} material={mat('#e85a8a')} position={[0, 4.4, 0]} scale={[1.28, 0.2, 1.28]} />
+        <mesh geometry={GEO.cylinder} material={mat('#38bdf8')} position={[0, 4.4, 0]} scale={[1.28, 0.2, 1.28]} />
         <mesh geometry={GEO.cylinder} material={mat('#3c4651')} position={[0, 6.1, 0]} scale={[2.2, 0.22, 2.2]} />
         <mesh geometry={GEO.cylinder} material={glowMat('#bfe6ff', 1.8, { dayGlow: 0.3 })} position={[0, 6.75, 0]} scale={[2, 1.05, 2]} />
         <mesh geometry={GEO.cylinder} material={mat('#3c4651')} position={[0, 7.38, 0]} scale={[2.4, 0.2, 2.4]} castShadow />
@@ -394,24 +355,18 @@ function Castle() {
       ))}
       {/* entrada monumental (como la del mall), con su letrero y torres, y el puente a la pista */}
       <group position={[gm[0], 0, gm[1]]} rotation={[0, diag, 0]}>
-        <EntranceGate width={8.6} title="ISLA DE LOS DESCUENTOS" tagline="Outlet · Ofertas · Variedad" paths={false} roofColor={PINK} />
+        <EntranceGate width={8.6} title="ISLA TECNOLOGÍA" tagline="Celulares · Gaming · Computación · Smart Home" paths={false} roofColor="#2b3a5c" />
         {[-1, 1].map((s) => (
           <Garita key={s} x={s * 5.3} z={0.2} y={WH + 0.9} />
         ))}
         <Bridge from={3.9} to={Math.hypot(gm[0] - C.x, gm[1] - C.z) > 0 ? RUN.d - 4 - Math.hypot(gm[0] - C.x, gm[1] - C.z) + 0.4 : 12} />
       </group>
       {/* plaza central elevada con fuente */}
-      <mesh geometry={GEO.cylinder} material={mat(PALETTE.floor)} position={[C.x, 0.1, C.z]} scale={[2 * PLAZA + 1, 0.2, 2 * PLAZA + 1]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={mat('#e6d3ad')} position={[C.x, 0.22, C.z]} scale={[9, 0.04, 9]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[C.x, 0.5, C.z]} scale={[5, 0.6, 5]} castShadow />
-      <mesh geometry={GEO.cylinder} material={glowMat('#5fd0e0', 0.9, { dayGlow: 0.25 })} position={[C.x, 0.78, C.z]} scale={[4.4, 0.1, 4.4]} />
-      <mesh geometry={GEO.cylinder} material={mat(STONE[1])} position={[C.x, 1.25, C.z]} scale={[0.6, 1.4, 0.6]} />
-      <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[C.x, 2, C.z]} scale={[2, 0.25, 2]} />
-      <mesh geometry={GEO.sphereSmooth} material={glowMat('#bff6ff', 1.6, { dayGlow: 0.4 })} position={[C.x, 2.45, C.z]} scale={[0.7, 0.9, 0.7]} />
-      <mesh geometry={GEO.plane} material={lightPoolMat('#7fe3f0', 1)} rotation={[-Math.PI / 2, 0, 0]} position={[C.x, 0.25, C.z]} scale={[10, 10, 1]} />
+      <mesh geometry={GEO.cylinder} material={mat('#dfe4ea')} position={[C.x, 0.1, C.z]} scale={[2 * (ISLAND_RING - 2.2), 0.2, 2 * (ISLAND_RING - 2.2)]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#c9d1db')} position={[C.x, 0.22, C.z]} scale={[9, 0.04, 9]} receiveShadow />
       {/* camino de la plaza a la puerta (diagonal) */}
       {(() => {
-        const from = PLAZA
+        const from = ISLAND_RING - 2.4
         const to = Math.hypot(gm[0] - C.x, gm[1] - C.z) - 1
         const [mx, mz] = toWorld([0, (from + to) / 2], diag)
         return <mesh geometry={GEO.box} material={mat('#e6d3ad')} position={[C.x + mx, 0.12, C.z + mz]} rotation={[0, diag, 0]} scale={[3.4, 0.04, to - from]} receiveShadow />
@@ -495,7 +450,7 @@ function Balloon({ reduceMotion }: { reduceMotion: boolean }) {
     x.font = '900 96px system-ui, sans-serif'
     x.textAlign = 'center'
     x.textBaseline = 'middle'
-    x.fillText('%', 64, 70)
+    x.fillText('⚡', 64, 70)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
     return new THREE.MeshBasicMaterial({ map: t, transparent: true, toneMapped: false })
@@ -509,7 +464,7 @@ function Balloon({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <group ref={g} position={[C.x + 18, 18, C.z - 26]}>
       {[0, 1, 2, 3, 4, 5].map((k) => (
-        <mesh key={k} geometry={GEO.sphereSmooth} material={mat(k % 2 ? '#ffffff' : PINK, { rough: 0.6 })} rotation={[0, (k * Math.PI) / 6, 0]} scale={[3.6, 4.2, 0.9 + k * 0.5]} />
+        <mesh key={k} geometry={GEO.sphereSmooth} material={mat(k % 2 ? '#ffffff' : TECH_BLUE, { rough: 0.6 })} rotation={[0, (k * Math.PI) / 6, 0]} scale={[3.6, 4.2, 0.9 + k * 0.5]} />
       ))}
       <mesh geometry={GEO.plane} material={pct} position={[0.7, 0.2, 1.75]} rotation={[0, Math.PI / 4, 0]} scale={[1.8, 1.8, 1]} />
       {[-1, 1].flatMap((sx) =>
@@ -521,18 +476,137 @@ function Balloon({ reduceMotion }: { reduceMotion: boolean }) {
   )
 }
 
+/**
+ * Caminos tipo circuito en el piso (de la fuente al frente de cada local, con un quiebre y un nodo),
+ * anillos luminosos y tótems con pantalla entre los locales. Estático: va en el Batch.
+ */
+function TechCircuits() {
+  const line = glowMat(CYAN, 1.5, { dayGlow: 0.45 })
+  const lineDim = glowMat('#5b8cff', 1.2, { dayGlow: 0.35 })
+  const node = glowMat('#bff6ff', 2, { dayGlow: 0.6 })
+  const screen = glowMat('#2a6bff', 1.9, { dayGlow: 0.55 })
+  const screen2 = glowMat('#9b5cff', 1.9, { dayGlow: 0.55 })
+  const shops = SPACES.filter((sp) => sp.id.startsWith('P1-I'))
+  const Y0 = 0.235
+  const seg = (ax: number, az: number, bx: number, bz: number, m: THREE.Material, k: string) => {
+    const len = Math.hypot(bx - ax, bz - az)
+    return <mesh key={k} geometry={GEO.box} material={m} position={[(ax + bx) / 2, Y0, (az + bz) / 2]} rotation={[0, Math.atan2(bx - ax, bz - az), 0]} scale={[0.09, 0.012, len]} />
+  }
+  const out: ReactElement[] = []
+  shops.forEach((sp, k) => {
+    const [fx, fz] = spaceFrontPoint(sp, 0.4)
+    const a = Math.atan2(fx - C.x, fz - C.z)
+    const r0 = 3.6
+    const rm = 7
+    // tramo radial, quiebre de 45° y llegada al local
+    const [x0, z0] = [C.x + Math.sin(a) * r0, C.z + Math.cos(a) * r0]
+    const bend = a + (k % 2 ? 0.16 : -0.16)
+    const [x1, z1] = [C.x + Math.sin(bend) * rm, C.z + Math.cos(bend) * rm]
+    out.push(seg(x0, z0, x1, z1, line, `a${k}`), seg(x1, z1, fx, fz, line, `b${k}`))
+    out.push(<mesh key={`n${k}`} geometry={GEO.cylinder} material={node} position={[x1, Y0 + 0.01, z1]} scale={[0.32, 0.02, 0.32]} />)
+    out.push(<mesh key={`m${k}`} geometry={GEO.cylinder} material={node} position={[fx, Y0 + 0.01, fz]} scale={[0.42, 0.02, 0.42]} />)
+    // ramal corto que se abre al costado
+    const side = bend + (k % 2 ? 0.35 : -0.35)
+    const [x2, z2] = [C.x + Math.sin(side) * (rm + 1.6), C.z + Math.cos(side) * (rm + 1.6)]
+    out.push(seg(x1, z1, x2, z2, lineDim, `c${k}`))
+    out.push(<mesh key={`o${k}`} geometry={GEO.cylinder} material={node} position={[x2, Y0 + 0.01, z2]} scale={[0.22, 0.02, 0.22]} />)
+  })
+  // tótems con pantalla entre locales (anillo de 9,8), sin estorbar el camino de la puerta
+  const totems = Array.from({ length: 10 }, (_, k) => Math.PI / 4 + (2 * Math.PI * (k + 1.5)) / 11).filter((a) => Math.abs(Math.atan2(Math.sin(a - Math.PI / 4), Math.cos(a - Math.PI / 4))) > 0.4)
+  return (
+    <group>
+      {out}
+      {[4.6, 10.2].map((r) => (
+        <mesh key={r} geometry={GEO.torus} material={r < 5 ? line : lineDim} position={[C.x, Y0, C.z]} rotation={[Math.PI / 2, 0, 0]} scale={[r, r, 0.35]} />
+      ))}
+      {totems.map((a, k) => {
+        const x = C.x + Math.sin(a) * 9.8
+        const z = C.z + Math.cos(a) * 9.8
+        return (
+          <group key={k} position={[x, 0.2, z]} rotation={[0, a + Math.PI, 0]}>
+            <mesh geometry={GEO.box} material={mat('#1c2433')} position={[0, 1.05, 0]} scale={[0.75, 2.1, 0.22]} castShadow />
+            <mesh geometry={GEO.box} material={k % 2 ? screen2 : screen} position={[0, 1.2, 0.12]} scale={[0.6, 1.5, 0.02]} />
+            <mesh geometry={GEO.box} material={k % 2 ? screen : screen2} position={[0, 1.2, -0.12]} scale={[0.6, 1.5, 0.02]} />
+            <mesh geometry={GEO.box} material={node} position={[0, 0.05, 0]} scale={[0.95, 0.05, 0.4]} />
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+/** Fuente holográfica: base oscura, agua luminosa, globo de malla que gira, anillos y paneles flotantes. */
+function HoloFountain({ reduceMotion }: { reduceMotion: boolean }) {
+  const globe = useRef<THREE.Group>(null)
+  const rings = useRef<THREE.Group>(null)
+  const panels = useRef<THREE.Group>(null)
+  const wire = useMemo(() => new THREE.MeshBasicMaterial({ color: '#7fe9ff', wireframe: true, transparent: true, opacity: 0.85, toneMapped: false }), [])
+  const holo = useMemo(() => new THREE.MeshBasicMaterial({ color: '#4fd8ff', transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }), [])
+  useFrame(({ clock }) => {
+    const t = reduceMotion ? 0 : clock.elapsedTime
+    if (globe.current) globe.current.rotation.y = t * 0.4
+    if (rings.current) {
+      rings.current.children[0].rotation.z = t * 0.6
+      rings.current.children[1].rotation.x = Math.PI / 2 + Math.sin(t * 0.5) * 0.3
+    }
+    if (panels.current) {
+      panels.current.rotation.y = -t * 0.25
+      panels.current.position.y = Math.sin(t * 1.2) * 0.12
+    }
+  })
+  return (
+    <group position={[C.x, 0.2, C.z]}>
+      <mesh geometry={GEO.cylinder} material={mat('#1c2433')} position={[0, 0.3, 0]} scale={[5.4, 0.6, 5.4]} castShadow />
+      <mesh geometry={GEO.cylinder} material={glowMat(CYAN, 1.8, { dayGlow: 0.55 })} position={[0, 0.62, 0]} scale={[4.7, 0.06, 4.7]} />
+      <mesh geometry={GEO.cylinder} material={mat('#2b3a5c')} position={[0, 0.66, 0]} scale={[3.6, 0.06, 3.6]} />
+      <mesh geometry={GEO.cylinder} material={glowMat('#2a6bff', 2, { dayGlow: 0.6 })} position={[0, 0.72, 0]} scale={[1.6, 0.06, 1.6]} />
+      <mesh geometry={GEO.cylinder} material={mat('#1c2433')} position={[0, 1.2, 0]} scale={[0.35, 1, 0.35]} />
+      <mesh geometry={GEO.cone} material={holo} position={[0, 1.95, 0]} scale={[1.6, 1.4, 1.6]} />
+      <group ref={globe} position={[0, 3.1, 0]}>
+        <mesh geometry={GEO.sphere} material={wire} scale={1.9} />
+        <mesh geometry={GEO.sphereSmooth} material={glowMat('#bff6ff', 2.2, { dayGlow: 0.6 })} scale={0.6} />
+      </group>
+      <group ref={rings} position={[0, 3.1, 0]}>
+        <mesh geometry={GEO.torus} material={glowMat(CYAN, 2, { dayGlow: 0.6 })} rotation={[Math.PI / 2, 0, 0]} scale={[1.45, 1.45, 0.5]} />
+        <mesh geometry={GEO.torus} material={glowMat('#9b5cff', 2, { dayGlow: 0.6 })} scale={[1.25, 1.25, 0.45]} />
+      </group>
+      <group ref={panels} position={[0, 0, 0]}>
+        {[0, 1, 2, 3].map((k) => {
+          const a = (k * Math.PI) / 2 + Math.PI / 4
+          return <mesh key={k} geometry={GEO.plane} material={holo} position={[Math.sin(a) * 2.6, 2.6, Math.cos(a) * 2.6]} rotation={[0, a, 0]} scale={[1.1, 1.4, 1]} />
+        })}
+      </group>
+      <mesh geometry={GEO.plane} material={lightPoolMat('#4fd8ff', 1.1)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} scale={[12, 12, 1]} />
+    </group>
+  )
+}
+
+/** Rubro sugerido de cada local, flotando sobre él al acercarse. */
+function SectorLabels() {
+  const night = useIsNight()
+  const shops = useMemo(() => SPACES.filter((sp) => sp.id.startsWith('P1-I')), [])
+  const labels = useMemo(() => ISLAND_SECTORS.map((name) => getGlassPill(name, { dot: CYAN, dark: night })), [night])
+  return (
+    <>
+      {shops.map((sp, k) => (
+        <ScreenLabel key={sp.id} label={labels[k]} position={[sp.position[0], 5.2, sp.position[1]]} pixelHeight={22} minZoomRatio={1.05} priority={LABEL_PRIORITY.section} />
+      ))}
+    </>
+  )
+}
+
 export function Island({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
-  const label = useMemo(() => getGlassPill('Isla de los Descuentos', { dot: PINK, sub: 'Moda · Tecnología · Belleza · Lifestyle', dark: night }), [night])
+  const label = useMemo(() => getGlassPill('Isla Tecnología', { dot: TECH_BLUE, sub: 'Celulares · Gaming · Computación · Smart Home', dark: night }), [night])
   return (
     <group>
       <Batch version="isla-mall">
         <Castle />
-        {P1.zones.map((z) => (
-          <Wing key={z.id} zone={z} />
-        ))}
+        <TechCircuits />
       </Batch>
       <IslandPlane />
+      <HoloFountain reduceMotion={reduceMotion} />
+      <SectorLabels />
       <group position={[ISLAND_RUNWAY.x, 0, ISLAND_RUNWAY.z]} rotation={[0, ISLAND_RUNWAY.rot, 0]}>
         <RunwayLights cx={0.6} z0={-RUN.len / 2} z1={RUN.len / 2} w={RUN.w} y={0.22} dir={-1} />
       </group>

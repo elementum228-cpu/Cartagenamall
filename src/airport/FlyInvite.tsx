@@ -7,7 +7,7 @@ import { useFlight } from './flight'
 
 /**
  * Invitación a volar: tarjeta de vidrio que flota sobre el aeropuerto (sigue la cámara) cuando se
- * toca. «Volar ahora» entra a la terminal (tiquete, pase de abordar y vuelo a Isla Descuento).
+ * toca. «Volar ahora» entra a la terminal (tiquete, pase de abordar y vuelo a Isla Tecnología).
  */
 export function FlyInvite() {
   const open = useUI((s) => s.airportOpen)
@@ -44,8 +44,8 @@ export function FlyInvite() {
               <X className="size-4" />
             </button>
             <p className="text-[17px] leading-snug font-semibold">¿Estás listo para ir a la</p>
-            <p className="text-[19px] leading-snug font-extrabold text-[#f5c542]">Isla de los Descuentos?</p>
-            <p className="mt-1 text-[13.5px] text-white/80">Conoce más locales</p>
+            <p className="text-[19px] leading-snug font-extrabold text-[#f5c542]">Isla Tecnología?</p>
+            <p className="mt-1 text-[13.5px] text-white/80">Celulares, gaming, computación y más</p>
             <button
               className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#1fc7b6] to-[#0f8f86] text-[16px] font-semibold shadow-[0_8px_24px_rgb(19_185_173/0.45)] transition active:scale-[0.98]"
               onClick={() => useFlight.getState().start()}

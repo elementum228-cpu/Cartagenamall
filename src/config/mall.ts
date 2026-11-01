@@ -334,45 +334,42 @@ const DISTRICT_SPACES: SpaceSlot[] = (
 }))
 
 /**
- * Isla de los Descuentos: un castillo-isla de una sola planta, lejos en el mar (se llega en avión
+ * Isla Tecnología: un castillo-isla de una sola planta, lejos en el mar (se llega en avión
  * desde el aeropuerto). Murallas con torres, puerta hacia la pista, plaza con fuente y locales
  * outlet repartidos alrededor. Usa las coordenadas del piso 1 (al nivel del mar).
  */
 export const ISLAND = { x: 160, z: -160, r: 26, half: 21 } as const
 /**
- * Locales de la isla: un mini-mall con cuatro pasillos cortos que salen de la plaza central, uno por
- * sector (los mismos del mall: Moda, Tecnología, Belleza y Lifestyle, en la misma dirección que en
- * la fortaleza). Dos locales por lado mirando al pasillo. La puerta queda en la diagonal (+x, +z).
+ * Locales de Isla Tecnología: una isla de una sola categoría (tecnología, como el pasillo B). Diez
+ * locales en anillo alrededor de la plaza holográfica, con la fachada hacia el centro, dejando
+ * libre la diagonal de la puerta (+x, +z). Cada uno sugiere un rubro (celulares, gaming…), pero se
+ * rentan como cualquier local del mall.
  */
-export const ISLAND_WING = { corridorHalf: 2.5, near: 11, far: 17, end: 20 } as const
-const ISLAND_SPACES: SpaceSlot[] = ZONES_P1.flatMap((zone, zi) =>
-  [
-    [-5, ISLAND_WING.near, Math.PI / 2],
-    [5, ISLAND_WING.near, -Math.PI / 2],
-    [-5, ISLAND_WING.far, Math.PI / 2],
-    [5, ISLAND_WING.far, -Math.PI / 2],
-  ].map(([lx, lz, facing], k) => {
-    const [dx, dz] = toWorld([lx, lz], zone.angle)
-    const n = zi * 4 + k + 1
-    return {
-      id: `P1-I${n}`,
-      floorId: 'P1',
-      zoneId: zone.id,
-      type: 'local' as SpaceType,
-      label: `I${zone.id}-${String(k + 1).padStart(2, '0')}`,
-      position: [ISLAND.x + dx, ISLAND.z + dz] as [number, number],
-      rotation: zone.angle + facing,
-      size: SPACE_TYPES.local.size,
-    }
-  }),
-)
+export const ISLAND_SECTORS = ['Celulares', 'Gaming', 'Smart Home', 'Servicio técnico', 'Audio', 'Realidad virtual', 'Drones y cámaras', 'Computación', 'Accesorios', 'Wearables'] as const
+export const ISLAND_RING = 14
+const ISLAND_SPACES: SpaceSlot[] = ISLAND_SECTORS.map((_, k) => {
+  // 11 posiciones alrededor; la que cae en la puerta (ángulo π/4) queda libre
+  const a = Math.PI / 4 + (2 * Math.PI * (k + 1)) / 11
+  const [dx, dz] = toWorld([0, ISLAND_RING], a)
+  return {
+    id: `P1-I${k + 1}`,
+    floorId: 'P1',
+    zoneId: 'B' as ZoneId,
+    type: 'local' as SpaceType,
+    label: `IT-${String(k + 1).padStart(2, '0')}`,
+    position: [ISLAND.x + dx, ISLAND.z + dz] as [number, number],
+    rotation: a + Math.PI,
+    size: SPACE_TYPES.local.size,
+  }
+})
+
 /** Pista de la isla: centro (x, z), giro del marco (z local = a lo largo de la pista) y medidas. */
 export const ISLAND_RUNWAY = (() => {
   const [dx, dz] = toWorld([0, 40], Math.PI / 4)
   return { x: ISLAND.x + dx, z: ISLAND.z + dz, rot: Math.PI / 4 + Math.PI / 2, len: 30, w: 4 }
 })()
 
-/** ¿Es un local de la Isla de los Descuentos? */
+/** ¿Es un local de Isla Tecnología? */
 export const isIslandSpace = (sp: Pick<SpaceSlot, 'id'>) => sp.id.startsWith('P1-I')
 
 export const FLOORS = MALL.floors
