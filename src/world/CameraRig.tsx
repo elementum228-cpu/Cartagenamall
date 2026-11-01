@@ -194,7 +194,7 @@ export function CameraRig() {
     const onIsland = useFlight.getState().world === 'island'
     if (focus.kind === 'island' || (focus.kind === 'home' && onIsland)) {
       // la isla completa, centrada, un poco más cerca que la vista general
-      goal.current = { target: new THREE.Vector3(ISLAND.x + 2, 0, ISLAND.z), zoom: fit * (size.width < size.height ? 1.05 : 1.2) }
+      goal.current = { target: new THREE.Vector3(ISLAND.x + 2, 0, ISLAND.z), zoom: fit * (size.width < size.height ? 1.15 : 0.9) }
     } else if (focus.kind === 'home') {
       goal.current = overview ? { target: overviewCenter(), zoom: fit * overviewZoomFor(size.width, size.height) } : { target: origin, zoom: fit * floor.homeZoom }
     } else if (focus.kind === 'enter') {

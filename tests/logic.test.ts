@@ -29,7 +29,7 @@ const item = (productId: string, variantId: string | null, size: string | null, 
 describe('mall layout', () => {
   it('genera los espacios desde configuración: 20 en los pasillos y 4 en servicios (piso 1), 10 en el piso 2', () => {
     expect(SPACES.filter((s) => s.floorId === 'P1' && s.zoneId !== 'I')).toHaveLength(24)
-    expect(SPACES.filter((s) => s.zoneId === 'I')).toHaveLength(14)
+    expect(SPACES.filter((s) => s.zoneId === 'I')).toHaveLength(13)
     expect(SPACES.filter((s) => s.zoneId === 'F')).toHaveLength(4)
     expect(SPACES.filter((s) => s.floorId === 'P2')).toHaveLength(10)
     for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z)).toHaveLength(5)
@@ -51,8 +51,8 @@ describe('mall layout', () => {
     expect(p2.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(6)
     expect(p2.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(4)
     expect(SPACE_TYPES.premium.monthlyPriceCOP).toBe(180_000)
-    // Isla Descuento: 14 espacios, todos disponibles
-    expect(SPACES.filter((s) => s.zoneId === 'I' && !SEED_ASSIGNMENTS[s.id])).toHaveLength(14)
+    // Isla de los Descuentos: 13 espacios, todos disponibles
+    expect(SPACES.filter((s) => s.zoneId === 'I' && !SEED_ASSIGNMENTS[s.id])).toHaveLength(13)
   })
   it('cada negocio del piso 2 tiene menú', () => {
     for (const st of SEED_STORES.filter((s) => s.zoneId === 'E')) expect(SEED_PRODUCTS.filter((p) => p.storeId === st.id).length).toBeGreaterThanOrEqual(3)

@@ -334,42 +334,58 @@ const DISTRICT_SPACES: SpaceSlot[] = (
 }))
 
 /**
- * Isla Descuento: una isla de una sola planta, lejos en el mar (se llega en avión desde el
- * aeropuerto). Locales en anillo alrededor de una plaza, mirando al centro, e islas comerciales.
- * Usa las coordenadas del piso 1 (está al nivel del mar, como el resto de la fortaleza).
+ * Isla de los Descuentos: un castillo-isla de una sola planta, lejos en el mar (se llega en avión
+ * desde el aeropuerto). Murallas con torres, puerta hacia la pista, plaza con fuente y locales
+ * outlet repartidos alrededor. Usa las coordenadas del piso 1 (al nivel del mar).
  */
-export const ISLAND = { x: 160, z: -160, r: 26 } as const
+export const ISLAND = { x: 160, z: -160, r: 26, half: 21 } as const
 export const ISLAND_ZONE: ZoneConfig = {
   id: 'I',
-  name: 'Isla Descuento',
-  color: '#f59e0b',
+  name: 'Isla de los Descuentos',
+  color: '#e85a8a',
   angle: 0,
   focus: [ISLAND.x, ISLAND.z],
   categories: [
+    { id: 'outlet', name: 'Outlet', zoneId: 'I' },
     { id: 'ofertas-isla', name: 'Ofertas de la isla', zoneId: 'I' },
     { id: 'emprendimientos', name: 'Emprendimientos', zoneId: 'I' },
   ],
 }
-/** Locales de la isla: 10 en anillo (radio 13, fachada al centro) y 4 islas comerciales. */
-const ISLAND_SPACES: SpaceSlot[] = [
-  ...Array.from({ length: 10 }, (_, i) => {
-    const a = (i / 10) * Math.PI * 2 + Math.PI / 10
-    return { type: 'local' as SpaceType, at: [ISLAND.x + Math.sin(a) * 13.5, ISLAND.z + Math.cos(a) * 13.5] as [number, number], rotation: a + Math.PI }
-  }),
-  ...Array.from({ length: 4 }, (_, i) => {
-    const a = Math.PI / 4 + (i * Math.PI) / 2
-    return { type: 'island' as SpaceType, at: [ISLAND.x + Math.sin(a) * 6.4, ISLAND.z + Math.cos(a) * 6.4] as [number, number], rotation: a + Math.PI }
-  }),
-].map((t, i) => ({
-  id: `P1-I${i + 1}`,
-  floorId: 'P1',
-  zoneId: 'I',
-  type: t.type,
-  label: `I-${String(i + 1).padStart(2, '0')}`,
-  position: t.at,
-  rotation: t.rotation,
-  size: SPACE_TYPES[t.type].size,
-}))
+/**
+ * Locales de la isla (relativos al centro): repartidos alrededor de la plaza, con la fachada hacia
+ * la fuente, y dejando libre el camino de la puerta (lado +x). Islas comerciales cerca de la fuente.
+ */
+const ISLAND_SLOTS: { type: SpaceType; at: [number, number] }[] = [
+  { type: 'local', at: [0, -13.5] },
+  { type: 'local', at: [-10, -10] },
+  { type: 'local', at: [8, -12.5] },
+  { type: 'local', at: [-13.5, 0] },
+  { type: 'local', at: [-10, 10] },
+  { type: 'local', at: [0, 13.5] },
+  { type: 'local', at: [8, 12.5] },
+  { type: 'local', at: [14.5, -5] },
+  { type: 'local', at: [14.5, 5] },
+  { type: 'island', at: [-5.2, -5.2] },
+  { type: 'island', at: [-5.2, 5.2] },
+  { type: 'island', at: [5.4, -5.6] },
+  { type: 'island', at: [5.4, 5.6] },
+]
+const ISLAND_SPACES: SpaceSlot[] = ISLAND_SLOTS.map((t, i) => {
+  const [dx, dz] = t.at
+  // fachada (+z local) mirando a la fuente; los dos junto a la puerta miran al camino
+  const toward = Math.abs(dx) > 13 ? [0, -Math.sign(dz)] : [-dx, -dz]
+  const rotation = Math.atan2(toward[0], toward[1])
+  return {
+    id: `P1-I${i + 1}`,
+    floorId: 'P1',
+    zoneId: 'I' as ZoneId,
+    type: t.type,
+    label: `I-${String(i + 1).padStart(2, '0')}`,
+    position: [ISLAND.x + dx, ISLAND.z + dz] as [number, number],
+    rotation,
+    size: SPACE_TYPES[t.type].size,
+  }
+})
 
 export const FLOORS = MALL.floors
 export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))

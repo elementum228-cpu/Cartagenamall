@@ -235,7 +235,7 @@ function Flying() {
         <motion.div animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
           <Plane className="size-24 rotate-45 fill-white text-[#0d2a3f] drop-shadow-[0_18px_20px_rgb(13_42_63/0.25)]" strokeWidth={1.4} />
         </motion.div>
-        <p className="mt-8 text-[22px] font-extrabold">{back ? 'Volviendo a Cartagena Mall' : 'Volando a Isla Descuento'}</p>
+        <p className="mt-8 text-[22px] font-extrabold">{back ? 'Volviendo a Cartagena Mall' : 'Volando a la Isla de los Descuentos'}</p>
         <p className="mt-1 text-[14px] font-semibold opacity-70">{back ? 'Abróchate el cinturón…' : 'Preparando la isla para ti…'}</p>
         {/* ruta con el avión que avanza: la barra de carga */}
         <div className="mt-7 w-full max-w-[340px]">
@@ -266,8 +266,8 @@ function Arrived() {
           <PlaneLanding className="size-6" />
         </span>
         <p className="text-[14px] font-semibold text-white/75">Aterrizaste en</p>
-        <p className="text-[24px] leading-tight font-extrabold text-[#f5c542]">¡Bienvenido a Isla Descuento!</p>
-        <p className="mt-1.5 text-[14px] leading-snug text-white/80">Una isla de una sola planta con locales abiertos, ofertas y espacios disponibles para tu negocio.</p>
+        <p className="text-[24px] leading-tight font-extrabold text-[#f5c542]">¡Bienvenido a la Isla de los Descuentos!</p>
+        <p className="mt-1.5 text-[14px] leading-snug text-white/80">Un castillo-isla de una sola planta: outlet, ofertas, variedad y locales disponibles para tu negocio.</p>
         <button className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#1fc7b6] to-[#0f8f86] text-[16px] font-semibold shadow-[0_8px_24px_rgb(19_185_173/0.45)] transition active:scale-[0.98]" onClick={explore}>
           Explorar la isla <ChevronRight className="size-5" />
         </button>
@@ -282,7 +282,7 @@ function IslandHud() {
     <>
       <motion.div className="pointer-events-none fixed inset-x-0 top-[calc(var(--chrome-top,72px)+4px)] z-20 flex justify-center" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}>
         <span className="flex items-center gap-2 rounded-full bg-[#0d2a3f]/80 px-4 py-2 text-[14px] font-bold text-white shadow-lg backdrop-blur-xl">
-          <span className="size-2 rounded-full bg-[#f5c542]" /> Isla Descuento · toca un local
+          <span className="size-2 rounded-full bg-[#e85a8a]" /> Isla de los Descuentos · toca un local
         </span>
       </motion.div>
       <motion.div className="fixed inset-x-0 bottom-[calc(var(--chrome-bottom,96px)+16px)] z-20 flex justify-center px-4" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}>
