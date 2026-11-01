@@ -174,18 +174,28 @@ export function WallLantern({ x, y, z }: { x: number; y: number; z: number }) {
  * Entrada monumental (coordenadas locales: la fachada mira a +z; se rota hacia el frente).
  * Arco de medio punto, puertas abiertas, torres con tejado, remate escalonado y letrero.
  */
-function EntranceGate() {
-  const W = GATE.width
+/**
+ * Entrada monumental. Por defecto, la del mall (con su escalinata hacia el muelle y el paso a la
+ * plaza); la Isla de los Descuentos la reusa con su propio nombre, ancho y color, sin esos caminos.
+ */
+export function EntranceGate({
+  width = GATE.width,
+  title = MALL.name.toUpperCase(),
+  tagline = MALL.tagline,
+  paths = true,
+  roofColor = TERRACOTTA,
+}: { width?: number; title?: string; tagline?: string; paths?: boolean; roofColor?: string } = {}) {
+  const W = width
   const D = 3
   const TOP = 5.8
-  const sign = getGateSign(MALL.name.toUpperCase(), MALL.tagline)
+  const sign = getGateSign(title, tagline)
   const stone = mat('#dcc497')
   const trim = mat('#f5ead2')
   // el vano del arco: de día es sombra; de noche, el pasaje iluminado hacia la plaza
   const dark = glowMat('#3a2f28', 0.25)
   const passage = glowMat('#ffb86b', 1.1)
   const door = mat('#3f6b4f')
-  const roof = mat(TERRACOTTA)
+  const roof = mat(roofColor)
   const archW = 2.8
   const archH = 2.4
   return (
@@ -233,12 +243,16 @@ function EntranceGate() {
       {[0, 1, 2].map((i) => (
         <mesh key={i} geometry={GEO.box} material={mat(STONE[i % 2])} position={[0, 0.1 - i * 0.22, D / 2 + 0.6 + i * 0.7]} scale={[archW + 2.4 + i * 0.6, 0.3, 0.7]} receiveShadow />
       ))}
-      <mesh geometry={GEO.box} material={mat('#dccaa4')} position={[0, -0.55, D / 2 + 9]} scale={[archW + 1.2, 0.5, 14]} receiveShadow />
-      {[-1, 1].map((s) => (
-        <mesh key={s} geometry={GEO.box} material={mat(STONE_DARK)} position={[s * (archW / 2 + 0.7), -0.2, D / 2 + 9]} scale={[0.3, 0.3, 14]} />
-      ))}
-      {/* paso interior hacia la plaza */}
-      <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[0, 0.1, -D / 2 - 11.5]} scale={[archW + 1.4, 0.2, 23]} receiveShadow />
+      {paths && (
+        <>
+          <mesh geometry={GEO.box} material={mat('#dccaa4')} position={[0, -0.55, D / 2 + 9]} scale={[archW + 1.2, 0.5, 14]} receiveShadow />
+          {[-1, 1].map((s) => (
+            <mesh key={s} geometry={GEO.box} material={mat(STONE_DARK)} position={[s * (archW / 2 + 0.7), -0.2, D / 2 + 9]} scale={[0.3, 0.3, 14]} />
+          ))}
+          {/* paso interior hacia la plaza */}
+          <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[0, 0.1, -D / 2 - 11.5]} scale={[archW + 1.4, 0.2, 23]} receiveShadow />
+        </>
+      )}
     </group>
   )
 }

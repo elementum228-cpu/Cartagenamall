@@ -4,11 +4,13 @@ import * as THREE from 'three'
 import { ISLAND, ISLAND_RUNWAY, ISLAND_WING, P1, insideSpace, toWorld } from '../config/mall'
 import type { ZoneConfig } from '../domain/types'
 import { useIsNight } from '../lib/useIsNight'
+import { islandPlaneAnchor } from '../airport/anchor'
 import { LANDING_MS, TOUCHDOWN, useFlight } from '../airport/flight'
+import { cameraState } from './cameraState'
 import { AirplaneModel } from './Airport'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
-import { CORDON, Garita, STONE, STONE_DARK } from './Fortress'
+import { CORDON, EntranceGate, Garita, STONE, STONE_DARK } from './Fortress'
 import { getGlassPill, getZoneSign } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat, shade } from './materials'
@@ -196,7 +198,8 @@ const PARK_Z = 2
 function IslandPlane() {
   const g = useRef<THREE.Group>(null)
   const shadow = useRef<THREE.Mesh>(null)
-  useFrame(() => {
+  const wp = useMemo(() => new THREE.Vector3(), [])
+  useFrame(({ camera, gl }) => {
     const p = g.current
     if (!p) return
     const { step, landingAt, world } = useFlight.getState()
@@ -224,6 +227,14 @@ function IslandPlane() {
     }
     p.position.set(0.6, y, z)
     p.rotation.set(pitch, Math.PI, 0)
+    // ancla en pantalla para la invitación de regreso (sobre el avión)
+    p.getWorldPosition(wp)
+    wp.y += 4.5
+    wp.project(camera)
+    const r = gl.domElement.getBoundingClientRect()
+    islandPlaneAnchor.x = r.left + ((wp.x + 1) / 2) * r.width
+    islandPlaneAnchor.y = r.top + ((1 - wp.y) / 2) * r.height
+    islandPlaneAnchor.visible = wp.z < 1
     if (shadow.current) {
       shadow.current.visible = p.visible
       shadow.current.position.set(0.6 + (y - 0.2) * 0.15, 0.24, z)
@@ -233,9 +244,68 @@ function IslandPlane() {
   return (
     <group position={[ISLAND_RUNWAY.x, 0, ISLAND_RUNWAY.z]} rotation={[0, ISLAND_RUNWAY.rot, 0]}>
       <mesh ref={shadow} geometry={GEO.sphere} material={mat('#0b2a33', { opacity: 0.22 })} />
-      <group ref={g}>
+      <group
+        ref={g}
+        onClick={(e) => {
+          if (cameraState.handMode || e.delta > 8 || useFlight.getState().step) return
+          e.stopPropagation()
+          useFlight.getState().setReturnOpen(!useFlight.getState().returnOpen)
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => (document.body.style.cursor = '')}
+      >
         <AirplaneModel stairs={false} />
+        {/* área táctil generosa */}
+        <mesh geometry={GEO.box} position={[0, 1.5, 0]} scale={[11, 4, 11]}>
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
       </group>
+    </group>
+  )
+}
+
+/**
+ * Puente de la entrada a la pista (local: +z hacia la pista): tablero de piedra clara sobre arcos,
+ * barandas con pilares, faroles y una franja de luz cálida que de noche guía hacia el mall.
+ */
+function Bridge({ from, to }: { from: number; to: number }) {
+  const len = to - from
+  const mid = (from + to) / 2
+  const BW = 3.6
+  const piers = Math.max(2, Math.round(len / 3))
+  return (
+    <group>
+      {/* tablero y cordón */}
+      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, 0.02, mid]} scale={[BW, 0.36, len]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat('#e6d3ad')} position={[0, 0.21, mid]} scale={[BW - 0.6, 0.02, len]} receiveShadow />
+      <mesh geometry={GEO.box} material={glowMat('#ffcf8a', 1.4, { dayGlow: 0 })} position={[0, 0.225, mid]} scale={[0.12, 0.01, len - 0.4]} />
+      {/* arcos sobre el agua */}
+      {Array.from({ length: piers + 1 }, (_, k) => (
+        <mesh key={k} geometry={GEO.box} material={mat(STONE[0])} position={[0, -0.75, from + (k * len) / piers]} scale={[BW - 0.2, 1.3, 0.7]} castShadow />
+      ))}
+      {Array.from({ length: piers }, (_, k) => (
+        <mesh key={k} geometry={GEO.halfDisc} material={mat(STONE[1])} position={[0, -1.3, from + ((k + 0.5) * len) / piers]} rotation={[0, Math.PI / 2, 0]} scale={[len / piers / 2 - 0.35, BW - 0.3, 0.9]} />
+      ))}
+      {/* barandas con pilares */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh geometry={GEO.box} material={mat(CORDON)} position={[s * (BW / 2 - 0.12), 0.75, mid]} scale={[0.18, 0.1, len]} />
+          {Array.from({ length: Math.round(len / 1.2) + 1 }, (_, k) => (
+            <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[s * (BW / 2 - 0.12), 0.48, from + (k * len) / Math.round(len / 1.2)]} scale={[0.16, 0.55, 0.16]} />
+          ))}
+          {/* faroles en los extremos y al centro */}
+          {[from + 0.4, mid, to - 0.4].map((z) => (
+            <group key={z} position={[s * (BW / 2 - 0.12), 0.2, z]}>
+              <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.1, 0]} scale={[0.09, 1.9, 0.09]} />
+              <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 2.15, 0]} scale={0.34} />
+              <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.8)} rotation={[-Math.PI / 2, 0, 0]} position={[-s * 0.9, 0.05, 0]} scale={[3, 3, 1]} />
+            </group>
+          ))}
+        </group>
+      ))}
     </group>
   )
 }
@@ -293,7 +363,7 @@ function Castle() {
       {/* murallas siguiendo el contorno; la de la puerta se abre */}
       {pts.map((a, i) => {
         const b = pts[(i + 1) % pts.length]
-        return <WallRun key={i} a={a} b={b} gap={i === GATE_EDGE ? 5 : 0} />
+        return <WallRun key={i} a={a} b={b} gap={i === GATE_EDGE ? 8.6 : 0} />
       })}
       {/* garitas sobre torres redondas en los salientes */}
       {towers.map(([x, z]) => (
@@ -302,26 +372,13 @@ function Castle() {
           <Garita x={x} z={z} y={WH} />
         </group>
       ))}
-      {/* puerta en arco con dos torres y escalinata hacia la pista */}
+      {/* entrada monumental (como la del mall), con su letrero y torres, y el puente a la pista */}
       <group position={[gm[0], 0, gm[1]]} rotation={[0, diag, 0]}>
+        <EntranceGate width={8.6} title="ISLA DE LOS DESCUENTOS" tagline="Outlet · Ofertas · Variedad" paths={false} roofColor={PINK} />
         {[-1, 1].map((s) => (
-          <group key={s}>
-            <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[s * 3.6, (WH + 1.2 - 1.6) / 2, 0]} scale={[2.8, WH + 2.8, 2.8]} castShadow />
-            <Garita x={s * 3.6} z={0} y={WH + 1.2} />
-          </group>
+          <Garita key={s} x={s * 5.3} z={0.2} y={WH + 0.9} />
         ))}
-        <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, WH + 0.2, 0]} scale={[5.6, 1.4, WT + 0.4]} castShadow />
-        <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, WH + 0.95, 0]} scale={[5.8, 0.14, WT + 0.5]} />
-        <mesh geometry={GEO.halfDisc} material={mat(CORDON)} position={[0, WH - 0.55, WT / 2 + 0.22]} rotation={[Math.PI / 2, 0, 0]} scale={[2.5, 0.02, 2.1]} />
-        {[-1, 1].map((s) => (
-          <mesh key={s} geometry={GEO.box} material={mat('#2f6b4f')} position={[s * 2.2, 1.4, WT / 2 + 0.55]} rotation={[0, s * 1.2, 0]} scale={[1.6, 2.8, 0.12]} />
-        ))}
-        <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.9)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.25, 1.6]} scale={[5, 4, 1]} />
-        {[0, 1, 2, 3].map((k) => (
-          <mesh key={k} geometry={GEO.box} material={mat(STONE[k % 2 ? 1 : 2])} position={[0, -0.1 - k * 0.2, WT / 2 + 0.7 + k * 0.6]} scale={[6 - k * 0.2, 0.2, 0.6]} receiveShadow />
-        ))}
-        {/* camino de piedra hasta la pista */}
-        <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, -0.75, (1.5 + RUN.d - 24 - 4) / 2]} scale={[4, 0.5, RUN.d - 24 - 4 - 1.5]} receiveShadow />
+        <Bridge from={3.9} to={Math.hypot(gm[0] - C.x, gm[1] - C.z) > 0 ? RUN.d - 4 - Math.hypot(gm[0] - C.x, gm[1] - C.z) + 0.4 : 12} />
       </group>
       {/* plaza central elevada con fuente */}
       <mesh geometry={GEO.cylinder} material={mat(PALETTE.floor)} position={[C.x, 0.1, C.z]} scale={[2 * PLAZA + 1, 0.2, 2 * PLAZA + 1]} receiveShadow />

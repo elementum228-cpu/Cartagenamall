@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ChevronRight, Plane, PlaneLanding, PlaneTakeoff, Ticket, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { islandPlaneAnchor } from './anchor'
+import { playCabinChime } from './sounds'
 import { FLYING_MS, LANDING_MS, TAKEOFF_MS, TAXI_FRAC, TOUCHDOWN, useFlight } from './flight'
 
 // Pantallas del viaje a Isla Descuento: terminal con tablero de salidas y tiquete gratis, pase de
@@ -310,6 +312,56 @@ function Arrived() {
   )
 }
 
+/** Invitación de regreso: tarjeta de vidrio sobre el avión de la isla (sigue la cámara). */
+function ReturnInvite() {
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const tick = () => {
+      const el = box.current
+      if (el) {
+        el.style.transform = `translate(${islandPlaneAnchor.x}px, ${islandPlaneAnchor.y}px) translate(-50%, -100%)`
+        el.style.visibility = islandPlaneAnchor.visible ? 'visible' : 'hidden'
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    tick()
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  const { setReturnOpen, flyBack } = useFlight.getState()
+  return (
+    <div ref={box} className="pointer-events-none fixed top-0 left-0 z-30">
+      <motion.div
+        initial={{ opacity: 0, y: 14, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.96 }}
+        transition={SPRING}
+        className="pointer-events-auto relative mb-3 w-[272px] rounded-[26px] border border-white/25 bg-[#0d2a3f]/72 px-5 pt-7 pb-5 text-center text-white shadow-[0_18px_50px_rgb(0_0_0/0.35)] backdrop-blur-xl"
+      >
+        <span className="absolute -top-5 left-1/2 grid h-10 w-[74px] -translate-x-1/2 -rotate-6 place-items-center rounded-lg bg-[#f5c542] text-[#0d2a3f] shadow-[0_6px_18px_rgb(245_197_66/0.45)]" aria-hidden>
+          <Plane className="size-5" strokeWidth={2.2} />
+        </span>
+        <button className="absolute top-2.5 right-2.5 grid size-7 place-items-center rounded-full bg-white/10 text-white/80" aria-label="Cerrar" onClick={() => setReturnOpen(false)}>
+          <X className="size-4" />
+        </button>
+        <p className="text-[17px] leading-snug font-semibold">¿Listo para volver a</p>
+        <p className="text-[19px] leading-snug font-extrabold text-[#f5c542]">Cartagena Mall?</p>
+        <p className="mt-1 text-[13.5px] text-white/80">Vuelo CM 002 · Isla → Cartagena</p>
+        <button
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#1fc7b6] to-[#0f8f86] text-[16px] font-semibold shadow-[0_8px_24px_rgb(19_185_173/0.45)] transition active:scale-[0.98]"
+          onClick={() => {
+            void playCabinChime()
+            flyBack()
+          }}
+        >
+          <PlaneTakeoff className="size-5" /> Volar de regreso <ChevronRight className="size-5" />
+        </button>
+        <span className="absolute -bottom-2.5 left-1/2 size-5 -translate-x-1/2 rotate-45 border-r border-b border-white/25 bg-[#0d2a3f]" aria-hidden />
+      </motion.div>
+    </div>
+  )
+}
+
 /** En la isla: título arriba y botón para volver al mall en avión. */
 function IslandHud() {
   return (
@@ -334,6 +386,7 @@ function IslandHud() {
 export function FlightLayer() {
   const step = useFlight((s) => s.step)
   const world = useFlight((s) => s.world)
+  const returnOpen = useFlight((s) => s.returnOpen)
   // en la isla se esconden los controles propios del mall (categorías, pisos, botón principal)
   useEffect(() => {
     document.documentElement.classList.toggle('island-on', world === 'island')
@@ -347,6 +400,7 @@ export function FlightLayer() {
       {step === 'landing' && <LandingNotice key="landing" />}
       {step === 'arrived' && <Arrived key="arrived" />}
       {step === null && world === 'island' && <IslandHud key="hud" />}
+      {step === null && world === 'island' && returnOpen && <ReturnInvite key="return" />}
     </AnimatePresence>
   )
 }

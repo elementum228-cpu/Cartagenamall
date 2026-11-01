@@ -27,6 +27,9 @@ interface FlightState {
   takeoffAt: number
   /** Cuándo empezó el aterrizaje en la isla. */
   landingAt: number
+  /** Invitación «Volver a Cartagena Mall» abierta (al tocar el avión en la isla). */
+  returnOpen: boolean
+  setReturnOpen: (open: boolean) => void
   start: () => void
   getTicket: (name: string) => void
   takeoff: () => void
@@ -58,6 +61,8 @@ export const useFlight = create<FlightState>()((set, get) => ({
   pass: null,
   takeoffAt: 0,
   landingAt: 0,
+  returnOpen: false,
+  setReturnOpen: (returnOpen) => set({ returnOpen }),
   start: () => {
     clear()
     useUI.getState().openAirport(false)
@@ -104,7 +109,7 @@ export const useFlight = create<FlightState>()((set, get) => ({
   explore: () => set({ step: null }),
   flyBack: () => {
     clear()
-    set({ step: 'flying', direction: 'back' })
+    set({ step: 'flying', direction: 'back', returnOpen: false })
     later(700, () => {
       set({ world: 'mall' })
       useUI.setState({ selectedSpaceId: null, openStoreId: null, peek: false })
