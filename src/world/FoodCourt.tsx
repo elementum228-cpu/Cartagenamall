@@ -240,7 +240,7 @@ function buildFurniture() {
       const sx = x + Math.cos(a) * 1
       const sz = z + Math.sin(a) * 1
       stools.push({ p: [sx, 0.45, sz], s: [0.42, 0.5, 0.42], c: STOOL_COLORS[k++ % STOOL_COLORS.length] })
-      if ((k + Math.round(x)) % 3 === 0) {
+      if ((k + Math.round(x)) % 4 === 0) {
         bodies.push({ p: [sx, 1.05, sz], s: [1, 0.85, 1], r: -a, c: STOOL_COLORS[(k + 2) % STOOL_COLORS.length] })
         heads.push({ p: [sx, 1.55, sz], s: [0.34, 0.34, 0.34], c: k % 2 ? '#c58c64' : '#8d5a3b' })
       }
@@ -252,11 +252,13 @@ function buildFurniture() {
   }
 
   // Patio: rejilla que evita islas, frentes de locales, terraza y la llegada de las escaleras.
-  for (let x = -5.5; x <= 12; x += 4.2)
-    for (let z = -5.5; z <= 12; z += 4.2) {
+  // En damero (una sí, una no): el patio respira y se ven bien los locales y las islas.
+  for (let gx = 0, x = -5.5; x <= 12; x += 4.2, gx++)
+    for (let gz = 0, z = -5.5; z <= 12; z += 4.2, gz++) {
+      if ((gx + gz) % 2 === 1) continue
       if (ISLANDS.some(([ix, iz]) => Math.hypot(x - ix, z - iz) < 3.2)) continue
       if (x > FOOD_LAYOUT.arrival.x - 3 && z > FOOD_LAYOUT.arrival.z - 3.5) continue
-      table(x, z, 4, (k / 4) % 3 === 0)
+      table(x, z, 4, (k / 4) % 2 === 0)
     }
   // Terraza bajo la pérgola
   table(T.x0 + 2.4, T.z0 + 2.4, 3)
