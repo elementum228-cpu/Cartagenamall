@@ -13,6 +13,7 @@ import { Countdown } from '../ui/bits'
 import { MallMark } from '../ui/MallMark'
 import { ProductImage } from '../ui/ProductImage'
 import { Sheet } from '../ui/Sheet'
+import { playShipHorn } from './sound'
 import { SHIP_SCHEDULE_LABEL, SHIP_STAY_MIN, arrivalLabel, isDocked, isShipPromotion, nextScheduledArrival, scheduledWindow, useDiscountShip } from './offers'
 
 // Capa del barco de los descuentos: hace atracar/zarpar el barco según el horario, muestra el aviso
@@ -61,6 +62,7 @@ function ShipNotice() {
     seen.current = arrival.at
     setShown(arrival.at)
     navigator.vibrate?.([30, 60, 30])
+    void playShipHorn()
     const id = setTimeout(() => setShown(null), 9000)
     return () => clearTimeout(id)
   }, [arrival])
