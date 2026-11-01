@@ -124,6 +124,8 @@ const onEscalator = (wx: number, wz: number) => {
 const onEntrancePath = (x: number, z: number) => x > 8 && z > 8 && Math.abs(x - z) < 4.5
 /** Esquina entre Lifestyle y Belleza: zona de servicios, con su propia decoración (District). */
 const onDistrict = (x: number, z: number) => x < -9.8 && z > 9.8
+/** Jardín del fondo bajo la llegada de las escaleras y el torreón del piso 2: despejado. */
+const underEscalator = (x: number, z: number) => x < -6 && z < -6 && Math.abs(x - z) < 6
 
 for (let i = 0; i < 4; i++) {
   const a = Math.PI / 4 + (i * Math.PI) / 2
@@ -142,13 +144,13 @@ for (let q = 0; q < 4; q++) {
   for (let i = 0; i < 5; i++) {
     const a = base + (i - 2) * 0.16
     const r = 17 + (i % 3) * 5
-    if (onEntrancePath(Math.sin(a) * r, Math.cos(a) * r) || onDistrict(Math.sin(a) * r, Math.cos(a) * r) || onCourt(Math.sin(a) * r, Math.cos(a) * r, 1.5)) continue
+    if (onEntrancePath(Math.sin(a) * r, Math.cos(a) * r) || onDistrict(Math.sin(a) * r, Math.cos(a) * r) || underEscalator(Math.sin(a) * r, Math.cos(a) * r) || onCourt(Math.sin(a) * r, Math.cos(a) * r, 1.5)) continue
     palm(Math.sin(a) * r, Math.cos(a) * r, 3.2 + (i % 2) * 1.1, 0.08, q * 3 + i)
   }
   for (let i = 0; i < 7; i++) {
     const a = base + (i - 3) * 0.12
     const r = 13.5 + (i % 2) * 2
-    if (onEntrancePath(Math.sin(a) * r, Math.cos(a) * r) || onDistrict(Math.sin(a) * r, Math.cos(a) * r) || onCourt(Math.sin(a) * r, Math.cos(a) * r, 1)) continue
+    if (onEntrancePath(Math.sin(a) * r, Math.cos(a) * r) || onDistrict(Math.sin(a) * r, Math.cos(a) * r) || underEscalator(Math.sin(a) * r, Math.cos(a) * r) || onCourt(Math.sin(a) * r, Math.cos(a) * r, 1)) continue
     bushes.push({ p: [Math.sin(a) * r, 0.45, Math.cos(a) * r], s: [1.3, 1, 1.3] })
   }
 }
