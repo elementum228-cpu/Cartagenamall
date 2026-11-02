@@ -6,7 +6,7 @@ import { formatCOP } from '../lib/format'
 import { buildOrder, subOrderMessage } from '../services/orders'
 import { whatsappLink } from '../lib/restaurant'
 import { remoteEnabled } from '../remote/client'
-import { useBuyer } from '../remote/profile'
+import { useBuyer, useProfile } from '../remote/profile'
 import { uniqueId } from '../lib/ids'
 import { useCart } from '../state/cart'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
@@ -28,8 +28,9 @@ export function CheckoutPage() {
   const navigate = useNavigate()
   const { waiting, needLogin } = useBuyer()
 
-  const [name, setName] = useState('')
-  const [whatsapp, setWhatsapp] = useState('')
+  const profile = useProfile.getState()
+  const [name, setName] = useState(profile.fullName)
+  const [whatsapp, setWhatsapp] = useState(profile.phone)
   const [mode, setMode] = useState<DeliveryMode>('pickup')
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')

@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Camera, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { remoteEnabled, supabase } from '../remote/client'
-import { useProfile } from '../remote/profile'
+import { saveProfile, useProfile } from '../remote/profile'
+import { readImageFile } from '../lib/image'
+import { useUI } from '../state/ui'
 import { PasswordForm } from '../remote/AccountGate'
 import { useSession } from '../remote/session'
 import { REQUEST_CATEGORIES, STATUS_LABEL, STATUS_STYLE, type StoreRequest } from '../state/storeRequests'
@@ -29,13 +32,11 @@ export function MyAccountPage() {
   const current = reqs?.[0]
   const active = current && current.status !== 'rechazada'
   return (
-    <div className="mx-auto max-w-md px-4 pt-8 pb-28">
+    <div className="mx-auto max-w-lg px-4 pt-8 pb-28">
       <div className="glass-strong rounded-[28px] p-5">
-        <p className="text-xs font-bold tracking-wider text-brand uppercase">Cartagena Mall</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">Mi cuenta</h1>
-        <p className="mt-1 text-sm break-all text-ink-soft">{s.email}</p>
+        <ProfileCard email={s.email} />
 
-        <div className="mt-4 flex flex-col gap-2.5">
+        <div className="mt-5 flex flex-col gap-2.5 border-t border-line pt-5">
           {role === 'admin' && (
             <Link to="/admin/solicitudes" className={btn.secondary}>
               Ver solicitudes de locales
@@ -153,5 +154,117 @@ function RequestForm({ userId, onDone, onCancel }: { userId: string; onDone: () 
       <button className={btn.primary} disabled={busy}>{busy ? 'Enviando…' : 'Enviar solicitud'}</button>
       <button type="button" className={btn.ghost} onClick={onCancel}>Cancelar</button>
     </form>
+  )
+}
+
+const COLORS = ['#2f9e8f', '#2f6fd6', '#7a5ea8', '#c2566b', '#d9826a', '#d49a2a', '#4b7f52', '#36607a']
+
+/** Perfil personalizable: foto, nombre, celular y «sobre mí». Todo opcional. */
+function ProfileCard({ email }: { email: string | null }) {
+  const p = useProfile()
+  const toast = useUI((s) => s.toast)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [name, setName] = useState(p.fullName)
+  const [phone, setPhone] = useState(p.phone)
+  const [bio, setBio] = useState(p.bio)
+  const [busy, setBusy] = useState(false)
+  // los datos llegan de la base después de cargar la página
+  useEffect(() => {
+    setName(p.fullName)
+    setPhone(p.phone)
+    setBio(p.bio)
+  }, [p.fullName, p.phone, p.bio])
+  const dirty = name.trim() !== p.fullName || phone.trim() !== p.phone || bio.trim() !== p.bio
+  const shown = name.trim() || p.fullName
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file) return
+    try {
+      const data = await readImageFile(file, 'avatar')
+      const err = await saveProfile({ avatar: data })
+      toast(err ?? 'Foto de perfil actualizada', err ? 'error' : 'success')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'No se pudo cargar la foto.', 'error')
+    }
+  }
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    if (phone.trim() && phone.replace(/\D/g, '').length < 7) return toast('Escribe un celular válido o déjalo vacío.', 'error')
+    setBusy(true)
+    const err = await saveProfile({ fullName: name, phone, bio })
+    setBusy(false)
+    toast(err ?? 'Perfil guardado', err ? 'error' : 'success')
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-bold tracking-wider text-brand uppercase">Cartagena Mall</p>
+      <div className="mt-3 flex items-center gap-4">
+        <button type="button" onClick={() => fileRef.current?.click()} className="group relative shrink-0" aria-label="Cambiar foto de perfil">
+          {p.avatar ? (
+            <img src={p.avatar} alt="Tu foto de perfil" className="size-24 rounded-full object-cover ring-2 ring-white shadow-soft" />
+          ) : (
+            <span className="grid size-24 place-items-center rounded-full text-4xl font-extrabold text-white ring-2 ring-white shadow-soft" style={{ background: p.color }}>
+              {(shown || email || '?').trim().slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <span className="absolute right-0 bottom-0 grid size-8 place-items-center rounded-full bg-ink text-white shadow-soft transition group-active:scale-90">
+            <Camera className="size-4" />
+          </span>
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void pickPhoto(e.target.files?.[0]).then(() => (e.target.value = ''))} />
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-bold tracking-tight">{shown || 'Mi cuenta'}</h1>
+          <p className="text-sm break-all text-ink-soft">{email}</p>
+          {p.avatar && (
+            <button
+              type="button"
+              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-ink-soft underline-offset-2 hover:underline"
+              onClick={async () => toast((await saveProfile({ avatar: null })) ?? 'Foto quitada', 'success')}
+            >
+              <Trash2 className="size-3" /> Quitar foto
+            </button>
+          )}
+        </div>
+      </div>
+
+      <form className="mt-5 flex flex-col gap-3" onSubmit={save} noValidate>
+        <label className="block text-xs font-bold">
+          Nombre <span className="font-medium text-ink-soft">(opcional)</span>
+          <input className={`${input} mt-1`} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="name" placeholder="Cómo te llamas" />
+        </label>
+        <label className="block text-xs font-bold">
+          Celular <span className="font-medium text-ink-soft">(opcional)</span>
+          <input className={`${input} mt-1`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} autoComplete="tel" placeholder="300 123 4567" />
+        </label>
+        <label className="block text-xs font-bold">
+          Correo de la cuenta
+          <input className={`${input} mt-1 opacity-70`} value={email ?? ''} readOnly />
+        </label>
+        <label className="block text-xs font-bold">
+          Sobre mí <span className="font-medium text-ink-soft">(opcional)</span>
+          <textarea className={`${input} mt-1`} rows={2} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} placeholder="Algo corto sobre ti" />
+        </label>
+        <div>
+          <p className="text-xs font-bold">Color de tu perfil</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-label={`Color ${c}`}
+                aria-pressed={p.color === c}
+                onClick={() => void saveProfile({ color: c })}
+                className={`size-8 rounded-full transition active:scale-90 ${p.color === c ? 'ring-2 ring-ink ring-offset-2' : ''}`}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        </div>
+        <button className={btn.primary} disabled={!dirty || busy}>
+          {busy ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+      </form>
+    </div>
   )
 }

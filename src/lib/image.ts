@@ -1,11 +1,12 @@
 // Reduce una imagen elegida por el comerciante antes de guardarla: localStorage tiene ~5 MB para
 // todo el catálogo, así que los logos quedan en 256 px y las fotos de producto en 640 px.
 
-export type ImageKind = 'logo' | 'product'
+export type ImageKind = 'logo' | 'product' | 'avatar'
 
 const LIMITS: Record<ImageKind, { max: number; type: string; quality: number }> = {
   logo: { max: 256, type: 'image/png', quality: 1 },
   product: { max: 640, type: 'image/jpeg', quality: 0.8 },
+  avatar: { max: 320, type: 'image/jpeg', quality: 0.85 },
 }
 
 /** Tamaño máximo del archivo original (antes de reducirlo). */
@@ -23,6 +24,19 @@ export async function readImageFile(file: File, kind: ImageKind): Promise<string
       el.src = url
     })
     const { max, type, quality } = LIMITS[kind]
+    if (kind === 'avatar') {
+      // foto de perfil: recorte cuadrado centrado
+      const side = Math.min(img.naturalWidth, img.naturalHeight)
+      const size = Math.min(max, side)
+      const c = document.createElement('canvas')
+      c.width = size
+      c.height = size
+      const cx = c.getContext('2d')!
+      cx.fillStyle = '#ffffff'
+      cx.fillRect(0, 0, size, size)
+      cx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size)
+      return c.toDataURL(type, quality)
+    }
     const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight))
     const w = Math.max(1, Math.round(img.naturalWidth * scale))
     const h = Math.max(1, Math.round(img.naturalHeight * scale))

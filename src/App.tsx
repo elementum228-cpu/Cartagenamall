@@ -40,6 +40,7 @@ import { ClueModal, StampToast } from './features/passport/PassportOverlays'
 import { OrderDetailPage, OrdersPage } from './pages/OrdersPage'
 import { ShopPage } from './pages/ShopPage'
 import { remoteEnabled } from './remote/client'
+import { useProfile } from './remote/profile'
 import { useCanAdmin, useSession } from './remote/session'
 import { useCartCount } from './state/cart'
 import { usePersonal } from './state/personal'
@@ -215,6 +216,7 @@ function TopBar() {
   const compare = usePersonal((s) => s.compare.length)
   const loggedIn = useSession((s) => !!s.userId)
   const canAdmin = useCanAdmin()
+  const avatar = useProfile((p) => p.avatar)
   return (
     // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
     <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
@@ -260,7 +262,7 @@ function TopBar() {
           </Link>
         )}
         <NavLink to={loggedIn ? '/mi-cuenta' : '/login'} className={({ isActive }) => `${iconBtn} ${isActive ? '!bg-teal !text-white' : ''} ${loggedIn || !remoteEnabled() ? '' : 'max-sm:hidden'}`} aria-label={loggedIn ? 'Mi cuenta' : 'Iniciar sesión o crear cuenta'}>
-          <UserRound className="size-[21px]" strokeWidth={1.8} />
+          {loggedIn && avatar ? <img src={avatar} alt="" className="size-9 rounded-full object-cover" /> : <UserRound className="size-[21px]" strokeWidth={1.8} />}
         </NavLink>
         <Link to="/carrito" className="relative grid size-11 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden" aria-label={`Carrito, ${count} productos`}>
           <ShoppingCart className="size-[19px]" strokeWidth={1.9} />
