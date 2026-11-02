@@ -6,6 +6,8 @@ import { safeStorage } from './storage'
 
 interface OrdersState {
   orders: Order[]
+  /** Pedidos hechos desde este navegador (como cliente). Los demás los ve el comercio. */
+  mine: string[]
   nextNumber: number
   add: (order: Order) => void
   setSubOrderStatus: (subOrderId: string, status: OrderStatus) => void
@@ -19,8 +21,9 @@ export const useOrders = create<OrdersState>()(
   persist(
     (set) => ({
       orders: [],
+      mine: [],
       nextNumber: 1,
-      add: (order) => set((s) => ({ orders: [order, ...s.orders], nextNumber: s.nextNumber + 1 })),
+      add: (order) => set((s) => ({ orders: [order, ...s.orders], mine: [order.id, ...s.mine].slice(0, 200), nextNumber: s.nextNumber + 1 })),
       setSubOrderStatus: (subId, status) =>
         set((s) => ({
           orders: s.orders.map((o) => ({
@@ -39,8 +42,17 @@ export const useOrders = create<OrdersState>()(
             }),
           })),
         })),
-      reset: () => set({ orders: [], nextNumber: 1 }),
+      reset: () => set({ orders: [], mine: [], nextNumber: 1 }),
     }),
-    { name: 'cm:orders:v1', storage: safeStorage },
+    {
+      name: 'cm:orders:v1',
+      storage: safeStorage,
+      version: 1,
+      // los pedidos guardados antes de existir «mine» se hicieron desde este navegador
+      migrate: (persisted, version) => {
+        const st = persisted as Partial<OrdersState>
+        return (version < 1 ? { ...st, mine: (st.orders ?? []).map((o) => o.id) } : st) as OrdersState
+      },
+    },
   ),
 )

@@ -51,6 +51,7 @@ import { Toasts } from './ui/Toasts'
 import { MallMark } from './ui/MallMark'
 import { InstallLayer } from './pwa/InstallApp'
 import { BellButton } from './notifications/BellButton'
+import { MerchantWatcher } from './notifications/MerchantWatcher'
 import { OrderWatcher } from './notifications/OrderWatcher'
 
 const AdminRequestsPage = lazy(() => import('./pages/AdminRequestsPage'))
@@ -154,6 +155,7 @@ function Shell() {
       </main>
       <TopBar />
       <OrderWatcher />
+      <MerchantWatcher />
       <PromotionEventDriver exploring={exploring} />
       {FEATURES.compare && <CompareTray />}
       <BottomNav />

@@ -15,6 +15,8 @@ export interface AppNotification {
   /** Cuándo se abrió la campanita viendo este aviso (ms). Desaparece SEEN_TTL_MS después. */
   seenAt?: number
   subId?: string
+  /** Destino al tocar el aviso (por defecto, el seguimiento del pedido). */
+  link?: string
 }
 
 /** Un aviso es solo eso: se borra solo 40 s después de que la persona abre la campanita y lo ve. */

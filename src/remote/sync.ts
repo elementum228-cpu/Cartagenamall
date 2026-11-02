@@ -278,6 +278,19 @@ export async function courtTakenHours(day: string, court: 'A' | 'B' = 'A'): Prom
   return (data as number[]) ?? []
 }
 
+/** Solo los pedidos visibles para la sesión (comercio: los de sus tiendas; admin: todos). Se usa para el aviso de pedidos nuevos. */
+export async function refreshOrders() {
+  if (!supabase || !signedIn()) return
+  const [subs, orders] = await Promise.all([supabase.from('sub_orders').select('order_id, doc, status'), supabase.from('orders').select('id, doc')])
+  if (subs.error || orders.error) return
+  const byOrder = new Map<string, SubOrder[]>()
+  for (const r of subs.data as { order_id: string; doc: SubOrder; status: SubOrder['status'] }[])
+    byOrder.set(r.order_id, [...(byOrder.get(r.order_id) ?? []), { ...r.doc, status: r.status }])
+  const remote = (orders.data as { id: string; doc: Order }[]).map((r) => ({ ...r.doc, subOrders: byOrder.get(r.id) ?? [] }))
+  const ids = new Set(remote.map((o) => o.id))
+  applyRemote(() => useOrders.setState((st) => ({ orders: [...remote, ...st.orders.filter((o) => !ids.has(o.id))].sort((x, y) => y.createdAt.localeCompare(x.createdAt)) })))
+}
+
 /** Pedidos, solicitudes y reservas visibles para la sesión (admin: todo; comercio: lo suyo). */
 async function loadPrivate() {
   if (!supabase || !signedIn()) return

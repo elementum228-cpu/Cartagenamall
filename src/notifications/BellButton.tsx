@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { DeliveryMode, SubOrder } from '../domain/types'
 import { ORDER_STATUS_LABEL, stepIndex, stepsFor } from '../services/orders'
+import { formatCOP } from '../lib/format'
+import { useSession } from '../remote/session'
 import { useOrders } from '../state/orders'
 import { STATUS_BAR, STATUS_PILL } from '../ui/orderTone'
 import { useNotifications } from './store'
@@ -18,7 +20,12 @@ export function BellButton({ className }: { className: string }) {
   const rung = useNotifications((s) => s.rung)
   const markSeen = useNotifications((s) => s.markSeen)
   const prune = useNotifications((s) => s.prune)
-  const orders = useOrders((s) => s.orders)
+  const allOrders = useOrders((s) => s.orders)
+  const mineIds = useOrders((s) => s.mine)
+  const { isAdmin, storeIds } = useSession()
+  const orders = allOrders.filter((o) => mineIds.includes(o.id))
+  // pedidos que llegaron a las tiendas que administra esta cuenta y aún no atendió
+  const toAttend = allOrders.flatMap((o) => o.subOrders.filter((s) => (isAdmin || storeIds.includes(s.storeId)) && (s.status === 'pending_confirmation' || s.status === 'received')).map((s) => ({ o, s })))
   const [open, setOpen] = useState(false)
   const [wiggle, setWiggle] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -50,7 +57,7 @@ export function BellButton({ className }: { className: string }) {
       document.removeEventListener('keydown', key)
     }
   }, [open])
-  if (!orders.length && !items.length) return null
+  if (!orders.length && !items.length && !toAttend.length) return null
 
   const Icon = unread ? BellRing : Bell
   return (
@@ -74,6 +81,25 @@ export function BellButton({ className }: { className: string }) {
         <div className="border border-line bg-card fixed inset-x-3 top-[calc(var(--chrome-top)-4px)] z-[80] max-h-[70dvh] overflow-y-auto rounded-3xl p-3 shadow-[0_18px_50px_rgb(6_44_66/0.25)] sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[360px]" role="dialog" aria-label="Notificaciones">
           <p className="px-1 pb-2 font-extrabold">Notificaciones</p>
 
+          {toAttend.length > 0 && (
+            <div className="mb-3 space-y-2">
+              <p className="px-1 text-[11px] font-bold tracking-wide text-ink-soft uppercase">Pedidos por atender</p>
+              {toAttend.slice(0, 6).map(({ o, s }) => (
+                <Link key={s.id} to={`/mi-negocio?tienda=${s.storeId}&tab=pedidos`} className="block rounded-2xl border border-amber-300 bg-amber-50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-bold">
+                      {s.storeName} · {o.customer.name}
+                    </p>
+                    <span className="shrink-0 text-sm font-extrabold">{formatCOP(s.subtotal)}</span>
+                  </div>
+                  <p className="text-xs text-ink-soft">
+                    {s.lines.reduce((a, l) => a + l.qty, 0)} productos · {o.delivery.mode === 'delivery' ? 'Domicilio' : 'Recoge en el local'} · {ago(o.createdAt)}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+
           {active.length > 0 && (
             <div className="mb-3 space-y-2">
               <p className="px-1 text-[11px] font-bold tracking-wide text-ink-soft uppercase">Tus pedidos ahora</p>
@@ -89,7 +115,7 @@ export function BellButton({ className }: { className: string }) {
               <ul className="space-y-1.5">
                 {items.slice(0, 5).map((n) => (
                   <li key={n.id}>
-                    <Link to={`/pedidos/${n.orderId}`} className="flex items-start gap-2.5 rounded-2xl bg-brand/[0.07] p-2.5 text-left transition hover:bg-sand">
+                    <Link to={n.link ?? `/pedidos/${n.orderId}`} className="flex items-start gap-2.5 rounded-2xl bg-brand/[0.07] p-2.5 text-left transition hover:bg-sand">
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm leading-snug font-bold">{n.title}</span>
                         <span className="block truncate text-xs text-ink-soft">
@@ -103,7 +129,7 @@ export function BellButton({ className }: { className: string }) {
               </ul>
             </>
           )}
-          {items.length === 0 && active.length === 0 && <p className="rounded-2xl bg-sand p-3 text-sm text-ink-soft">Sin novedades por ahora. Te avisaremos con un «ting» cuando un local mueva tu pedido.</p>}
+          {items.length === 0 && active.length === 0 && toAttend.length === 0 && <p className="rounded-2xl bg-sand p-3 text-sm text-ink-soft">Sin novedades por ahora. Te avisaremos con un «ting» cuando un local mueva tu pedido.</p>}
         </div>
       )}
     </div>

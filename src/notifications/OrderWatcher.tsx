@@ -25,6 +25,11 @@ export function OrderWatcher() {
     const unsub = useOrders.subscribe((state) => {
       for (const o of state.orders)
         for (const sub of o.subOrders) {
+          if (!state.mine.includes(o.id)) {
+            // pedidos de clientes que ve el comercio: solo se recuerda su estado
+            known.set(sub.id, sub.status)
+            continue
+          }
           const prev = known.get(sub.id)
           known.set(sub.id, sub.status)
           const title = STATUS_NOTICE[sub.status]
@@ -40,8 +45,9 @@ export function OrderWatcher() {
     const poll = () => {
       if (document.hidden || !remoteEnabled()) return
       const recent = Date.now() - 48 * 3_600_000
-      for (const o of useOrders.getState().orders)
-        if (Date.parse(o.createdAt) > recent && o.subOrders.some((s) => !FINAL.includes(s.status))) void refreshOrderTracking(o.id)
+      const { orders, mine } = useOrders.getState()
+      for (const o of orders)
+        if (mine.includes(o.id) && Date.parse(o.createdAt) > recent && o.subOrders.some((s) => !FINAL.includes(s.status))) void refreshOrderTracking(o.id)
     }
     poll()
     const t = setInterval(poll, POLL_MS)

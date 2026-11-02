@@ -61,7 +61,7 @@ function MerchantContent() {
   const setStoreId = useMerchant((s) => s.setStoreId)
   const [params, setParams] = useSearchParams()
   const requested = params.get('tienda')
-  const [tab, setTab] = useState<Tab>('perfil')
+  const [tab, setTab] = useState<Tab>(() => (params.get('tab') === 'pedidos' ? 'pedidos' : 'perfil'))
   // Desde la ficha de una tienda se llega con ?tienda=: queda como la tienda de la sesión.
   useEffect(() => {
     if (!requested) return
