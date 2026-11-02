@@ -1,6 +1,6 @@
 import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart, UserRound, Zap } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
-import { BrowserRouter, Link, MemoryRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Link, MemoryRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { DoorIntro } from './features/DoorIntro'
 import { GuidedTour } from './features/GuidedTour'
 import { ExploreView } from './features/ExploreView'
