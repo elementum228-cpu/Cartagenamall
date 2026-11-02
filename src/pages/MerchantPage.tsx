@@ -12,6 +12,7 @@ import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
 import { catalogWords, isRestaurant } from '../lib/restaurant'
+import { useWelcome } from '../features/OwnerWelcome'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useMerchant } from '../state/merchant'
 import { useOrders } from '../state/orders'
@@ -56,7 +57,10 @@ function MerchantContent() {
   const allStores = useCatalog((s) => s.stores)
   const session = useSession()
   // con base de datos: solo las tiendas que la cuenta administra (el admin, todas)
-  const stores = useMemo(() => (remoteEnabled() && !session.isAdmin ? allStores.filter((s) => session.storeIds.includes(s.id)) : allStores), [allStores, session.isAdmin, session.storeIds])
+  // el dueño ve su local solo cuando termina la bienvenida (primero el aviso y la animación); el administrador ve todos
+  const stores = useMemo(() => (remoteEnabled() && !session.isAdmin ? allStores.filter((s) => session.storeIds.includes(s.id) && s.setup !== 'pending') : allStores), [allStores, session.isAdmin, session.storeIds])
+  const waiting = useMemo(() => (remoteEnabled() && !session.isAdmin ? allStores.find((s) => session.storeIds.includes(s.id) && s.setup === 'pending') : undefined), [allStores, session.isAdmin, session.storeIds])
+  const reopenWelcome = useWelcome((w) => w.reopen)
   const storeId = useMerchant((s) => s.storeId)
   const setStoreId = useMerchant((s) => s.setStoreId)
   const [params, setParams] = useSearchParams()
@@ -75,6 +79,17 @@ function MerchantContent() {
   }, [requested, stores, setStoreId, setParams])
   const store = stores.find((s) => s.id === (requested ?? storeId))
 
+  if (!store && waiting)
+    return (
+      <div className="mx-auto max-w-md px-4 pt-10 text-center">
+        <p className="text-5xl">🎉</p>
+        <h1 className="mt-3 text-2xl font-extrabold tracking-tight">¡{waiting.name} ya es tuyo!</h1>
+        <p className="mt-1 text-sm text-ink-soft">Tu solicitud fue aprobada. Empieza para dejar tu local listo.</p>
+        <button className={`${btn.primary} mt-5 w-full`} onClick={reopenWelcome}>
+          Toca para empezar
+        </button>
+      </div>
+    )
   if (!store) return <StorePicker stores={stores} preselect={requested} onPick={setStoreId} />
 
   return (

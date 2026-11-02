@@ -21,6 +21,7 @@ export function MyAccountPage() {
   const [pwd, setPwd] = useState(false)
   const pendingStore = useCatalog((c) => c.stores.find((x) => x.setup === 'pending' && s.storeIds.includes(x.id)))
   const reopenWelcome = useWelcome((w) => w.reopen)
+  const readyStoreIds = useCatalog((c) => c.stores.filter((x) => x.setup !== 'pending' && s.storeIds.includes(x.id)).map((x) => x.id))
 
   const load = useCallback(async () => {
     if (!supabase || !s.userId) return
@@ -41,7 +42,7 @@ export function MyAccountPage() {
         <ProfileCard email={s.email} />
 
         <div className="mt-5 flex flex-col gap-2.5 border-t border-line pt-5">
-          {pendingStore && (
+          {pendingStore && !(current && current.status === 'aprobada') && (
             <button onClick={reopenWelcome} className="rounded-2xl bg-brand p-4 text-left text-white shadow-soft transition active:scale-[0.98]">
               <span className="block text-sm font-bold opacity-90">🎉 ¡Eres dueño de un local!</span>
               <span className="block text-lg font-extrabold">Termina de configurar {pendingStore.name}</span>
@@ -69,9 +70,16 @@ export function MyAccountPage() {
               {current.status === 'aprobada' && (
                 <>
                   <p className="mt-2 text-xs font-semibold text-emerald-700">¡Tu local fue aprobado!</p>
-                  <Link to="/mi-negocio" className={`${btn.primary} mt-3 w-full`}>
-                    Gestionar mi local
-                  </Link>
+                  {/* mientras la configuración está pendiente, el local no aparece: primero la bienvenida */}
+                  {pendingStore ? (
+                    <button onClick={reopenWelcome} className={`${btn.primary} mt-3 w-full`}>
+                      Toca para empezar
+                    </button>
+                  ) : (
+                    <Link to="/mi-negocio" className={`${btn.primary} mt-3 w-full`}>
+                      Gestionar mi local
+                    </Link>
+                  )}
                 </>
               )}
               {current.status === 'rechazada' && <p className="mt-2 text-xs text-ink-soft">No pudimos aprobar esta solicitud. Puedes enviar una nueva.</p>}
@@ -97,7 +105,7 @@ export function MyAccountPage() {
               Administración
             </Link>
           )}
-          {s.storeIds.length > 0 && (
+          {readyStoreIds.length > 0 && (
             <Link to="/mi-negocio" className={btn.secondary}>
               Mi negocio
             </Link>
