@@ -32,6 +32,8 @@ import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { LoginPage } from './pages/LoginPage'
+import { BusinessPanelPage } from './pages/BusinessPanelPage'
+import { AuthLoginPage, RegisterPage } from './pages/AuthPages'
 import { OffersPage } from './pages/OffersPage'
 import { PassportPage } from './pages/PassportPage'
 import { ClueModal, StampToast } from './features/passport/PassportOverlays'
@@ -116,6 +118,9 @@ function Shell() {
               <Route path="/ofertas" element={<OffersPage />} />
               <Route path="/pasaporte" element={<PassportPage />} />
               <Route path="/entrar" element={<LoginPage />} />
+              <Route path="/login" element={<AuthLoginPage />} />
+              <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/panel-negocio" element={<BusinessPanelPage />} />
               <Route
                 path="/mi-negocio"
                 element={

@@ -11,6 +11,7 @@ interface SessionState {
   refresh: () => Promise<void>
   signIn: (email: string) => Promise<string | null>
   signInWithPassword: (email: string, password: string) => Promise<string | null>
+  signUp: (email: string, password: string, role: 'cliente' | 'negocio', businessName?: string) => Promise<{ error: string | null; needsConfirm: boolean }>
   setPassword: (password: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
@@ -44,6 +45,30 @@ export const useSession = create<SessionState>()((set, get) => ({
     if (error) return /invalid login credentials/i.test(error.message) ? 'Correo o contraseña incorrectos.' : error.message
     await get().refresh()
     return null
+  },
+  signUp: async (email, password, role, businessName) => {
+    if (!supabase) return { error: 'No hay base de datos conectada.', needsConfirm: false }
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { role, business_name: role === 'negocio' ? (businessName ?? '').trim() : null } },
+    })
+    if (error) {
+      const m = error.message
+      const es = /already registered|already been registered/i.test(m)
+        ? 'Ese correo ya tiene una cuenta. Inicia sesión.'
+        : /password/i.test(m) && /(least|short|weak)/i.test(m)
+          ? 'La contraseña es muy débil o muy corta (mínimo 8 caracteres).'
+          : /rate limit|too many/i.test(m)
+            ? 'Demasiados intentos. Espera un momento e inténtalo de nuevo.'
+            : /invalid/i.test(m) && /email/i.test(m)
+              ? 'Escribe un correo válido.'
+              : 'No pudimos crear tu cuenta. Inténtalo de nuevo.'
+      return { error: es, needsConfirm: false }
+    }
+    if (!data.session) return { error: null, needsConfirm: true }
+    await get().refresh()
+    return { error: null, needsConfirm: false }
   },
   setPassword: async (password) => {
     if (!supabase) return 'No hay base de datos conectada.'

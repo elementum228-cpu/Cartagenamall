@@ -1,10 +1,11 @@
 import { Info, Store as StoreIcon, Truck } from 'lucide-react'
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import type { DeliveryMode } from '../domain/types'
 import { formatCOP } from '../lib/format'
 import { buildOrder } from '../services/orders'
 import { remoteEnabled } from '../remote/client'
+import { useBuyer } from '../remote/profile'
 import { uniqueId } from '../lib/ids'
 import { useCart } from '../state/cart'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
@@ -24,6 +25,7 @@ export function CheckoutPage() {
   const clearCart = useCart((s) => s.clear)
   const toast = useUI((s) => s.toast)
   const navigate = useNavigate()
+  const { waiting, needLogin, isBusiness } = useBuyer()
 
   const [name, setName] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
@@ -33,6 +35,19 @@ export function CheckoutPage() {
   const [touched, setTouched] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  if (needLogin) return <Navigate to="/login?redirect=/checkout" replace />
+  if (waiting) return <p className="p-6 text-sm text-ink-soft">Verificando tu cuenta…</p>
+  if (isBusiness)
+    return (
+      <div className="mx-auto max-w-md px-4 pt-8">
+        <p className="rounded-2xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+          Tu cuenta es de negocio y no puede comprar. Para hacer pedidos entra con una cuenta de cliente.
+        </p>
+        <Link to="/panel-negocio" className={`${btn.secondary} mt-3 w-full`}>
+          Ir a mi panel
+        </Link>
+      </div>
+    )
   if (!items.length && !submitting) return <Navigate to="/carrito" replace />
 
   const errors = {
