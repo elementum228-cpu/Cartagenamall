@@ -1,5 +1,5 @@
 import { CheckCircle2, ClipboardList, Copy, Info, MessageCircle } from 'lucide-react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import type { Order, OrderStatus, SubOrder } from '../domain/types'
 import { copyText } from '../lib/clipboard'
 import { whatsappLink } from '../lib/restaurant'
@@ -74,6 +74,7 @@ export function OrderDetailPage() {
   const { id } = useParams()
   const [params] = useSearchParams()
   const order = useOrders((s) => s.orders.find((o) => o.id === id))
+  const waSent = ((useLocation().state as { waSent?: string[] } | null)?.waSent ?? []) as string[]
   if (!order)
     return (
       <EmptyState icon={<ClipboardList className="size-7" />} title="Pedido no encontrado" action={<Link to="/pedidos" className={btn.secondary}>Ver mis pedidos</Link>}>
@@ -86,8 +87,12 @@ export function OrderDetailPage() {
         <div className="flex gap-3 rounded-3xl bg-brand p-4 text-white shadow-soft">
           <CheckCircle2 className="size-7 shrink-0" />
           <div>
-            <p className="font-extrabold">¡Solicitud enviada!</p>
-            <p className="text-sm opacity-90">Ahora toca «Enviar pedido por WhatsApp» en cada tienda para que le llegue su pedido; ahí mismo lo confirma.</p>
+            <p className="font-extrabold">¡Pedido enviado!</p>
+            <p className="text-sm opacity-90">
+              {waSent.length === order.subOrders.length
+                ? 'Le escribimos por WhatsApp a la tienda. Aquí abajo sigues el estado de tu pedido.'
+                : 'Si WhatsApp no se abrió, toca «Enviar por WhatsApp» en cada tienda para que le llegue su pedido. Aquí abajo sigues el estado.'}
+            </p>
           </div>
         </div>
       )}
@@ -109,7 +114,7 @@ export function OrderDetailPage() {
       </p>
       {order.notes && <p className="rounded-2xl bg-card p-3 text-sm text-ink-soft">Notas: {order.notes}</p>}
       {order.subOrders.map((s) => (
-        <SubOrderCard key={s.id} order={order} sub={s} />
+        <SubOrderCard key={s.id} order={order} sub={s} sent={waSent.includes(s.id)} />
       ))}
       <div className="flex items-end justify-between rounded-3xl border border-line bg-card p-5">
         <span className="font-bold">Total estimado</span>
@@ -119,7 +124,7 @@ export function OrderDetailPage() {
   )
 }
 
-function SubOrderCard({ order, sub }: { order: Order; sub: SubOrder }) {
+function SubOrderCard({ order, sub, sent }: { order: Order; sub: SubOrder; sent: boolean }) {
   const { storeById } = useCatalogMaps()
   const store = storeById[sub.storeId]
   const toast = useUI((s) => s.toast)
@@ -168,9 +173,9 @@ function SubOrderCard({ order, sub }: { order: Order; sub: SubOrder }) {
             href={whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP))}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1faa59] px-4 py-3 text-sm font-bold text-white shadow-soft transition active:scale-[0.98]"
+            className={`flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition active:scale-[0.98] ${sent ? 'border border-line bg-card text-ink' : 'bg-[#1faa59] text-white shadow-soft'}`}
           >
-            <MessageCircle className="size-4" /> Enviar pedido por WhatsApp a {sub.storeName}
+            <MessageCircle className="size-4" /> {sent ? `Enviado a ${sub.storeName} · volver a abrir WhatsApp` : `Enviar pedido por WhatsApp a ${sub.storeName}`}
           </a>
         </div>
       )}
