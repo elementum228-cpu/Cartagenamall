@@ -215,6 +215,8 @@ export interface SubOrder {
   history: { status: OrderStatus; at: string }[]
   /** Se marca cuando el inventario mock ya se descontó al confirmar. */
   stockCommitted: boolean
+  /** El comercio ya quitó este pedido de su lista (entregado o cancelado). */
+  archived?: boolean
 }
 
 export type DeliveryMode = 'pickup' | 'delivery'

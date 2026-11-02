@@ -1,13 +1,10 @@
 import { Bell, BellRing, ChevronRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import type { DeliveryMode, SubOrder } from '../domain/types'
-import { ORDER_STATUS_LABEL, stepIndex, stepsFor } from '../services/orders'
 import { formatCOP } from '../lib/format'
 import { useSession } from '../remote/session'
 import { useOrders } from '../state/orders'
 import { useUI } from '../state/ui'
-import { STATUS_BAR, STATUS_PILL } from '../ui/orderTone'
 import { useWelcome } from '../features/OwnerWelcome'
 import { useNotifications } from './store'
 
@@ -35,7 +32,6 @@ export function BellButton({ className }: { className: string }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const unread = items.filter((i) => !i.read).length
-  const active = orders.flatMap((o) => o.subOrders.filter((s) => s.status !== 'delivered' && s.status !== 'cancelled').map((s) => ({ o, s })))
 
   useEffect(() => setOpen(false), [pathname])
   // los avisos vistos se borran solos a los 40 s
@@ -104,15 +100,6 @@ export function BellButton({ className }: { className: string }) {
             </div>
           )}
 
-          {active.length > 0 && (
-            <div className="mb-3 space-y-2">
-              <p className="px-1 text-[11px] font-bold tracking-wide text-ink-soft uppercase">Tus pedidos ahora</p>
-              {active.map(({ o, s }) => (
-                <ActiveOrder key={s.id} orderId={o.id} sub={s} mode={o.delivery.mode} />
-              ))}
-            </div>
-          )}
-
           {items.length > 0 && (
             <>
               <p className="px-1 pb-1 text-[11px] font-bold tracking-wide text-ink-soft uppercase">Avisos</p>
@@ -154,26 +141,9 @@ export function BellButton({ className }: { className: string }) {
               </ul>
             </>
           )}
-          {items.length === 0 && active.length === 0 && toAttend.length === 0 && <p className="rounded-2xl bg-sand p-3 text-sm text-ink-soft">Sin novedades por ahora. Te avisaremos con un «ting» cuando un local mueva tu pedido.</p>}
+          {items.length === 0 && toAttend.length === 0 && <p className="rounded-2xl bg-sand p-3 text-sm text-ink-soft">Sin novedades por ahora. Te avisaremos con un «ting» cuando un local mueva tu pedido.</p>}
         </div>
       )}
     </div>
-  )
-}
-
-function ActiveOrder({ orderId, sub, mode }: { orderId: string; sub: SubOrder; mode: DeliveryMode }) {
-  const idx = stepIndex(mode, sub.status)
-  return (
-    <Link to={`/pedidos/${orderId}`} className="block rounded-2xl border border-line bg-card p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-sm font-bold">{sub.storeName}</p>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_PILL[sub.status]}`}>{ORDER_STATUS_LABEL[sub.status]}</span>
-      </div>
-      <div className="mt-2 flex gap-1" aria-hidden>
-        {stepsFor(mode).map((st, i) => (
-          <span key={st.label} className={`h-1.5 flex-1 rounded-full ${i <= idx ? STATUS_BAR[sub.status] : 'bg-line'}`} />
-        ))}
-      </div>
-    </Link>
   )
 }

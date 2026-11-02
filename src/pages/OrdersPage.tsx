@@ -19,6 +19,7 @@ export function StatusPill({ status }: { status: OrderStatus }) {
 
 export function OrdersPage() {
   const orders = useOrders((s) => s.orders)
+  const removeOrder = useOrders((s) => s.removeOrder)
   if (!orders.length)
     return (
       <EmptyState icon={<ClipboardList className="size-7" />} title="Aún no tienes pedidos" action={<Link to="/comprar" className={btn.primary}>Ir a comprar</Link>}>
@@ -29,25 +30,32 @@ export function OrdersPage() {
     <div className="mx-auto max-w-3xl space-y-3 px-4 pt-5 pb-28 md:pb-10">
       <h1 className="text-2xl font-extrabold tracking-tight">Mis pedidos</h1>
       {orders.map((o) => (
-        <Link key={o.id} to={`/pedidos/${o.id}`} className="block rounded-3xl border border-line bg-card p-4 transition hover:shadow-soft">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-mono text-sm font-extrabold">{o.id}</p>
-              <p className="text-xs text-ink-soft">
-                {formatDateTime(o.createdAt)} · {o.subOrders.length} {o.subOrders.length === 1 ? 'tienda' : 'tiendas'}
-              </p>
+        <div key={o.id}>
+          <Link to={`/pedidos/${o.id}`} className="block rounded-3xl border border-line bg-card p-4 transition hover:shadow-soft">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-extrabold">Pedido #{o.id.slice(-4)}</p>
+                <p className="text-xs text-ink-soft">
+                  {formatDateTime(o.createdAt)} · {o.subOrders.length} {o.subOrders.length === 1 ? 'tienda' : 'tiendas'}
+                </p>
+              </div>
+              <StatusPill status={overallStatus(o)} />
             </div>
-            <StatusPill status={overallStatus(o)} />
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex -space-x-2">
-              {o.subOrders.map((s) => (
-                <SubLogo key={s.id} storeId={s.storeId} />
-              ))}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex -space-x-2">
+                {o.subOrders.map((s) => (
+                  <SubLogo key={s.id} storeId={s.storeId} />
+                ))}
+              </div>
+              <span className="font-extrabold">{formatCOP(o.estimatedTotal)}</span>
             </div>
-            <span className="font-extrabold">{formatCOP(o.estimatedTotal)}</span>
-          </div>
-        </Link>
+          </Link>
+          {o.subOrders.every((x) => x.status === 'delivered' || x.status === 'cancelled') && (
+            <button className="mt-1 ml-auto flex items-center gap-1 px-2 py-1 text-xs font-bold text-ink-soft underline-offset-2 hover:underline" onClick={() => removeOrder(o.id)}>
+              Quitar de mi lista
+            </button>
+          )}
+        </div>
       ))}
     </div>
   )

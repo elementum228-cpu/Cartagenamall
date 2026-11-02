@@ -2,16 +2,16 @@ import { Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Pa
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CATEGORIES, CATEGORY_BY_ID, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
-import type { FacadeStyle, OrderStatus, Product, ProductIcon, Store } from '../domain/types'
+import type { DeliveryMode, FacadeStyle, OrderStatus, Product, ProductIcon, Store } from '../domain/types'
 import { formatCOP, formatDateTime } from '../lib/format'
 import { readImageFile, storedBytes } from '../lib/image'
 import { stockKey, totalStock } from '../lib/inventory'
-import { ORDER_STATUS_LABEL, statusOptions } from '../services/orders'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
-import { catalogWords, isRestaurant } from '../lib/restaurant'
+import { catalogWords, isRestaurant, whatsappLink } from '../lib/restaurant'
+import { StatusPill } from './OrdersPage'
 import { useWelcome } from '../features/OwnerWelcome'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useMerchant } from '../state/merchant'
@@ -680,54 +680,115 @@ function ConfirmDelete({ label, onConfirm }: { label: string; onConfirm: () => v
 
 // ── Pedidos ────────────────────────────────────────────────────────────────────
 
+/** Siguiente paso de un pedido y cómo se llama el botón que lo avanza. */
+function nextStep(mode: DeliveryMode, status: OrderStatus): { to: OrderStatus; label: string } | null {
+  switch (status) {
+    case 'received':
+    case 'pending_confirmation':
+      return { to: 'confirmed', label: 'Confirmar pedido' }
+    case 'confirmed':
+      return { to: 'preparing', label: 'Empezar a preparar' }
+    case 'preparing':
+      return { to: 'ready', label: 'Marcar listo' }
+    case 'ready':
+      return mode === 'delivery' ? { to: 'on_the_way', label: 'Salió en camino' } : { to: 'delivered', label: 'Marcar entregado' }
+    case 'on_the_way':
+      return { to: 'delivered', label: 'Marcar entregado' }
+    default:
+      return null
+  }
+}
+
 function MerchantOrders({ store }: { store: Store }) {
   const orders = useOrders((s) => s.orders)
   const setStatus = useOrders((s) => s.setSubOrderStatus)
-  const mine = orders.flatMap((o) => o.subOrders.filter((s) => s.storeId === store.id).map((s) => ({ order: o, sub: s })))
-  if (!mine.length)
+  const archive = useOrders((s) => s.archiveSubOrder)
+  const [view, setView] = useState<'active' | 'done'>('active')
+  const all = orders.flatMap((o) => o.subOrders.filter((s) => s.storeId === store.id && !s.archived).map((s) => ({ order: o, sub: s })))
+  const isDone = (st: OrderStatus) => st === 'delivered' || st === 'cancelled'
+  const active = all.filter((x) => !isDone(x.sub.status))
+  const done = all.filter((x) => isDone(x.sub.status))
+  const shown = view === 'active' ? active : done
+
+  if (!all.length)
     return (
       <EmptyState icon={<ClipboardList className="size-6" />} title="Aún no tienes pedidos">
         Cuando alguien compre en tu tienda, aquí verás solo tu parte del pedido para confirmarla.
       </EmptyState>
     )
   return (
-    <ul className="space-y-3">
-      {mine.map(({ order, sub }) => (
-        <li key={sub.id}>
-          <Card className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="font-mono text-sm font-extrabold">{sub.id}</p>
-                <p className="text-xs text-ink-soft">
-                  {formatDateTime(order.createdAt)} · {order.customer.name} · {order.customer.whatsapp} ·{' '}
-                  {order.delivery.mode === 'pickup' ? 'Recoge en el local' : `Domicilio: ${order.delivery.address}`}
-                </p>
-              </div>
-              <select
-                className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand"
-                value={sub.status}
-                onChange={(e) => setStatus(sub.id, e.target.value as OrderStatus)}
-                aria-label={`Estado de ${sub.id}`}
-              >
-                {statusOptions(order.delivery.mode).map((st) => (
-                  <option key={st} value={st}>
-                    {ORDER_STATUS_LABEL[st]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <ul className="text-sm text-ink-soft">
-              {sub.lines.map((l, i) => (
-                <li key={i}>
-                  {l.qty} × {l.name} {l.variantName && `(${l.variantName})`} {l.size && `talla ${l.size}`} — {formatCOP(l.lineTotal)}
-                </li>
-              ))}
-            </ul>
-            <p className="text-right text-sm font-extrabold">{formatCOP(sub.subtotal)}</p>
-          </Card>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-1 rounded-2xl bg-sand p-1" role="tablist">
+        {(
+          [
+            ['active', `Por atender (${active.length})`],
+            ['done', `Entregados (${done.length})`],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={view === id} onClick={() => setView(id)} className={`rounded-xl py-2.5 text-sm font-bold transition ${view === id ? 'bg-white text-brand shadow-soft' : 'text-ink-soft'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {view === 'done' && done.length > 1 && (
+        <button className="text-xs font-bold text-ink-soft underline-offset-2 hover:underline" onClick={() => done.forEach((x) => archive(x.sub.id))}>
+          Quitar todos los entregados y cancelados
+        </button>
+      )}
+      {!shown.length && <p className="rounded-2xl bg-sand p-4 text-sm text-ink-soft">{view === 'active' ? 'No tienes pedidos por atender. ¡Buen trabajo!' : 'Aún no hay pedidos entregados.'}</p>}
+      <ul className="space-y-3">
+        {shown.map(({ order, sub }) => {
+          const next = nextStep(order.delivery.mode, sub.status)
+          return (
+            <li key={sub.id}>
+              <Card className="space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-extrabold">{order.customer.name}</p>
+                    <p className="text-xs text-ink-soft">
+                      {formatDateTime(order.createdAt)} · {order.delivery.mode === 'pickup' ? 'Recoge en el local' : `Domicilio: ${order.delivery.address}`}
+                    </p>
+                  </div>
+                  <StatusPill status={sub.status} />
+                </div>
+                <ul className="text-sm">
+                  {sub.lines.map((l, i) => (
+                    <li key={i} className="flex justify-between gap-3">
+                      <span>
+                        {l.qty} × {l.name} {l.variantName && `(${l.variantName})`} {l.size && `talla ${l.size}`}
+                      </span>
+                      <span className="whitespace-nowrap text-ink-soft">{formatCOP(l.lineTotal)}</span>
+                    </li>
+                  ))}
+                </ul>
+                {order.notes && <p className="rounded-xl bg-sand px-3 py-2 text-xs text-ink-soft">Nota del cliente: {order.notes}</p>}
+                <div className="flex items-center justify-between">
+                  <a href={whatsappLink(order.customer.whatsapp, `Hola ${order.customer.name}, te escribimos de ${store.name} por tu pedido.`)} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-brand underline-offset-2 hover:underline">
+                    Escribir al cliente · {order.customer.whatsapp}
+                  </a>
+                  <span className="text-lg font-extrabold">{formatCOP(sub.subtotal)}</span>
+                </div>
+                {next && (
+                  <div className="flex gap-2">
+                    <button className={`${btn.primary} flex-1`} onClick={() => setStatus(sub.id, next.to)}>
+                      {next.label}
+                    </button>
+                    <button className={btn.ghost} onClick={() => setStatus(sub.id, 'cancelled')} aria-label="Cancelar pedido">
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+                {isDone(sub.status) && (
+                  <button className={`${btn.secondary} w-full`} onClick={() => archive(sub.id)}>
+                    <Trash2 className="size-4" /> Quitar de mi lista
+                  </button>
+                )}
+              </Card>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 

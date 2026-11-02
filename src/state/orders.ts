@@ -11,6 +11,10 @@ interface OrdersState {
   nextNumber: number
   add: (order: Order) => void
   setSubOrderStatus: (subOrderId: string, status: OrderStatus) => void
+  /** El comercio quita de su lista un pedido entregado o cancelado. */
+  archiveSubOrder: (subOrderId: string) => void
+  /** El cliente quita de su lista un pedido que ya terminó. */
+  removeOrder: (orderId: string) => void
   reset: () => void
 }
 
@@ -24,6 +28,9 @@ export const useOrders = create<OrdersState>()(
       mine: [],
       nextNumber: 1,
       add: (order) => set((s) => ({ orders: [order, ...s.orders], mine: [order.id, ...s.mine].slice(0, 200), nextNumber: s.nextNumber + 1 })),
+      archiveSubOrder: (subId) =>
+        set((s) => ({ orders: s.orders.map((o) => ({ ...o, subOrders: o.subOrders.map((x) => (x.id === subId ? { ...x, archived: true } : x)) })) })),
+      removeOrder: (orderId) => set((s) => ({ orders: s.orders.filter((o) => o.id !== orderId), mine: s.mine.filter((id) => id !== orderId) })),
       setSubOrderStatus: (subId, status) =>
         set((s) => ({
           orders: s.orders.map((o) => ({
