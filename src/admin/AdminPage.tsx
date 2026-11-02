@@ -9,7 +9,7 @@ import { stockKey, totalStock } from '../lib/inventory'
 import { isPromotionLive } from '../lib/pricing'
 import { useNow } from '../lib/useNow'
 import { growDesk } from '../services/integrations/growdesk'
-import { ORDER_STATUS_LABEL, overallStatus } from '../services/orders'
+import { ORDER_STATUS_LABEL, overallStatus, statusOptions } from '../services/orders'
 import { useCart } from '../state/cart'
 import { remoteEnabled, supabase } from '../remote/client'
 import { useReservations } from '../state/reservations'
@@ -803,7 +803,6 @@ function NewPromotion({ onDone }: { onDone: () => void }) {
 
 // ── Pedidos ────────────────────────────────────────────────────────────────────
 
-const STATUSES: OrderStatus[] = ['received', 'pending_confirmation', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled']
 
 function OrdersAdmin() {
   const orders = useOrders((s) => s.orders)
@@ -847,7 +846,7 @@ function OrdersAdmin() {
                       <span className="font-mono">{s.id}</span> · {s.storeName}
                     </p>
                     <select className={small} value={s.status} onChange={(e) => setStatus(s.id, e.target.value as OrderStatus)} aria-label={`Estado de ${s.id}`}>
-                      {STATUSES.map((st) => (
+                      {statusOptions(o.delivery.mode).map((st) => (
                         <option key={st} value={st}>
                           {ORDER_STATUS_LABEL[st]}
                         </option>

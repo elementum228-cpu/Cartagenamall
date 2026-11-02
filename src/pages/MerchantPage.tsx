@@ -6,7 +6,7 @@ import type { FacadeStyle, OrderStatus, Product, ProductIcon, Store } from '../d
 import { formatCOP, formatDateTime } from '../lib/format'
 import { readImageFile, storedBytes } from '../lib/image'
 import { stockKey, totalStock } from '../lib/inventory'
-import { ORDER_STATUS_LABEL } from '../services/orders'
+import { ORDER_STATUS_LABEL, statusOptions } from '../services/orders'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
@@ -33,8 +33,6 @@ const ICON_LABELS: Record<ProductIcon, string> = {
   hammock: 'Hamaca', sweet: 'Dulce', plate: 'Plato', fish: 'Pescado', dessert: 'Postre', drink: 'Bebida', meat: 'Carne',
   noodles: 'Sopa / fideos', croissant: 'Panadería',
 }
-
-const STATUSES: OrderStatus[] = ['received', 'pending_confirmation', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled']
 
 /** Aviso honesto cuando el navegador ya no tiene espacio para guardar. */
 function useSaveToast() {
@@ -653,7 +651,7 @@ function MerchantOrders({ store }: { store: Store }) {
                 onChange={(e) => setStatus(sub.id, e.target.value as OrderStatus)}
                 aria-label={`Estado de ${sub.id}`}
               >
-                {STATUSES.map((st) => (
+                {statusOptions(order.delivery.mode).map((st) => (
                   <option key={st} value={st}>
                     {ORDER_STATUS_LABEL[st]}
                   </option>

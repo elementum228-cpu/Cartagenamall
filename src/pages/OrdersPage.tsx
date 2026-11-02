@@ -5,7 +5,7 @@ import type { Order, OrderStatus, SubOrder } from '../domain/types'
 import { copyText } from '../lib/clipboard'
 import { openWhatsApp, whatsappLink } from '../lib/restaurant'
 import { formatCOP, formatDateTime } from '../lib/format'
-import { ORDER_STATUS_LABEL, overallStatus, subOrderMessage } from '../services/orders'
+import { ORDER_STATUS_LABEL, overallStatus, stepIndex, stepsFor, subOrderMessage } from '../services/orders'
 import { useCatalogMaps } from '../state/catalog'
 import { useOrders } from '../state/orders'
 import { useUI } from '../state/ui'
@@ -62,10 +62,6 @@ function SubLogo({ storeId }: { storeId: string }) {
     </div>
   ) : null
 }
-
-/** Pasos que ve el cliente (5 columnas, sin desbordar): «Solicitud recibida» y «Pendiente» son un solo paso, «Enviado». */
-const STEPS = ['Enviado', 'Confirmado', 'Preparando', 'Listo', 'Entregado']
-const STEP_OF: Record<OrderStatus, number> = { received: 0, pending_confirmation: 0, confirmed: 1, preparing: 2, ready: 3, delivered: 4, cancelled: 0 }
 
 export function OrderDetailPage() {
   const { id } = useParams()
@@ -131,7 +127,8 @@ function SubOrderCard({ order, sub, sent, single }: { order: Order; sub: SubOrde
   const { storeById } = useCatalogMaps()
   const store = storeById[sub.storeId]
   const toast = useUI((s) => s.toast)
-  const stepIdx = STEP_OF[sub.status]
+  const steps = stepsFor(order.delivery.mode)
+  const stepIdx = stepIndex(order.delivery.mode, sub.status)
   return (
     <section className="overflow-hidden rounded-3xl border border-line bg-card">
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
@@ -158,11 +155,11 @@ function SubOrderCard({ order, sub, sent, single }: { order: Order; sub: SubOrde
         ))}
       </ul>
       {sub.status !== 'cancelled' && (
-        <ol className="grid grid-cols-5 gap-1.5 px-4 pt-3 pb-3" aria-label="Progreso">
-          {STEPS.map((label, i) => (
+        <ol className="grid gap-1 px-3 pt-3 pb-3" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label="Progreso">
+          {steps.map(({ label }, i) => (
             <li key={label} className="flex flex-col gap-1">
               <span className={`h-1.5 rounded-full ${i <= stepIdx ? STATUS_BAR[sub.status] : 'bg-line'}`} />
-              <span className={`text-[11px] leading-tight ${i === stepIdx ? 'font-bold text-ink' : 'text-ink-soft'}`}>{label}</span>
+              <span className={`text-center leading-tight ${steps.length > 5 ? 'text-[9.5px] tracking-tight' : 'text-[10.5px]'} ${i === stepIdx ? 'font-bold text-ink' : 'text-ink-soft'}`}>{label}</span>
             </li>
           ))}
         </ol>

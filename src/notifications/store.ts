@@ -25,6 +25,7 @@ export const STATUS_NOTICE: Partial<Record<OrderStatus, string>> = {
   confirmed: 'Tu pedido fue confirmado',
   preparing: 'Están preparando tu pedido',
   ready: '¡Tu pedido está listo!',
+  on_the_way: 'Tu pedido va en camino',
   delivered: 'Pedido entregado. ¡Buen provecho!',
   cancelled: 'El local canceló tu pedido',
 }

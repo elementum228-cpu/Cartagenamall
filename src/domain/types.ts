@@ -182,6 +182,7 @@ export type OrderStatus =
   | 'confirmed'
   | 'preparing'
   | 'ready'
+  | 'on_the_way'
   | 'delivered'
   | 'cancelled'
 

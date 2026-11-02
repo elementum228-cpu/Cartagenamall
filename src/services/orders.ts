@@ -8,12 +8,35 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   confirmed: 'Confirmado',
   preparing: 'En preparación',
   ready: 'Listo',
+  on_the_way: 'En camino',
   delivered: 'Entregado',
   cancelled: 'Cancelado',
 }
 
 /** Flujo normal de una suborden (cancelado queda aparte). */
-export const ORDER_FLOW: OrderStatus[] = ['received', 'pending_confirmation', 'confirmed', 'preparing', 'ready', 'delivered']
+export const ORDER_FLOW: OrderStatus[] = ['received', 'pending_confirmation', 'confirmed', 'preparing', 'ready', 'on_the_way', 'delivered']
+
+/** Pasos que ve el cliente. «En camino» solo existe en pedidos a domicilio; «Solicitud recibida» y «Pendiente» son un solo paso. */
+export function stepsFor(mode: DeliveryMode): { label: string; statuses: OrderStatus[] }[] {
+  const steps = [
+    { label: 'Enviado', statuses: ['received', 'pending_confirmation'] as OrderStatus[] },
+    { label: 'Confirmado', statuses: ['confirmed'] as OrderStatus[] },
+    { label: 'Preparando', statuses: ['preparing'] as OrderStatus[] },
+    { label: 'Listo', statuses: ['ready'] as OrderStatus[] },
+  ]
+  if (mode === 'delivery') steps.push({ label: 'En camino', statuses: ['on_the_way'] })
+  steps.push({ label: 'Entregado', statuses: ['delivered'] })
+  return steps
+}
+
+export function stepIndex(mode: DeliveryMode, status: OrderStatus): number {
+  const i = stepsFor(mode).findIndex((s) => s.statuses.includes(status))
+  return i < 0 ? 0 : i
+}
+
+/** Estados que el comercio puede poner a un pedido (sin «En camino» si el cliente recoge en el local). */
+export const statusOptions = (mode: DeliveryMode): OrderStatus[] =>
+  (['received', 'pending_confirmation', 'confirmed', 'preparing', 'ready', 'on_the_way', 'delivered', 'cancelled'] as OrderStatus[]).filter((s) => s !== 'on_the_way' || mode === 'delivery')
 
 export interface CatalogSnapshot {
   products: Record<string, Product>

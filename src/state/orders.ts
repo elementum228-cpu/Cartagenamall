@@ -13,7 +13,7 @@ interface OrdersState {
 }
 
 /** El inventario mock se descuenta cuando el comercio confirma, y se devuelve si luego cancela. */
-const COMMITTED: OrderStatus[] = ['confirmed', 'preparing', 'ready', 'delivered']
+const COMMITTED: OrderStatus[] = ['confirmed', 'preparing', 'ready', 'on_the_way', 'delivered']
 
 export const useOrders = create<OrdersState>()(
   persist(

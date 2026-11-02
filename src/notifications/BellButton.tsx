@@ -1,8 +1,8 @@
 import { Bell, BellRing, ChevronRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import type { SubOrder } from '../domain/types'
-import { ORDER_FLOW, ORDER_STATUS_LABEL } from '../services/orders'
+import type { DeliveryMode, SubOrder } from '../domain/types'
+import { ORDER_STATUS_LABEL, stepIndex, stepsFor } from '../services/orders'
 import { useOrders } from '../state/orders'
 import { STATUS_BAR, STATUS_PILL } from '../ui/orderTone'
 import { useNotifications } from './store'
@@ -78,7 +78,7 @@ export function BellButton({ className }: { className: string }) {
             <div className="mb-3 space-y-2">
               <p className="px-1 text-[11px] font-bold tracking-wide text-ink-soft uppercase">Tus pedidos ahora</p>
               {active.map(({ o, s }) => (
-                <ActiveOrder key={s.id} orderId={o.id} sub={s} />
+                <ActiveOrder key={s.id} orderId={o.id} sub={s} mode={o.delivery.mode} />
               ))}
             </div>
           )}
@@ -110,8 +110,8 @@ export function BellButton({ className }: { className: string }) {
   )
 }
 
-function ActiveOrder({ orderId, sub }: { orderId: string; sub: SubOrder }) {
-  const idx = Math.max(0, ORDER_FLOW.indexOf(sub.status))
+function ActiveOrder({ orderId, sub, mode }: { orderId: string; sub: SubOrder; mode: DeliveryMode }) {
+  const idx = stepIndex(mode, sub.status)
   return (
     <Link to={`/pedidos/${orderId}`} className="block rounded-2xl border border-line bg-card p-3">
       <div className="flex items-center justify-between gap-2">
@@ -119,8 +119,8 @@ function ActiveOrder({ orderId, sub }: { orderId: string; sub: SubOrder }) {
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_PILL[sub.status]}`}>{ORDER_STATUS_LABEL[sub.status]}</span>
       </div>
       <div className="mt-2 flex gap-1" aria-hidden>
-        {ORDER_FLOW.map((st, i) => (
-          <span key={st} className={`h-1.5 flex-1 rounded-full ${i <= idx ? STATUS_BAR[sub.status] : 'bg-line'}`} />
+        {stepsFor(mode).map((st, i) => (
+          <span key={st.label} className={`h-1.5 flex-1 rounded-full ${i <= idx ? STATUS_BAR[sub.status] : 'bg-line'}`} />
         ))}
       </div>
     </Link>

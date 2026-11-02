@@ -10,6 +10,7 @@ export const STATUS_PILL: Record<OrderStatus, string> = {
   confirmed: 'bg-sky-100 text-sky-800',
   preparing: 'bg-blue-100 text-blue-800',
   ready: 'bg-emerald-100 text-emerald-800',
+  on_the_way: 'bg-teal-100 text-teal-800',
   delivered: 'bg-emerald-600 text-white',
   cancelled: 'bg-red-100 text-red-700',
 }
@@ -21,6 +22,7 @@ export const STATUS_BAR: Record<OrderStatus, string> = {
   confirmed: 'bg-sky-500',
   preparing: 'bg-blue-600',
   ready: 'bg-emerald-500',
+  on_the_way: 'bg-teal-500',
   delivered: 'bg-emerald-600',
   cancelled: 'bg-red-500',
 }
