@@ -1,7 +1,7 @@
 import type { Order, Product, Promotion, SpaceClaim, Store, SubOrder } from '../domain/types'
 import { SEED_ASSIGNMENTS, SEED_PRODUCTS, SEED_STORES, createSeedPromotions } from '../data/seed'
 import { isDemoPromotion } from '../promotions/demo'
-import { isShipPromotion } from '../ship/offers'
+import { isShipPromotion, syncShipBoarding, useDiscountShip, type ShipOffer } from '../ship/offers'
 
 /** Promociones que viven solo en este dispositivo (demostración y barco de los descuentos). */
 const isLocalPromotion = (p: Promotion) => isDemoPromotion(p) || isShipPromotion(p)
@@ -357,6 +357,49 @@ async function refreshPromotions() {
   applyRemote(() => useCatalog.setState({ promotions: next }))
 }
 
+// ── Barco de los descuentos compartido ───────────────────────────────────────
+
+/** Trae las ofertas subidas por los locales y la llegada vigente del barco; lo aplica para todos. */
+export async function loadShip() {
+  if (!supabase) return
+  const [set, off] = await Promise.all([supabase.from('mall_settings').select('doc').eq('key', 'ship').maybeSingle(), supabase.from('ship_offers').select('doc')])
+  if (set.error || off.error) return
+  const arrival = (set.data as Doc<{ arrival?: { at: number; until: number } }> | null)?.doc?.arrival ?? null
+  const offers = (off.data as Doc<ShipOffer>[]).map((r) => ({ ...r.doc, demo: false }))
+  const cur = useDiscountShip.getState()
+  const same = JSON.stringify(offers) === JSON.stringify(cur.offers) && arrival?.at === cur.arrival?.at && arrival?.until === cur.arrival?.until
+  if (!same) applyRemote(() => useDiscountShip.setState({ offers, arrival: arrival && arrival.until > Date.now() ? arrival : null }))
+  applyRemote(syncShipBoarding)
+}
+
+/** El dueño de un local habilita el barco para todos (suena el pito y atraca). Devuelve un mensaje de error o null. */
+export async function launchShip(storeId: string): Promise<string | null> {
+  if (!supabase) return 'No hay base de datos conectada.'
+  const { error } = await supabase.rpc('ship_launch', { p_store: storeId })
+  if (error) return error.message
+  await loadShip()
+  return null
+}
+
+function pushShipOffers(prev: ShipOffer[], next: ShipOffer[]) {
+  const { storeIds, isAdmin } = useSession.getState()
+  const mine = (o: ShipOffer) => isAdmin || storeIds.includes(o.storeId)
+  const before = new Map(prev.map((o) => [o.storeId, JSON.stringify(o)]))
+  const changed = next.filter((o) => !o.demo && mine(o) && before.get(o.storeId) !== JSON.stringify(o))
+  const gone = prev.filter((o) => !o.demo && mine(o) && !next.some((n) => n.storeId === o.storeId))
+  if (!changed.length && !gone.length) return
+  enqueue(async () => {
+    for (const o of changed) {
+      const { error } = await supabase!.from('ship_offers').upsert({ store_id: o.storeId, doc: o })
+      if (error) throw error
+    }
+    if (gone.length) {
+      const { error } = await supabase!.from('ship_offers').delete().in('store_id', gone.map((o) => o.storeId))
+      if (error) throw error
+    }
+  })
+}
+
 /** Funciones que el administrador activa para todos (aeropuerto e isla, barco pirata quieto), en mall_settings «features». */
 export async function loadFeatures() {
   if (!supabase) return
@@ -403,7 +446,9 @@ export function startRemoteSync() {
   void loadPricing()
   void loadSeason()
   void loadFeatures()
+  void loadShip()
   setInterval(() => void refreshPromotions(), 10_000)
+  setInterval(() => !document.hidden && void loadShip(), 8_000)
 
   useCatalog.subscribe((next, prev) => {
     if (applying || !signedIn()) return
@@ -412,6 +457,10 @@ export function startRemoteSync() {
   useSpacePricing.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || (next.types === prev.types && next.spaces === prev.spaces)) return
     pushPricing(next)
+  })
+  useDiscountShip.subscribe((next, prev) => {
+    if (applying || !signedIn() || next.offers === prev.offers) return
+    pushShipOffers(prev.offers, next.offers)
   })
   useAirportFeature.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
@@ -461,6 +510,8 @@ export function startRemoteSync() {
       void loadPricing()
       void loadSeason()
       void loadFeatures()
+      void loadShip()
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ship_offers' }, () => void loadShip())
     .subscribe()
 }

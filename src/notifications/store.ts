@@ -22,7 +22,7 @@ export interface AppNotification {
   /** No se borra solo: espera a que la persona lo toque. */
   sticky?: boolean
   /** Al tocarlo no navega: abre la bienvenida del dueño de un local. */
-  action?: 'welcome'
+  action?: 'welcome' | 'ship'
 }
 
 /** Un aviso es solo eso: se borra solo 40 s después de que la persona abre la campanita y lo ve. */

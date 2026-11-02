@@ -4,6 +4,7 @@ import type { Product, Promotion, Store } from '../domain/types'
 import { appClock } from '../lib/clock'
 import { useCatalog } from '../state/catalog'
 import { safeStorage } from '../state/storage'
+import { remoteEnabled } from '../remote/client'
 
 // Barco de los descuentos: un barco blanco e iluminado que atraca en el muelle a horas fijas y se
 // queda un rato. Cada local puede «subir al barco» un descuento especial (uno por local). Mientras
@@ -118,7 +119,8 @@ export function shipLineup(offers: ShipOffer[], stores: Store[], products: Produ
   const seen = new Set<string>()
   const real = offers.filter((o) => open.has(o.storeId) && active.get(o.productId)?.storeId === o.storeId && !seen.has(o.storeId) && !!seen.add(o.storeId))
   const out = [...real]
-  if (out.length < SHIP_MIN_OFFERS) {
+  // con base de datos no se inventan ofertas: solo van a bordo las que subieron los locales
+  if (out.length < SHIP_MIN_OFFERS && !remoteEnabled()) {
     const taken = new Set(out.map((o) => o.storeId))
     const pcts = [30, 25, 40, 20, 35, 30, 25, 45]
     let k = 0
@@ -132,6 +134,18 @@ export function shipLineup(offers: ShipOffer[], stores: Store[], products: Produ
     }
   }
   return out.sort((a, b) => b.discountPercent - a.discountPercent).slice(0, SHIP_MAX_OFFERS)
+}
+
+let boardedKey = ''
+/** Deja el catálogo local acorde al barco compartido: atracado → sus ofertas son promociones; zarpó → se retiran. */
+export function syncShipBoarding() {
+  const { arrival, offers } = useDiscountShip.getState()
+  const docked = isDocked(arrival, appClock.now())
+  const key = docked ? `${arrival!.at}:${JSON.stringify(offers)}` : ''
+  if (key === boardedKey) return
+  boardedKey = key
+  if (docked) boardPromotions(offers, arrival!.until)
+  else unboardPromotions()
 }
 
 /** Sube a bordo: cada oferta pasa a ser una promoción del catálogo que vence cuando zarpa. */

@@ -7,6 +7,8 @@ import { useNow } from '../lib/useNow'
 import { useCatalog } from '../state/catalog'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
+import { remoteEnabled } from '../remote/client'
+import { launchShip } from '../remote/sync'
 import { SHIP_MAX_DISCOUNT, SHIP_MIN_DISCOUNT, SHIP_SCHEDULE_LABEL, arrivalLabel, isDocked, nextScheduledArrival, useDiscountShip } from './offers'
 
 /** Panel del comerciante: sube (o baja) el descuento especial de su local al barco de los descuentos. */
@@ -22,6 +24,7 @@ export function MerchantShipEditor({ store }: { store: Store }) {
   const [productId, setProductId] = useState(offer?.productId ?? mine[0]?.id ?? '')
   const [pct, setPct] = useState(offer?.discountPercent ?? 30)
   const [units, setUnits] = useState<string>(offer?.units ? String(offer.units) : '')
+  const [launching, setLaunching] = useState(false)
   const product = mine.find((p) => p.id === productId)
   const docked = isDocked(arrival, now)
   const valid = !!product && pct >= SHIP_MIN_DISCOUNT && pct <= SHIP_MAX_DISCOUNT
@@ -38,7 +41,7 @@ export function MerchantShipEditor({ store }: { store: Store }) {
             Un barco blanco llega al muelle {SHIP_SCHEDULE_LABEL.toLowerCase()} y se queda 30 minutos. Todos reciben el aviso y ven los descuentos que los locales subieron. Uno por local.
           </p>
           <p className="mt-1 text-xs font-semibold text-ink">
-            {docked ? 'El barco está en el muelle ahora.' : `Próxima llegada: ${arrivalLabel(nextScheduledArrival(now), now)}.`}{' '}
+            {docked ? 'El barco está en el muelle ahora.' : remoteEnabled() ? 'El barco llega cuando un dueño lo habilita.' : `Próxima llegada: ${arrivalLabel(nextScheduledArrival(now), now)}.`}{' '}
             {offer ? <span className="text-teal">Tu oferta va a bordo.</span> : 'Aún no subes una oferta.'}
           </p>
         </div>
@@ -79,6 +82,25 @@ export function MerchantShipEditor({ store }: { store: Store }) {
             >
               <Ship className="size-4" /> {offer ? 'Actualizar oferta' : 'Subir al barco'}
             </button>
+            {offer && !docked && (
+              <button
+                className={`${btn.primary} !bg-[#16325c]`}
+                disabled={launching}
+                onClick={async () => {
+                  setLaunching(true)
+                  if (remoteEnabled()) {
+                    const err = await launchShip(store.id)
+                    toast(err ?? '¡Barco habilitado! Suena el pito y llega al muelle para todos.', err ? 'error' : 'success')
+                  } else {
+                    useDiscountShip.getState().arrive()
+                    toast('¡Barco habilitado!', 'success')
+                  }
+                  setLaunching(false)
+                }}
+              >
+                <Ship className="size-4" /> {launching ? 'Habilitando…' : 'Habilitar el barco ahora'}
+              </button>
+            )}
             {offer && (
               <button
                 className={btn.secondary}

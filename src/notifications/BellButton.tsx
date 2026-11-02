@@ -1,11 +1,12 @@
 import { Bell, BellRing, ChevronRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import type { DeliveryMode, SubOrder } from '../domain/types'
 import { ORDER_STATUS_LABEL, stepIndex, stepsFor } from '../services/orders'
 import { formatCOP } from '../lib/format'
 import { useSession } from '../remote/session'
 import { useOrders } from '../state/orders'
+import { useUI } from '../state/ui'
 import { STATUS_BAR, STATUS_PILL } from '../ui/orderTone'
 import { useWelcome } from '../features/OwnerWelcome'
 import { useNotifications } from './store'
@@ -32,6 +33,7 @@ export function BellButton({ className }: { className: string }) {
   const [wiggle, setWiggle] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const unread = items.filter((i) => !i.read).length
   const active = orders.flatMap((o) => o.subOrders.filter((s) => s.status !== 'delivered' && s.status !== 'cancelled').map((s) => ({ o, s })))
 
@@ -117,17 +119,21 @@ export function BellButton({ className }: { className: string }) {
               <ul className="space-y-1.5">
                 {items.slice(0, 5).map((n) => (
                   <li key={n.id}>
-                    {n.action === 'welcome' ? (
+                    {n.action ? (
                       <button
                         onClick={() => {
                           setOpen(false)
                           remove(n.id)
-                          useWelcome.getState().reopen()
+                          if (n.action === 'welcome') useWelcome.getState().reopen()
+                          else {
+                            navigate('/')
+                            useUI.getState().requestFocus({ kind: 'ship' })
+                          }
                         }}
                         className="flex w-full items-start gap-2.5 rounded-2xl bg-brand p-3 text-left text-white shadow-soft transition active:scale-[0.98]"
                       >
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm leading-snug font-bold">🎉 {n.title}</span>
+                          <span className="block text-sm leading-snug font-bold">{n.action === 'welcome' ? '🎉 ' : ''}{n.title}</span>
                           <span className="block text-xs font-semibold opacity-90">{n.subtitle}</span>
                         </span>
                         <ChevronRight className="mt-1 size-4 shrink-0" />

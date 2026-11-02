@@ -9,6 +9,8 @@ import { useNow } from '../lib/useNow'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { usePassport } from '../state/passport'
 import { useUI } from '../state/ui'
+import { remoteEnabled } from '../remote/client'
+import { useNotifications } from '../notifications/store'
 import { Countdown } from '../ui/bits'
 import { MallMark } from '../ui/MallMark'
 import { ProductImage } from '../ui/ProductImage'
@@ -37,7 +39,8 @@ function useShipSchedule() {
       const { arrival, arrive, depart } = useDiscountShip.getState()
       const now = appClock.now()
       if (arrival && now >= arrival.until) depart()
-      else if (!arrival) {
+      // con base de datos el barco lo habilita un dueño (llegada compartida); la llegada por horario es solo de la demostración
+      else if (!arrival && !remoteEnabled()) {
         const w = scheduledWindow(now)
         if (w) arrive((w.until - now) / 60_000)
       }
@@ -63,6 +66,16 @@ function ShipNotice() {
     setShown(arrival.at)
     navigator.vibrate?.([30, 60, 30])
     void playShipHorn()
+    useNotifications.getState().push({
+      id: `ship:${arrival.at}`,
+      orderId: '',
+      storeName: 'Barco de los descuentos',
+      status: 'confirmed',
+      title: '🛳️ ¡Llegó el barco de los descuentos!',
+      subtitle: `${useDiscountShip.getState().offers.filter((o) => !o.demo).length || count} locales subieron ofertas · toca para verlo`,
+      at: new Date().toISOString(),
+      action: 'ship',
+    })
     const id = setTimeout(() => setShown(null), 9000)
     return () => clearTimeout(id)
   }, [arrival])
