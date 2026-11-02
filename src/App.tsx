@@ -39,6 +39,7 @@ import { PassportPage } from './pages/PassportPage'
 import { ClueModal, StampToast } from './features/passport/PassportOverlays'
 import { OrderDetailPage, OrdersPage } from './pages/OrdersPage'
 import { ShopPage } from './pages/ShopPage'
+import { remoteEnabled } from './remote/client'
 import { useSession } from './remote/session'
 import { useCartCount } from './state/cart'
 import { usePersonal } from './state/personal'
@@ -250,7 +251,12 @@ function TopBar() {
             <Badge n={compare} />
           </Link>
         )}
-        <NavLink to={loggedIn ? '/mi-cuenta' : '/login'} className={({ isActive }) => `${iconBtn} ${isActive ? '!bg-teal !text-white' : ''}`} aria-label={loggedIn ? 'Mi cuenta' : 'Iniciar sesión o crear cuenta'}>
+        {!loggedIn && remoteEnabled() && (
+          <Link to="/registro" className="grid h-11 place-items-center rounded-full bg-teal px-4 text-[14px] font-bold whitespace-nowrap text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96]">
+            Crear cuenta
+          </Link>
+        )}
+        <NavLink to={loggedIn ? '/mi-cuenta' : '/login'} className={({ isActive }) => `${iconBtn} ${isActive ? '!bg-teal !text-white' : ''} ${loggedIn || !remoteEnabled() ? '' : 'max-sm:hidden'}`} aria-label={loggedIn ? 'Mi cuenta' : 'Iniciar sesión o crear cuenta'}>
           <UserRound className="size-[21px]" strokeWidth={1.8} />
         </NavLink>
         <Link to="/carrito" className="relative grid size-11 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden" aria-label={`Carrito, ${count} productos`}>
