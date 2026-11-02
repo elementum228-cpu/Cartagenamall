@@ -11,7 +11,7 @@ interface SessionState {
   refresh: () => Promise<void>
   signIn: (email: string) => Promise<string | null>
   signInWithPassword: (email: string, password: string) => Promise<string | null>
-  signUp: (email: string, password: string, role: 'cliente' | 'negocio', businessName?: string) => Promise<{ error: string | null; needsConfirm: boolean }>
+  signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirm: boolean }>
   setPassword: (password: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
@@ -46,13 +46,9 @@ export const useSession = create<SessionState>()((set, get) => ({
     await get().refresh()
     return null
   },
-  signUp: async (email, password, role, businessName) => {
+  signUp: async (email, password) => {
     if (!supabase) return { error: 'No hay base de datos conectada.', needsConfirm: false }
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { data: { role, business_name: role === 'negocio' ? (businessName ?? '').trim() : null } },
-    })
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password })
     if (error) {
       const m = error.message
       const es = /already registered|already been registered/i.test(m)

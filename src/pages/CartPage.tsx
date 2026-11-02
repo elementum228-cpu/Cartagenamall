@@ -37,7 +37,7 @@ export function useCartSummary() {
 export function CartPage() {
   const { groups, issues, total, savings, items } = useCartSummary()
   const navigate = useNavigate()
-  const { needLogin, isBusiness } = useBuyer()
+  const { needLogin } = useBuyer()
 
   if (!items.length)
     return (
@@ -114,14 +114,9 @@ export function CartPage() {
               <AlertCircle className="mt-0.5 size-4 shrink-0" /> Ajusta los productos marcados para continuar.
             </p>
           )}
-          {isBusiness && (
-            <p className="flex gap-2 rounded-2xl bg-amber-50 p-3 text-xs font-semibold text-amber-800">
-              <Info className="mt-0.5 size-4 shrink-0" /> Tu cuenta es de negocio y no puede comprar. Entra con una cuenta de cliente para hacer pedidos.
-            </p>
-          )}
           <button
             className={`${btn.primary} w-full`}
-            disabled={issues.length > 0 || isBusiness}
+            disabled={issues.length > 0}
             onClick={() => navigate(needLogin ? '/login?redirect=/checkout' : '/checkout')}
           >
             Continuar con el pedido

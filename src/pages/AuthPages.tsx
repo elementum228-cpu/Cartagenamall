@@ -1,7 +1,6 @@
 import { Eye, EyeOff } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { useProfile, type Role } from '../remote/profile'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
 import { btn, input } from '../ui/bits'
@@ -11,13 +10,12 @@ function safeRedirect(r: string | null): string | null {
   return r && r.startsWith('/') && !r.startsWith('//') && !r.includes('\\') ? r : null
 }
 
-/** Tras entrar: vuelve a la ruta pedida; si no, cliente → inicio y negocio → panel. */
+/** Tras entrar: vuelve a la ruta pedida; si no, a /mi-cuenta. */
 function useAfterAuth() {
   const [params] = useSearchParams()
   const redirect = safeRedirect(params.get('redirect'))
   const s = useSession()
-  const { role, loading } = useProfile()
-  const target = !s.userId || loading || !role ? null : (redirect ?? (role === 'negocio' ? '/panel-negocio' : '/'))
+  const target = s.userId ? (redirect ?? '/mi-cuenta') : null
   return { redirect, target, fromCheckout: redirect?.startsWith('/checkout') ?? false }
 }
 
@@ -98,72 +96,46 @@ export function RegisterPage() {
   const { signUp } = useSession()
   const navigate = useNavigate()
   const { redirect, target, fromCheckout } = useAfterAuth()
-  const [role, setRole] = useState<Role>('cliente')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [business, setBusiness] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState(false)
-  useEffect(() => setError(null), [role])
   if (target) return <Navigate to={target} replace />
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!validEmail(email)) return setError('Escribe un correo válido.')
     if (password.length < 8) return setError('La contraseña debe tener mínimo 8 caracteres.')
-    if (role === 'negocio' && business.trim().length < 2) return setError('Escribe el nombre de tu negocio.')
     setBusy(true)
     setError(null)
-    const r = await signUp(email, password, role, business)
+    const r = await signUp(email, password)
     setBusy(false)
     if (r.error) setError(r.error)
     else if (r.needsConfirm) setConfirm(true)
   }
+  const q = redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''
   return (
     <Shell title="Crear cuenta" fromCheckout={fromCheckout}>
       {confirm ? (
         <div className="mt-4 text-sm">
           <p>Te enviamos un correo a <b>{email}</b>. Confírmalo y luego inicia sesión.</p>
-          <button className={`${btn.secondary} mt-3 w-full`} onClick={() => navigate(`/login${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`)}>Ir a iniciar sesión</button>
+          <button className={`${btn.secondary} mt-3 w-full`} onClick={() => navigate(`/login${q}`)}>Ir a iniciar sesión</button>
         </div>
       ) : (
-        <>
-          <div role="radiogroup" aria-label="Tipo de cuenta" className="mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-sand p-1">
-            {(['cliente', 'negocio'] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                role="radio"
-                aria-checked={role === r}
-                onClick={() => setRole(r)}
-                className={`rounded-xl py-2.5 text-sm font-bold transition ${role === r ? 'bg-white text-brand shadow-soft' : 'text-ink-soft'}`}
-              >
-                {r === 'cliente' ? 'Cliente' : 'Negocio'}
-              </button>
-            ))}
-          </div>
-          <form className="mt-3 flex flex-col gap-3" onSubmit={submit} noValidate>
-            {role === 'negocio' && (
-              <label className="block text-xs font-bold text-ink">
-                Nombre del negocio
-                <input className={`${input} mt-1`} autoComplete="organization" value={business} onChange={(e) => setBusiness(e.target.value)} />
-              </label>
-            )}
-            <label className="block text-xs font-bold text-ink">
-              Correo
-              <input className={`${input} mt-1`} type="email" autoComplete="email" placeholder="tu@correo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-            <PasswordField value={password} onChange={setPassword} autoComplete="new-password" />
-            <p className="-mt-1 text-xs text-ink-soft">Mínimo 8 caracteres.</p>
-            {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
-            <button className={`${btn.primary} w-full`} disabled={busy}>{busy ? 'Creando cuenta…' : 'Crear cuenta'}</button>
-          </form>
-        </>
+        <form className="mt-4 flex flex-col gap-3" onSubmit={submit} noValidate>
+          <label className="block text-xs font-bold text-ink">
+            Correo
+            <input className={`${input} mt-1`} type="email" autoComplete="email" placeholder="tu@correo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <PasswordField value={password} onChange={setPassword} autoComplete="new-password" />
+          <p className="-mt-1 text-xs text-ink-soft">Mínimo 8 caracteres.</p>
+          {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
+          <button className={`${btn.primary} w-full`} disabled={busy}>{busy ? 'Creando cuenta…' : 'Crear cuenta'}</button>
+        </form>
       )}
       <p className="mt-4 text-center text-sm text-ink-soft">
-        ¿Ya tienes cuenta?{' '}
-        <Link to={`/login${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="font-bold text-brand">Inicia sesión</Link>
+        ¿Ya tienes cuenta? <Link to={`/login${q}`} className="font-bold text-brand">Inicia sesión</Link>
       </p>
     </Shell>
   )

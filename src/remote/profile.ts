@@ -2,21 +2,20 @@ import { create } from 'zustand'
 import { supabase } from './client'
 import { useSession } from './session'
 
-/** Perfil de la cuenta: tipo (cliente | negocio) y nombre del negocio. */
-export type Role = 'cliente' | 'negocio'
+/** Perfil de la cuenta: usuario normal o administrador del sitio. */
+export type Role = 'usuario' | 'admin'
 interface ProfileState {
   loading: boolean
   role: Role | null
-  businessName: string | null
 }
 
-export const useProfile = create<ProfileState>()(() => ({ loading: false, role: null, businessName: null }))
+export const useProfile = create<ProfileState>()(() => ({ loading: false, role: null }))
 
 async function load(userId: string | null) {
-  if (!supabase || !userId) return useProfile.setState({ loading: false, role: null, businessName: null })
+  if (!supabase || !userId) return useProfile.setState({ loading: false, role: null })
   useProfile.setState({ loading: true })
-  const { data } = await supabase.from('profiles').select('role,business_name').eq('id', userId).maybeSingle()
-  useProfile.setState({ loading: false, role: (data?.role as Role) ?? 'cliente', businessName: data?.business_name ?? null })
+  const { data } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle()
+  useProfile.setState({ loading: false, role: (data?.role as Role) ?? 'usuario' })
 }
 
 let last: string | null | undefined
@@ -26,15 +25,9 @@ useSession.subscribe((s) => {
   void load(s.userId)
 })
 
-/** Estado de compra: sin sesión → debe entrar; cuenta de negocio → no puede comprar. Sin base de datos (demo) no se exige nada. */
+/** Compra: sin sesión → debe entrar. Sin base de datos (demo) no se exige nada. */
 export function useBuyer() {
   const s = useSession()
-  const role = useProfile((p) => p.role)
-  const loading = useProfile((p) => p.loading)
   const on = !!supabase
-  return {
-    waiting: on && (!s.ready || (!!s.userId && (loading || role === null))),
-    needLogin: on && s.ready && !s.userId,
-    isBusiness: on && !!s.userId && role === 'negocio',
-  }
+  return { waiting: on && !s.ready, needLogin: on && s.ready && !s.userId }
 }

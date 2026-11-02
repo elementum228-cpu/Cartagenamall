@@ -32,7 +32,7 @@ import { CheckoutPage } from './pages/CheckoutPage'
 import { ComparePage } from './pages/ComparePage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { LoginPage } from './pages/LoginPage'
-import { BusinessPanelPage } from './pages/BusinessPanelPage'
+import { MyAccountPage } from './pages/MyAccountPage'
 import { AuthLoginPage, RegisterPage } from './pages/AuthPages'
 import { OffersPage } from './pages/OffersPage'
 import { PassportPage } from './pages/PassportPage'
@@ -47,6 +47,7 @@ import { Toasts } from './ui/Toasts'
 import { MallMark } from './ui/MallMark'
 import { InstallLayer } from './pwa/InstallApp'
 
+const AdminRequestsPage = lazy(() => import('./pages/AdminRequestsPage'))
 const AdminPage = lazy(() => import('./admin/AdminPage'))
 const MerchantPage = lazy(() => import('./pages/MerchantPage'))
 
@@ -64,6 +65,15 @@ export default function App() {
   return (
     <Router>
       <Routes>
+        <Route
+          path="/admin/solicitudes"
+          element={
+            <Suspense fallback={<p className="p-6 text-sm text-ink-soft">Cargando…</p>}>
+              <AdminRequestsPage />
+              <Toasts />
+            </Suspense>
+          }
+        />
         <Route
           path="/admin/*"
           element={
@@ -120,7 +130,7 @@ function Shell() {
               <Route path="/entrar" element={<LoginPage />} />
               <Route path="/login" element={<AuthLoginPage />} />
               <Route path="/registro" element={<RegisterPage />} />
-              <Route path="/panel-negocio" element={<BusinessPanelPage />} />
+              <Route path="/mi-cuenta" element={<MyAccountPage />} />
               <Route
                 path="/mi-negocio"
                 element={
