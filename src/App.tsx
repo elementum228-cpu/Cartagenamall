@@ -1,4 +1,4 @@
-import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, ShoppingCart, UserRound, Zap } from 'lucide-react'
+import { ClipboardList, Compass, Heart, Scale, Search, ShoppingBag, Store, ShoppingCart, UserRound, Zap } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { BrowserRouter, Link, MemoryRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { DoorIntro } from './features/DoorIntro'
@@ -42,6 +42,7 @@ import { OrderDetailPage, OrdersPage } from './pages/OrdersPage'
 import { ShopPage } from './pages/ShopPage'
 import { remoteEnabled } from './remote/client'
 import { useProfile } from './remote/profile'
+import { useCatalog } from './state/catalog'
 import { useCanAdmin, useSession } from './remote/session'
 import { useCartCount } from './state/cart'
 import { usePersonal } from './state/personal'
@@ -225,8 +226,10 @@ function TopBar() {
   const navigate = useNavigate()
   const compare = usePersonal((s) => s.compare.length)
   const loggedIn = useSession((s) => !!s.userId)
+  const storeIds = useSession((s) => s.storeIds)
   const canAdmin = useCanAdmin()
   const avatar = useProfile((p) => p.avatar)
+  const owns = useCatalog((c) => c.stores.some((x) => x.setup !== 'pending' && storeIds.includes(x.id)))
   return (
     // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
     <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
@@ -254,7 +257,7 @@ function TopBar() {
         )}
       </nav>
       <div className="ml-auto flex items-center gap-2 md:ml-0">
-        <button className={iconBtn} onClick={() => navigate('/comprar?foco=1')} aria-label="Buscar productos">
+        <button className={`${iconBtn} ${owns ? 'max-sm:hidden' : ''}`} onClick={() => navigate('/comprar?foco=1')} aria-label="Buscar productos">
           <Search className="size-[21px]" strokeWidth={1.8} />
         </button>
         <Link to="/favoritos" className={`${iconBtn} max-md:hidden`} aria-label="Favoritos">
@@ -265,6 +268,11 @@ function TopBar() {
             <Scale className="size-[21px]" strokeWidth={1.8} />
             <Badge n={compare} />
           </Link>
+        )}
+        {owns && (
+          <NavLink to="/mi-negocio" className={({ isActive }) => `${iconBtn} ${isActive ? '!bg-teal !text-white' : ''}`} aria-label="Mi negocio: modo dueño">
+            <Store className="size-[21px]" strokeWidth={1.8} />
+          </NavLink>
         )}
         <BellButton className={iconBtn} />
         {!loggedIn && remoteEnabled() && (

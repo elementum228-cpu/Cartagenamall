@@ -1,5 +1,5 @@
-import { Camera, Trash2 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Camera, ChevronRight, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { remoteEnabled, supabase } from '../remote/client'
 import { saveProfile, useProfile } from '../remote/profile'
@@ -10,7 +10,7 @@ import { useWelcome } from '../features/OwnerWelcome'
 import { PasswordForm } from '../remote/AccountGate'
 import { useSession } from '../remote/session'
 import { REQUEST_CATEGORIES, STATUS_LABEL, STATUS_STYLE, type StoreRequest } from '../state/storeRequests'
-import { btn, input } from '../ui/bits'
+import { StoreLogo, btn, input } from '../ui/bits'
 
 /** Mi cuenta: datos básicos y solicitud de local. */
 export function MyAccountPage() {
@@ -21,7 +21,8 @@ export function MyAccountPage() {
   const [pwd, setPwd] = useState(false)
   const pendingStore = useCatalog((c) => c.stores.find((x) => x.setup === 'pending' && s.storeIds.includes(x.id)))
   const reopenWelcome = useWelcome((w) => w.reopen)
-  const readyStoreIds = useCatalog((c) => c.stores.filter((x) => x.setup !== 'pending' && s.storeIds.includes(x.id)).map((x) => x.id))
+  const allStores = useCatalog((c) => c.stores)
+  const readyStores = allStores.filter((x) => x.setup !== 'pending' && s.storeIds.includes(x.id))
 
   const load = useCallback(async () => {
     if (!supabase || !s.userId) return
@@ -39,21 +40,42 @@ export function MyAccountPage() {
   return (
     <div className="mx-auto max-w-lg px-4 pt-8 pb-28">
       <div className="glass-strong rounded-[28px] p-5">
-        <ProfileCard email={s.email} />
+        <ProfileCard
+          email={s.email}
+          top={
+            <>
+              {pendingStore && (
+                <button onClick={reopenWelcome} className="rounded-2xl bg-brand p-4 text-left text-white shadow-soft transition active:scale-[0.98]">
+                  <span className="block text-sm font-bold opacity-90">🎉 ¡Tu solicitud fue aprobada!</span>
+                  <span className="block text-lg font-extrabold">{pendingStore.name} ya es tuyo</span>
+                  <span className="block text-sm opacity-90">Toca para empezar</span>
+                </button>
+              )}
+              {readyStores.map((st) => (
+                <Link key={st.id} to={`/mi-negocio?tienda=${st.id}`} className="flex items-center gap-3 rounded-2xl bg-ink p-3.5 text-white shadow-soft transition active:scale-[0.98]">
+                  <StoreLogo store={st} size={44} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[11px] font-bold tracking-wide uppercase opacity-70">Modo dueño</span>
+                    <span className="block truncate text-[17px] font-extrabold">Ir a mi negocio · {st.name}</span>
+                  </span>
+                  <ChevronRight className="size-5 shrink-0" />
+                </Link>
+              ))}
+              {s.isAdmin && (
+                <Link to="/admin" className="flex items-center justify-between rounded-2xl border border-line bg-card p-3.5 font-bold transition active:scale-[0.98]">
+                  Administración del mall <ChevronRight className="size-5" />
+                </Link>
+              )}
+              {role === 'admin' && (
+                <Link to="/admin/solicitudes" className="flex items-center justify-between rounded-2xl border border-line bg-card p-3.5 font-bold transition active:scale-[0.98]">
+                  Solicitudes de locales <ChevronRight className="size-5" />
+                </Link>
+              )}
+            </>
+          }
+        />
 
         <div className="mt-5 flex flex-col gap-2.5 border-t border-line pt-5">
-          {pendingStore && !(current && current.status === 'aprobada') && (
-            <button onClick={reopenWelcome} className="rounded-2xl bg-brand p-4 text-left text-white shadow-soft transition active:scale-[0.98]">
-              <span className="block text-sm font-bold opacity-90">🎉 ¡Eres dueño de un local!</span>
-              <span className="block text-lg font-extrabold">Termina de configurar {pendingStore.name}</span>
-              <span className="block text-sm opacity-90">Toca para empezar: es rápido.</span>
-            </button>
-          )}
-          {role === 'admin' && (
-            <Link to="/admin/solicitudes" className={btn.secondary}>
-              Ver solicitudes de locales
-            </Link>
-          )}
           {reqs === null ? (
             <p className="text-sm text-ink-soft">Cargando…</p>
           ) : current ? (
@@ -99,16 +121,6 @@ export function MyAccountPage() {
               }}
               onCancel={() => setOpen(false)}
             />
-          )}
-          {s.isAdmin && (
-            <Link to="/admin" className={btn.secondary}>
-              Administración
-            </Link>
-          )}
-          {readyStoreIds.length > 0 && (
-            <Link to="/mi-negocio" className={btn.secondary}>
-              Mi negocio
-            </Link>
           )}
           <button className={btn.ghost} onClick={() => setPwd(!pwd)}>
             Cambiar contraseña
@@ -176,10 +188,9 @@ function RequestForm({ userId, onDone, onCancel }: { userId: string; onDone: () 
   )
 }
 
-const COLORS = ['#2f9e8f', '#2f6fd6', '#7a5ea8', '#c2566b', '#d9826a', '#d49a2a', '#4b7f52', '#36607a']
 
 /** Perfil personalizable: foto, nombre, celular y «sobre mí». Todo opcional. */
-function ProfileCard({ email }: { email: string | null }) {
+function ProfileCard({ email, top }: { email: string | null; top?: ReactNode }) {
   const p = useProfile()
   const toast = useUI((s) => s.toast)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -247,6 +258,8 @@ function ProfileCard({ email }: { email: string | null }) {
         </div>
       </div>
 
+      {top && <div className="mt-4 flex flex-col gap-2.5">{top}</div>}
+
       <form className="mt-5 flex flex-col gap-3" onSubmit={save} noValidate>
         <label className="block text-xs font-bold">
           Nombre <span className="font-medium text-ink-soft">(opcional)</span>
@@ -264,22 +277,6 @@ function ProfileCard({ email }: { email: string | null }) {
           Sobre mí <span className="font-medium text-ink-soft">(opcional)</span>
           <textarea className={`${input} mt-1`} rows={2} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} placeholder="Algo corto sobre ti" />
         </label>
-        <div>
-          <p className="text-xs font-bold">Color de tu perfil</p>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-label={`Color ${c}`}
-                aria-pressed={p.color === c}
-                onClick={() => void saveProfile({ color: c })}
-                className={`size-8 rounded-full transition active:scale-90 ${p.color === c ? 'ring-2 ring-ink ring-offset-2' : ''}`}
-                style={{ background: c }}
-              />
-            ))}
-          </div>
-        </div>
         <button className={btn.primary} disabled={!dirty || busy}>
           {busy ? 'Guardando…' : 'Guardar cambios'}
         </button>
