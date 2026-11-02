@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { SubOrder } from '../domain/types'
 import { ORDER_FLOW, ORDER_STATUS_LABEL } from '../services/orders'
 import { useOrders } from '../state/orders'
+import { STATUS_BAR, STATUS_PILL } from '../ui/orderTone'
 import { useNotifications } from './store'
 
 const ago = (iso: string) => {
@@ -112,11 +113,11 @@ function ActiveOrder({ orderId, sub }: { orderId: string; sub: SubOrder }) {
     <Link to={`/pedidos/${orderId}`} className="block rounded-2xl border border-line bg-card p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-sm font-bold">{sub.storeName}</p>
-        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">{ORDER_STATUS_LABEL[sub.status]}</span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_PILL[sub.status]}`}>{ORDER_STATUS_LABEL[sub.status]}</span>
       </div>
       <div className="mt-2 flex gap-1" aria-hidden>
         {ORDER_FLOW.map((st, i) => (
-          <span key={st} className={`h-1.5 flex-1 rounded-full ${i <= idx ? 'bg-brand' : 'bg-line'}`} />
+          <span key={st} className={`h-1.5 flex-1 rounded-full ${i <= idx ? STATUS_BAR[sub.status] : 'bg-line'}`} />
         ))}
       </div>
     </Link>

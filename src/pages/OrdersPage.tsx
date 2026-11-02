@@ -10,19 +10,11 @@ import { useCatalogMaps } from '../state/catalog'
 import { useOrders } from '../state/orders'
 import { useUI } from '../state/ui'
 import { EmptyState, StoreLogo, btn } from '../ui/bits'
+import { STATUS_BAR, STATUS_PILL } from '../ui/orderTone'
 
-const TONE: Record<OrderStatus, string> = {
-  received: 'bg-sky-100 text-sky-800',
-  pending_confirmation: 'bg-amber-100 text-amber-900',
-  confirmed: 'bg-teal-100 text-teal-800',
-  preparing: 'bg-indigo-100 text-indigo-800',
-  ready: 'bg-emerald-100 text-emerald-800',
-  delivered: 'bg-emerald-600 text-white',
-  cancelled: 'bg-red-100 text-red-700',
-}
 
 export function StatusPill({ status }: { status: OrderStatus }) {
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap ${TONE[status]}`}>{ORDER_STATUS_LABEL[status]}</span>
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap ${STATUS_PILL[status]}`}>{ORDER_STATUS_LABEL[status]}</span>
 }
 
 export function OrdersPage() {
@@ -172,7 +164,7 @@ function SubOrderCard({ order, sub, sent }: { order: Order; sub: SubOrder; sent:
         <ol className="scrollbar-none flex gap-1 overflow-x-auto px-4 pt-2 pb-3" aria-label="Progreso">
           {ORDER_FLOW.map((st, i) => (
             <li key={st} className="flex min-w-[76px] flex-1 flex-col gap-1">
-              <span className={`h-1.5 rounded-full ${i <= stepIdx ? 'bg-brand' : 'bg-line'}`} />
+              <span className={`h-1.5 rounded-full ${i <= stepIdx ? STATUS_BAR[sub.status] : 'bg-line'}`} />
               <span className={`text-[10px] leading-tight ${i <= stepIdx ? 'font-bold text-ink' : 'text-ink-soft'}`}>{ORDER_STATUS_LABEL[st]}</span>
             </li>
           ))}
