@@ -32,4 +32,11 @@ describe('barco de los descuentos', () => {
     const lineup = shipLineup([{ storeId: a.id, productId: foreign.id, discountPercent: 60, units: null }], SEED_STORES, SEED_PRODUCTS)
     expect(lineup.some((o) => !o.demo)).toBe(false)
   })
+
+  it('con base de datos no se inventan ofertas, salvo en la llegada de prueba del administrador', () => {
+    expect(shipLineup([], SEED_STORES, SEED_PRODUCTS, false)).toHaveLength(0)
+    const test = shipLineup([], SEED_STORES, SEED_PRODUCTS, true)
+    expect(test.length).toBeGreaterThanOrEqual(SHIP_MIN_OFFERS)
+    expect(test.every((o) => o.demo)).toBe(true)
+  })
 })

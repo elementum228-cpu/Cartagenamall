@@ -40,31 +40,37 @@ interface ShipState {
   offers: ShipOffer[]
   /** Llegada en curso: cuándo atracó y cuándo zarpa. */
   arrival: { at: number; until: number } | null
+  /** Llegada de prueba (solo en este dispositivo, para mostrar el barco con ofertas de ejemplo). */
+  testing: boolean
   setOffer: (offer: ShipOffer) => void
   removeOffer: (storeId: string) => void
   /** Hace atracar el barco ahora (prueba o llegada programada). */
-  arrive: (minutes?: number) => void
+  arrive: (minutes?: number, test?: boolean) => void
   depart: () => void
 }
 
 export const PROMO_PREFIX = 'PROMO-BARCO-'
 export const isShipPromotion = (p: Pick<Promotion, 'id'>) => p.id.startsWith(PROMO_PREFIX)
 
+let boardedKey = ''
+
 export const useDiscountShip = create<ShipState>()(
   persist(
     (set, get) => ({
       offers: [],
       arrival: null,
+      testing: false,
       setOffer: (offer) => set((s) => ({ offers: [...s.offers.filter((o) => o.storeId !== offer.storeId), { ...offer, demo: false }] })),
       removeOffer: (storeId) => set((s) => ({ offers: s.offers.filter((o) => o.storeId !== storeId) })),
-      arrive: (minutes = SHIP_STAY_MIN) => {
+      arrive: (minutes = SHIP_STAY_MIN, test = false) => {
         const now = appClock.now()
         const arrival = { at: now, until: now + minutes * 60_000 }
-        set({ arrival })
-        boardPromotions(get().offers, arrival.until)
+        set({ arrival, testing: test })
+        boardPromotions(get().offers, arrival.until, test)
       },
       depart: () => {
-        set({ arrival: null })
+        set({ arrival: null, testing: false })
+        boardedKey = ''
         unboardPromotions()
       },
     }),
@@ -113,14 +119,14 @@ export function arrivalLabel(at: number, now: number) {
  * Lo que va a bordo: las ofertas de los locales (las que siguen siendo válidas) y, si no alcanzan el
  * mínimo, ejemplos de otras tiendas abiertas. Una por local, ordenadas por descuento.
  */
-export function shipLineup(offers: ShipOffer[], stores: Store[], products: Product[]): ShipOffer[] {
+export function shipLineup(offers: ShipOffer[], stores: Store[], products: Product[], withExamples = !remoteEnabled()): ShipOffer[] {
   const open = new Set(stores.filter((s) => s.status === 'open').map((s) => s.id))
   const active = new Map(products.filter((p) => p.active).map((p) => [p.id, p]))
   const seen = new Set<string>()
   const real = offers.filter((o) => open.has(o.storeId) && active.get(o.productId)?.storeId === o.storeId && !seen.has(o.storeId) && !!seen.add(o.storeId))
   const out = [...real]
   // con base de datos no se inventan ofertas: solo van a bordo las que subieron los locales
-  if (out.length < SHIP_MIN_OFFERS && !remoteEnabled()) {
+  if (out.length < SHIP_MIN_OFFERS && withExamples) {
     const taken = new Set(out.map((o) => o.storeId))
     const pcts = [30, 25, 40, 20, 35, 30, 25, 45]
     let k = 0
@@ -136,24 +142,23 @@ export function shipLineup(offers: ShipOffer[], stores: Store[], products: Produ
   return out.sort((a, b) => b.discountPercent - a.discountPercent).slice(0, SHIP_MAX_OFFERS)
 }
 
-let boardedKey = ''
 /** Deja el catálogo local acorde al barco compartido: atracado → sus ofertas son promociones; zarpó → se retiran. */
 export function syncShipBoarding() {
-  const { arrival, offers } = useDiscountShip.getState()
+  const { arrival, offers, testing } = useDiscountShip.getState()
   const docked = isDocked(arrival, appClock.now())
-  const key = docked ? `${arrival!.at}:${JSON.stringify(offers)}` : ''
+  const key = docked ? `${arrival!.at}:${testing}:${JSON.stringify(offers)}` : ''
   if (key === boardedKey) return
   boardedKey = key
-  if (docked) boardPromotions(offers, arrival!.until)
+  if (docked) boardPromotions(offers, arrival!.until, testing)
   else unboardPromotions()
 }
 
 /** Sube a bordo: cada oferta pasa a ser una promoción del catálogo que vence cuando zarpa. */
-function boardPromotions(offers: ShipOffer[], until: number) {
+function boardPromotions(offers: ShipOffer[], until: number, test = false) {
   const { stores, products, upsertPromotion } = useCatalog.getState()
   unboardPromotions()
   const now = appClock.now()
-  for (const o of shipLineup(offers, stores, products)) {
+  for (const o of shipLineup(offers, stores, products, test || !remoteEnabled())) {
     const product = products.find((p) => p.id === o.productId)
     if (!product) continue
     upsertPromotion({

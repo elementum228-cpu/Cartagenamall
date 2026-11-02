@@ -73,6 +73,8 @@ const slide = (dir: 1 | -1) => ({
   transition: { duration: 0.24, ease: EASE },
 })
 
+const BOAT_STORE: Record<BoatId, string> = { mar: 'STORE-LANCHA-MAR', bahia: 'STORE-LANCHA-BAHIA', pirata: 'STORE-PIRATA' }
+
 function BoatCard({ boat }: { boat: BoatId }) {
   const b = BOATS[boat]
   const all = useTourism((s) => s.experiences)
@@ -99,6 +101,9 @@ function BoatCard({ boat }: { boat: BoatId }) {
         style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${b.color} 88%, white), ${b.color})`, boxShadow: `0 10px 26px -10px ${b.color}` }}
       >
         Ver experiencias <ChevronRight className="size-5" />
+      </button>
+      <button onClick={() => useUI.getState().openStore(BOAT_STORE[boat])} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-card text-[15px] font-semibold transition active:scale-[0.98]">
+        Ver servicios y reservar
       </button>
       <p className="text-center text-[12px] text-ink-soft">{count} planes de operadores de Cartagena</p>
     </motion.div>

@@ -372,6 +372,8 @@ export async function loadShip() {
   const arrival = (set.data as Doc<{ arrival?: { at: number; until: number } }> | null)?.doc?.arrival ?? null
   const offers = (off.data as Doc<ShipOffer>[]).map((r) => ({ ...r.doc, demo: false }))
   const cur = useDiscountShip.getState()
+  // una llegada de prueba (administrador) es solo local: no la pisa lo que diga la base
+  if (cur.testing && cur.arrival && cur.arrival.until > Date.now()) return
   const same = JSON.stringify(offers) === JSON.stringify(cur.offers) && arrival?.at === cur.arrival?.at && arrival?.until === cur.arrival?.until
   if (!same) applyRemote(() => useDiscountShip.setState({ offers, arrival: arrival && arrival.until > Date.now() ? arrival : null }))
   applyRemote(syncShipBoarding)

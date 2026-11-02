@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { OrderLine, Product, Promotion, Store } from '../domain/types'
 import { SEED_ASSIGNMENTS, SEED_PRODUCTS, SEED_STORES, createSeedPromotions } from '../data/seed'
+import { BUSINESS_PRODUCTS, BUSINESS_STORES } from '../data/businesses'
 import { stockKey } from '../lib/inventory'
 import { safeStorage } from './storage'
 
@@ -28,8 +29,8 @@ interface CatalogState {
 }
 
 const seed = () => ({
-  stores: SEED_STORES,
-  products: SEED_PRODUCTS,
+  stores: [...SEED_STORES, ...BUSINESS_STORES],
+  products: [...SEED_PRODUCTS, ...BUSINESS_PRODUCTS],
   promotions: createSeedPromotions(Date.now()),
   assignments: SEED_ASSIGNMENTS,
 })

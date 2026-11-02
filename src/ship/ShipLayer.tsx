@@ -241,7 +241,7 @@ export function ShipTestButton({ className, onDone }: { className: string; onDon
         if (docked) {
           ship.depart()
           useUI.getState().openShip(false)
-        } else ship.arrive()
+        } else ship.arrive(undefined, true)
         onDone?.()
       }}
     >

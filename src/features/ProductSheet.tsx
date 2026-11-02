@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product } from '../domain/types'
 import { stockFor, totalStock } from '../lib/inventory'
-import { bookingLink, isService, openWhatsApp } from '../lib/restaurant'
+import { isService, openBooking } from '../lib/restaurant'
 import { formatCOP } from '../lib/format'
 import { FEATURES } from '../config/features'
 import { addToCart, toggleCompare } from '../state/actions'
@@ -144,7 +144,7 @@ function Body({ product }: { product: Product }) {
         )}
 
         {service ? (
-          <button className={`${btn.primary} w-full`} onClick={() => openWhatsApp(bookingLink(store, product.name, formatCOP(info.final)))}>
+          <button className={`${btn.primary} w-full`} onClick={() => openBooking(store, product.name, formatCOP(info.final))}>
             <MessageCircle className="size-4" /> Reservar servicio
           </button>
         ) : (

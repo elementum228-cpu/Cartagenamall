@@ -2,6 +2,8 @@ import { motion } from 'motion/react'
 import { BarChart3, Bot, ChevronRight, Code2, Hotel, Map as MapIcon, Palmtree, Sailboat, ShoppingCart, Users, type LucideIcon } from 'lucide-react'
 import { SHOWROOMS, type ShowroomService } from '../district/showrooms'
 import { useUI } from '../state/ui'
+import { useCatalog } from '../state/catalog'
+import { openWhatsApp, whatsappLink, whatsappDigits } from '../lib/restaurant'
 import { Sheet } from '../ui/Sheet'
 
 // Ficha de una vitrina de la zona de servicios (Planly, GrowDesk): qué hace la marca, sus servicios
@@ -12,6 +14,8 @@ const ICON: Record<ShowroomService['icon'], LucideIcon> = { map: MapIcon, palm: 
 export function ShowroomSheet() {
   const id = useUI((s) => s.showroom)
   const room = id ? SHOWROOMS[id] : null
+  const store = useCatalog((c) => c.stores.find((x) => x.id === (id === 'planly' ? 'STORE-PLANLY' : 'STORE-GROWDESK')))
+  const hasWa = !!store && !!whatsappDigits(store.whatsapp ?? '')
   const close = () => useUI.getState().openShowroom(null)
   return (
     <Sheet
@@ -76,8 +80,24 @@ export function ShowroomSheet() {
               >
                 {room.ctaLabel} <ChevronRight className="size-5" />
               </a>
+            ) : hasWa ? (
+              <button
+                onClick={() => openWhatsApp(whatsappLink(store!.whatsapp, `Hola ${store!.name}, vengo de Cartagena Mall 👋 ${room.ctaLabel}.`))}
+                className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full text-[16px] font-semibold text-white shadow-soft transition active:scale-[0.98]"
+                style={{ background: room.color }}
+              >
+                {room.ctaLabel} <ChevronRight className="size-5" />
+              </button>
             ) : (
               <p className="flex h-[52px] w-full items-center justify-center rounded-full bg-ink/[0.06] text-[15px] font-semibold text-ink-soft">{room.ctaLabel}: contacto próximamente</p>
+            )}
+            {store && (
+              <button
+                onClick={() => useUI.getState().openStore(store.id)}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-line bg-card text-[15px] font-semibold transition active:scale-[0.98]"
+              >
+                Ver servicios y precios
+              </button>
             )}
             {room.id === 'planly' && (
               <button

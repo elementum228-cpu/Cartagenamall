@@ -2,7 +2,7 @@ import { Heart, MessageCircle, Plus, Scale } from 'lucide-react'
 import type { Product, Store } from '../domain/types'
 import { needsOptions, totalStock } from '../lib/inventory'
 import { FEATURES } from '../config/features'
-import { bookingLink, isService, openWhatsApp } from '../lib/restaurant'
+import { isService, openBooking } from '../lib/restaurant'
 import { formatCOP } from '../lib/format'
 import { addToCart, toggleCompare } from '../state/actions'
 import { usePersonal } from '../state/personal'
@@ -60,7 +60,7 @@ export function ProductCard({ product, store, compact = false }: { product: Prod
           <Price info={info} size="sm" />
           {isService(store) ? (
             <button
-              onClick={() => openWhatsApp(bookingLink(store, product.name, formatCOP(info.final)))}
+              onClick={() => openBooking(store, product.name, formatCOP(info.final))}
               className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white shadow-soft transition hover:bg-brand-dark active:scale-90"
               aria-label={`Reservar ${product.name} por WhatsApp`}
             >
