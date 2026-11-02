@@ -474,7 +474,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
   const quality = usePrefs((s) => s.quality)
   const chooseQuality = usePrefs((s) => s.chooseQuality)
   const [open, setOpen] = useState(false)
-  // el cliente solo ve Plano 2D, día/noche/hora real e instalar; las herramientas de prueba y de guía son del administrador
+  // el cliente ve Plano 2D, día/noche/hora real, instalar, recorrido guiado y calidad; las herramientas de prueba y de guía son del administrador
   const canAdmin = useCanAdmin()
   const item = 'glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap text-ink shadow-none transition duration-200 active:scale-[0.98]'
 
@@ -504,6 +504,18 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           <Layers className="size-4" /> Calidad {QUALITY_LABEL[quality]}
         </button>
       )}
+      {use3D && (
+        <button
+          className={item}
+          onClick={() => {
+            setOpen(false)
+            startTour()
+          }}
+          aria-label="Empezar el recorrido guiado por el mall"
+        >
+          <Route className="size-4" /> Recorrido guiado
+        </button>
+      )}
       {canAdmin && (
         <>
       <DemoPromoButton className={item} onDone={() => setOpen(false)} />
@@ -521,18 +533,6 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       {use3D && <HalloweenToggle className={item} />}
       {use3D && <PirateToggle className={item} />}
       {use3D && <AirportToggle className={item} />}
-      {use3D && (
-        <button
-          className={item}
-          onClick={() => {
-            setOpen(false)
-            startTour()
-          }}
-          aria-label="Empezar el recorrido guiado por el mall"
-        >
-          <Route className="size-4" /> Recorrido guiado
-        </button>
-      )}
         </>
       )}
     </>
