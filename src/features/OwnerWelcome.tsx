@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, ChevronRight, Scissors, ShoppingBag, Sparkles, Store as StoreIcon, UtensilsCrossed, X } from 'lucide-react'
+import { Check, ChevronRight, Scissors, ShoppingBag, Store as StoreIcon, UtensilsCrossed, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
 import { isFoodCategory } from '../lib/restaurant'
 import { useCatalog } from '../state/catalog'
-import { StoreLogo, btn } from '../ui/bits'
+import { btn } from '../ui/bits'
 import type { Store } from '../domain/types'
 import { create } from 'zustand'
 
@@ -124,11 +124,22 @@ export function OwnerWelcome() {
                     transition={{ duration: 2.4, delay: 0.5 + c.d, ease: 'easeOut' }}
                   />
                 ))}
-                <motion.div initial={{ scale: 0.2, rotate: -12, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 220, damping: 14, delay: 0.15 }} className="rounded-[34px] bg-white p-2 shadow-[0_20px_60px_rgb(0_0_0/0.35)]">
-                  <StoreLogo store={store} size={112} />
+                <motion.div
+                  initial={{ scale: 0.2, rotate: -12, opacity: 0 }}
+                  animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 14, delay: 0.15 }}
+                  className="grid size-32 place-items-center overflow-hidden rounded-[36px] bg-white shadow-[0_20px_60px_rgb(0_0_0/0.35)]"
+                >
+                  {store.logo ? (
+                    <img src={store.logo} alt={`Logo de ${store.name}`} className="size-full object-contain p-3" />
+                  ) : (
+                    <span className="px-2 text-center text-[34px] leading-none font-extrabold tracking-tight" style={{ color: store.brandColor }}>
+                      {store.logoText}
+                    </span>
+                  )}
                 </motion.div>
                 <motion.p className="mt-7 text-sm font-bold tracking-widest uppercase opacity-80" initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 0.85 }} transition={{ delay: 0.55 }}>
-                  <Sparkles className="mr-1 inline size-4" /> ¡Felicitaciones!
+                  ¡Felicitaciones!
                 </motion.p>
                 <motion.h1 className="mt-2 text-[32px] leading-tight font-extrabold tracking-tight" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}>
                   ¡Eres dueño de un local!
