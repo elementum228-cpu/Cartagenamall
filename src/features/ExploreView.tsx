@@ -444,7 +444,7 @@ function TimeToggle() {
 
 /** Guía fija de controles en escritorio: deja claro que el mapa se arrastra. */
 function ControlsLegend() {
-  const key = 'rounded-md border border-ink/15 bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold text-ink shadow-[0_1px_0_rgb(0_0_0/0.08)]'
+  const key = 'rounded-md border border-black/15 bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-800 shadow-[0_1px_0_rgb(0_0_0/0.08)]'
   return (
     <div className="glass pointer-events-none absolute bottom-5 left-1/2 z-10 flex max-xl:hidden -translate-x-1/2 items-center gap-3 rounded-full px-4 py-2 text-xs font-medium text-ink-soft shadow-none">
       <span className="flex items-center gap-1.5">
