@@ -135,7 +135,7 @@ export function OwnerWelcome() {
                   {store.name}
                 </motion.p>
                 <motion.p className="mt-2 max-w-xs text-[15px] opacity-85" initial={{ opacity: 0 }} animate={{ opacity: 0.85 }} transition={{ delay: 1.2 }}>
-                  Ya es tuyo en Cartagena Mall. Vamos a dejarlo listo en un minuto.
+                  Ya es tuyo en MallPlay. Vamos a dejarlo listo en un minuto.
                 </motion.p>
               </motion.div>
             )}

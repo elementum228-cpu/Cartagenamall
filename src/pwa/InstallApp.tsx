@@ -70,7 +70,7 @@ export function InstallLayer() {
             exit={{ opacity: 0, y: -12, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             role="dialog"
-            aria-label="Instalar Cartagena Mall"
+            aria-label="Instalar MallPlay"
           >
             <MallMark size={40} />
             <div className="min-w-0 flex-1">
@@ -114,7 +114,7 @@ export function InstallLayer() {
                 <motion.div initial={{ scale: 0.6, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.05 }}>
                   <MallMark size={72} />
                 </motion.div>
-                <h2 className="mt-3 text-[22px] font-bold tracking-[-0.02em]">Instala Cartagena Mall</h2>
+                <h2 className="mt-3 text-[22px] font-bold tracking-[-0.02em]">Instala MallPlay</h2>
                 <p className="mt-1 text-[14px] text-ink-soft">Ábrelo desde tu pantalla de inicio, a pantalla completa y más rápido.</p>
               </div>
 

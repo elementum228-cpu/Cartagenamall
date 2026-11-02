@@ -67,7 +67,7 @@ function AdminContent() {
             <ArrowLeft className="size-5" />
           </Link>
           <div>
-            <h1 className="text-lg font-extrabold tracking-tight">Administración · Cartagena Mall</h1>
+            <h1 className="text-lg font-extrabold tracking-tight">Administración · MallPlay</h1>
             <p className="text-xs text-ink-soft">Gestión de espacios, tiendas, catálogo, promociones y pedidos</p>
           </div>
         </div>

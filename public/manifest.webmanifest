@@ -1,6 +1,6 @@
 {
-  "name": "Cartagena Mall",
-  "short_name": "Cartagena Mall",
+  "name": "MallPlay Cartagena",
+  "short_name": "MallPlay",
   "description": "Un centro comercial 3D dentro de una fortaleza: tiendas, ofertas escondidas y tu pasaporte de sellos.",
   "lang": "es",
   "id": "./",
@@ -8,7 +8,7 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#062C42",
+  "background_color": "#ffffff",
   "theme_color": "#062C42",
   "categories": ["shopping", "lifestyle"],
   "icons": [

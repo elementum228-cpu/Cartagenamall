@@ -32,7 +32,7 @@ export function PassportPage() {
         transition={SPRING}
       >
         <div className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10 blur-2xl" />
-        <p className="text-[11px] font-bold tracking-[0.18em] text-white/70 uppercase">Pasaporte · Cartagena Mall</p>
+        <p className="text-[11px] font-bold tracking-[0.18em] text-white/70 uppercase">Pasaporte · MallPlay</p>
         <h1 className="mt-1 text-[26px] leading-tight font-bold tracking-[-0.02em]">Recorre el mall, gana sellos</h1>
         <div className="mt-3 flex items-center gap-3">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/15">

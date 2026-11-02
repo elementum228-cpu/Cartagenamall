@@ -23,7 +23,7 @@ function Shell({ title, children, fromCheckout }: { title: string; children: Rea
   return (
     <div className="mx-auto max-w-md px-4 pt-8 pb-28">
       <div className="glass-strong rounded-[28px] p-5">
-        <p className="text-xs font-bold tracking-wider text-brand uppercase">Cartagena Mall</p>
+        <p className="text-xs font-bold tracking-wider text-brand uppercase">MallPlay</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{title}</h1>
         {fromCheckout && <p className="mt-3 rounded-2xl bg-sand p-3 text-sm font-semibold">Inicia sesión para completar tu compra</p>}
         {!remoteEnabled() ? <p className="mt-4 rounded-2xl bg-sand p-3 text-sm text-ink-soft">Las cuentas no están disponibles en el modo demostración.</p> : children}

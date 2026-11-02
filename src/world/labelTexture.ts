@@ -106,7 +106,7 @@ export function clearLabelCache() {
 }
 
 /**
- * Letrero de la entrada monumental: símbolo de puerta colonial, CARTAGENA MALL y lema.
+ * Letrero de la entrada monumental: símbolo de puerta colonial, MALLPLAY y lema.
  * Texto oscuro sobre piedra clara, como letras en relieve.
  */
 export function getGateSign(title: string, tagline: string): Label {

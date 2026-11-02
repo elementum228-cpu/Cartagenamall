@@ -105,7 +105,7 @@ function ShipNotice() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-2 text-[11.5px] font-semibold text-ink-soft">
-                <span className="tracking-wide uppercase">Cartagena Mall</span>
+                <span className="tracking-wide uppercase">MallPlay</span>
                 <span>ahora</span>
               </span>
               <span className="mt-0.5 block text-[15px] leading-snug font-bold text-ink">🛳️ ¡Llegó el barco de los descuentos!</span>

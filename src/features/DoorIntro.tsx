@@ -159,7 +159,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     <div
       className="door-intro fixed inset-0 z-[60] overflow-hidden"
       role="dialog"
-      aria-label="Bienvenida a Cartagena Mall"
+      aria-label="Bienvenida a MallPlay"
       style={{ opacity: through ? 0 : 1, transition: through ? `opacity 1.2s ease-in-out ${reduce ? 0 : 0.5}s` : undefined }}
     >
       {/* escena que «avanza» hacia la puerta al atravesarla */}

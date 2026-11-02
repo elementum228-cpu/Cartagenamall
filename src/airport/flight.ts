@@ -27,7 +27,7 @@ interface FlightState {
   takeoffAt: number
   /** Cuándo empezó el aterrizaje en la isla. */
   landingAt: number
-  /** Invitación «Volver a Cartagena Mall» abierta (al tocar el avión en la isla). */
+  /** Invitación «Volver a MallPlay» abierta (al tocar el avión en la isla). */
   returnOpen: boolean
   setReturnOpen: (open: boolean) => void
   start: () => void

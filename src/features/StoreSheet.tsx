@@ -105,8 +105,8 @@ function StoreBody({ store }: { store: Store }) {
         </button>
         <button
           onClick={async () => {
-            if (remoteEnabled()) return void window.open(whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de Cartagena Mall 👋`), '_blank', 'noopener')
-            const ok = await copyText(`${store.whatsapp} — Hola ${store.name}, te escribo desde Cartagena Mall.`)
+            if (remoteEnabled()) return void window.open(whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de MallPlay 👋`), '_blank', 'noopener')
+            const ok = await copyText(`${store.whatsapp} — Hola ${store.name}, te escribo desde MallPlay.`)
             toast(ok ? `Número de demostración copiado: ${store.whatsapp}` : `WhatsApp de demostración: ${store.whatsapp}`)
           }}
           className={btn.secondary}

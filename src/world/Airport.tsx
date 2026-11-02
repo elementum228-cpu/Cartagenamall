@@ -17,7 +17,7 @@ import { glowMat, lightPoolMat } from './night'
 import { Person } from './Person'
 import { RunwayLights } from './RunwayLights'
 
-// Aeropuerto Cartagena Mall (propuesta de diseño): plataforma de piedra por fuera de la muralla este,
+// Aeropuerto MallPlay (propuesta de diseño): plataforma de piedra por fuera de la muralla este,
 // terminal con fachada de vidrio que se enciende de noche y letrero en el techo, torre de control con
 // baliza, un avión blanco con franja turquesa junto a la escalerilla, pista con luces de borde y gente
 // con maletas. Al tocarlo aparece la invitación a volar a Isla Tecnología.
@@ -47,7 +47,7 @@ function signMaterial() {
   g.fillText('AEROPUERTO', 250, 110)
   g.fillStyle = '#9fe3dc'
   g.font = '600 64px system-ui, sans-serif'
-  g.fillText('Cartagena Mall', 254, 215)
+  g.fillText('MallPlay', 254, 215)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 4
@@ -226,7 +226,7 @@ function liveryMat() {
     g.quadraticCurveTo(140, 110, 70, 165)
     g.closePath()
     g.fill()
-    g.fillText('cartagena mall', 175, 104)
+    g.fillText('mallplay', 175, 104)
     const tex = new THREE.CanvasTexture(c)
     tex.colorSpace = THREE.SRGBColorSpace
     tex.anisotropy = 4

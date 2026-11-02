@@ -12,7 +12,7 @@ export function LoginPage() {
   return (
     <div className="mx-auto max-w-md px-4 pt-8 pb-28">
       <div className="glass-strong rounded-[28px] p-5">
-        <p className="text-xs font-bold tracking-wider text-brand uppercase">Cartagena Mall</p>
+        <p className="text-xs font-bold tracking-wider text-brand uppercase">MallPlay</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">Tu cuenta</h1>
         <p className="mt-1 text-sm text-ink-soft">Para administradores y dueños de negocio: crea tiendas, sube productos y gestiona pedidos.</p>
 

@@ -61,7 +61,7 @@ function Body({ space }: { space: SpaceSlot }) {
           Tu solicitud <b className="text-ink">{requestId}</b> para {space.type === 'court' ? 'la zona de deportes' : `el espacio ${space.label}`} quedó registrada.
         </p>
         <p className="mx-auto mt-4 max-w-xs rounded-2xl bg-sand p-3 text-[13px] text-ink-soft">
-          El local <b>no se activa automáticamente</b>: el equipo de Cartagena Mall revisará la solicitud y te contactará. No se ha realizado ningún cobro.
+          El local <b>no se activa automáticamente</b>: el equipo de MallPlay revisará la solicitud y te contactará. No se ha realizado ningún cobro.
         </p>
         <button className={`${btn.secondary} mt-6`} onClick={() => useUI.getState().selectSpace(null)}>
           Seguir explorando

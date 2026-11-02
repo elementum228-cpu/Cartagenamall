@@ -153,7 +153,7 @@ function ExperienceCard({ exp, boat, color }: { exp: Experience; boat: BoatId; c
   const status = STATUS[exp.status]
   const wa = exp.contact.whatsapp?.replace(/\D/g, '')
   const action = exp.status === 'soldout' ? null : exp.contact.bookingUrl ? ('booking' as const) : wa ? ('whatsapp' as const) : null
-  const href = action === 'booking' ? exp.contact.bookingUrl : action === 'whatsapp' ? `https://wa.me/${wa}?text=${encodeURIComponent(`Hola, vi «${exp.title}» en Cartagena Mall y quiero más información.`)}` : undefined
+  const href = action === 'booking' ? exp.contact.bookingUrl : action === 'whatsapp' ? `https://wa.me/${wa}?text=${encodeURIComponent(`Hola, vi «${exp.title}» en MallPlay y quiero más información.`)}` : undefined
   return (
     <article className="overflow-hidden rounded-[22px] border border-line bg-card">
       <div className="flex gap-3 p-3">

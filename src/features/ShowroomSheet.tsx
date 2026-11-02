@@ -82,7 +82,7 @@ export function ShowroomSheet() {
               </a>
             ) : hasWa ? (
               <button
-                onClick={() => openWhatsApp(whatsappLink(store!.whatsapp, `Hola ${store!.name}, vengo de Cartagena Mall 👋 ${room.ctaLabel}.`))}
+                onClick={() => openWhatsApp(whatsappLink(store!.whatsapp, `Hola ${store!.name}, vengo de MallPlay 👋 ${room.ctaLabel}.`))}
                 className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full text-[16px] font-semibold text-white shadow-soft transition active:scale-[0.98]"
                 style={{ background: room.color }}
               >

@@ -45,7 +45,7 @@ function Terminal() {
   return (
     <Shell onClose={cancel}>
       <motion.p className="text-[13px] font-semibold tracking-[0.2em] text-white/60 uppercase" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
-        Aeropuerto Cartagena Mall
+        Aeropuerto MallPlay
       </motion.p>
       <motion.h1 className="mt-1 text-center text-[28px] leading-tight font-extrabold" initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
         Prepara tu viaje
@@ -69,7 +69,7 @@ function Terminal() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[30px] leading-none font-black">CTG</p>
-            <p className="text-[12px] text-[#5b6670]">Cartagena Mall</p>
+            <p className="text-[12px] text-[#5b6670]">MallPlay</p>
           </div>
           <div className="flex flex-1 items-center gap-1 px-3 text-[#13b9ad]">
             <span className="h-px flex-1 border-t-2 border-dashed border-[#13b9ad]/50" />
@@ -144,13 +144,13 @@ function BoardingPassScreen() {
           <span className="flex items-center gap-2 text-[13px] font-bold tracking-wider uppercase">
             <Plane className="size-4" /> Pase de abordar
           </span>
-          <span className="text-[12px] font-semibold opacity-80">Cartagena Mall Air</span>
+          <span className="text-[12px] font-semibold opacity-80">MallPlay Air</span>
         </div>
         <div className="px-5 pt-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[34px] leading-none font-black">CTG</p>
-              <p className="text-[12px] text-[#5b6670]">Cartagena Mall</p>
+              <p className="text-[12px] text-[#5b6670]">MallPlay</p>
             </div>
             <Plane className="size-6 text-[#13b9ad]" />
             <div className="text-right">
@@ -193,7 +193,7 @@ function BoardingPassScreen() {
 }
 
 /** Mientras el avión rueda y despega en el mapa: un aviso discreto arriba que cuenta qué pasa. */
-function TakeoffNotice({ from = 'Cartagena Mall' }: { from?: string }) {
+function TakeoffNotice({ from = 'MallPlay' }: { from?: string }) {
   const [phase, setPhase] = useState(0)
   useEffect(() => {
     const ids = [window.setTimeout(() => setPhase(1), TAKEOFF_MS * TAXI_FRAC * 0.82), window.setTimeout(() => setPhase(2), TAKEOFF_MS * TAXI_FRAC)]
@@ -271,7 +271,7 @@ function Flying() {
         <motion.div animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}>
           <Plane className="size-24 rotate-45 fill-white text-[#0d2a3f] drop-shadow-[0_18px_20px_rgb(13_42_63/0.25)]" strokeWidth={1.4} />
         </motion.div>
-        <p className="mt-8 text-[22px] font-extrabold">{back ? 'Volviendo a Cartagena Mall' : 'Volando a Isla Tecnología'}</p>
+        <p className="mt-8 text-[22px] font-extrabold">{back ? 'Volviendo a MallPlay' : 'Volando a Isla Tecnología'}</p>
         <p className="mt-1 text-[14px] font-semibold opacity-70">{back ? 'Abróchate el cinturón…' : 'Preparando la isla para ti…'}</p>
         {/* ruta con el avión que avanza: la barra de carga */}
         <div className="mt-7 w-full max-w-[340px]">
@@ -345,7 +345,7 @@ function ReturnInvite() {
           <X className="size-4" />
         </button>
         <p className="text-[17px] leading-snug font-semibold">¿Listo para volver a</p>
-        <p className="text-[19px] leading-snug font-extrabold text-[#f5c542]">Cartagena Mall?</p>
+        <p className="text-[19px] leading-snug font-extrabold text-[#f5c542]">MallPlay?</p>
         <p className="mt-1 text-[13.5px] text-white/80">Vuelo CM 002 · Isla → Cartagena</p>
         <button
           className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-[#1fc7b6] to-[#0f8f86] text-[16px] font-semibold shadow-[0_8px_24px_rgb(19_185_173/0.45)] transition active:scale-[0.98]"
@@ -400,7 +400,7 @@ export function FlightLayer() {
       {step === 'flying' && <Flying key="flying" />}
       {step === 'landing' && <LandingNotice key="landing" />}
       {step === 'departIsland' && <TakeoffNotice key="depart" from="Isla Tecnología" />}
-      {step === 'landMall' && <LandingNotice key="landMall" to="Cartagena Mall" />}
+      {step === 'landMall' && <LandingNotice key="landMall" to="MallPlay" />}
       {step === 'arrived' && <Arrived key="arrived" />}
       {step === null && world === 'island' && <IslandHud key="hud" />}
       {step === null && world === 'island' && returnOpen && <ReturnInvite key="return" />}

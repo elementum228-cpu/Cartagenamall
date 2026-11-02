@@ -1,8 +1,8 @@
-// Service worker de Cartagena Mall: permite instalar la app y abrirla rápido (o sin conexión).
+// Service worker de MallPlay: permite instalar la app y abrirla rápido (o sin conexión).
 // Páginas: primero la red (siempre la versión publicada más nueva) y, sin conexión, la copia guardada.
 // Archivos del sitio (JS/CSS con hash, íconos, fuentes): copia guardada y se refresca por detrás.
 // Nada de Supabase ni otros servicios se guarda aquí.
-const CACHE = 'cm-v1'
+const CACHE = 'cm-v2'
 const SCOPE = new URL(self.registration.scope)
 const SHELL = new URL('./', SCOPE).href
 

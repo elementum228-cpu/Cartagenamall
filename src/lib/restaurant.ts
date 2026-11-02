@@ -42,7 +42,7 @@ export const isService = (store: Pick<Store, 'businessType'>) => store.businessT
 
 /** Enlace de WhatsApp para reservar un servicio (los servicios no se agregan al carrito). */
 export function bookingLink(store: Pick<Store, 'name' | 'whatsapp'>, serviceName: string, price: string) {
-  return whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de Cartagena Mall 👋 Quiero reservar el servicio «${serviceName}» (${price}). ¿Qué horarios tienen disponibles?`)
+  return whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de MallPlay 👋 Quiero reservar el servicio «${serviceName}» (${price}). ¿Qué horarios tienen disponibles?`)
 }
 
 /** Abre WhatsApp para reservar un servicio; avisa si el negocio aún no tiene número configurado. */

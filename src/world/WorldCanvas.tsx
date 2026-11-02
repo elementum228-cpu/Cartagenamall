@@ -12,7 +12,7 @@ class WebGLBoundary extends Component<{ fallback: ReactNode; children: ReactNode
     return { failed: true }
   }
   componentDidCatch(error: unknown) {
-    console.error('[Cartagena Mall] El mundo 3D falló; se muestra el mapa 2D.', error)
+    console.error('[MallPlay] El mundo 3D falló; se muestra el mapa 2D.', error)
   }
   render() {
     return this.state.failed ? this.props.fallback : this.props.children
@@ -61,7 +61,7 @@ export default function WorldCanvas({ active, fallback, night }: { active: boole
           raycaster.layers.enable(PICK_LAYER)
         }}
         style={{ touchAction: 'none' }}
-        aria-label="Mapa 3D de Cartagena Mall"
+        aria-label="Mapa 3D de MallPlay"
       >
         <PerformanceMonitor
           onDecline={() => {

@@ -70,7 +70,7 @@ function Gate({ initialError, onEnter }: { initialError: string | null; onEnter:
           <MallMark size={64} />
         </div>
         <p className="mt-3 text-[12px] font-semibold tracking-wide text-ink-soft uppercase">Presentación privada</p>
-        <h1 className="mt-1 text-[24px] leading-tight font-bold tracking-[-0.02em]">Cartagena Mall</h1>
+        <h1 className="mt-1 text-[24px] leading-tight font-bold tracking-[-0.02em]">MallPlay</h1>
         <p className="mt-1 text-[14px] text-ink-soft">Escribe el código de invitación que te compartieron para conocer el proyecto.</p>
         <label className="mt-5 flex items-center gap-2 rounded-2xl border border-line bg-white px-3.5 focus-within:border-teal focus-within:ring-4 focus-within:ring-teal/15">
           <KeyRound className="size-5 shrink-0 text-ink-soft" />
@@ -102,7 +102,7 @@ function Gate({ initialError, onEnter }: { initialError: string | null; onEnter:
 
 /** Nombre del invitado repetido en diagonal, muy tenue: si circula una captura, se sabe de quién es. */
 function Watermark({ guest }: { guest: string }) {
-  const text = `${guest} · Cartagena Mall · Vista privada`
+  const text = `${guest} · MallPlay · Vista privada`
   return (
     <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden select-none" aria-hidden>
       <div className="absolute -inset-1/2 flex rotate-[-24deg] flex-col justify-center gap-24">

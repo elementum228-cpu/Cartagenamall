@@ -118,7 +118,7 @@ export function MyAccountPage() {
           ) : null}
           {reqs !== null && !active && !open && (
             <button className={btn.primary} onClick={() => setOpen(true)}>
-              Quiero un local en Cartagena Mall
+              Quiero un local en MallPlay
             </button>
           )}
           {open && !active && (
@@ -237,7 +237,7 @@ function ProfileCard({ email, top }: { email: string | null; top?: ReactNode }) 
 
   return (
     <div>
-      <p className="text-xs font-bold tracking-wider text-brand uppercase">Cartagena Mall</p>
+      <p className="text-xs font-bold tracking-wider text-brand uppercase">MallPlay</p>
       <div className="mt-3 flex items-center gap-4">
         <button type="button" onClick={() => fileRef.current?.click()} className="group relative shrink-0" aria-label="Cambiar foto de perfil">
           {p.avatar ? (

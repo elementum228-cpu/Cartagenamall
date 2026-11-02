@@ -13,7 +13,7 @@ import pasaporte from './shots/08-pasaporte.webp'
 import comprar from './shots/09-comprar.webp'
 import comerciante from './shots/10-comerciante.webp'
 
-// Presentación privada del proyecto: qué es Cartagena Mall y un recorrido guiado con capturas reales
+// Presentación privada del proyecto: qué es MallPlay y un recorrido guiado con capturas reales
 // de la app, paso a paso. No da acceso a la app: solo se ve lo que aquí se muestra.
 
 const SPRING = { type: 'spring', stiffness: 340, damping: 32 } as const
@@ -46,7 +46,7 @@ export function Landing({ guest }: { guest: string }) {
       <div className="fixed inset-0 overflow-y-auto bg-warm text-ink">
         <header className="sticky top-0 z-30 flex items-center gap-2.5 bg-deep/80 px-4 py-3 text-white backdrop-blur-xl md:px-8">
           <MallMark size={34} />
-          <span className="text-[16px] font-bold tracking-[-0.01em]">Cartagena Mall</span>
+          <span className="text-[16px] font-bold tracking-[-0.01em]">MallPlay</span>
           <span className="ml-auto flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11.5px] font-semibold">
             <Lock className="size-3.5" /> Vista privada{guest ? ` · ${guest}` : ''}
           </span>
@@ -57,7 +57,7 @@ export function Landing({ guest }: { guest: string }) {
         <section ref={tourRef} className="scroll-mt-16 px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-5xl">
             <p className="text-center text-[12px] font-bold tracking-[0.16em] text-teal uppercase">Recorrido guiado</p>
-            <h2 className="mt-2 text-center text-[30px] leading-tight font-bold tracking-[-0.02em] md:text-[40px]">Así se vive Cartagena Mall</h2>
+            <h2 className="mt-2 text-center text-[30px] leading-tight font-bold tracking-[-0.02em] md:text-[40px]">Así se vive MallPlay</h2>
             <p className="mx-auto mt-2 max-w-xl text-center text-[15px] text-ink-soft">Capturas reales de la app, en el orden en que alguien la conoce.</p>
             <Tour />
           </div>
@@ -101,14 +101,14 @@ function Hero({ onTour }: { onTour: () => void }) {
           <p className="text-[12px] font-bold tracking-[0.18em] text-teal-bright uppercase">Tu ciudad. Tu mall. Tu mundo.</p>
           <h1 className="mt-3 text-[38px] leading-[1.05] font-bold tracking-[-0.03em] md:text-[56px]">Un centro comercial virtual dentro de una fortaleza</h1>
           <p className="mt-4 max-w-lg text-[17px] leading-relaxed text-white/80">
-            Cartagena Mall reúne a los emprendedores de la ciudad en un mall 3D que se recorre desde el celular: se explora, se descubren ofertas y se compra en un solo lugar.
+            MallPlay reúne a los emprendedores de la ciudad en un mall 3D que se recorre desde el celular: se explora, se descubren ofertas y se compra en un solo lugar.
           </p>
           <button onClick={onTour} className="glass-teal mt-7 flex h-[52px] items-center gap-2 rounded-full pr-5 pl-6 text-[16px] font-semibold">
             <Play className="size-5" fill="currentColor" /> Ver el recorrido guiado
           </button>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 40, rotate: 2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ ...SPRING, delay: 0.12 }}>
-          <Phone src={fortaleza} alt="Vista general de Cartagena Mall: la fortaleza con sus pasillos" />
+          <Phone src={fortaleza} alt="Vista general de MallPlay: la fortaleza con sus pasillos" />
         </motion.div>
       </div>
     </section>
@@ -124,7 +124,7 @@ function What() {
   return (
     <section className="px-4 py-16 md:px-8 md:py-24">
       <div className="mx-auto max-w-5xl">
-        <h2 className="text-center text-[30px] leading-tight font-bold tracking-[-0.02em] md:text-[40px]">¿Qué es Cartagena Mall?</h2>
+        <h2 className="text-center text-[30px] leading-tight font-bold tracking-[-0.02em] md:text-[40px]">¿Qué es MallPlay?</h2>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {cards.map((c, i) => (
             <motion.article
@@ -276,7 +276,7 @@ function Closing() {
           </a>
         )}
         <p className="mt-10 flex items-center justify-center gap-2 text-[12px] text-white/50">
-          <MallMark size={20} /> Cartagena Mall · Vista privada
+          <MallMark size={20} /> MallPlay · Vista privada
         </p>
       </div>
     </section>

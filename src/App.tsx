@@ -49,7 +49,7 @@ import { usePersonal } from './state/personal'
 import { useUI } from './state/ui'
 import { PromotionEventDriver } from './promotions/PromotionEventDriver'
 import { Toasts } from './ui/Toasts'
-import { MallMark } from './ui/MallMark'
+import { MallMark, MallWordmark } from './ui/MallMark'
 import { InstallLayer } from './pwa/InstallApp'
 import { BellButton } from './notifications/BellButton'
 import { MerchantWatcher } from './notifications/MerchantWatcher'
@@ -233,9 +233,9 @@ function TopBar() {
   return (
     // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
     <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
-      <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-2xl pr-2" aria-label="Cartagena Mall, inicio">
+      <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-2xl pr-2" aria-label="MallPlay, inicio">
         <MallMark size={40} />
-        <span className="chrome-text text-[17px] font-bold tracking-[-0.01em]">Cartagena Mall</span>
+        <MallWordmark className="chrome-text text-[18px] font-extrabold tracking-[-0.02em]" />
       </Link>
       <div className="glass mx-auto hidden rounded-full md:block">
         <ModeSwitch />

@@ -241,8 +241,8 @@ const FOOD_SLOTS: SlotDef[] = [
 
 export const MALL: MallConfig = {
   id: 'cartagena-mall',
-  name: 'Cartagena Mall',
-  tagline: 'Tu ciudad. Tu mall. Tu mundo.',
+  name: 'MallPlay',
+  tagline: 'Cartagena · Tu mall, tu mundo',
   floors: [
     {
       id: 'P1',
