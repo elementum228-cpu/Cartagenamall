@@ -1,6 +1,7 @@
 import { StrictMode, type ComponentType } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import { watchAppHeight } from './lib/appHeight'
 
 // Dos aplicaciones del mismo código: la completa y la versión de prueba (build con VITE_DEMO=1).
 // La condición se resuelve al compilar: cada build solo incluye la que le toca.
@@ -20,6 +21,8 @@ async function boot(): Promise<ComponentType> {
   startPassport()
   return App
 }
+
+watchAppHeight()
 
 void boot().then((Root) =>
   createRoot(document.getElementById('root')!).render(

@@ -317,7 +317,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
         }}
         aria-pressed={sound}
         aria-label={sound ? 'Silenciar sonidos de la puerta' : 'Activar sonidos de la puerta'}
-        className="absolute top-4 right-4 z-20 flex items-center gap-1.5 rounded-full bg-white/80 px-3.5 py-2 text-xs font-bold text-[#5b4a35] shadow-soft backdrop-blur transition hover:bg-white"
+        className="absolute top-[max(16px,calc(env(safe-area-inset-top)+8px))] right-4 z-20 flex items-center gap-1.5 rounded-full bg-white/80 px-3.5 py-2 text-xs font-bold text-[#5b4a35] shadow-soft backdrop-blur transition hover:bg-white"
         style={{ opacity: phase === 'idle' ? 1 : 0, transition: 'opacity 0.3s' }}
       >
         {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />} {sound ? 'Sonido' : 'Sin sonido'}

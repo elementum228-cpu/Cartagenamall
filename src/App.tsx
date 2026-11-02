@@ -129,7 +129,7 @@ function Shell() {
   }, [exploring, night])
 
   return (
-    <div className="fixed inset-0">
+    <div className="fixed inset-x-0 top-0 bottom-0" style={{ height: 'var(--app-height, auto)' }}>
       {/* el mapa (o la página) ocupa toda la pantalla; las barras flotan encima */}
       <main className="absolute inset-0">
         {/* El mundo se mantiene montado: volver a Explorar es inmediato y conserva la cámara. */}
