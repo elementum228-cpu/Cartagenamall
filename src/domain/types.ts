@@ -98,6 +98,10 @@ export interface Store {
   /** Número de demostración, nunca un número real. */
   whatsapp: string
   status: StoreStatus
+  /** Tipo de negocio que eligió el dueño al configurar su local. */
+  businessType?: 'restaurant' | 'shop' | 'service'
+  /** «pending»: local recién aprobado cuyo dueño aún no hizo la configuración inicial. */
+  setup?: 'pending' | 'done'
   /** Tarjeta de sellos: cada compra da un sello; al llenarla se canjea este premio. */
   loyalty?: { stamps: number; reward: string; active: boolean }
 }

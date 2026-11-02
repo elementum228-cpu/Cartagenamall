@@ -1,6 +1,6 @@
 import { Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Package, Pencil, Plus, Store as StoreIcon, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CATEGORIES, CATEGORY_BY_ID, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import type { FacadeStyle, OrderStatus, Product, ProductIcon, Store } from '../domain/types'
 import { formatCOP, formatDateTime } from '../lib/format'
@@ -11,7 +11,7 @@ import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
-import { isRestaurant } from '../lib/restaurant'
+import { catalogWords, isRestaurant } from '../lib/restaurant'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useMerchant } from '../state/merchant'
 import { useOrders } from '../state/orders'
@@ -61,11 +61,16 @@ function MerchantContent() {
   const setStoreId = useMerchant((s) => s.setStoreId)
   const [params, setParams] = useSearchParams()
   const requested = params.get('tienda')
-  const [tab, setTab] = useState<Tab>(() => (params.get('tab') === 'pedidos' ? 'pedidos' : 'perfil'))
+  const [tab, setTab] = useState<Tab>(() => (['pedidos', 'articulos', 'promociones'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'perfil'))
+  const [startNew, setStartNew] = useState(params.get('nuevo') === '1')
+  const pending = useOrders((o) => o.orders.reduce((n, ord) => n + ord.subOrders.filter((x) => x.storeId === (requested ?? storeId) && (x.status === 'pending_confirmation' || x.status === 'received')).length, 0))
   // Desde la ficha de una tienda se llega con ?tienda=: queda como la tienda de la sesión.
   useEffect(() => {
     if (!requested) return
     if (stores.some((s) => s.id === requested)) setStoreId(requested)
+    const t = params.get('tab')
+    if (t === 'pedidos' || t === 'articulos' || t === 'promociones' || t === 'perfil') setTab(t)
+    if (params.get('nuevo') === '1') setStartNew(true)
     setParams({}, { replace: true })
   }, [requested, stores, setStoreId, setParams])
   const store = stores.find((s) => s.id === (requested ?? storeId))
@@ -76,11 +81,11 @@ function MerchantContent() {
     <div className="mx-auto max-w-4xl px-4 pt-4 pb-28 md:pb-10">
       <DemoNotice />
       <Header store={store} onSwitch={() => setStoreId(null)} />
-      <nav className="scrollbar-none mt-4 flex gap-1 overflow-x-auto" aria-label="Secciones de mi negocio">
+      <nav className="scrollbar-none mt-4 hidden gap-1 overflow-x-auto md:flex" aria-label="Secciones de mi negocio">
         {(
           [
             ['perfil', 'Perfil y logo', StoreIcon],
-            ['articulos', isRestaurant(store) ? 'Menú' : 'Artículos', Package],
+            ['articulos', catalogWords(store).tab, Package],
             ['promociones', 'Promociones', Zap],
             ['pedidos', 'Pedidos', ClipboardList],
           ] as const
@@ -98,10 +103,42 @@ function MerchantContent() {
       </nav>
       <div className="mt-4">
         {tab === 'perfil' && <ProfileEditor key={store.id} store={store} />}
-        {tab === 'articulos' && <ProductsManager store={store} />}
+        {tab === 'articulos' && <ProductsManager store={store} startNew={startNew} onStarted={() => setStartNew(false)} />}
         {tab === 'promociones' && <MerchantPromotions store={store} />}
         {tab === 'pedidos' && <MerchantOrders store={store} />}
       </div>
+
+      {/* móvil: barra propia del negocio (reemplaza a la del mall) */}
+      <nav className="glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 rounded-[26px] px-1.5 md:hidden" aria-label="Secciones de mi negocio">
+        <ul className="grid h-16 grid-cols-5 items-center">
+          {(
+            [
+              ['perfil', 'Perfil', StoreIcon],
+              ['articulos', catalogWords(store).tab, Package],
+              ['promociones', 'Promos', Zap],
+              ['pedidos', 'Pedidos', ClipboardList],
+            ] as const
+          ).map(([id, label, Icon]) => (
+            <li key={id} className="flex justify-center">
+              <button
+                onClick={() => setTab(id)}
+                aria-current={tab === id}
+                className={`relative flex min-h-[48px] min-w-[58px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1.5 text-[10.5px] font-semibold transition active:scale-[0.97] ${tab === id ? 'bg-teal/12 text-teal' : 'text-[#66737C]'}`}
+              >
+                <Icon className="size-[21px]" strokeWidth={1.8} />
+                {label}
+                {id === 'pedidos' && pending > 0 && <span className="absolute top-0 right-1 grid min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[10px] leading-[18px] font-bold text-white">{pending}</span>}
+              </button>
+            </li>
+          ))}
+          <li className="flex justify-center">
+            <Link to="/" className="flex min-h-[48px] min-w-[58px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1.5 text-[10.5px] font-semibold text-[#66737C] active:scale-[0.97]">
+              <MapPin className="size-[21px]" strokeWidth={1.8} />
+              Al mall
+            </Link>
+          </li>
+        </ul>
+      </nav>
     </div>
   )
 }
@@ -373,14 +410,20 @@ function ProfileEditor({ store }: { store: Store }) {
 
 // ── Artículos ──────────────────────────────────────────────────────────────────
 
-function ProductsManager({ store }: { store: Store }) {
+function ProductsManager({ store, startNew, onStarted }: { store: Store; startNew?: boolean; onStarted?: () => void }) {
   const products = useCatalog((s) => s.products)
   const upsert = useCatalog((s) => s.upsertProduct)
   const remove = useCatalog((s) => s.deleteProduct)
   const saved = useSaveToast()
-  const [editing, setEditing] = useState<string | 'new' | null>(null)
+  const [editing, setEditing] = useState<string | 'new' | null>(startNew ? 'new' : null)
+  useEffect(() => {
+    if (!startNew) return
+    setEditing('new')
+    onStarted?.()
+  }, [startNew, onStarted])
   const mine = useMemo(() => products.filter((p) => p.storeId === store.id), [products, store.id])
   const food = isRestaurant(store)
+  const words = catalogWords(store)
   const editingProduct = editing && editing !== 'new' ? mine.find((p) => p.id === editing) : undefined
 
   if (editing) return <ProductEditor key={editing} store={store} product={editingProduct} onDone={() => setEditing(null)} />
@@ -390,12 +433,12 @@ function ProductsManager({ store }: { store: Store }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm text-ink-soft">
-            {mine.length} {food ? 'platos' : 'artículos'} · {mine.filter((p) => p.active).length} visibles
+            {mine.length} {words.plural} · {mine.filter((p) => p.active).length} visibles
           </p>
           <p className="text-[11px] text-ink-soft">Espacio usado en este navegador: {(catalogBytes() / 1_048_576).toFixed(1)} MB de unos 5 MB</p>
         </div>
         <button className={btn.primary} onClick={() => setEditing('new')}>
-          <Plus className="size-4" /> {food ? 'Nuevo plato' : 'Nuevo artículo'}
+          <Plus className="size-4" /> {words.add}
         </button>
       </div>
       {!mine.length && (
@@ -493,7 +536,7 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
   return (
     <Card className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-lg font-extrabold">{product ? 'Editar artículo' : 'Nuevo artículo'}</p>
+        <p className="text-lg font-extrabold">{product ? `Editar ${catalogWords(store).one}` : catalogWords(store).add}</p>
         <button className={btn.ghost} onClick={onDone} aria-label="Cerrar">
           <X className="size-5" />
         </button>
@@ -569,7 +612,7 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
           Cancelar
         </button>
         <button className={btn.primary} disabled={!valid} onClick={save}>
-          {product ? 'Guardar artículo' : 'Crear artículo'}
+          {product ? `Guardar ${catalogWords(store).one}` : `Crear ${catalogWords(store).one}`}
         </button>
       </div>
     </Card>

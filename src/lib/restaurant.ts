@@ -2,8 +2,18 @@ import type { Store } from '../domain/types'
 
 const FOOD = new Set(['gastronomia', 'comida-local', 'asados', 'mariscos', 'cafe', 'postres', 'internacional'])
 
+export const isFoodCategory = (id: string) => FOOD.has(id)
+
 /** ¿El local es un restaurante o negocio de comida? Entonces su catálogo es un «Menú» de platos. */
-export const isRestaurant = (store: Pick<Store, 'categoryId' | 'zoneId'>) => FOOD.has(store.categoryId) || store.zoneId === 'E'
+export const isRestaurant = (store: Pick<Store, 'categoryId' | 'zoneId'> & { businessType?: Store['businessType'] }) =>
+  store.businessType ? store.businessType === 'restaurant' : FOOD.has(store.categoryId) || store.zoneId === 'E'
+
+/** Palabras del catálogo según el negocio: menú de platos, servicios o artículos. */
+export function catalogWords(store: Pick<Store, 'categoryId' | 'zoneId'> & { businessType?: Store['businessType'] }) {
+  if (isRestaurant(store)) return { tab: 'Menú', plural: 'platos', one: 'plato', add: 'Nuevo plato' }
+  if (store.businessType === 'service') return { tab: 'Servicios', plural: 'servicios', one: 'servicio', add: 'Nuevo servicio' }
+  return { tab: 'Artículos', plural: 'artículos', one: 'artículo', add: 'Nuevo artículo' }
+}
 
 /** Número de WhatsApp para wa.me (solo dígitos; un celular colombiano de 10 dígitos recibe el 57). */
 export function whatsappDigits(raw: string) {

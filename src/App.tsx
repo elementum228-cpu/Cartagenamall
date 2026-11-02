@@ -53,6 +53,7 @@ import { InstallLayer } from './pwa/InstallApp'
 import { BellButton } from './notifications/BellButton'
 import { MerchantWatcher } from './notifications/MerchantWatcher'
 import { OrderWatcher } from './notifications/OrderWatcher'
+import { OwnerWelcome } from './features/OwnerWelcome'
 
 const AdminRequestsPage = lazy(() => import('./pages/AdminRequestsPage'))
 const AdminPage = lazy(() => import('./admin/AdminPage'))
@@ -156,6 +157,7 @@ function Shell() {
       <TopBar />
       <OrderWatcher />
       <MerchantWatcher />
+      <OwnerWelcome />
       <PromotionEventDriver exploring={exploring} />
       {FEATURES.compare && <CompareTray />}
       <BottomNav />
@@ -287,6 +289,8 @@ function Badge({ n }: { n: number }) {
 
 function BottomNav() {
   const count = useCartCount()
+  const { pathname } = useLocation()
+  if (pathname.startsWith('/mi-negocio')) return null
   const tabs = [
     { to: '/', label: 'Explorar', icon: Compass, end: true },
     { to: '/comprar', label: 'Comprar', icon: ShoppingBag },

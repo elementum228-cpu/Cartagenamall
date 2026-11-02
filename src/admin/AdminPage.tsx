@@ -267,6 +267,7 @@ function ClaimsAdmin() {
       instagram: '@por.definir',
       whatsapp: c.whatsapp,
       status: 'open',
+      setup: 'pending',
     }
     upsertStore(store)
     if (!assignments[c.spaceId]) {
