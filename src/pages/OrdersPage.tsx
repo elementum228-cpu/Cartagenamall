@@ -1,11 +1,11 @@
-import { CheckCircle2, ClipboardList, Copy, Info, MessageCircle, Store } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Copy, MessageCircle, Store } from 'lucide-react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import type { Order, OrderStatus, SubOrder } from '../domain/types'
 import { copyText } from '../lib/clipboard'
 import { openWhatsApp, whatsappLink } from '../lib/restaurant'
 import { formatCOP, formatDateTime } from '../lib/format'
-import { ORDER_FLOW, ORDER_STATUS_LABEL, overallStatus, subOrderMessage } from '../services/orders'
+import { ORDER_STATUS_LABEL, overallStatus, subOrderMessage } from '../services/orders'
 import { useCatalogMaps } from '../state/catalog'
 import { useOrders } from '../state/orders'
 import { useUI } from '../state/ui'
@@ -63,6 +63,10 @@ function SubLogo({ storeId }: { storeId: string }) {
   ) : null
 }
 
+/** Pasos que ve el cliente (5 columnas, sin desbordar): «Solicitud recibida» y «Pendiente» son un solo paso, «Enviado». */
+const STEPS = ['Enviado', 'Confirmado', 'Preparando', 'Listo', 'Entregado']
+const STEP_OF: Record<OrderStatus, number> = { received: 0, pending_confirmation: 0, confirmed: 1, preparing: 2, ready: 3, delivered: 4, cancelled: 0 }
+
 export function OrderDetailPage() {
   const { id } = useParams()
   const [params] = useSearchParams()
@@ -97,32 +101,23 @@ export function OrderDetailPage() {
           <Store className="size-4" /> Seguir en el mall
         </Link>
       )}
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-ink-soft">Orden principal</p>
-          <h1 className="font-mono text-2xl font-extrabold">{order.id}</h1>
-          <p className="text-xs text-ink-soft">
-            {formatDateTime(order.createdAt)} · {order.customer.name} · {order.delivery.mode === 'pickup' ? 'Recoger en el local' : `Domicilio: ${order.delivery.address}`}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
+      <header>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <h1 className="text-2xl font-extrabold tracking-tight">Tu pedido</h1>
           <StatusPill status={overallStatus(order)} />
           {live && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
               <span className="size-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" /> En vivo
             </span>
           )}
         </div>
+        <p className="mt-1 text-xs text-ink-soft">
+          Pedido #{order.id.slice(-4)} · {formatDateTime(order.createdAt)} · {order.delivery.mode === 'pickup' ? 'Recoger en el local' : `Domicilio: ${order.delivery.address}`}
+        </p>
       </header>
-      <p className="flex gap-2 rounded-2xl bg-amber-50 p-3 text-xs text-amber-900">
-        <Info className="mt-0.5 size-4 shrink-0" />
-        <span>
-          Pago: <b>no realizado</b>. Precios, inventario y entrega deben ser confirmados por cada comerciante antes de cualquier cobro.
-        </span>
-      </p>
       {order.notes && <p className="rounded-2xl bg-card p-3 text-sm text-ink-soft">Notas: {order.notes}</p>}
       {order.subOrders.map((s) => (
-        <SubOrderCard key={s.id} order={order} sub={s} sent={waSent.includes(s.id)} />
+        <SubOrderCard key={s.id} order={order} sub={s} sent={waSent.includes(s.id)} single={order.subOrders.length === 1} />
       ))}
       <div className="flex items-end justify-between rounded-3xl border border-line bg-card p-5">
         <span className="font-bold">Total estimado</span>
@@ -132,22 +127,19 @@ export function OrderDetailPage() {
   )
 }
 
-function SubOrderCard({ order, sub, sent }: { order: Order; sub: SubOrder; sent: boolean }) {
+function SubOrderCard({ order, sub, sent, single }: { order: Order; sub: SubOrder; sent: boolean; single: boolean }) {
   const { storeById } = useCatalogMaps()
   const store = storeById[sub.storeId]
   const toast = useUI((s) => s.toast)
-  const stepIdx = ORDER_FLOW.indexOf(sub.status)
+  const stepIdx = STEP_OF[sub.status]
   return (
     <section className="overflow-hidden rounded-3xl border border-line bg-card">
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
         {store && <StoreLogo store={store} size={36} />}
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-xs font-bold text-ink-soft">
-            {sub.id} · {sub.storeId}
-          </p>
           <p className="truncate font-bold">{sub.storeName}</p>
         </div>
-        <StatusPill status={sub.status} />
+        {!single && <StatusPill status={sub.status} />}
       </header>
       <ul className="divide-y divide-line px-4">
         {sub.lines.map((l, i) => (
@@ -166,11 +158,11 @@ function SubOrderCard({ order, sub, sent }: { order: Order; sub: SubOrder; sent:
         ))}
       </ul>
       {sub.status !== 'cancelled' && (
-        <ol className="scrollbar-none flex gap-1 overflow-x-auto px-4 pt-2 pb-3" aria-label="Progreso">
-          {ORDER_FLOW.map((st, i) => (
-            <li key={st} className="flex min-w-[76px] flex-1 flex-col gap-1">
+        <ol className="grid grid-cols-5 gap-1.5 px-4 pt-3 pb-3" aria-label="Progreso">
+          {STEPS.map((label, i) => (
+            <li key={label} className="flex flex-col gap-1">
               <span className={`h-1.5 rounded-full ${i <= stepIdx ? STATUS_BAR[sub.status] : 'bg-line'}`} />
-              <span className={`text-[10px] leading-tight ${i <= stepIdx ? 'font-bold text-ink' : 'text-ink-soft'}`}>{ORDER_STATUS_LABEL[st]}</span>
+              <span className={`text-[11px] leading-tight ${i === stepIdx ? 'font-bold text-ink' : 'text-ink-soft'}`}>{label}</span>
             </li>
           ))}
         </ol>
@@ -187,7 +179,7 @@ function SubOrderCard({ order, sub, sent }: { order: Order; sub: SubOrder; sent:
             }}
             className={`flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition active:scale-[0.98] ${sent ? 'border border-line bg-card text-ink' : 'bg-[#1faa59] text-white shadow-soft'}`}
           >
-            <MessageCircle className="size-4" /> {sent ? `Enviado a ${sub.storeName} · volver a abrir WhatsApp` : `Enviar pedido por WhatsApp a ${sub.storeName}`}
+            <MessageCircle className="size-4" /> {sent ? 'Enviado · reenviar por WhatsApp' : `Enviar pedido por WhatsApp a ${sub.storeName}`}
           </a>
         </div>
       )}
