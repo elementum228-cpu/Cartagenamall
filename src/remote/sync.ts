@@ -10,6 +10,8 @@ import { useClaims } from '../state/claims'
 import { useSpacePricing, type Pricing } from '../state/spacePricing'
 import { useSeasonSettings, type SeasonMode } from '../state/season'
 import { useOrders } from '../state/orders'
+import { useAirportFeature } from '../state/airportFeature'
+import { usePirateShip } from '../state/pirate'
 import { useReservations, type CourtReservation } from '../state/reservations'
 import { useUI } from '../state/ui'
 import { supabase } from './client'
@@ -342,6 +344,27 @@ export async function loadSeason() {
   if (mode) applyRemote(() => useSeasonSettings.setState({ mode }))
 }
 
+/** Funciones que el administrador activa para todos (aeropuerto e isla, barco pirata quieto), en mall_settings «features». */
+export async function loadFeatures() {
+  if (!supabase) return
+  const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'features').maybeSingle()
+  if (error) return
+  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean }> | null)?.doc
+  if (!doc) return
+  applyRemote(() => {
+    useAirportFeature.setState({ enabled: !!doc.airport })
+    usePirateShip.setState({ parked: !!doc.pirateParked })
+  })
+}
+
+function pushFeatures() {
+  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked }
+  enqueue(async () => {
+    const { error } = await supabase!.from('mall_settings').upsert({ key: 'features', doc })
+    if (error) throw new Error(error.message)
+  })
+}
+
 function pushSeason(mode: SeasonMode) {
   enqueue(async () => {
     const { error } = await supabase!.from('mall_settings').upsert({ key: 'season', doc: { mode } })
@@ -366,6 +389,7 @@ export function startRemoteSync() {
   void loadCatalog()
   void loadPricing()
   void loadSeason()
+  void loadFeatures()
 
   useCatalog.subscribe((next, prev) => {
     if (applying || !signedIn()) return
@@ -374,6 +398,14 @@ export function startRemoteSync() {
   useSpacePricing.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || (next.types === prev.types && next.spaces === prev.spaces)) return
     pushPricing(next)
+  })
+  useAirportFeature.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
+    pushFeatures()
+  })
+  usePirateShip.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.parked === prev.parked) return
+    pushFeatures()
   })
   useSeasonSettings.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.mode === prev.mode) return
@@ -414,6 +446,7 @@ export function startRemoteSync() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'mall_settings' }, () => {
       void loadPricing()
       void loadSeason()
+      void loadFeatures()
     })
     .subscribe()
 }
