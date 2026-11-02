@@ -16,7 +16,7 @@ import { MallMark } from '../ui/MallMark'
 import { ProductImage } from '../ui/ProductImage'
 import { Sheet } from '../ui/Sheet'
 import { playShipHorn } from './sound'
-import { SHIP_SCHEDULE_LABEL, SHIP_STAY_MIN, arrivalLabel, isDocked, isShipPromotion, nextScheduledArrival, scheduledWindow, useDiscountShip } from './offers'
+import { useVisibleArrival, SHIP_SCHEDULE_LABEL, SHIP_STAY_MIN, arrivalLabel, isDocked, isShipPromotion, nextScheduledArrival, scheduledWindow, useDiscountShip } from './offers'
 
 // Capa del barco de los descuentos: hace atracar/zarpar el barco según el horario, muestra el aviso
 // de llegada (como una notificación del celular) y la ficha con las ofertas a bordo.
@@ -53,7 +53,7 @@ function useShipSchedule() {
 
 /** Aviso de llegada: tarjeta tipo notificación que baja desde arriba; se toca o se desliza hacia arriba. */
 function ShipNotice() {
-  const arrival = useDiscountShip((s) => s.arrival)
+  const arrival = useVisibleArrival()
   const count = useCatalog((s) => s.promotions.filter(isShipPromotion).length)
   const [shown, setShown] = useState<number | null>(null)
   const seen = useRef<number | null>(null)
@@ -123,7 +123,7 @@ function ShipNotice() {
 /** Ficha del barco: ofertas a bordo (si está atracado) o cuándo vuelve. */
 function ShipSheet() {
   const open = useUI((s) => s.shipOpen)
-  const arrival = useDiscountShip((s) => s.arrival)
+  const arrival = useVisibleArrival()
   const promotions = useCatalog((s) => s.promotions)
   const { productById, storeById } = useCatalogMaps()
   const now = useNow()
@@ -252,7 +252,7 @@ export function ShipTestButton({ className, onDone }: { className: string; onDon
 
 /** Pastilla en el mapa mientras el barco está atracado: lleva al muelle. */
 export function ShipPill() {
-  const arrival = useDiscountShip((s) => s.arrival)
+  const arrival = useVisibleArrival()
   const now = useNow()
   if (!arrival || now >= arrival.until) return null
   return (

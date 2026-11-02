@@ -175,3 +175,10 @@ function unboardPromotions() {
   const { promotions, deletePromotion } = useCatalog.getState()
   for (const p of promotions) if (isShipPromotion(p)) deletePromotion(p.id)
 }
+
+/** Llegada del barco solo si lleva descuentos a bordo: sin ofertas, el barco se oculta (no hay nada que mostrar). */
+export function useVisibleArrival() {
+  const arrival = useDiscountShip((s) => s.arrival)
+  const onBoard = useCatalog((c) => c.promotions.some(isShipPromotion))
+  return onBoard ? arrival : null
+}

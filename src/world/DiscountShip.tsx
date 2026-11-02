@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useIsNight } from '../lib/useIsNight'
 import { appClock } from '../lib/clock'
-import { isShipPromotion, useDiscountShip } from '../ship/offers'
+import { isShipPromotion, useVisibleArrival } from '../ship/offers'
 import { useUI } from '../state/ui'
 import { useCatalog } from '../state/catalog'
 import { HARBOR, SEA_Y, SHIP_BERTH } from '../tourism/config'
@@ -138,7 +138,7 @@ function ShipModel() {
 }
 
 export function DiscountShip({ reduceMotion }: { reduceMotion: boolean }) {
-  const arrival = useDiscountShip((s) => s.arrival)
+  const arrival = useVisibleArrival()
   const night = useIsNight()
   const ship = useRef<THREE.Group>(null)
   const hull = useRef<THREE.Group>(null)
