@@ -48,6 +48,11 @@ describe('eventos de promoción', () => {
     expect(ev.filter((e) => e.spotlight === 'playing')).toHaveLength(1)
   })
 
+  it('en la vista general («all») la oferta se presenta aunque no haya un piso a la vista', () => {
+    const ev = syncPromotionEvents([], { promotions: [promo()], assignments, now: T0 + 1000, visibleFloor: 'all' })
+    expect(ev.find((e) => e.promotionId === 'PROMO-X')?.spotlight).toBe('playing')
+  })
+
   it('desactivar la promoción termina el evento; reactivarla crea uno nuevo', () => {
     let ev = syncPromotionEvents([], { promotions: [promo()], assignments, now: T0 + 1000, visibleFloor: 'P1' })
     expect(ev[0].spotlight).toBe('playing')

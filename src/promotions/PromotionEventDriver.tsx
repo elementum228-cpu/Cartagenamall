@@ -12,7 +12,8 @@ export function PromotionEventDriver({ exploring }: { exploring: boolean }) {
   const overview = useUI((s) => s.overview)
   const promotions = useCatalog((s) => s.promotions)
   const assignments = useCatalog((s) => s.assignments)
-  const visible = exploring && !overview ? activeFloor : null
+  // en la vista general (todo el mall) las ofertas también se presentan: el local se ilumina aunque nadie haya entrado a su piso
+  const visible = exploring ? (overview ? ('all' as const) : activeFloor) : null
   useEffect(() => {
     const tick = () => usePromoEvents.getState().sync(visible)
     tick()

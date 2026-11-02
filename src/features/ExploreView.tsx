@@ -494,6 +494,16 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       )}
       {use3D && <TimeToggle />}
       <InstallButton className={item} onDone={() => setOpen(false)} />
+      {use3D && (
+        <button
+          className={`${item} ${quality !== 'high' ? '!bg-deep/85 !text-white' : ''}`}
+          onClick={() => chooseQuality(NEXT_QUALITY[quality])}
+          aria-label={`Calidad gráfica: ${QUALITY_LABEL[quality]}. Toca para cambiar`}
+          title="Alta: sombras y más personas en el mall. Media: sin sombras y menos personas. Baja: sin personas y menos decoración (las tiendas no cambian)."
+        >
+          <Layers className="size-4" /> Calidad {QUALITY_LABEL[quality]}
+        </button>
+      )}
       {canAdmin && (
         <>
       <DemoPromoButton className={item} onDone={() => setOpen(false)} />
@@ -521,16 +531,6 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           aria-label="Empezar el recorrido guiado por el mall"
         >
           <Route className="size-4" /> Recorrido guiado
-        </button>
-      )}
-      {use3D && (
-        <button
-          className={`${item} ${quality !== 'high' ? '!bg-deep/85 !text-white' : ''}`}
-          onClick={() => chooseQuality(NEXT_QUALITY[quality])}
-          aria-label={`Calidad gráfica: ${QUALITY_LABEL[quality]}. Toca para cambiar`}
-          title="Alta: todo. Media: sin sombras. Baja: menos decoración (las tiendas no cambian)."
-        >
-          <Layers className="size-4" /> Calidad {QUALITY_LABEL[quality]}
         </button>
       )}
         </>

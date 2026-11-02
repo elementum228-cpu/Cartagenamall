@@ -44,8 +44,8 @@ export interface SyncInput {
   /** spaceId → storeId */
   assignments: Record<string, string>
   now: number
-  /** Piso que se está viendo en detalle (null en la vista general o fuera del mapa). */
-  visibleFloor: FloorId | null
+  /** Piso que se está viendo en detalle; «all» en la vista general (todos los pisos a la vista); null fuera del mapa. */
+  visibleFloor: FloorId | 'all' | null
 }
 
 export function syncPromotionEvents(prev: PromotionEvent[], { promotions, assignments, now, visibleFloor }: SyncInput): PromotionEvent[] {
@@ -97,8 +97,9 @@ export function syncPromotionEvents(prev: PromotionEvent[], { promotions, assign
   // Una presentación por piso. Una activación posterior al comienzo de la presentación en curso
   // (p. ej. una tienda que lanza su oferta ahora) la reemplaza; las ofertas que ya estaban vigentes
   // esperan una pausa entre presentaciones para no amontonar visitantes.
-  if (visibleFloor) {
-    const onFloor = next.filter((e) => e.floorId === visibleFloor)
+  const floors: FloorId[] = visibleFloor === 'all' ? [...new Set(next.map((e) => e.floorId))] : visibleFloor ? [visibleFloor] : []
+  for (const floor of floors) {
+    const onFloor = next.filter((e) => e.floorId === floor)
     const playing = onFloor.find((e) => e.spotlight === 'playing')
     const lastStart = Math.max(0, ...onFloor.map((e) => e.spotlightStart ?? 0))
     const lastEnd = Math.max(0, ...onFloor.filter((e) => e.spotlight === 'done').map((e) => e.spotlightEnd ?? 0))

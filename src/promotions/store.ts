@@ -7,7 +7,7 @@ import { syncPromotionEvents, type PromotionEvent } from './events'
 interface PromoEventsState {
   events: PromotionEvent[]
   /** Recalcula los eventos con el reloj de la aplicación (lo llama PromotionEventDriver cada segundo). */
-  sync: (visibleFloor: FloorId | null) => void
+  sync: (visibleFloor: FloorId | 'all' | null) => void
 }
 
 /** Eventos de la sesión (no se guardan: cada visita presenta de nuevo las ofertas vigentes). */

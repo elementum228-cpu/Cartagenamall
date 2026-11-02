@@ -344,6 +344,19 @@ export async function loadSeason() {
   if (mode) applyRemote(() => useSeasonSettings.setState({ mode }))
 }
 
+/** Respaldo del tiempo real: trae solo las promociones (las que otro local acaba de lanzar) y las aplica si cambiaron. */
+async function refreshPromotions() {
+  if (!supabase || document.hidden) return
+  const { data, error } = await supabase.from('promotions').select('doc')
+  if (error || !data) return
+  const remote = (data as Doc<Promotion>[]).map((r) => r.doc)
+  const local = useCatalog.getState().promotions
+  const kept = local.filter(isLocalPromotion)
+  const next = [...remote, ...kept]
+  if (JSON.stringify(next) === JSON.stringify(local)) return
+  applyRemote(() => useCatalog.setState({ promotions: next }))
+}
+
 /** Funciones que el administrador activa para todos (aeropuerto e isla, barco pirata quieto), en mall_settings «features». */
 export async function loadFeatures() {
   if (!supabase) return
@@ -390,6 +403,7 @@ export function startRemoteSync() {
   void loadPricing()
   void loadSeason()
   void loadFeatures()
+  setInterval(() => void refreshPromotions(), 10_000)
 
   useCatalog.subscribe((next, prev) => {
     if (applying || !signedIn()) return
