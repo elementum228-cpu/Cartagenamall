@@ -53,7 +53,7 @@ export default function WorldCanvas({ active, fallback, night }: { active: boole
         dpr={dpr}
         // Si la vista no está activa (modo Comprar, carrito…) el render se detiene: cero batería.
         frameloop={active ? 'always' : 'never'}
-        camera={{ position: ISO_DIR.clone().multiplyScalar(CAMERA_DISTANCE).toArray(), zoom: 1, near: 0.1, far: 400 }}
+        camera={{ position: ISO_DIR.clone().multiplyScalar(CAMERA_DISTANCE).toArray(), zoom: 1, near: -400, far: 800 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         onCreated={({ gl, raycaster }) => {
           gl.setClearColor(0x000000, 0)
