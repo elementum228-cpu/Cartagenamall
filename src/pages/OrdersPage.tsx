@@ -1,5 +1,8 @@
 import { CheckCircle2, ClipboardList, Copy, Info, MessageCircle } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
+import { remoteEnabled } from '../remote/client'
+import { refreshOrderTracking } from '../remote/sync'
 import type { Order, OrderStatus, SubOrder } from '../domain/types'
 import { copyText } from '../lib/clipboard'
 import { whatsappLink } from '../lib/restaurant'
@@ -75,6 +78,34 @@ export function OrderDetailPage() {
   const [params] = useSearchParams()
   const order = useOrders((s) => s.orders.find((o) => o.id === id))
   const waSent = ((useLocation().state as { waSent?: string[] } | null)?.waSent ?? []) as string[]
+  const toast = useUI((s) => s.toast)
+  const seen = useRef<Record<string, string>>({})
+  const finished = !!order && order.subOrders.every((x) => x.status === 'delivered' || x.status === 'cancelled')
+  const live = remoteEnabled() && !!order && !finished
+  // Seguimiento en vivo: cada pocos segundos pregunta el estado de cada tienda y avisa cuando cambia.
+  useEffect(() => {
+    if (!live || !id) return
+    const tick = () => {
+      if (!document.hidden) void refreshOrderTracking(id)
+    }
+    tick()
+    const t = setInterval(tick, 5000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [live, id])
+  useEffect(() => {
+    for (const sub of order?.subOrders ?? []) {
+      const prev = seen.current[sub.id]
+      if (prev && prev !== sub.status) {
+        toast(`${sub.storeName}: ${ORDER_STATUS_LABEL[sub.status]}`, sub.status === 'cancelled' ? 'error' : 'success')
+        navigator.vibrate?.(40)
+      }
+      seen.current[sub.id] = sub.status
+    }
+  }, [order, toast])
   if (!order)
     return (
       <EmptyState icon={<ClipboardList className="size-7" />} title="Pedido no encontrado" action={<Link to="/pedidos" className={btn.secondary}>Ver mis pedidos</Link>}>
@@ -104,7 +135,14 @@ export function OrderDetailPage() {
             {formatDateTime(order.createdAt)} · {order.customer.name} · {order.delivery.mode === 'pickup' ? 'Recoger en el local' : `Domicilio: ${order.delivery.address}`}
           </p>
         </div>
-        <StatusPill status={overallStatus(order)} />
+        <div className="flex flex-col items-end gap-1.5">
+          <StatusPill status={overallStatus(order)} />
+          {live && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">
+              <span className="size-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" /> En vivo
+            </span>
+          )}
+        </div>
       </header>
       <p className="flex gap-2 rounded-2xl bg-amber-50 p-3 text-xs text-amber-900">
         <Info className="mt-0.5 size-4 shrink-0" />

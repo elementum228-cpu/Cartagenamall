@@ -66,6 +66,30 @@ export async function loadCatalog() {
   )
 }
 
+/** Seguimiento en vivo del pedido del cliente: trae el estado de cada tienda (sin datos personales) y lo refleja en su pedido. */
+export async function refreshOrderTracking(orderId: string) {
+  if (!supabase) return
+  const { data, error } = await supabase.rpc('order_tracking', { p_order_id: orderId })
+  if (error || !Array.isArray(data)) return
+  const rows = data as { sub_id: string; status: SubOrder['status']; history: SubOrder['history'] }[]
+  applyRemote(() =>
+    useOrders.setState((s) => ({
+      orders: s.orders.map((o) =>
+        o.id !== orderId
+          ? o
+          : {
+              ...o,
+              subOrders: o.subOrders.map((sub) => {
+                const r = rows.find((x) => x.sub_id === sub.id)
+                if (!r || r.status === sub.status) return sub
+                return { ...sub, status: r.status, history: Array.isArray(r.history) && r.history.length ? r.history : sub.history }
+              }),
+            },
+      ),
+    })),
+  )
+}
+
 /** Sube una imagen embebida (data URL) a Storage y devuelve su URL pública. */
 async function uploadDataUrl(dataUrl: string, path: string): Promise<string> {
   const blob = await (await fetch(dataUrl)).blob()
