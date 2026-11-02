@@ -8,11 +8,13 @@ import { discounted, isPromotionLive } from '../lib/pricing'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { usePersonal } from '../state/personal'
 import { usePricing } from '../state/pricing'
+import { useCanAdmin } from '../remote/session'
 import { useUI } from '../state/ui'
 import { Countdown, EmptyState, SectionTitle } from '../ui/bits'
 import { ProductImage } from '../ui/ProductImage'
 
 export function OffersPage() {
+  const canAdmin = useCanAdmin()
   const promotions = useCatalog((s) => s.promotions)
   const { now } = usePricing()
   const discovered = usePersonal((s) => s.discovered)
@@ -77,12 +79,14 @@ export function OffersPage() {
           <EmptyState icon={<Sparkles className="size-7" />} title="Sin promociones por ahora" />
         )}
       </section>
-      <p className="text-center text-xs text-ink-soft">
-        ¿Tienes una tienda o administras el mall?{' '}
-        <Link to="/admin" className="font-bold text-brand">
-          Abrir panel de administración (demo)
-        </Link>
-      </p>
+      {canAdmin && (
+        <p className="text-center text-xs text-ink-soft">
+          ¿Administras el mall?{' '}
+          <Link to="/admin" className="font-bold text-brand">
+            Abrir panel de administración
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

@@ -40,7 +40,7 @@ import { ClueModal, StampToast } from './features/passport/PassportOverlays'
 import { OrderDetailPage, OrdersPage } from './pages/OrdersPage'
 import { ShopPage } from './pages/ShopPage'
 import { remoteEnabled } from './remote/client'
-import { useSession } from './remote/session'
+import { useCanAdmin, useSession } from './remote/session'
 import { useCartCount } from './state/cart'
 import { usePersonal } from './state/personal'
 import { useUI } from './state/ui'
@@ -214,6 +214,7 @@ function TopBar() {
   const navigate = useNavigate()
   const compare = usePersonal((s) => s.compare.length)
   const loggedIn = useSession((s) => !!s.userId)
+  const canAdmin = useCanAdmin()
   return (
     // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
     <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
@@ -234,9 +235,11 @@ function TopBar() {
         <NavLink to="/mi-negocio" className={navLink}>
           Mi negocio
         </NavLink>
-        <NavLink to="/admin" className={navLink({ isActive: false })}>
-          Admin
-        </NavLink>
+        {canAdmin && (
+          <NavLink to="/admin" className={navLink({ isActive: false })}>
+            Admin
+          </NavLink>
+        )}
       </nav>
       <div className="ml-auto flex items-center gap-2 md:ml-0">
         <button className={iconBtn} onClick={() => navigate('/comprar?foco=1')} aria-label="Buscar productos">

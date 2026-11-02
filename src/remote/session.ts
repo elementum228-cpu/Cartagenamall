@@ -91,3 +91,6 @@ if (supabase) {
   })
   void useSession.getState().refresh()
 }
+
+/** ¿Mostrar el módulo de administración? Solo a administradores (sin base de datos, en modo demostración, sí). */
+export const useCanAdmin = () => useSession((s) => !supabase || s.isAdmin)
