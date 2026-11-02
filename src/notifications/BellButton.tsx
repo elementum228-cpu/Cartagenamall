@@ -7,6 +7,7 @@ import { formatCOP } from '../lib/format'
 import { useSession } from '../remote/session'
 import { useOrders } from '../state/orders'
 import { STATUS_BAR, STATUS_PILL } from '../ui/orderTone'
+import { useWelcome } from '../features/OwnerWelcome'
 import { useNotifications } from './store'
 
 const ago = (iso: string) => {
@@ -20,6 +21,7 @@ export function BellButton({ className }: { className: string }) {
   const rung = useNotifications((s) => s.rung)
   const markSeen = useNotifications((s) => s.markSeen)
   const prune = useNotifications((s) => s.prune)
+  const remove = useNotifications((s) => s.remove)
   const allOrders = useOrders((s) => s.orders)
   const mineIds = useOrders((s) => s.mine)
   const { isAdmin, storeIds } = useSession()
@@ -115,15 +117,32 @@ export function BellButton({ className }: { className: string }) {
               <ul className="space-y-1.5">
                 {items.slice(0, 5).map((n) => (
                   <li key={n.id}>
-                    <Link to={n.link ?? `/pedidos/${n.orderId}`} className="flex items-start gap-2.5 rounded-2xl bg-brand/[0.07] p-2.5 text-left transition hover:bg-sand">
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm leading-snug font-bold">{n.title}</span>
-                        <span className="block truncate text-xs text-ink-soft">
-                          {n.storeName} · {ago(n.at)}
+                    {n.action === 'welcome' ? (
+                      <button
+                        onClick={() => {
+                          setOpen(false)
+                          remove(n.id)
+                          useWelcome.getState().reopen()
+                        }}
+                        className="flex w-full items-start gap-2.5 rounded-2xl bg-brand p-3 text-left text-white shadow-soft transition active:scale-[0.98]"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm leading-snug font-bold">🎉 {n.title}</span>
+                          <span className="block text-xs font-semibold opacity-90">{n.subtitle}</span>
                         </span>
-                      </span>
-                      <ChevronRight className="mt-1 size-4 shrink-0 text-ink-soft" />
-                    </Link>
+                        <ChevronRight className="mt-1 size-4 shrink-0" />
+                      </button>
+                    ) : (
+                      <Link to={n.link ?? `/pedidos/${n.orderId}`} className="flex items-start gap-2.5 rounded-2xl bg-brand/[0.07] p-2.5 text-left transition hover:bg-sand">
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm leading-snug font-bold">{n.title}</span>
+                          <span className="block truncate text-xs text-ink-soft">
+                            {n.subtitle ?? `${n.storeName} · ${ago(n.at)}`}
+                          </span>
+                        </span>
+                        <ChevronRight className="mt-1 size-4 shrink-0 text-ink-soft" />
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

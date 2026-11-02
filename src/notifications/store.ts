@@ -17,6 +17,12 @@ export interface AppNotification {
   subId?: string
   /** Destino al tocar el aviso (por defecto, el seguimiento del pedido). */
   link?: string
+  /** Texto bajo el título (en lugar de «tienda · hace x min»). */
+  subtitle?: string
+  /** No se borra solo: espera a que la persona lo toque. */
+  sticky?: boolean
+  /** Al tocarlo no navega: abre la bienvenida del dueño de un local. */
+  action?: 'welcome'
 }
 
 /** Un aviso es solo eso: se borra solo 40 s después de que la persona abre la campanita y lo ve. */
@@ -41,6 +47,7 @@ interface State {
   markSeen: () => void
   /** Quita los avisos vistos hace más de 40 s. */
   prune: () => void
+  remove: (id: string) => void
   clear: () => void
 }
 
@@ -56,9 +63,10 @@ export const useNotifications = create<State>()(
         return true
       },
       markSeen: () => set((s) => ({ items: s.items.map((i) => ({ ...i, read: true, seenAt: i.seenAt ?? Date.now() })) })),
+      remove: (id) => set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
       prune: () => {
         const now = Date.now()
-        const keep = get().items.filter((i) => !i.seenAt || now - i.seenAt < SEEN_TTL_MS)
+        const keep = get().items.filter((i) => i.sticky || !i.seenAt || now - i.seenAt < SEEN_TTL_MS)
         if (keep.length !== get().items.length) set({ items: keep })
       },
       clear: () => set({ items: [] }),

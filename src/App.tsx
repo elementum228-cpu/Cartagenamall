@@ -54,6 +54,7 @@ import { BellButton } from './notifications/BellButton'
 import { MerchantWatcher } from './notifications/MerchantWatcher'
 import { OrderWatcher } from './notifications/OrderWatcher'
 import { OwnerWelcome } from './features/OwnerWelcome'
+import { ApprovalWatcher } from './notifications/ApprovalWatcher'
 
 const AdminRequestsPage = lazy(() => import('./pages/AdminRequestsPage'))
 const AdminPage = lazy(() => import('./admin/AdminPage'))
@@ -158,6 +159,7 @@ function Shell() {
       <OrderWatcher />
       <MerchantWatcher />
       <OwnerWelcome />
+      <ApprovalWatcher />
       <PromotionEventDriver exploring={exploring} />
       {FEATURES.compare && <CompareTray />}
       <BottomNav />

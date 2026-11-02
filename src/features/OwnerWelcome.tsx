@@ -66,18 +66,12 @@ export function OwnerWelcome() {
   const [closed, setClosed] = useState(false)
   const store = useMemo(() => (import.meta.env.DEV && location.search.includes('welcometest') ? stores.find((s) => s.id === 'STORE-004') : remoteEnabled() && session.userId ? stores.find((s) => s.setup === 'pending' && session.storeIds.includes(s.id)) : undefined), [stores, session.userId, session.storeIds])
 
-  const dismissed = (() => {
-    try {
-      return sessionStorage.getItem('cm:welcome-dismissed') === '1'
-    } catch {
-      return false
-    }
-  })()
   useEffect(() => {
     setClosed(false)
     setStep('hello')
   }, [forced, store?.id])
-  const show = !!store && !closed && (!dismissed || forced > 0)
+  // solo se abre cuando la persona toca el aviso «Tu solicitud fue aprobada» (o la tarjeta de Mi cuenta)
+  const show = !!store && !closed && forced > 0
 
   const finish = (go: boolean) => {
     if (!store) return
@@ -85,14 +79,7 @@ export function OwnerWelcome() {
     setClosed(true)
     navigate(go ? `/mi-negocio?tienda=${store.id}&tab=articulos&nuevo=1` : `/mi-negocio?tienda=${store.id}`)
   }
-  const later = () => {
-    try {
-      sessionStorage.setItem('cm:welcome-dismissed', '1')
-    } catch {
-      /* sin almacenamiento */
-    }
-    setClosed(true)
-  }
+  const later = () => setClosed(true)
 
   return (
     <AnimatePresence>
