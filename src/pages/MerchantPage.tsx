@@ -11,6 +11,7 @@ import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
+import { isRestaurant } from '../lib/restaurant'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useMerchant } from '../state/merchant'
 import { useOrders } from '../state/orders'
@@ -81,7 +82,7 @@ function MerchantContent() {
         {(
           [
             ['perfil', 'Perfil y logo', StoreIcon],
-            ['articulos', 'Artículos', Package],
+            ['articulos', isRestaurant(store) ? 'Menú' : 'Artículos', Package],
             ['promociones', 'Promociones', Zap],
             ['pedidos', 'Pedidos', ClipboardList],
           ] as const
@@ -160,6 +161,29 @@ function StorePicker({ stores, preselect, onPick }: { stores: Store[]; preselect
   )
 }
 
+/** Abierto / Cerrado: un local cerrado se ve, pero no recibe pedidos. */
+function OpenToggle({ store }: { store: Store }) {
+  const upsertStore = useCatalog((s) => s.upsertStore)
+  const toast = useUI((s) => s.toast)
+  const open = store.status === 'open'
+  return (
+    <button
+      role="switch"
+      aria-checked={open}
+      onClick={() => {
+        upsertStore({ ...store, status: open ? 'paused' : 'open' })
+        toast(open ? 'Local cerrado: no recibe pedidos.' : 'Local abierto: ya recibe pedidos.', 'success')
+      }}
+      className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold transition active:scale-[0.98] ${open ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-line bg-card text-ink-soft'}`}
+    >
+      <span className={`relative h-5 w-9 rounded-full transition ${open ? 'bg-emerald-500' : 'bg-ink/25'}`}>
+        <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${open ? 'left-[18px]' : 'left-0.5'}`} />
+      </span>
+      {open ? 'Abierto' : 'Cerrado'}
+    </button>
+  )
+}
+
 function Header({ store, onSwitch }: { store: Store; onSwitch: () => void }) {
   const navigate = useNavigate()
   const { spaceByStore } = useCatalogMaps()
@@ -175,7 +199,8 @@ function Header({ store, onSwitch }: { store: Store; onSwitch: () => void }) {
           {ZONE_BY_ID[store.zoneId].name} · {space ? `${FLOOR_BY_ID[space.floorId].name}, local ${space.label}` : 'Sin local asignado todavía'}
         </p>
       </div>
-      <div className="flex basis-full gap-2 sm:basis-auto">
+      <div className="flex basis-full flex-wrap gap-2 sm:basis-auto">
+        <OpenToggle store={store} />
         {space && (
           <button
             className={btn.secondary}
@@ -319,8 +344,8 @@ function ProfileEditor({ store }: { store: Store }) {
         </Field>
         <Field label="Estado" wide>
           <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>
-            <option value="open">Abierta: recibe pedidos</option>
-            <option value="paused">Pausada: se ve, pero no recibe pedidos</option>
+            <option value="open">Abierto: recibe pedidos</option>
+            <option value="paused">Cerrado: se ve, pero no recibe pedidos</option>
           </select>
         </Field>
       </Card>
@@ -357,6 +382,7 @@ function ProductsManager({ store }: { store: Store }) {
   const saved = useSaveToast()
   const [editing, setEditing] = useState<string | 'new' | null>(null)
   const mine = useMemo(() => products.filter((p) => p.storeId === store.id), [products, store.id])
+  const food = isRestaurant(store)
   const editingProduct = editing && editing !== 'new' ? mine.find((p) => p.id === editing) : undefined
 
   if (editing) return <ProductEditor key={editing} store={store} product={editingProduct} onDone={() => setEditing(null)} />
@@ -366,17 +392,17 @@ function ProductsManager({ store }: { store: Store }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm text-ink-soft">
-            {mine.length} artículos · {mine.filter((p) => p.active).length} visibles
+            {mine.length} {food ? 'platos' : 'artículos'} · {mine.filter((p) => p.active).length} visibles
           </p>
           <p className="text-[11px] text-ink-soft">Espacio usado en este navegador: {(catalogBytes() / 1_048_576).toFixed(1)} MB de unos 5 MB</p>
         </div>
         <button className={btn.primary} onClick={() => setEditing('new')}>
-          <Plus className="size-4" /> Nuevo artículo
+          <Plus className="size-4" /> {food ? 'Nuevo plato' : 'Nuevo artículo'}
         </button>
       </div>
       {!mine.length && (
-        <EmptyState icon={<Package className="size-6" />} title="Aún no tienes artículos">
-          Agrega tu primer producto con foto, precio e inventario. Aparecerá en tu ficha y en Comprar.
+        <EmptyState icon={<Package className="size-6" />} title={food ? 'Aún no tienes platos en tu menú' : 'Aún no tienes artículos'}>
+          {food ? 'Agrega tu primer plato con foto y precio. Aparecerá en el menú de tu ficha y en Comprar.' : 'Agrega tu primer producto con foto, precio e inventario. Aparecerá en tu ficha y en Comprar.'}
         </EmptyState>
       )}
       <ul className="space-y-2">

@@ -271,7 +271,7 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
   const wall = mat(PALETTE.wall)
   const brand = mat(store.brandColor)
   const sign = getStoreSign(store.logoText, store.brandColor, undefined, store.logo)
-  const open = getLabel(store.status === 'open' ? 'ABIERTO' : 'PAUSADO', { bg: store.status === 'open' ? '#1f9d6b' : '#b7791f', fg: '#fff', radius: 30 })
+  const open = getLabel(store.status === 'open' ? 'ABIERTO' : 'CERRADO', { bg: store.status === 'open' ? '#1f9d6b' : '#b7791f', fg: '#fff', radius: 30 })
   const colors = displayColors(store, products)
   const kind = kindOf(store)
   // franja del letrero más alta: el nombre del negocio se lee de lejos

@@ -157,11 +157,11 @@ export function subOrderMessage(order: Order, sub: SubOrder, formatPrice: (n: nu
     (l) => `• ${l.qty} × ${l.name}${l.variantName ? ` (${l.variantName})` : ''}${l.size ? ` talla ${l.size}` : ''} — ${formatPrice(l.lineTotal)}${l.promoCode ? ` [código ${l.promoCode}]` : ''}`,
   )
   return [
-    `Hola ${sub.storeName}, hice el pedido ${sub.id} en Cartagena Mall:`,
+    `Hola ${sub.storeName}, vengo de Cartagena Mall 👋 Me gustaría hacer este pedido (${sub.id}):`,
     ...lines,
     `Subtotal estimado: ${formatPrice(sub.subtotal)}`,
     `Entrega: ${order.delivery.mode === 'pickup' ? 'Recojo en el local' : `Domicilio — ${order.delivery.address}`}`,
     `A nombre de ${order.customer.name} (${order.customer.whatsapp}).`,
-    '¿Me confirman precio, disponibilidad y entrega antes de pagar?',
+    '¿Me confirman el pedido, el valor y el tiempo de entrega? ¡Gracias!',
   ].join('\n')
 }

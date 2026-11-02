@@ -55,7 +55,7 @@ function StoreHeader({ store }: { store: Store }) {
             </span>
             {space && <span className="rounded-full bg-white/80 px-2 py-0.5 text-ink-soft">{SPACE_TYPES[space.type].name} {space.label}</span>}
             <span className={`rounded-full px-2 py-0.5 ${store.status === 'open' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-              {store.status === 'open' ? 'Abierta' : 'Pausada'}
+              {store.status === 'open' ? 'Abierto' : 'Cerrado'}
             </span>
           </div>
         </div>

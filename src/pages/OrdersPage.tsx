@@ -1,7 +1,8 @@
-import { CheckCircle2, ClipboardList, Copy, Info } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Copy, Info, MessageCircle } from 'lucide-react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import type { Order, OrderStatus, SubOrder } from '../domain/types'
 import { copyText } from '../lib/clipboard'
+import { whatsappLink } from '../lib/restaurant'
 import { formatCOP, formatDateTime } from '../lib/format'
 import { ORDER_FLOW, ORDER_STATUS_LABEL, overallStatus, subOrderMessage } from '../services/orders'
 import { useCatalogMaps } from '../state/catalog'
@@ -86,7 +87,7 @@ export function OrderDetailPage() {
           <CheckCircle2 className="size-7 shrink-0" />
           <div>
             <p className="font-extrabold">¡Solicitud enviada!</p>
-            <p className="text-sm opacity-90">Tu pedido se dividió en {order.subOrders.length} subórdenes. Cada tienda confirmará la suya.</p>
+            <p className="text-sm opacity-90">Ahora toca «Enviar pedido por WhatsApp» en cada tienda para que le llegue su pedido; ahí mismo lo confirma.</p>
           </div>
         </div>
       )}
@@ -160,6 +161,18 @@ function SubOrderCard({ order, sub }: { order: Order; sub: SubOrder }) {
             </li>
           ))}
         </ol>
+      )}
+      {store?.whatsapp && sub.status !== 'cancelled' && (
+        <div className="px-4 pb-3">
+          <a
+            href={whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1faa59] px-4 py-3 text-sm font-bold text-white shadow-soft transition active:scale-[0.98]"
+          >
+            <MessageCircle className="size-4" /> Enviar pedido por WhatsApp a {sub.storeName}
+          </a>
+        </div>
       )}
       <footer className="flex items-center justify-between gap-2 bg-sand/60 px-4 py-3">
         <button
