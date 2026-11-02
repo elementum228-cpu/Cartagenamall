@@ -51,16 +51,25 @@ export function MyAccountPage() {
                   <span className="block text-sm opacity-90">Toca para empezar</span>
                 </button>
               )}
-              {readyStores.map((st) => (
-                <Link key={st.id} to={`/mi-negocio?tienda=${st.id}`} className="flex items-center gap-3 rounded-2xl bg-ink p-3.5 text-white shadow-soft transition active:scale-[0.98]">
-                  <StoreLogo store={st} size={44} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[11px] font-bold tracking-wide uppercase opacity-70">Modo dueño</span>
-                    <span className="block truncate text-[17px] font-extrabold">Ir a mi negocio · {st.name}</span>
-                  </span>
-                  <ChevronRight className="size-5 shrink-0" />
-                </Link>
-              ))}
+              {readyStores.length > 0 && (
+                <div>
+                  <p className="mb-1.5 px-1 text-xs font-bold tracking-wide text-ink-soft uppercase">Mis negocios</p>
+                  <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
+                    {readyStores.map((st) => (
+                      <li key={st.id}>
+                        <Link to={`/mi-negocio?tienda=${st.id}`} className="flex items-center gap-3 p-3 transition active:bg-sand">
+                          <StoreLogo store={st} size={46} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[16px] leading-tight font-bold">{st.name}</span>
+                            <span className="block text-[13px] font-semibold text-brand">Modo dueño · Ir a mi negocio</span>
+                          </span>
+                          <ChevronRight className="size-5 shrink-0 text-ink-soft" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {s.isAdmin && (
                 <Link to="/admin" className="flex items-center justify-between rounded-2xl border border-line bg-card p-3.5 font-bold transition active:scale-[0.98]">
                   Administración del mall <ChevronRight className="size-5" />
