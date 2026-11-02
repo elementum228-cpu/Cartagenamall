@@ -15,6 +15,9 @@ import { ProductImage } from '../ui/ProductImage'
 import { addToCart } from '../state/actions'
 import { isDemoPromotion } from '../promotions/demo'
 import { ProductCard } from '../ui/ProductCard'
+import { RestaurantMenu } from './RestaurantMenu'
+import { isRestaurant, whatsappLink } from '../lib/restaurant'
+import { remoteEnabled } from '../remote/client'
 import { Sheet } from '../ui/Sheet'
 import { loyaltyOf, usePassport } from '../state/passport'
 
@@ -84,6 +87,7 @@ function StoreBody({ store }: { store: Store }) {
   const promos = promotions.filter(
     (p) => p.storeId === store.id && isPromotionLive(p, now) && (p.type !== 'secret' || discovered.includes(p.id)),
   )
+  const food = isRestaurant(store)
   const onMap = location.pathname === '/'
   // La oferta relámpago más reciente va arriba, con precio, vigencia y botón de carrito.
   const flashNow = promos.filter((p) => p.type === 'flash').sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))[0]
@@ -101,6 +105,7 @@ function StoreBody({ store }: { store: Store }) {
         </button>
         <button
           onClick={async () => {
+            if (remoteEnabled()) return void window.open(whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de Cartagena Mall 👋`), '_blank', 'noopener')
             const ok = await copyText(`${store.whatsapp} — Hola ${store.name}, te escribo desde Cartagena Mall.`)
             toast(ok ? `Número de demostración copiado: ${store.whatsapp}` : `WhatsApp de demostración: ${store.whatsapp}`)
           }}
@@ -152,7 +157,7 @@ function StoreBody({ store }: { store: Store }) {
         </section>
       )}
 
-      {featured.length > 0 && (
+      {!food && featured.length > 0 && (
         <section>
           <SectionTitle>Destacados</SectionTitle>
           <div className="scrollbar-none -mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
@@ -163,6 +168,9 @@ function StoreBody({ store }: { store: Store }) {
         </section>
       )}
 
+      {food ? (
+        <RestaurantMenu store={store} products={mine} />
+      ) : (
       <section>
         <SectionTitle aside={<span className="text-xs text-ink-soft">{shown.length} productos</span>}>{store.zoneId === 'E' ? 'Menú' : 'Catálogo'}</SectionTitle>
         {categories.length > 1 && (
@@ -181,6 +189,7 @@ function StoreBody({ store }: { store: Store }) {
           ))}
         </div>
       </section>
+      )}
     </div>
   )
 }
