@@ -21,6 +21,7 @@ import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
 import { DemoPromoButton } from './DemoPromoButton'
+import { useCanAdmin } from '../remote/session'
 import { ShipPill, ShipTestButton } from '../ship/ShipLayer'
 import { usePirateShip } from '../state/pirate'
 import { useAirportFeature } from '../state/airportFeature'
@@ -473,6 +474,8 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
   const quality = usePrefs((s) => s.quality)
   const chooseQuality = usePrefs((s) => s.chooseQuality)
   const [open, setOpen] = useState(false)
+  // el cliente solo ve Plano 2D, día/noche/hora real e instalar; las herramientas de prueba y de guía son del administrador
+  const canAdmin = useCanAdmin()
   const item = 'glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap text-ink shadow-none transition duration-200 active:scale-[0.98]'
 
   const buttons = (
@@ -490,6 +493,9 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
         </button>
       )}
       {use3D && <TimeToggle />}
+      <InstallButton className={item} onDone={() => setOpen(false)} />
+      {canAdmin && (
+        <>
       <DemoPromoButton className={item} onDone={() => setOpen(false)} />
       {use3D && <ShipTestButton className={item} onDone={() => setOpen(false)} />}
       <button
@@ -502,7 +508,6 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       >
         <DoorOpen className="size-4" /> Ver la entrada
       </button>
-      <InstallButton className={item} onDone={() => setOpen(false)} />
       {use3D && <HalloweenToggle className={item} />}
       {use3D && <PirateToggle className={item} />}
       {use3D && <AirportToggle className={item} />}
@@ -527,6 +532,8 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
         >
           <Layers className="size-4" /> Calidad {QUALITY_LABEL[quality]}
         </button>
+      )}
+        </>
       )}
     </>
   )
