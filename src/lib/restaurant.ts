@@ -12,3 +12,17 @@ export function whatsappDigits(raw: string) {
 }
 
 export const whatsappLink = (raw: string, text: string) => `https://wa.me/${whatsappDigits(raw)}?text=${encodeURIComponent(text)}`
+
+const isMobile = () => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent))
+
+/**
+ * Abre WhatsApp con el mensaje. En celular se hace en la MISMA pestaña (una pestaña nueva queda en blanco al volver);
+ * en computador, en una pestaña nueva para no sacar a la persona del mall. Devuelve si se pudo lanzar.
+ */
+export function openWhatsApp(url: string): boolean {
+  if (isMobile()) {
+    window.location.href = url
+    return true
+  }
+  return !!window.open(url, '_blank', 'noopener')
+}

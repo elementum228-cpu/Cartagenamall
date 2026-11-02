@@ -1,9 +1,9 @@
-import { CheckCircle2, ClipboardList, Copy, Info, MessageCircle } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Copy, Info, MessageCircle, Store } from 'lucide-react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import type { Order, OrderStatus, SubOrder } from '../domain/types'
 import { copyText } from '../lib/clipboard'
-import { whatsappLink } from '../lib/restaurant'
+import { openWhatsApp, whatsappLink } from '../lib/restaurant'
 import { formatCOP, formatDateTime } from '../lib/format'
 import { ORDER_FLOW, ORDER_STATUS_LABEL, overallStatus, subOrderMessage } from '../services/orders'
 import { useCatalogMaps } from '../state/catalog'
@@ -92,6 +92,11 @@ export function OrderDetailPage() {
           </div>
         </div>
       )}
+      {params.get('nuevo') && (
+        <Link to="/" className={`${btn.primary} w-full`}>
+          <Store className="size-4" /> Seguir en el mall
+        </Link>
+      )}
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-ink-soft">Orden principal</p>
@@ -176,6 +181,10 @@ function SubOrderCard({ order, sub, sent }: { order: Order; sub: SubOrder; sent:
             href={whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP))}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault()
+              openWhatsApp(whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP)))
+            }}
             className={`flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition active:scale-[0.98] ${sent ? 'border border-line bg-card text-ink' : 'bg-[#1faa59] text-white shadow-soft'}`}
           >
             <MessageCircle className="size-4" /> {sent ? `Enviado a ${sub.storeName} · volver a abrir WhatsApp` : `Enviar pedido por WhatsApp a ${sub.storeName}`}

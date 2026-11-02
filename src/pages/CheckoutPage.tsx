@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import type { DeliveryMode } from '../domain/types'
 import { formatCOP } from '../lib/format'
 import { buildOrder, subOrderMessage } from '../services/orders'
-import { whatsappLink } from '../lib/restaurant'
+import { openWhatsApp, whatsappLink } from '../lib/restaurant'
 import { remoteEnabled } from '../remote/client'
 import { useBuyer, useProfile } from '../remote/profile'
 import { uniqueId } from '../lib/ids'
@@ -71,16 +71,13 @@ export function CheckoutPage() {
     setSubmitting(true)
     addOrder(result.order)
     clearCart()
-    // El pedido le llega solo al WhatsApp del local: se abre WhatsApp con el mensaje listo (dentro del toque, para que el navegador no lo bloquee).
-    // Con varias tiendas solo se puede abrir una; las demás quedan con su botón en la pantalla del pedido.
+    // El pedido le llega solo al WhatsApp del local. Primero se deja la pantalla del pedido como destino (a ella se vuelve desde WhatsApp)
+    // y luego se abre WhatsApp. Con varias tiendas solo se abre la primera; las demás quedan con su botón en la pantalla del pedido.
     const first = result.order.subOrders[0]
     const wa = first && storeById[first.storeId]?.whatsapp
-    let sent: string[] = []
-    if (first && wa) {
-      const win = window.open(whatsappLink(wa, subOrderMessage(result.order, first, formatCOP)), '_blank')
-      if (win) sent = [first.id]
-    }
-    navigate(`/pedidos/${result.order.id}?nuevo=1`, { replace: true, state: { waSent: sent } })
+    const link = first && wa ? whatsappLink(wa, subOrderMessage(result.order, first, formatCOP)) : null
+    navigate(`/pedidos/${result.order.id}?nuevo=1`, { replace: true, state: { waSent: link ? [first.id] : [] } })
+    if (link) openWhatsApp(link)
   }
 
   return (
