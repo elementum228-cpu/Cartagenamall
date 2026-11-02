@@ -13,6 +13,10 @@ export function addToCart(product: Product, variantId: string | null, size: stri
     toast('Esta tienda no está recibiendo pedidos por ahora.', 'error')
     return false
   }
+  if (store.businessType === 'service') {
+    toast('Los servicios se reservan por WhatsApp, no van al carrito.', 'error')
+    return false
+  }
   if (product.variants.length && !variantId) {
     toast('Elige una opción antes de agregar.', 'error')
     return false

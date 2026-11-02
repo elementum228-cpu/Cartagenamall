@@ -4,7 +4,8 @@ import { remoteEnabled } from '../remote/client'
 import { refreshOrderTracking } from '../remote/sync'
 import { ORDER_STATUS_LABEL } from '../services/orders'
 import { useOrders } from '../state/orders'
-import { useUI } from '../state/ui'
+import { useUI, usePrefs } from '../state/ui'
+import { useCatalog } from '../state/catalog'
 import { STATUS_NOTICE, useNotifications } from './store'
 import { playTing } from './ting'
 
@@ -17,7 +18,13 @@ const FINAL: OrderStatus[] = ['delivered', 'cancelled']
  */
 export function OrderWatcher() {
   useEffect(() => {
-    if (import.meta.env.DEV) (window as unknown as { __cmOrders?: typeof useOrders }).__cmOrders = useOrders
+    if (import.meta.env.DEV) {
+      const w = window as unknown as Record<string, unknown>
+      w.__cmOrders = useOrders
+      w.__cmCatalog = useCatalog
+      w.__cmUI = useUI
+      w.__cmPrefs = usePrefs
+    }
     // estado conocido: lo que ya existe al abrir la app no genera avisos
     const known = new Map<string, OrderStatus>()
     for (const o of useOrders.getState().orders) for (const s of o.subOrders) known.set(s.id, s.status)

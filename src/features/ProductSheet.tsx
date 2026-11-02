@@ -1,8 +1,10 @@
-import { Heart, Minus, Plus, Scale, ShoppingBag, Zap } from 'lucide-react'
+import { Heart, MessageCircle, Minus, Plus, Scale, ShoppingBag, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product } from '../domain/types'
 import { stockFor, totalStock } from '../lib/inventory'
+import { bookingLink, isService, openWhatsApp } from '../lib/restaurant'
+import { formatCOP } from '../lib/format'
 import { FEATURES } from '../config/features'
 import { addToCart, toggleCompare } from '../state/actions'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
@@ -40,6 +42,7 @@ function Body({ product }: { product: Product }) {
   const openStore = useUI((s) => s.openStore)
   const selectedSpaceId = useUI((s) => s.selectedSpaceId)
 
+  const service = isService(store)
   const needsSize = product.sizes.length > 0
   const available = needsSize && !size ? null : stockFor(product, variantId, size)
   const similar = useMemo(
@@ -140,6 +143,12 @@ function Body({ product }: { product: Product }) {
           </fieldset>
         )}
 
+        {service ? (
+          <button className={`${btn.primary} w-full`} onClick={() => openWhatsApp(bookingLink(store, product.name, formatCOP(info.final)))}>
+            <MessageCircle className="size-4" /> Reservar servicio
+          </button>
+        ) : (
+          <>
         <p className="text-xs font-semibold text-ink-soft">
           {totalStock(product) === 0
             ? 'Agotado'
@@ -174,6 +183,8 @@ function Body({ product }: { product: Product }) {
             <ShoppingBag className="size-4" /> Agregar al carrito
           </button>
         </div>
+          </>
+        )}
         <div className="flex gap-2">
           <button className={`${btn.secondary} flex-1`} onClick={() => toggleFav(product.id)} aria-pressed={fav}>
             <Heart className={`size-4 ${fav ? 'text-coral' : ''}`} fill={fav ? 'currentColor' : 'none'} /> {fav ? 'Guardado' : 'Favorito'}

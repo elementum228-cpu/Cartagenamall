@@ -274,6 +274,8 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
   const open = getLabel(store.status === 'open' ? 'ABIERTO' : 'CERRADO', { bg: store.status === 'open' ? '#1f9d6b' : '#b7791f', fg: '#fff', radius: 30 })
   const colors = displayColors(store, products)
   const kind = kindOf(store)
+  // Abierto: luces encendidas de noche. Cerrado: el interior queda a oscuras (se nota a simple vista).
+  const lit = store.status === 'open'
   // franja del letrero más alta: el nombre del negocio se lee de lejos
   const fascia = premium ? 1.05 : 0.85
   const signH = Math.min(fascia * 0.92, (w - 0.3) / sign.aspect)
@@ -285,10 +287,10 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
   return (
     <group>
       {/* interior: piso y panel del fondo se iluminan de noche */}
-      <mesh geometry={GEO.box} material={glowMat(store.accentColor, 0.6)} position={[0, 0.05, 0]} scale={[w - 0.1, 0.1, d - 0.1]} receiveShadow />
-      <mesh geometry={GEO.box} material={glowMat(shade(store.accentColor, -0.06), 0.75)} position={[0, H / 2, -d / 2 + T + 0.02]} scale={[w - 2 * T, H - 0.1, 0.03]} />
-      <mesh geometry={GEO.plane} material={INTERIOR()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 0]} scale={[w * 1.25, d * 1.35, 1]} />
-      <mesh geometry={GEO.box} material={INTERIOR_LIGHT()} position={[0, H / 2, 0.05]} scale={[w - 0.5, H - 0.25, d - 0.5]} />
+      <mesh geometry={GEO.box} material={lit ? glowMat(store.accentColor, 0.6) : mat(shade(store.accentColor, -0.3))} position={[0, 0.05, 0]} scale={[w - 0.1, 0.1, d - 0.1]} receiveShadow />
+      <mesh geometry={GEO.box} material={lit ? glowMat(shade(store.accentColor, -0.06), 0.75) : mat(shade(store.accentColor, -0.4))} position={[0, H / 2, -d / 2 + T + 0.02]} scale={[w - 2 * T, H - 0.1, 0.03]} />
+      {lit && <mesh geometry={GEO.plane} material={INTERIOR()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 0]} scale={[w * 1.25, d * 1.35, 1]} />}
+      {lit && <mesh geometry={GEO.box} material={INTERIOR_LIGHT()} position={[0, H / 2, 0.05]} scale={[w - 0.5, H - 0.25, d - 0.5]} />}
       {/* muros */}
       <mesh geometry={GEO.box} material={wall} position={[0, H / 2, -d / 2 + T / 2]} scale={[w, H, T]} castShadow receiveShadow />
       <mesh geometry={GEO.box} material={wall} position={[-w / 2 + T / 2, H / 2, 0]} scale={[T, H, d]} castShadow receiveShadow />
@@ -300,7 +302,7 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
       <mesh geometry={GEO.plane} position={[0, H - fascia / 2, d / 2 + 0.03]} scale={[signH * sign.aspect, signH, 1]}>
         <meshBasicMaterial map={sign.texture} transparent toneMapped={false} />
       </mesh>
-      <mesh geometry={GEO.box} material={kind === 'tech' ? glowMat(TECH.turquoise, 1.4, { dayGlow: 0.35 }) : SIGN_STRIP()} position={[0, H - fascia - 0.03, d / 2 - 0.02]} scale={[w - 0.3, 0.05, 0.08]} />
+      <mesh geometry={GEO.box} material={!lit ? mat('#7d7566') : kind === 'tech' ? glowMat(TECH.turquoise, 1.4, { dayGlow: 0.35 }) : SIGN_STRIP()} position={[0, H - fascia - 0.03, d / 2 - 0.02]} scale={[w - 0.3, 0.05, 0.08]} />
 
       {/* fachada diferenciada */}
       {store.facade === 'awning' && <StripedAwning w={w} y={H - fascia - 0.1} z={d / 2} color={store.brandColor} />}
@@ -310,15 +312,15 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
           {[-1, 1].map((s) => (
             <group key={s} position={[s * (doorW / 2 + 0.12), 0, front + 0.05]}>
               <mesh geometry={GEO.box} material={mat(PALETTE.trim)} position={[0, (H - fascia) / 2, 0]} scale={[0.22, H - fascia, 0.22]} castShadow />
-              <mesh geometry={GEO.sphere} material={WARM_LIGHT()} position={[0, H - fascia - 0.45, 0.16]} scale={0.16} />
+              <mesh geometry={GEO.sphere} material={lit ? WARM_LIGHT() : mat('#8d877a')} position={[0, H - fascia - 0.45, 0.16]} scale={0.16} />
             </group>
           ))}
         </>
       )}
       {store.facade === 'minimal' && (
         <>
-          <mesh geometry={GEO.box} material={glowMat(store.brandColor, 1.3, { dayGlow: 0.25 })} position={[-w / 2 + 0.12, H / 2, d / 2 - 0.05]} scale={[0.1, H, 0.1]} />
-          <mesh geometry={GEO.box} material={glowMat(store.brandColor, 1.3, { dayGlow: 0.25 })} position={[w / 2 - 0.12, H / 2, d / 2 - 0.05]} scale={[0.1, H, 0.1]} />
+          <mesh geometry={GEO.box} material={lit ? glowMat(store.brandColor, 1.3, { dayGlow: 0.25 }) : brand} position={[-w / 2 + 0.12, H / 2, d / 2 - 0.05]} scale={[0.1, H, 0.1]} />
+          <mesh geometry={GEO.box} material={lit ? glowMat(store.brandColor, 1.3, { dayGlow: 0.25 }) : brand} position={[w / 2 - 0.12, H / 2, d / 2 - 0.05]} scale={[0.1, H, 0.1]} />
         </>
       )}
 
@@ -343,7 +345,7 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
         return (
           <group key={s}>
             <mesh geometry={GEO.box} material={GLASS} position={[x, (H - fascia) / 2 + 0.05, front]} scale={[glassW, H - fascia - 0.1, 0.06]} />
-            <mesh geometry={GEO.box} material={WARM_PANE()} position={[x, (H - fascia) / 2 + 0.05, front - 0.08]} scale={[glassW - 0.1, H - fascia - 0.2, 0.02]} />
+            <mesh geometry={GEO.box} material={lit ? WARM_PANE() : mat('#2c3440')} position={[x, (H - fascia) / 2 + 0.05, front - 0.08]} scale={[glassW - 0.1, H - fascia - 0.2, 0.02]} />
             <mesh geometry={GEO.box} material={mat(PALETTE.trim)} position={[x, 0.15, front]} scale={[glassW, 0.3, 0.2]} />
             {kind === 'tech' ? (
               // tecnología: mostrador con celular, portátil, audífonos y reloj detrás del vidrio
@@ -366,12 +368,12 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
       </mesh>
       <mesh geometry={GEO.box} material={mat(shade(store.brandColor, -0.15))} position={[0, 0.11, d / 2 + 0.35]} scale={[doorW * 0.7, 0.02, 0.6]} />
       {/* halo de luz frente a la tienda (solo de noche) */}
-      <mesh geometry={GEO.plane} material={POOL()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, d / 2 + 1.1]} scale={[w + 2.5, 3.2, 1]} />
+      {lit && <mesh geometry={GEO.plane} material={POOL()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, d / 2 + 1.1]} scale={[w + 2.5, 3.2, 1]} />}
 
       {/* interior: estantería, mostrador y lámparas colgantes */}
       <mesh geometry={GEO.box} material={mat(PALETTE.wood)} position={[0, 0.9, -d / 2 + 0.55]} scale={[w * 0.75, 1.6, 0.5]} castShadow />
       {/* luz bajo la repisa superior: el estante se lee iluminado */}
-      <mesh geometry={GEO.box} material={COUNTER_LIGHT()} position={[0, 1.66, -d / 2 + 0.83]} scale={[w * 0.73, 0.05, 0.05]} />
+      {lit && <mesh geometry={GEO.box} material={COUNTER_LIGHT()} position={[0, 1.66, -d / 2 + 0.83]} scale={[w * 0.73, 0.05, 0.05]} />}
       <ShelfItems
         colors={colors}
         items={[0.55, 1.15].flatMap((y, row) =>
@@ -390,18 +392,18 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
           <TechCounter width={1.55} accent={store.brandColor} bare />
         </group>
       ) : (
-        high && <mesh geometry={GEO.rounded} material={SCREEN()} position={[w / 2 - 1.6, 1.15, -0.25]} rotation={[-0.3, 0, 0]} scale={[0.35, 0.25, 0.04]} />
+        high && <mesh geometry={GEO.rounded} material={lit ? SCREEN() : mat('#26303a')} position={[w / 2 - 1.6, 1.15, -0.25]} rotation={[-0.3, 0, 0]} scale={[0.35, 0.25, 0.04]} />
       )}
       {high &&
         (premium ? [-w / 4, 0, w / 4] : [-w / 5, w / 5]).map((x) => (
           <group key={x} position={[x, H - 0.25, -0.2]}>
             <mesh geometry={GEO.cylinder} material={mat(PALETTE.metal)} position={[0, 0.15, 0]} scale={[0.02, 0.3, 0.02]} />
             <mesh geometry={GEO.halfDisc} material={mat('#2f3a44')} rotation={[Math.PI, 0, Math.PI / 2]} scale={[0.22, 0.12, 0.22]} />
-            <mesh geometry={GEO.sphere} material={WARM_LIGHT()} position={[0, -0.08, 0]} scale={0.14} />
+            <mesh geometry={GEO.sphere} material={lit ? WARM_LIGHT() : mat('#8d877a')} position={[0, -0.08, 0]} scale={0.14} />
           </group>
         ))}
 
-      {kind === 'food' && <RestaurantExtras store={store} w={w} d={d} H={H} detail={detail} />}
+      {kind === 'food' && <RestaurantExtras store={store} w={w} d={d} H={H} detail={detail} lit={lit} />}
       {premium && (
         <>
           {/* plantas en la entrada y mesa central con productos */}
@@ -629,13 +631,13 @@ function ShelfItems({ items, colors }: { items: { x: number; y: number; z: numbe
  * Lo que distingue a un restaurante de una tienda: tablero de menú iluminado, campana de cocina y
  * un par de mesitas en la entrada.
  */
-function RestaurantExtras({ store, w, d, H, detail }: { store: Store; w: number; d: number; H: number; detail: Detail }) {
+function RestaurantExtras({ store, w, d, H, detail, lit }: { store: Store; w: number; d: number; H: number; detail: Detail; lit: boolean }) {
   const menu = getLabel('MENÚ', { bg: '#2b3440', fg: '#ffe2a8', radius: 14 })
   return (
     <group>
       <mesh geometry={GEO.box} material={mat('#2b3440')} position={[-w / 4, H - 0.75, -d / 2 + 0.26]} scale={[w * 0.32, 0.7, 0.04]} />
       <mesh geometry={GEO.plane} material={dimLabelMat(menu.texture)} position={[-w / 4, H - 0.6, -d / 2 + 0.29]} scale={[0.32 * menu.aspect, 0.32, 1]} />
-      <mesh geometry={GEO.box} material={glowMat('#ffe2a8', 1.2, { dayGlow: 0.3 })} position={[-w / 4, H - 0.95, -d / 2 + 0.29]} scale={[w * 0.28, 0.12, 0.01]} />
+      <mesh geometry={GEO.box} material={lit ? glowMat('#ffe2a8', 1.2, { dayGlow: 0.3 }) : mat('#4a4338')} position={[-w / 4, H - 0.95, -d / 2 + 0.29]} scale={[w * 0.28, 0.12, 0.01]} />
       <mesh geometry={GEO.box} material={mat('#c9ccd1', { rough: 0.4 })} position={[w / 4, H - 0.45, -d / 2 + 0.6]} scale={[w * 0.3, 0.35, 0.8]} />
       {detail === 'high' &&
         [-1, 1].map((s) => (

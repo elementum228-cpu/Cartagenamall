@@ -36,3 +36,10 @@ export function openWhatsApp(url: string): boolean {
   }
   return !!window.open(url, '_blank', 'noopener')
 }
+
+export const isService = (store: Pick<Store, 'businessType'>) => store.businessType === 'service'
+
+/** Enlace de WhatsApp para reservar un servicio (los servicios no se agregan al carrito). */
+export function bookingLink(store: Pick<Store, 'name' | 'whatsapp'>, serviceName: string, price: string) {
+  return whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de Cartagena Mall 👋 Quiero reservar el servicio «${serviceName}» (${price}). ¿Qué horarios tienen disponibles?`)
+}

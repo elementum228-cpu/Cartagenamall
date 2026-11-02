@@ -1,7 +1,9 @@
-import { Heart, Plus, Scale } from 'lucide-react'
+import { Heart, MessageCircle, Plus, Scale } from 'lucide-react'
 import type { Product, Store } from '../domain/types'
 import { needsOptions, totalStock } from '../lib/inventory'
 import { FEATURES } from '../config/features'
+import { bookingLink, isService, openWhatsApp } from '../lib/restaurant'
+import { formatCOP } from '../lib/format'
 import { addToCart, toggleCompare } from '../state/actions'
 import { usePersonal } from '../state/personal'
 import { usePricing } from '../state/pricing'
@@ -56,6 +58,15 @@ export function ProductCard({ product, store, compact = false }: { product: Prod
         </button>
         <div className="mt-auto flex items-end justify-between gap-2 pt-1">
           <Price info={info} size="sm" />
+          {isService(store) ? (
+            <button
+              onClick={() => openWhatsApp(bookingLink(store, product.name, formatCOP(info.final)))}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white shadow-soft transition hover:bg-brand-dark active:scale-90"
+              aria-label={`Reservar ${product.name} por WhatsApp`}
+            >
+              <MessageCircle className="size-4" /> Reservar
+            </button>
+          ) : (
           <button
             onClick={() => (needsOptions(product) ? openProduct(product.id) : addToCart(product, null, null))}
             disabled={soldOut}
@@ -64,6 +75,7 @@ export function ProductCard({ product, store, compact = false }: { product: Prod
           >
             <Plus className="size-5" />
           </button>
+          )}
         </div>
       </div>
     </article>
