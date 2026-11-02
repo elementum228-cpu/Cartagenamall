@@ -16,7 +16,9 @@ function lvhPx() {
 export function watchAppHeight() {
   const standalone = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
   const debug = location.search.includes('debug=viewport')
-  if (!standalone && !debug) return
+  // El ajuste de altura quedó DESACTIVADO por defecto (en el iPhone movía los botones de abajo): solo se prueba con ?fixheight=1
+  const enabled = location.search.includes('fixheight=1')
+  if (!debug && !(standalone && enabled)) return
   let label: HTMLDivElement | null = null
   const apply = () => {
     const portrait = window.innerHeight >= window.innerWidth
@@ -24,7 +26,7 @@ export function watchAppHeight() {
     const lvh = lvhPx()
     const full = Math.max(screenH, lvh)
     // con el teclado abierto innerHeight no cambia en iOS; si la ventana fuera muy chica (<60 %), no se toca
-    const apply = standalone && full - window.innerHeight > 1 && window.innerHeight > full * 0.6
+    const apply = standalone && enabled && full - window.innerHeight > 1 && window.innerHeight > full * 0.6
     if (apply) document.documentElement.style.setProperty('--app-height', `${full}px`)
     else document.documentElement.style.removeProperty('--app-height')
     if (debug) {
