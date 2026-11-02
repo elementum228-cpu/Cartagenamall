@@ -1,4 +1,4 @@
-import { Gem, MapPin, Package, Pause, Play, RotateCcw, Ship, Stamp, Tag, Trash2, X, Zap } from 'lucide-react'
+import { Clock, Gem, Heart, MapPin, Package, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPACE_BY_ID } from '../config/mall'
@@ -39,68 +39,172 @@ const TYPE_HELP: Record<PromotionType, string> = {
 const TYPE_ICON = { flash: Zap, normal: Tag, secret: Gem } as const
 
 type Mode = PromotionType | 'ship' | 'loyalty'
+type Goal = 'sell' | 'visits' | 'loyalty'
 
-const CATALOG: { mode: Mode; name: string; help: string; icon: typeof Zap }[] = [
-  { mode: 'flash', name: 'Oferta relámpago', help: 'Descuento con contador. Al lanzarla, tu local se ilumina en el mall y los visitantes se acercan.', icon: Zap },
-  { mode: 'normal', name: 'Descuento en un producto', help: 'Un precio rebajado en uno de tus artículos, sin vencimiento hasta que lo pauses.', icon: Tag },
-  { mode: 'secret', name: 'Promoción escondida', help: 'La escondes en el mall y se revela solo a quien la encuentre. Ideal para premiar a los curiosos.', icon: Gem },
-  { mode: 'ship', name: 'Barco de los descuentos', help: 'Sube un descuento especial al barco que llega al muelle y avisa a todos los visitantes.', icon: Ship },
-  { mode: 'loyalty', name: 'Tarjeta de sellos', help: 'Cada compra da un sello en el pasaporte del cliente; al llenarla canjea tu premio.', icon: Stamp },
+const GOALS: { id: Goal; name: string; icon: typeof Zap }[] = [
+  { id: 'sell', name: 'Vender hoy', icon: Zap },
+  { id: 'visits', name: 'Atraer visitas', icon: Users },
+  { id: 'loyalty', name: 'Fidelizar clientes', icon: Heart },
 ]
+
+const CATALOG: { mode: Mode; goal: Goal; name: string; tag: string; help: string; meta: string; how: string; icon: typeof Zap; recommended?: boolean }[] = [
+  {
+    mode: 'flash', goal: 'sell', name: 'Oferta relámpago', tag: 'Vender hoy', icon: Zap, recommended: true,
+    help: 'Crea urgencia y destaca tu local durante unas horas.', meta: '2 min · Dura 2 h',
+    how: 'Eliges un artículo y un descuento. Mientras dura, tu local se ilumina en el mall y la oferta aparece con contador. Al terminar se apaga sola.',
+  },
+  {
+    mode: 'normal', goal: 'sell', name: 'Descuento en producto', tag: 'Mover inventario', icon: Tag,
+    help: 'Reduce el precio de un artículo y mantenlo activo.', meta: '1 min · Sin vencimiento',
+    how: 'Rebajas el precio de un artículo. Se ve tachado en tu ficha y en Comprar hasta que lo pauses.',
+  },
+  {
+    mode: 'secret', goal: 'visits', name: 'Promoción escondida', tag: 'Atraer visitas', icon: Gem,
+    help: 'Premia a quien explore y encuentre tu oferta.', meta: '3 min · Se ve en el mall',
+    how: 'Escondes la oferta en el mall (junto a tu local o donde quieras) con un código. Quien la encuentre la desbloquea.',
+  },
+  {
+    mode: 'ship', goal: 'visits', name: 'Barco de descuentos', tag: 'Máxima visibilidad', icon: Ship,
+    help: 'Aparece en el muelle y avisa a los visitantes.', meta: '3 min · Notificación incluida',
+    how: 'Subes un descuento al barco que llega al muelle viernes y sábados. Los visitantes reciben el aviso y ven tu oferta a bordo.',
+  },
+  {
+    mode: 'loyalty', goal: 'loyalty', name: 'Tarjeta de sellos', tag: 'Fidelizar', icon: Stamp,
+    help: 'Premia compras recurrentes con un beneficio final.', meta: '4 min · Clientes recurrentes',
+    how: 'Cada compra da un sello al cliente; al juntar los sellos canjea tu premio con un código. Tú defines cuántos y cuál.',
+  },
+]
+
+function useComboNotify() {
+  const key = 'cm:combo-notify'
+  const [on, setOn] = useState(() => {
+    try {
+      return localStorage.getItem(key) === '1'
+    } catch {
+      return false
+    }
+  })
+  return [
+    on,
+    () => {
+      setOn(true)
+      try {
+        localStorage.setItem(key, '1')
+      } catch {
+        /* sin almacenamiento: queda solo en esta sesión */
+      }
+    },
+  ] as const
+}
 
 export function MerchantPromotions({ store }: { store: Store }) {
   const promotions = useCatalog((s) => s.promotions)
   const mine = useMemo(() => promotions.filter((p) => p.storeId === store.id && !isShipPromotion(p)), [promotions, store.id])
   const shipOn = useDiscountShip((s) => s.offers.some((o) => o.storeId === store.id && !o.demo))
+  const [goal, setGoal] = useState<Goal | 'all'>('sell')
   const [open, setOpen] = useState<Mode | null>(null)
+  const [how, setHow] = useState<Mode | null>(null)
+  const [notified, notify] = useComboNotify()
+  const toast = useUI((s) => s.toast)
   const now = useNow()
   const liveOf = (t: PromotionType) => mine.filter((p) => p.type === t && isPromotionLive(p, now)).length
   const isOn = (m: Mode) => (m === 'ship' ? shipOn : m === 'loyalty' ? loyaltyOf(store).active : liveOf(m) > 0)
+  const activeCount = CATALOG.filter((c) => isOn(c.mode)).length
+  const shownCards = CATALOG.filter((c) => goal === 'all' || c.goal === goal)
 
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-lg font-extrabold">Promociones</p>
-        <p className="text-sm text-ink-soft">Elige qué tipo de promoción quieres lanzar. Todas empiezan apagadas.</p>
+        <div className="flex items-center gap-2.5">
+          <p className="text-2xl font-extrabold tracking-tight">Promociones</p>
+          <span className="rounded-full bg-ink/[0.07] px-3 py-1 text-xs font-bold text-ink-soft">{activeCount} {activeCount === 1 ? 'activa' : 'activas'}</span>
+        </div>
+        <p className="text-sm text-ink-soft">¿Qué quieres conseguir hoy? Elige una promoción según tu objetivo.</p>
       </div>
-      <ul className="grid gap-2.5 sm:grid-cols-2">
-        {CATALOG.map((c) => {
+
+      <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1" role="tablist" aria-label="Objetivo de la promoción">
+        {[{ id: 'all' as const, name: 'Todas', icon: Sparkles }, ...GOALS].map((g) => {
+          const Icon = g.icon
+          const sel = goal === g.id
+          return (
+            <button
+              key={g.id}
+              role="tab"
+              aria-selected={sel}
+              onClick={() => setGoal(g.id)}
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-bold transition active:scale-[0.98] ${sel ? 'border-brand bg-brand text-white' : 'border-line bg-card text-ink hover:bg-sand'}`}
+            >
+              <Icon className="size-4" /> {g.name}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-xs text-ink-soft">Puedes configurarla ahora y activarla después de revisarla.</p>
+
+      <ul className="grid gap-3 sm:grid-cols-2">
+        {shownCards.map((c) => {
           const on = isOn(c.mode)
           const Icon = c.icon
           const selected = open === c.mode
           return (
-            <li key={c.mode} className={`flex flex-col gap-2 rounded-3xl border bg-card p-4 ${selected ? 'border-brand ring-2 ring-brand/15' : 'border-line'}`}>
+            <li key={c.mode} className={`flex flex-col gap-2 rounded-3xl border bg-card p-4 ${selected || (c.recommended && goal === 'sell' && !open) ? 'border-brand ring-2 ring-brand/15' : 'border-line'}`}>
               <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand" aria-hidden>
-                  <Icon className="size-5" />
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand/10 text-brand" aria-hidden>
+                  <Icon className="size-6" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold">{c.name}</p>
-                  <p className="text-xs leading-snug text-ink-soft">{c.help}</p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="text-[17px] leading-tight font-extrabold">{c.name}</p>
+                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand">{c.tag}</span>
+                    {on && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Activa</span>}
+                  </div>
+                  {c.recommended && !on && (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-ink px-2 py-0.5 text-[11px] font-bold text-white">
+                      <Star className="size-3" /> Recomendada para hoy
+                    </span>
+                  )}
+                  <p className="mt-1 text-sm leading-snug text-ink-soft">{c.help}</p>
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-soft">
+                    <Clock className="size-3.5" /> {c.meta}
+                  </p>
                 </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${on ? 'bg-emerald-100 text-emerald-800' : 'bg-ink/[0.07] text-ink-soft'}`}>{on ? 'Activa' : 'Apagada'}</span>
               </div>
-              <button className={`${on ? btn.secondary : btn.primary} mt-auto w-full`} onClick={() => setOpen(selected ? null : c.mode)}>
-                {selected ? 'Cerrar' : on ? 'Configurar' : 'Configurar y lanzar'}
-              </button>
+              {how === c.mode && <p className="rounded-2xl bg-sand p-3 text-xs leading-relaxed text-ink-soft">{c.how}</p>}
+              <div className="mt-auto flex items-center justify-between gap-2">
+                <button className="text-sm font-semibold text-brand underline underline-offset-2" onClick={() => setHow(how === c.mode ? null : c.mode)}>
+                  {how === c.mode ? 'Ocultar' : 'Ver cómo funciona'}
+                </button>
+                <button className={`${btn.primary} min-w-32`} onClick={() => setOpen(selected ? null : c.mode)}>
+                  {selected ? 'Cerrar' : 'Configurar'}
+                </button>
+              </div>
             </li>
           )
         })}
-        <li className="flex items-start gap-3 rounded-3xl border border-dashed border-line bg-card/60 p-4 opacity-70">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink/[0.07] text-ink-soft" aria-hidden>
-            <Package className="size-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-bold">Combo</p>
-            <p className="text-xs leading-snug text-ink-soft">Varios productos juntos a un precio especial.</p>
-          </div>
-          <span className="shrink-0 rounded-full bg-ink/[0.07] px-2.5 py-0.5 text-[11px] font-bold text-ink-soft">Próximamente</span>
-        </li>
       </ul>
 
       {open === 'ship' && <MerchantShipEditor key={`b${store.id}`} store={store} />}
       {open === 'loyalty' && <LoyaltyEditor key={store.id} store={store} />}
       {open && open !== 'ship' && open !== 'loyalty' && <PromotionForm key={open} store={store} initialType={open} onDone={() => setOpen(null)} />}
+
+      <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-line bg-card/70 px-4 py-3">
+        <Package className="size-5 shrink-0 text-ink-soft" />
+        <span className="text-xs font-bold text-ink-soft">Próximamente</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold">Combo</p>
+          <p className="text-xs text-ink-soft">Varios productos juntos a un precio especial.</p>
+        </div>
+        <button
+          className="text-sm font-bold text-brand underline underline-offset-2 disabled:no-underline disabled:opacity-60"
+          disabled={notified}
+          onClick={() => {
+            notify()
+            toast('¡Anotado! Te avisaremos cuando los combos estén listos.', 'success')
+          }}
+        >
+          {notified ? 'Te avisaremos' : 'Avísame'}
+        </button>
+      </div>
 
       {mine.length > 0 && (
         <div className="space-y-2">

@@ -79,7 +79,7 @@ export function ShopPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pt-4 pb-28 md:pb-10">
-      <div className="sticky top-[calc(var(--chrome-top)-6px)] z-20 -mx-4 bg-sand/95 px-4 pt-2 pb-3 backdrop-blur">
+      <div className="sticky top-[calc(var(--chrome-top)-6px)] z-20 -mx-4 bg-sand px-4 pt-2 pb-3 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-[var(--chrome-top)] before:bg-sand after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-5 after:bg-gradient-to-b after:from-sand after:to-transparent">
         <div className="flex gap-2">
           <label className="relative flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-soft" />
