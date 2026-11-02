@@ -216,6 +216,15 @@ body {
 }
 
 /* Entrada suave de la barra superior y la inferior al cargar. */
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0) }
+  12% { transform: rotate(18deg) }
+  28% { transform: rotate(-16deg) }
+  44% { transform: rotate(12deg) }
+  60% { transform: rotate(-9deg) }
+  76% { transform: rotate(5deg) }
+}
+
 @keyframes chrome-in-top {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: none; }

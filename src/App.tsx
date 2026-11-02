@@ -49,6 +49,8 @@ import { PromotionEventDriver } from './promotions/PromotionEventDriver'
 import { Toasts } from './ui/Toasts'
 import { MallMark } from './ui/MallMark'
 import { InstallLayer } from './pwa/InstallApp'
+import { BellButton } from './notifications/BellButton'
+import { OrderWatcher } from './notifications/OrderWatcher'
 
 const AdminRequestsPage = lazy(() => import('./pages/AdminRequestsPage'))
 const AdminPage = lazy(() => import('./admin/AdminPage'))
@@ -150,6 +152,7 @@ function Shell() {
         )}
       </main>
       <TopBar />
+      <OrderWatcher />
       <PromotionEventDriver exploring={exploring} />
       <CompareTray />
       <BottomNav />
@@ -256,6 +259,7 @@ function TopBar() {
             <Badge n={compare} />
           </Link>
         )}
+        <BellButton className={iconBtn} />
         {!loggedIn && remoteEnabled() && (
           <Link to="/registro" className="grid h-11 place-items-center rounded-full bg-teal px-4 text-[14px] font-bold whitespace-nowrap text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96]">
             Crear cuenta
