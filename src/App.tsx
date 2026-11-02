@@ -39,6 +39,7 @@ import { PassportPage } from './pages/PassportPage'
 import { ClueModal, StampToast } from './features/passport/PassportOverlays'
 import { OrderDetailPage, OrdersPage } from './pages/OrdersPage'
 import { ShopPage } from './pages/ShopPage'
+import { useSession } from './remote/session'
 import { useCartCount } from './state/cart'
 import { usePersonal } from './state/personal'
 import { useUI } from './state/ui'
@@ -209,6 +210,7 @@ function TopBar() {
   const count = useCartCount()
   const navigate = useNavigate()
   const compare = usePersonal((s) => s.compare.length)
+  const loggedIn = useSession((s) => !!s.userId)
   return (
     // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
     <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
@@ -246,7 +248,7 @@ function TopBar() {
             <Badge n={compare} />
           </Link>
         )}
-        <NavLink to="/entrar" className={({ isActive }) => `${iconBtn} ${isActive ? '!bg-teal !text-white' : ''}`} aria-label="Perfil: cuenta, Mi negocio, favoritos y administración">
+        <NavLink to={loggedIn ? '/mi-cuenta' : '/login'} className={({ isActive }) => `${iconBtn} ${isActive ? '!bg-teal !text-white' : ''}`} aria-label={loggedIn ? 'Mi cuenta' : 'Iniciar sesión o crear cuenta'}>
           <UserRound className="size-[21px]" strokeWidth={1.8} />
         </NavLink>
         <Link to="/carrito" className="relative grid size-11 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden" aria-label={`Carrito, ${count} productos`}>

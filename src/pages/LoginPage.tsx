@@ -1,7 +1,7 @@
 import { ArrowRight, BookOpen, ChevronRight, ClipboardList, Heart, Settings, Store, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
-import { AccountBar, SignInForm } from '../remote/AccountGate'
+import { AccountBar } from '../remote/AccountGate'
 import { useSession } from '../remote/session'
 import { btn } from '../ui/bits'
 import { InstallButton } from '../pwa/InstallApp'
@@ -31,10 +31,20 @@ export function LoginPage() {
         ) : !s.ready ? (
           <p className="mt-4 text-sm text-ink-soft">Verificando sesión…</p>
         ) : !s.userId ? (
-          <SignInForm />
+          <div className="mt-4 flex flex-col gap-2.5">
+            <Link to="/registro" className={btn.primary}>
+              Crear cuenta
+            </Link>
+            <Link to="/login" className={btn.secondary}>
+              Ya tengo cuenta: iniciar sesión
+            </Link>
+          </div>
         ) : (
           <div className="mt-4 flex flex-col gap-2.5">
             <AccountBar />
+            <Link to="/mi-cuenta" className={btn.primary}>
+              Mi cuenta: solicitar un local <ArrowRight className="size-4" />
+            </Link>
             {s.isAdmin && (
               <Link to="/admin" className={btn.primary}>
                 <Settings className="size-4" /> Administración: tiendas, locales y pedidos <ArrowRight className="size-4" />
