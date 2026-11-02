@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { Link, Navigate } from 'react-router-dom'
 import { supabase } from '../remote/client'
 import { useProfile } from '../remote/profile'
@@ -16,6 +17,7 @@ export default function AdminRequestsPage() {
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<RequestStatus | 'todas'>('pendiente')
   const isAdmin = role === 'admin'
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!supabase) return
@@ -37,6 +39,12 @@ export default function AdminRequestsPage() {
     const { error: err } = await supabase!.rpc('decide_store_request', { p_id: id, p_status: status })
     if (err) setError('No pudimos actualizar la solicitud.')
     else setRows((r) => r?.map((x) => (x.id === id ? { ...x, status } : x)) ?? r)
+  }
+  const remove = async (id: string) => {
+    setError(null)
+    const { error: err, count } = await supabase!.from('store_requests').delete({ count: 'exact' }).eq('id', id)
+    if (err || !count) setError('No pudimos eliminar la solicitud.')
+    else setRows((r) => r?.filter((x) => x.id !== id) ?? r)
   }
   const shown = rows?.filter((r) => filter === 'todas' || r.status === filter) ?? []
   return (
@@ -72,6 +80,18 @@ export default function AdminRequestsPage() {
                   <button className={btn.secondary} onClick={() => void decide(r.id, 'rechazada')}>Rechazar</button>
                 </div>
               )}
+              <div className="mt-3 flex justify-end">
+                <button
+                  className="inline-flex items-center gap-1 text-xs font-bold text-red-600 underline-offset-2 hover:underline"
+                  onClick={() => {
+                    if (confirmId === r.id) void remove(r.id)
+                    else setConfirmId(r.id)
+                  }}
+                  onBlur={() => setConfirmId(null)}
+                >
+                  <Trash2 className="size-3.5" /> {confirmId === r.id ? '¿Seguro? Toca otra vez para eliminar' : 'Eliminar solicitud'}
+                </button>
+              </div>
             </li>
           ))}
         </ul>

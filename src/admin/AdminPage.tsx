@@ -241,6 +241,7 @@ const BRAND_COLORS = ['#c0703f', '#3f7d8c', '#8a5a9b', '#b5485d', '#4b7f52', '#a
 function ClaimsAdmin() {
   const claims = useClaims((s) => s.claims)
   const setStatus = useClaims((s) => s.setStatus)
+  const removeClaim = useClaims((s) => s.remove)
   const stores = useCatalog((s) => s.stores)
   const upsertStore = useCatalog((s) => s.upsertStore)
   const assignSpace = useCatalog((s) => s.assignSpace)
@@ -325,6 +326,7 @@ function ClaimsAdmin() {
                 {c.status === 'approved' ? `Aprobada · ${c.storeId}` : 'Rechazada'}
               </span>
             )}
+            <ConfirmButton label={`Eliminar la solicitud ${c.id}`} onConfirm={() => removeClaim(c.id)} />
           </div>
         </Card>
       ))}

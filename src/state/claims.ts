@@ -9,6 +9,8 @@ interface ClaimsState {
   claims: SpaceClaim[]
   submit: (claim: Omit<SpaceClaim, 'id' | 'createdAt' | 'status'>) => SpaceClaim
   setStatus: (id: string, status: SpaceClaim['status'], storeId?: string) => void
+  /** El administrador elimina una solicitud del mapa. */
+  remove: (id: string) => void
   reset: () => void
 }
 
@@ -28,6 +30,7 @@ export const useClaims = create<ClaimsState>()(
       },
       setStatus: (id, status, storeId) =>
         set((s) => ({ claims: s.claims.map((c) => (c.id === id ? { ...c, status, storeId: storeId ?? c.storeId } : c)) })),
+      remove: (id) => set((s) => ({ claims: s.claims.filter((c) => c.id !== id) })),
       reset: () => set({ claims: [] }),
     }),
     { name: 'cm:claims:v1', storage: safeStorage },

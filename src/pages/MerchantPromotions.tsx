@@ -8,6 +8,7 @@ import { formatCOP, formatDateTime } from '../lib/format'
 import { discounted, isPromotionLive } from '../lib/pricing'
 import { useNow } from '../lib/useNow'
 import { MAX_DISCOUNT, MIN_DISCOUNT, PROMO_TYPE_NAME, buildPromotion, validatePromotion } from '../promotions/build'
+import { catalogWords } from '../lib/restaurant'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useUI } from '../state/ui'
 import { MAX_LOYALTY_STAMPS, MIN_LOYALTY_STAMPS, loyaltyOf } from '../state/passport'
@@ -379,7 +380,7 @@ function PromotionForm({ store, onDone, initialType }: { store: Store; onDone: (
   if (!mine.length)
     return (
       <div className="rounded-3xl border border-dashed border-line bg-card p-4 text-sm text-ink-soft">
-        Primero agrega un artículo visible en la pestaña Artículos: la promoción se aplica sobre uno de tus productos.
+        Primero agrega un {catalogWords(store).one} visible en la pestaña {catalogWords(store).tab}: la promoción se aplica sobre uno de ellos.
         <button className={`${btn.ghost} ml-1`} onClick={onDone}>
           Cerrar
         </button>

@@ -178,7 +178,7 @@ function StorePicker({ stores, preselect, onPick }: { stores: Store[]; preselect
     <div className="mx-auto max-w-3xl px-4 pt-4 pb-28 md:pb-10">
       <DemoNotice />
       <h1 className="mt-5 text-2xl font-extrabold tracking-tight">Mi negocio</h1>
-      <p className="mt-1 text-sm text-ink-soft">Elige tu tienda para subir tu logo, cargar tus artículos y atender tus pedidos.</p>
+      <p className="mt-1 text-sm text-ink-soft">Elige tu tienda para subir tu logo, cargar tu menú, catálogo o servicios y atender tus pedidos.</p>
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
         {stores.map((s) => {
           const sp = SPACE_BY_ID[spaceByStore[s.id]]
@@ -457,8 +457,12 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
         </button>
       </div>
       {!mine.length && (
-        <EmptyState icon={<Package className="size-6" />} title={food ? 'Aún no tienes platos en tu menú' : 'Aún no tienes artículos'}>
-          {food ? 'Agrega tu primer plato con foto y precio. Aparecerá en el menú de tu ficha y en Comprar.' : 'Agrega tu primer producto con foto, precio e inventario. Aparecerá en tu ficha y en Comprar.'}
+        <EmptyState icon={<Package className="size-6" />} title={`Aún no tienes ${words.plural} en tu ${words.title.toLowerCase()}`}>
+          {food
+            ? 'Agrega tu primer plato con foto y precio. Aparecerá en el menú de tu ficha y en Comprar.'
+            : store.businessType === 'service'
+              ? 'Agrega tu primer servicio con foto y precio. Aparecerá en el catálogo de servicios de tu ficha y en Comprar.'
+              : 'Agrega tu primer producto con foto, precio e inventario. Aparecerá en el catálogo de tu ficha y en Comprar.'}
         </EmptyState>
       )}
       <ul className="space-y-2">

@@ -16,7 +16,7 @@ import { addToCart } from '../state/actions'
 import { isDemoPromotion } from '../promotions/demo'
 import { ProductCard } from '../ui/ProductCard'
 import { RestaurantMenu } from './RestaurantMenu'
-import { isRestaurant, whatsappLink } from '../lib/restaurant'
+import { catalogWords, isRestaurant, whatsappLink } from '../lib/restaurant'
 import { remoteEnabled } from '../remote/client'
 import { Sheet } from '../ui/Sheet'
 import { loyaltyOf, usePassport } from '../state/passport'
@@ -172,7 +172,7 @@ function StoreBody({ store }: { store: Store }) {
         <RestaurantMenu store={store} products={mine} />
       ) : (
       <section>
-        <SectionTitle aside={<span className="text-xs text-ink-soft">{shown.length} productos</span>}>{store.zoneId === 'E' ? 'Menú' : 'Catálogo'}</SectionTitle>
+        <SectionTitle aside={<span className="text-xs text-ink-soft">{shown.length} {catalogWords(store).plural}</span>}>{catalogWords(store).title}</SectionTitle>
         {categories.length > 1 && (
           <div className="scrollbar-none -mx-5 mb-3 flex gap-2 overflow-x-auto px-5">
             <Chip active={!cat} onClick={() => setCat(null)}>Todo</Chip>

@@ -228,8 +228,13 @@ function pushClaims(prev: SpaceClaim[], next: SpaceClaim[]) {
   const before = new Map(prev.map((c) => [c.id, c]))
   const created = next.filter((c) => !before.has(c.id))
   const updated = next.filter((c) => before.has(c.id) && before.get(c.id) !== c)
-  if (!created.length && !updated.length) return
+  const removed = prev.filter((c) => !next.some((n) => n.id === c.id))
+  if (!created.length && !updated.length && !removed.length) return
   enqueue(async () => {
+    if (removed.length) {
+      const { error } = await db.from('space_claims').delete().in('id', removed.map((c) => c.id))
+      if (error) throw error
+    }
     for (const c of created) {
       const { error } = await db.from('space_claims').insert({ id: c.id, status: 'pending', doc: c })
       if (error) throw error

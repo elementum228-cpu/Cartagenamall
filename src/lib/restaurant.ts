@@ -8,11 +8,11 @@ export const isFoodCategory = (id: string) => FOOD.has(id)
 export const isRestaurant = (store: Pick<Store, 'categoryId' | 'zoneId'> & { businessType?: Store['businessType'] }) =>
   store.businessType ? store.businessType === 'restaurant' : FOOD.has(store.categoryId) || store.zoneId === 'E'
 
-/** Palabras del catálogo según el negocio: menú de platos, servicios o artículos. */
+/** Palabras del catálogo según el tipo de negocio: restaurante → Menú; tienda → Catálogo; servicios → Catálogo de servicios. */
 export function catalogWords(store: Pick<Store, 'categoryId' | 'zoneId'> & { businessType?: Store['businessType'] }) {
-  if (isRestaurant(store)) return { tab: 'Menú', plural: 'platos', one: 'plato', add: 'Nuevo plato' }
-  if (store.businessType === 'service') return { tab: 'Servicios', plural: 'servicios', one: 'servicio', add: 'Nuevo servicio' }
-  return { tab: 'Artículos', plural: 'artículos', one: 'artículo', add: 'Nuevo artículo' }
+  if (isRestaurant(store)) return { tab: 'Menú', title: 'Menú', plural: 'platos', one: 'plato', add: 'Nuevo plato' }
+  if (store.businessType === 'service') return { tab: 'Servicios', title: 'Catálogo de servicios', plural: 'servicios', one: 'servicio', add: 'Nuevo servicio' }
+  return { tab: 'Catálogo', title: 'Catálogo', plural: 'productos', one: 'producto', add: 'Nuevo producto' }
 }
 
 /** Número de WhatsApp para wa.me (solo dígitos; un celular colombiano de 10 dígitos recibe el 57). */

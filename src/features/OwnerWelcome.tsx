@@ -27,8 +27,8 @@ export const useWelcome = create<{ forced: number; reopen: () => void }>()((set)
 
 const KINDS: { id: Kind; name: string; hint: string; icon: typeof StoreIcon }[] = [
   { id: 'restaurant', name: 'Restaurante', hint: 'Vendes comida y bebidas. Armas tu menú de platos.', icon: UtensilsCrossed },
-  { id: 'shop', name: 'Tienda', hint: 'Vendes productos: ropa, tecnología, hogar, belleza…', icon: ShoppingBag },
-  { id: 'service', name: 'Servicios', hint: 'Ofreces un servicio: barbería, reparaciones, clases…', icon: Scissors },
+  { id: 'shop', name: 'Tienda', hint: 'Vendes productos. Armas tu catálogo: ropa, tecnología, hogar, belleza…', icon: ShoppingBag },
+  { id: 'service', name: 'Servicios', hint: 'Ofreces un servicio. Armas tu catálogo de servicios: barbería, reparaciones, clases…', icon: Scissors },
 ]
 
 const PLAN: Record<Kind, { title: string; steps: string[]; cta: string }> = {
@@ -39,12 +39,12 @@ const PLAN: Record<Kind, { title: string; steps: string[]; cta: string }> = {
   },
   shop: {
     title: 'Vamos a armar tu tienda',
-    steps: ['Sube tu logo y revisa tus datos', 'Sube tus primeros artículos con foto, precio e inventario', 'Abre tu local para recibir pedidos en tu WhatsApp'],
-    cta: 'Subir mi primer artículo',
+    steps: ['Sube tu logo y revisa tus datos', 'Arma tu catálogo: tus primeros productos con foto, precio e inventario', 'Abre tu local para recibir pedidos en tu WhatsApp'],
+    cta: 'Subir mi primer producto',
   },
   service: {
     title: 'Vamos a armar tu negocio de servicios',
-    steps: ['Sube tu logo y revisa tus datos', 'Agrega tus servicios con su precio', 'Abre tu local para recibir solicitudes en tu WhatsApp'],
+    steps: ['Sube tu logo y revisa tus datos', 'Arma tu catálogo de servicios con su precio', 'Abre tu local para recibir solicitudes en tu WhatsApp'],
     cta: 'Agregar mi primer servicio',
   },
 }
