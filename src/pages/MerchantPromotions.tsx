@@ -1,4 +1,4 @@
-import { Clock, Gem, Heart, MapPin, Package, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
+import { Clock, Gem, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPACE_BY_ID } from '../config/mall'
@@ -75,28 +75,6 @@ const CATALOG: { mode: Mode; goal: Goal; name: string; tag: string; help: string
   },
 ]
 
-function useComboNotify() {
-  const key = 'cm:combo-notify'
-  const [on, setOn] = useState(() => {
-    try {
-      return localStorage.getItem(key) === '1'
-    } catch {
-      return false
-    }
-  })
-  return [
-    on,
-    () => {
-      setOn(true)
-      try {
-        localStorage.setItem(key, '1')
-      } catch {
-        /* sin almacenamiento: queda solo en esta sesión */
-      }
-    },
-  ] as const
-}
-
 export function MerchantPromotions({ store }: { store: Store }) {
   const promotions = useCatalog((s) => s.promotions)
   const mine = useMemo(() => promotions.filter((p) => p.storeId === store.id && !isShipPromotion(p)), [promotions, store.id])
@@ -104,8 +82,6 @@ export function MerchantPromotions({ store }: { store: Store }) {
   const [goal, setGoal] = useState<Goal | 'all'>('sell')
   const [open, setOpen] = useState<Mode | null>(null)
   const [how, setHow] = useState<Mode | null>(null)
-  const [notified, notify] = useComboNotify()
-  const toast = useUI((s) => s.toast)
   const now = useNow()
   const liveOf = (t: PromotionType) => mine.filter((p) => p.type === t && isPromotionLive(p, now)).length
   const isOn = (m: Mode) => (m === 'ship' ? shipOn : m === 'loyalty' ? loyaltyOf(store).active : liveOf(m) > 0)
@@ -186,25 +162,6 @@ export function MerchantPromotions({ store }: { store: Store }) {
       {open === 'ship' && <MerchantShipEditor key={`b${store.id}`} store={store} />}
       {open === 'loyalty' && <LoyaltyEditor key={store.id} store={store} />}
       {open && open !== 'ship' && open !== 'loyalty' && <PromotionForm key={open} store={store} initialType={open} onDone={() => setOpen(null)} />}
-
-      <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-line bg-card/70 px-4 py-3">
-        <Package className="size-5 shrink-0 text-ink-soft" />
-        <span className="text-xs font-bold text-ink-soft">Próximamente</span>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold">Combo</p>
-          <p className="text-xs text-ink-soft">Varios productos juntos a un precio especial.</p>
-        </div>
-        <button
-          className="text-sm font-bold text-brand underline underline-offset-2 disabled:no-underline disabled:opacity-60"
-          disabled={notified}
-          onClick={() => {
-            notify()
-            toast('¡Anotado! Te avisaremos cuando los combos estén listos.', 'success')
-          }}
-        >
-          {notified ? 'Te avisaremos' : 'Avísame'}
-        </button>
-      </div>
 
       {mine.length > 0 && (
         <div className="space-y-2">
