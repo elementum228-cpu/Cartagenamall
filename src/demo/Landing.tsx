@@ -35,7 +35,7 @@ const STEPS: Step[] = [
   { img: gema, kicker: 'Descubrir', title: 'Ofertas escondidas por el mall', body: 'Cada negocio puede esconder una oferta donde quiera. Aparece como un destello que solo se revela al acercarse: explorar tiene premio.' },
   { img: tesoro, kicker: 'Jugar', title: 'Búsqueda del tesoro semanal', body: 'Tres pistas encadenadas que cambian cada lunes. Una razón para volver cada semana.' },
   { img: pasaporte, kicker: 'Fidelizar', title: 'El pasaporte del mall', body: 'Sellos por recorrer cada pasillo y tarjetas de sellos por tienda: comprar varias veces en tu local favorito tiene recompensa.' },
-  { img: comprar, kicker: 'Comprar', title: 'Un solo carrito para todo el mall', body: 'Productos de distintas tiendas en un mismo pedido, con búsqueda, filtros y comparador.' },
+  { img: comprar, kicker: 'Comprar', title: 'Un solo carrito para todo el mall', body: 'Productos de distintas tiendas en un mismo pedido, con búsqueda y filtros.' },
   { img: comerciante, kicker: 'Para los negocios', title: 'Cada emprendedor maneja su local', body: 'Desde su panel sube logo y productos, lanza ofertas relámpago y elige en el plano dónde esconder sus ofertas.' },
 ]
 

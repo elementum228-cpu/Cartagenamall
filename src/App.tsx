@@ -29,6 +29,7 @@ function AirportLayers() {
 }
 import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
+import { FEATURES } from './config/features'
 import { ComparePage } from './pages/ComparePage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { LoginPage } from './pages/LoginPage'
@@ -128,7 +129,7 @@ function Shell() {
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/pedidos" element={<OrdersPage />} />
               <Route path="/pedidos/:id" element={<OrderDetailPage />} />
-              <Route path="/comparar" element={<ComparePage />} />
+              <Route path="/comparar" element={FEATURES.compare ? <ComparePage /> : <Navigate to="/comprar" replace />} />
               <Route path="/favoritos" element={<FavoritesPage />} />
               <Route path="/ofertas" element={<OffersPage />} />
               <Route path="/pasaporte" element={<PassportPage />} />
@@ -154,7 +155,7 @@ function Shell() {
       <TopBar />
       <OrderWatcher />
       <PromotionEventDriver exploring={exploring} />
-      <CompareTray />
+      {FEATURES.compare && <CompareTray />}
       <BottomNav />
       <StoreSheet />
       <SpaceSheet />
@@ -253,7 +254,7 @@ function TopBar() {
         <Link to="/favoritos" className={`${iconBtn} max-md:hidden`} aria-label="Favoritos">
           <Heart className="size-[21px]" strokeWidth={1.8} />
         </Link>
-        {compare > 0 && (
+        {FEATURES.compare && compare > 0 && (
           <Link to="/comparar" className={`${iconBtn} max-md:hidden`} aria-label={`Comparador, ${compare} productos`}>
             <Scale className="size-[21px]" strokeWidth={1.8} />
             <Badge n={compare} />

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product } from '../domain/types'
 import { stockFor, totalStock } from '../lib/inventory'
+import { FEATURES } from '../config/features'
 import { addToCart, toggleCompare } from '../state/actions'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { usePersonal } from '../state/personal'
@@ -177,9 +178,11 @@ function Body({ product }: { product: Product }) {
           <button className={`${btn.secondary} flex-1`} onClick={() => toggleFav(product.id)} aria-pressed={fav}>
             <Heart className={`size-4 ${fav ? 'text-coral' : ''}`} fill={fav ? 'currentColor' : 'none'} /> {fav ? 'Guardado' : 'Favorito'}
           </button>
-          <button className={`${btn.secondary} flex-1`} onClick={() => toggleCompare(product.id)} aria-pressed={comparing}>
-            <Scale className="size-4" /> {comparing ? 'En comparador' : 'Comparar'}
-          </button>
+          {FEATURES.compare && (
+            <button className={`${btn.secondary} flex-1`} onClick={() => toggleCompare(product.id)} aria-pressed={comparing}>
+              <Scale className="size-4" /> {comparing ? 'En comparador' : 'Comparar'}
+            </button>
+          )}
         </div>
 
         {similar.length > 0 && (

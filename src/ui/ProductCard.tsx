@@ -1,6 +1,7 @@
 import { Heart, Plus, Scale } from 'lucide-react'
 import type { Product, Store } from '../domain/types'
 import { needsOptions, totalStock } from '../lib/inventory'
+import { FEATURES } from '../config/features'
 import { addToCart, toggleCompare } from '../state/actions'
 import { usePersonal } from '../state/personal'
 import { usePricing } from '../state/pricing'
@@ -35,7 +36,7 @@ export function ProductCard({ product, store, compact = false }: { product: Prod
         >
           <Heart className="size-4" fill={fav ? 'currentColor' : 'none'} />
         </button>
-        {!compact && (
+        {FEATURES.compare && !compact && (
           <button
             onClick={() => toggleCompare(product.id)}
             className={`grid size-8 place-items-center rounded-full shadow-soft backdrop-blur transition active:scale-90 ${comparing ? 'bg-ink text-white' : 'bg-white/90 text-ink-soft'}`}
