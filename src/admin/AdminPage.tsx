@@ -347,6 +347,8 @@ function StoresAdmin() {
 function StoreRow({ store, onEdit }: { store: Store; onEdit: () => void }) {
   const { spaceByStore } = useCatalogMaps()
   const count = useCatalog((s) => s.products.filter((p) => p.storeId === store.id).length)
+  const remove = useCatalog((s) => s.deleteStore)
+  const toast = useUI((s) => s.toast)
   const space = SPACE_BY_ID[spaceByStore[store.id]]
   return (
     <Card className="flex flex-wrap items-center gap-3">
@@ -362,6 +364,13 @@ function StoreRow({ store, onEdit }: { store: Store; onEdit: () => void }) {
       <button className={btn.secondary} onClick={onEdit}>
         Editar
       </button>
+      <ConfirmButton
+        label={`Eliminar la tienda ${store.name} con sus ${count} productos y promociones`}
+        onConfirm={() => {
+          remove(store.id)
+          toast(`Tienda «${store.name}» eliminada, con sus productos y promociones.`, 'success')
+        }}
+      />
     </Card>
   )
 }

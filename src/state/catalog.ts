@@ -13,6 +13,8 @@ interface CatalogState {
   /** spaceId → storeId */
   assignments: Record<string, string>
   upsertStore: (store: Store) => void
+  /** Elimina la tienda con sus productos, promociones y el espacio que ocupaba. */
+  deleteStore: (storeId: string) => void
   upsertProduct: (product: Product) => void
   deleteProduct: (productId: string) => void
   upsertPromotion: (promo: Promotion) => void
@@ -62,6 +64,13 @@ export const useCatalog = create<CatalogState>()(
     (set) => ({
       ...seed(),
       upsertStore: (store) => set((s) => ({ stores: upsert(s.stores, store) })),
+      deleteStore: (id) =>
+        set((s) => ({
+          stores: s.stores.filter((x) => x.id !== id),
+          products: s.products.filter((p) => p.storeId !== id),
+          promotions: s.promotions.filter((p) => p.storeId !== id),
+          assignments: Object.fromEntries(Object.entries(s.assignments).filter(([, st]) => st !== id)),
+        })),
       upsertProduct: (product) => set((s) => ({ products: upsert(s.products, product) })),
       deleteProduct: (id) =>
         set((s) => ({ products: s.products.filter((p) => p.id !== id), promotions: s.promotions.filter((p) => p.productId !== id) })),
