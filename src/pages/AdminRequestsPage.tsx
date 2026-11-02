@@ -34,7 +34,7 @@ export default function AdminRequestsPage() {
 
   const decide = async (id: string, status: RequestStatus) => {
     setError(null)
-    const { error: err } = await supabase!.from('store_requests').update({ status }).eq('id', id)
+    const { error: err } = await supabase!.rpc('decide_store_request', { p_id: id, p_status: status })
     if (err) setError('No pudimos actualizar la solicitud.')
     else setRows((r) => r?.map((x) => (x.id === id ? { ...x, status } : x)) ?? r)
   }

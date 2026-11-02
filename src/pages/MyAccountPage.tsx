@@ -52,7 +52,14 @@ export function MyAccountPage() {
               </p>
               <p className="mt-2 text-sm">{current.description}</p>
               {current.status === 'pendiente' && <p className="mt-2 text-xs text-ink-soft">Estamos revisando tu solicitud. Te avisaremos aquí mismo.</p>}
-              {current.status === 'aprobada' && <p className="mt-2 text-xs font-semibold text-emerald-700">¡Tu local fue aprobado! Pronto nos pondremos en contacto.</p>}
+              {current.status === 'aprobada' && (
+                <>
+                  <p className="mt-2 text-xs font-semibold text-emerald-700">¡Tu local fue aprobado!</p>
+                  <Link to="/mi-negocio" className={`${btn.primary} mt-3 w-full`}>
+                    Gestionar mi local
+                  </Link>
+                </>
+              )}
               {current.status === 'rechazada' && <p className="mt-2 text-xs text-ink-soft">No pudimos aprobar esta solicitud. Puedes enviar una nueva.</p>}
             </div>
           ) : null}
