@@ -531,7 +531,8 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
     </>
   )
 
-  if (desktop) return buttons
+  // escritorio y móvil: un solo botón de opciones que despliega el menú (el mapa queda limpio)
+  void desktop
   return (
     <div className="relative">
       {open && (
