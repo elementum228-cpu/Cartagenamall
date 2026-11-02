@@ -1,4 +1,4 @@
-import { Gem, MapPin, Pause, Play, Plus, RotateCcw, Stamp, Tag, Trash2, X, Zap } from 'lucide-react'
+import { Gem, MapPin, Package, Pause, Play, RotateCcw, Ship, Stamp, Tag, Trash2, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPACE_BY_ID } from '../config/mall'
@@ -11,11 +11,11 @@ import { MAX_DISCOUNT, MIN_DISCOUNT, PROMO_TYPE_NAME, buildPromotion, validatePr
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useUI } from '../state/ui'
 import { MAX_LOYALTY_STAMPS, MIN_LOYALTY_STAMPS, loyaltyOf } from '../state/passport'
-import { Countdown, EmptyState, btn, input } from '../ui/bits'
+import { Countdown, btn, input } from '../ui/bits'
 import { describeHideSpot } from '../promotions/hideSpot'
 import { HideSpotPicker } from './HideSpotPicker'
 import { MerchantShipEditor } from '../ship/MerchantShipEditor'
-import { isShipPromotion } from '../ship/offers'
+import { isShipPromotion, useDiscountShip } from '../ship/offers'
 
 // Promociones del comerciante: las crea, pausa, relanza y borra para su propia tienda. Una oferta
 // relámpago nueva se presenta en el mall (local iluminado, cartel grande y visitantes que acuden).
@@ -38,39 +38,84 @@ const TYPE_HELP: Record<PromotionType, string> = {
 
 const TYPE_ICON = { flash: Zap, normal: Tag, secret: Gem } as const
 
+type Mode = PromotionType | 'ship' | 'loyalty'
+
+const CATALOG: { mode: Mode; name: string; help: string; icon: typeof Zap }[] = [
+  { mode: 'flash', name: 'Oferta relámpago', help: 'Descuento con contador. Al lanzarla, tu local se ilumina en el mall y los visitantes se acercan.', icon: Zap },
+  { mode: 'normal', name: 'Descuento en un producto', help: 'Un precio rebajado en uno de tus artículos, sin vencimiento hasta que lo pauses.', icon: Tag },
+  { mode: 'secret', name: 'Promoción escondida', help: 'La escondes en el mall y se revela solo a quien la encuentre. Ideal para premiar a los curiosos.', icon: Gem },
+  { mode: 'ship', name: 'Barco de los descuentos', help: 'Sube un descuento especial al barco que llega al muelle y avisa a todos los visitantes.', icon: Ship },
+  { mode: 'loyalty', name: 'Tarjeta de sellos', help: 'Cada compra da un sello en el pasaporte del cliente; al llenarla canjea tu premio.', icon: Stamp },
+]
+
 export function MerchantPromotions({ store }: { store: Store }) {
   const promotions = useCatalog((s) => s.promotions)
   const mine = useMemo(() => promotions.filter((p) => p.storeId === store.id && !isShipPromotion(p)), [promotions, store.id])
-  const [creating, setCreating] = useState(false)
+  const shipOn = useDiscountShip((s) => s.offers.some((o) => o.storeId === store.id && !o.demo))
+  const [open, setOpen] = useState<Mode | null>(null)
   const now = useNow()
+  const liveOf = (t: PromotionType) => mine.filter((p) => p.type === t && isPromotionLive(p, now)).length
+  const isOn = (m: Mode) => (m === 'ship' ? shipOn : m === 'loyalty' ? loyaltyOf(store).active : liveOf(m) > 0)
 
   return (
-    <div className="space-y-3">
-      <MerchantShipEditor key={`b${store.id}`} store={store} />
-      <LoyaltyEditor key={store.id} store={store} />
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-ink-soft">
-          {mine.filter((p) => isPromotionLive(p, now)).length} activas · {mine.length} en total
-        </p>
-        {!creating && (
-          <button className={btn.primary} onClick={() => setCreating(true)}>
-            <Plus className="size-4" /> Nueva promoción
-          </button>
-        )}
+    <div className="space-y-4">
+      <div>
+        <p className="text-lg font-extrabold">Promociones</p>
+        <p className="text-sm text-ink-soft">Elige qué tipo de promoción quieres lanzar. Todas empiezan apagadas.</p>
       </div>
-      {creating && <PromotionForm store={store} onDone={() => setCreating(false)} />}
-      {!mine.length && !creating && (
-        <EmptyState icon={<Zap className="size-6" />} title="Aún no tienes promociones">
-          Lanza una oferta relámpago: tu local se ilumina en el mall y los visitantes se acercan a tu vitrina.
-        </EmptyState>
-      )}
-      <ul className="space-y-2">
-        {[...mine]
-          .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
-          .map((p) => (
-            <PromotionRow key={p.id} promo={p} store={store} now={now} />
-          ))}
+      <ul className="grid gap-2.5 sm:grid-cols-2">
+        {CATALOG.map((c) => {
+          const on = isOn(c.mode)
+          const Icon = c.icon
+          const selected = open === c.mode
+          return (
+            <li key={c.mode} className={`flex flex-col gap-2 rounded-3xl border bg-card p-4 ${selected ? 'border-brand ring-2 ring-brand/15' : 'border-line'}`}>
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand" aria-hidden>
+                  <Icon className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold">{c.name}</p>
+                  <p className="text-xs leading-snug text-ink-soft">{c.help}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${on ? 'bg-emerald-100 text-emerald-800' : 'bg-ink/[0.07] text-ink-soft'}`}>{on ? 'Activa' : 'Apagada'}</span>
+              </div>
+              <button className={`${on ? btn.secondary : btn.primary} mt-auto w-full`} onClick={() => setOpen(selected ? null : c.mode)}>
+                {selected ? 'Cerrar' : on ? 'Configurar' : 'Configurar y lanzar'}
+              </button>
+            </li>
+          )
+        })}
+        <li className="flex items-start gap-3 rounded-3xl border border-dashed border-line bg-card/60 p-4 opacity-70">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-ink/[0.07] text-ink-soft" aria-hidden>
+            <Package className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold">Combo</p>
+            <p className="text-xs leading-snug text-ink-soft">Varios productos juntos a un precio especial.</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-ink/[0.07] px-2.5 py-0.5 text-[11px] font-bold text-ink-soft">Próximamente</span>
+        </li>
       </ul>
+
+      {open === 'ship' && <MerchantShipEditor key={`b${store.id}`} store={store} />}
+      {open === 'loyalty' && <LoyaltyEditor key={store.id} store={store} />}
+      {open && open !== 'ship' && open !== 'loyalty' && <PromotionForm key={open} store={store} initialType={open} onDone={() => setOpen(null)} />}
+
+      {mine.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm text-ink-soft">
+            {mine.filter((p) => isPromotionLive(p, now)).length} activas · {mine.length} en total
+          </p>
+          <ul className="space-y-2">
+            {[...mine]
+              .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
+              .map((p) => (
+                <PromotionRow key={p.id} promo={p} store={store} now={now} />
+              ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -240,7 +285,7 @@ function PromotionRow({ promo, store, now }: { promo: Promotion; store: Store; n
   )
 }
 
-function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) {
+function PromotionForm({ store, onDone, initialType }: { store: Store; onDone: () => void; initialType?: PromotionType }) {
   const products = useCatalog((s) => s.products)
   const promotions = useCatalog((s) => s.promotions)
   const upsert = useCatalog((s) => s.upsertPromotion)
@@ -248,7 +293,7 @@ function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) 
   const showInMall = useShowInMall(store)
   const { spaceByStore } = useCatalogMaps()
   const mine = useMemo(() => products.filter((p) => p.storeId === store.id && p.active), [products, store.id])
-  const [type, setType] = useState<PromotionType>('flash')
+  const [type, setType] = useState<PromotionType>(initialType ?? 'flash')
   const [productId, setProductId] = useState(mine[0]?.id ?? '')
   const [discount, setDiscount] = useState('20')
   const [minutes, setMinutes] = useState(30)
@@ -283,11 +328,14 @@ function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) 
   return (
     <div className="space-y-4 rounded-3xl border border-line bg-card p-4 ring-2 ring-brand/15">
       <div className="flex items-center justify-between">
-        <p className="text-lg font-extrabold">Nueva promoción</p>
+        <p className="text-lg font-extrabold">{initialType ? PROMO_TYPE_NAME[initialType] : 'Nueva promoción'}</p>
         <button className={btn.ghost} onClick={onDone} aria-label="Cerrar">
           <X className="size-5" />
         </button>
       </div>
+      {initialType ? (
+        <p className="-mt-2 text-xs text-ink-soft">{TYPE_HELP[initialType]}</p>
+      ) : (
       <fieldset>
         <legend className="mb-1 text-xs font-bold text-ink-soft">Tipo</legend>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -308,6 +356,7 @@ function PromotionForm({ store, onDone }: { store: Store; onDone: () => void }) 
           })}
         </div>
       </fieldset>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-bold text-ink-soft">Artículo</span>

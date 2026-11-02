@@ -26,7 +26,7 @@ export const PASSPORT_STAMPS: { id: string; name: string; hint: string; color: s
 export const PASSPORT_PRIZE = 'Bono de $20.000 para usar en la tienda que elijas'
 
 /** Tarjeta de sellos de una tienda: cuántos sellos pide y qué regala. Sin configurar, esta. */
-export const DEFAULT_LOYALTY = { stamps: 5, reward: '10 % de descuento en tu próxima compra', active: true }
+export const DEFAULT_LOYALTY = { stamps: 5, reward: '10 % de descuento en tu próxima compra', active: false }
 export const MIN_LOYALTY_STAMPS = 3
 export const MAX_LOYALTY_STAMPS = 12
 export const loyaltyOf = (store: Pick<Store, 'loyalty'> | undefined) => ({ ...DEFAULT_LOYALTY, ...(store?.loyalty ?? {}) })
