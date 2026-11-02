@@ -276,6 +276,18 @@ function ClaimsAdmin() {
       toast(`${store.name} creada. El espacio pedido ya está ocupado: asígnale otro en Espacios.`)
     }
     setStatus(c.id, 'approved', store.id)
+    // Vincula a quien pidió el local para que lo vea en «Mi negocio» (reintenta mientras la tienda termina de guardarse en línea).
+    if (remoteEnabled() && supabase && c.email) {
+      void (async () => {
+        for (let i = 0; i < 6; i++) {
+          await new Promise((r) => setTimeout(r, 1500))
+          const { data, error } = await supabase!.rpc('add_store_member', { p_store: store.id, p_email: c.email })
+          if (!error && data === 'ok') return toast(`${c.email} ya puede gestionar ${store.name} desde «Mi negocio».`, 'success')
+          if (!error && data === 'no_user') return toast(`${c.email} aún no tiene cuenta: vincúlalo luego en Tiendas → Dueños.`)
+        }
+        toast('No se pudo vincular al dueño automáticamente: hazlo en Tiendas → Dueños.', 'error')
+      })()
+    }
     // Las demás solicitudes del mismo espacio quedan pendientes para que el equipo decida.
   }
 
