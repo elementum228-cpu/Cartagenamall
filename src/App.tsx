@@ -44,6 +44,7 @@ import { remoteEnabled } from './remote/client'
 import { useProfile } from './remote/profile'
 import { useCatalog } from './state/catalog'
 import { useCanAdmin, useSession } from './remote/session'
+import { useIsNight } from './lib/useIsNight'
 import { useCartCount } from './state/cart'
 import { usePersonal } from './state/personal'
 import { useUI } from './state/ui'
@@ -113,6 +114,19 @@ function Shell() {
     }
     useUI.getState().openProduct(null)
   }, [location.pathname, exploring])
+
+  // En el iPhone instalado, el contenedor fijo a veces termina un poco antes del borde de abajo y deja ver el fondo de la
+  // página (una franja blanca). En el mapa el fondo toma el color del mar (día o noche), así esa franja no se nota.
+  const night = useIsNight()
+  useEffect(() => {
+    const color = exploring ? (night ? '#17415c' : '#5ea9a2') : ''
+    document.documentElement.style.backgroundColor = color
+    document.body.style.backgroundColor = color
+    return () => {
+      document.documentElement.style.backgroundColor = ''
+      document.body.style.backgroundColor = ''
+    }
+  }, [exploring, night])
 
   return (
     <div className="fixed inset-0">
