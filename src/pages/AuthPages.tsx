@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
@@ -83,6 +83,7 @@ export function AuthLoginPage() {
         <PasswordField value={password} onChange={setPassword} autoComplete="current-password" />
         {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
         <button className={`${btn.primary} w-full`} disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        <Link to="/recuperar" className="text-center text-sm font-semibold text-brand">¿Olvidaste tu contraseña?</Link>
       </form>
       <p className="mt-4 text-center text-sm text-ink-soft">
         ¿No tienes cuenta?{' '}
@@ -137,6 +138,96 @@ export function RegisterPage() {
       <p className="mt-4 text-center text-sm text-ink-soft">
         ¿Ya tienes cuenta? <Link to={`/login${q}`} className="font-bold text-brand">Inicia sesión</Link>
       </p>
+    </Shell>
+  )
+}
+
+/** /recuperar: pide el correo y envía el enlace para elegir una contraseña nueva. */
+export function ForgotPasswordPage() {
+  const { resetPassword } = useSession()
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!validEmail(email)) return setError('Escribe un correo válido.')
+    setBusy(true)
+    setError(null)
+    const err = await resetPassword(email)
+    setBusy(false)
+    if (err) setError(err)
+    else setSent(true)
+  }
+  return (
+    <Shell title="Recuperar contraseña" fromCheckout={false}>
+      {sent ? (
+        <p className="mt-4 text-sm">
+          Si <b>{email}</b> tiene una cuenta, te enviamos un enlace para crear una contraseña nueva. Revisa también la carpeta de spam.
+        </p>
+      ) : (
+        <form className="mt-4 flex flex-col gap-3" onSubmit={submit} noValidate>
+          <p className="text-sm text-ink-soft">Escribe tu correo y te enviamos un enlace para elegir una contraseña nueva.</p>
+          <label className="block text-xs font-bold text-ink">
+            Correo
+            <input className={`${input} mt-1`} type="email" autoComplete="email" placeholder="tu@correo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
+          <button className={`${btn.primary} w-full`} disabled={busy}>{busy ? 'Enviando…' : 'Enviar enlace'}</button>
+        </form>
+      )}
+      <p className="mt-4 text-center text-sm">
+        <Link to="/login" className="font-bold text-brand">Volver a iniciar sesión</Link>
+      </p>
+    </Shell>
+  )
+}
+
+/** /restablecer: destino del enlace del correo; el enlace inicia una sesión temporal para cambiar la contraseña. */
+export function ResetPasswordPage() {
+  const s = useSession()
+  const navigate = useNavigate()
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const [waited, setWaited] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setWaited(true), 3000)
+    return () => clearTimeout(id)
+  }, [])
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (password.length < 8) return setError('La contraseña debe tener mínimo 8 caracteres.')
+    setBusy(true)
+    setError(null)
+    const err = await s.setPassword(password)
+    setBusy(false)
+    if (err) setError(/same|different/i.test(err) ? 'Elige una contraseña distinta a la anterior.' : 'No pudimos cambiar la contraseña. Pide un enlace nuevo.')
+    else setDone(true)
+  }
+  return (
+    <Shell title="Nueva contraseña" fromCheckout={false}>
+      {done ? (
+        <div className="mt-4 text-sm">
+          <p className="font-semibold">¡Listo! Tu contraseña fue cambiada.</p>
+          <button className={`${btn.primary} mt-3 w-full`} onClick={() => navigate('/mi-cuenta', { replace: true })}>Ir a mi cuenta</button>
+        </div>
+      ) : s.userId ? (
+        <form className="mt-4 flex flex-col gap-3" onSubmit={submit} noValidate>
+          <PasswordField value={password} onChange={setPassword} autoComplete="new-password" />
+          <p className="-mt-1 text-xs text-ink-soft">Mínimo 8 caracteres.</p>
+          {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
+          <button className={`${btn.primary} w-full`} disabled={busy}>{busy ? 'Guardando…' : 'Guardar contraseña'}</button>
+        </form>
+      ) : !s.ready || !waited ? (
+        <p className="mt-4 text-sm text-ink-soft">Verificando enlace…</p>
+      ) : (
+        <div className="mt-4 text-sm">
+          <p>Este enlace no es válido o ya venció.</p>
+          <Link to="/recuperar" className={`${btn.primary} mt-3 w-full`}>Pedir un enlace nuevo</Link>
+        </div>
+      )}
     </Shell>
   )
 }

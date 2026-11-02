@@ -12,6 +12,7 @@ interface SessionState {
   signIn: (email: string) => Promise<string | null>
   signInWithPassword: (email: string, password: string) => Promise<string | null>
   signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirm: boolean }>
+  resetPassword: (email: string) => Promise<string | null>
   setPassword: (password: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
@@ -65,6 +66,13 @@ export const useSession = create<SessionState>()((set, get) => ({
     if (!data.session) return { error: null, needsConfirm: true }
     await get().refresh()
     return { error: null, needsConfirm: false }
+  },
+  resetPassword: async (email) => {
+    if (!supabase) return 'No hay base de datos conectada.'
+    const redirectTo = `${location.origin}${import.meta.env.BASE_URL}restablecer`
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    if (!error) return null
+    return /rate limit|too many|seconds/i.test(error.message) ? 'Espera un minuto antes de pedir otro correo.' : 'No pudimos enviar el correo. Inténtalo de nuevo.'
   },
   setPassword: async (password) => {
     if (!supabase) return 'No hay base de datos conectada.'

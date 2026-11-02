@@ -33,7 +33,7 @@ import { ComparePage } from './pages/ComparePage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { LoginPage } from './pages/LoginPage'
 import { MyAccountPage } from './pages/MyAccountPage'
-import { AuthLoginPage, RegisterPage } from './pages/AuthPages'
+import { AuthLoginPage, ForgotPasswordPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages'
 import { OffersPage } from './pages/OffersPage'
 import { PassportPage } from './pages/PassportPage'
 import { ClueModal, StampToast } from './features/passport/PassportOverlays'
@@ -131,6 +131,8 @@ function Shell() {
               <Route path="/entrar" element={<LoginPage />} />
               <Route path="/login" element={<AuthLoginPage />} />
               <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/recuperar" element={<ForgotPasswordPage />} />
+              <Route path="/restablecer" element={<ResetPasswordPage />} />
               <Route path="/mi-cuenta" element={<MyAccountPage />} />
               <Route
                 path="/mi-negocio"
