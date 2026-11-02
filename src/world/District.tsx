@@ -9,7 +9,8 @@ import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
 import { cameraState } from './cameraState'
 import { Person } from './Harbor'
-import { getGlassPill, getLabel } from './labelTexture'
+import { useCatalog } from '../state/catalog'
+import { getGlassPill, getLabel, getStoreSign } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat, litLabelMat, uplightMat } from './night'
@@ -211,10 +212,11 @@ function useBeachTexture() {
   }, [])
 }
 
-function Planly({ room }: { room: Showroom }) {
+function Planly({ room, logo }: { room: Showroom; logo: string | null }) {
   const [W, D] = room.size
   const H = 3.2
-  const sign = useMemo(() => getLabel('PLANLY', { bg: '#7a4b2a', fg: '#fff6e6', weight: 900 }), [])
+  // con logo subido por el negocio (Mi negocio → Perfil) el cartel lo muestra; si no, el nombre
+  const sign = useMemo(() => (logo ? getStoreSign('Planly', '#7a4b2a', undefined, logo) : getLabel('PLANLY', { bg: '#7a4b2a', fg: '#fff6e6', weight: 900 })), [logo])
   const beach = useBeachTexture()
   const cream = mat('#f6e7d3')
   const coral = mat('#e0735f')
@@ -285,10 +287,10 @@ function Planly({ room }: { room: Showroom }) {
   )
 }
 
-function GrowDesk({ room }: { room: Showroom }) {
+function GrowDesk({ room, logo }: { room: Showroom; logo: string | null }) {
   const [W, D] = room.size
   const H = 3.6
-  const sign = useMemo(() => getLabel('GrowDesk Offices', { bg: '#1b2547', fg: '#ffffff', weight: 800 }), [])
+  const sign = useMemo(() => (logo ? getStoreSign('GrowDesk', '#1b2547', undefined, logo) : getLabel('GrowDesk Offices', { bg: '#1b2547', fg: '#ffffff', weight: 800 })), [logo])
   const navy = mat('#26325c')
   const navyDark = mat('#1b2547')
   const glass = mat('#9fd6ee', { opacity: 0.28, rough: 0.1 })
@@ -346,6 +348,7 @@ function GrowDesk({ room }: { room: Showroom }) {
 /** Vitrina tocable: abre su ficha. Lo estático va en Batch; el grupo recibe el toque. */
 function ShowroomBuilding({ id }: { id: ShowroomId }) {
   const room = SHOWROOMS[id]
+  const logo = useCatalog((s) => s.stores.find((x) => x.id === (id === 'planly' ? 'STORE-PLANLY' : 'STORE-GROWDESK'))?.logo ?? null)
   const selected = useUI((s) => s.showroom === id)
   const ring = useRef<THREE.Mesh>(null)
   const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ color: room.color, transparent: true, opacity: 0, depthWrite: false }), [room.color])
@@ -369,7 +372,7 @@ function ShowroomBuilding({ id }: { id: ShowroomId }) {
       onPointerOut={() => (document.body.style.cursor = '')}
     >
       <mesh ref={ring} geometry={GEO.box} material={ringMat} position={[0, 0.03, 0.4]} scale={[W + 1.4, 0.02, D + 2]} visible={false} />
-      <Batch version={`vitrina-${id}`}>{id === 'planly' ? <Planly room={room} /> : <GrowDesk room={room} />}</Batch>
+      <Batch version={`vitrina-${id}-${logo ? `${logo.length}:${logo.slice(-24)}` : ''}`}>{id === 'planly' ? <Planly room={room} logo={logo} /> : <GrowDesk room={room} logo={logo} />}</Batch>
     </group>
   )
 }
@@ -422,9 +425,11 @@ function Strollers({ reduceMotion }: { reduceMotion: boolean }) {
 export function District({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const zoneLabel = useMemo(() => getGlassPill(DISTRICT_ZONE.name, { dot: DISTRICT_ZONE.color, sub: 'Zona F', dark: night }), [night])
+  const planlyLogo = useCatalog((s) => s.stores.find((x) => x.id === 'STORE-PLANLY')?.logo ?? null)
+  const growdeskLogo = useCatalog((s) => s.stores.find((x) => x.id === 'STORE-GROWDESK')?.logo ?? null)
   const labels = useMemo(
-    () => SHOWROOM_IDS.map((id) => ({ id, label: getGlassPill(SHOWROOMS[id].name, { dot: SHOWROOMS[id].color, sub: SHOWROOMS[id].kind, dark: night }) })),
-    [night],
+    () => SHOWROOM_IDS.map((id) => ({ id, label: getGlassPill(SHOWROOMS[id].name, { dot: SHOWROOMS[id].color, sub: SHOWROOMS[id].kind, logo: id === 'planly' ? planlyLogo : growdeskLogo, dark: night }) })),
+    [night, planlyLogo, growdeskLogo],
   )
   const open = useUI((s) => s.showroom)
   return (

@@ -26,9 +26,13 @@ export function ShowroomSheet() {
         room && (
           <div className="px-5 pt-2 pb-3" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${room.color} 12%, transparent), transparent)` }}>
             <div className="flex items-center gap-3.5 pr-12">
-              <span className="grid size-14 shrink-0 place-items-center rounded-[18px] text-[22px] font-black text-white shadow-soft" style={{ background: `linear-gradient(145deg, ${room.color}, color-mix(in srgb, ${room.color} 65%, #062c42))` }}>
-                {room.name[0]}
-              </span>
+              {store?.logo ? (
+                <img src={store.logo} alt={`Logo de ${room.name}`} className="size-14 shrink-0 rounded-[18px] bg-white object-contain p-1.5 shadow-soft" />
+              ) : (
+                <span className="grid size-14 shrink-0 place-items-center rounded-[18px] text-[22px] font-black text-white shadow-soft" style={{ background: `linear-gradient(145deg, ${room.color}, color-mix(in srgb, ${room.color} 65%, #062c42))` }}>
+                  {room.name[0]}
+                </span>
+              )}
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold text-ink-soft">
                   {room.kind} · Zona Soporte
