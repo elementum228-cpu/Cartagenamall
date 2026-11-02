@@ -12,7 +12,13 @@ export interface AppNotification {
   title: string
   at: string
   read: boolean
+  /** Cuándo se abrió la campanita viendo este aviso (ms). Desaparece SEEN_TTL_MS después. */
+  seenAt?: number
+  subId?: string
 }
+
+/** Un aviso es solo eso: se borra solo 40 s después de que la persona abre la campanita y lo ve. */
+export const SEEN_TTL_MS = 40_000
 
 /** Qué se le dice al cliente en cada estado (los demás estados no generan aviso). */
 export const STATUS_NOTICE: Partial<Record<OrderStatus, string>> = {
@@ -28,7 +34,10 @@ interface State {
   /** Se incrementa con cada aviso nuevo (hace sonar y mover la campana). */
   rung: number
   push: (n: Omit<AppNotification, 'read'>) => boolean
-  markAllRead: () => void
+  /** La persona abrió la campanita: marca los avisos como vistos (empieza su cuenta atrás). */
+  markSeen: () => void
+  /** Quita los avisos vistos hace más de 40 s. */
+  prune: () => void
   clear: () => void
 }
 
@@ -39,10 +48,16 @@ export const useNotifications = create<State>()(
       rung: 0,
       push: (n) => {
         if (get().items.some((x) => x.id === n.id)) return false
-        set((s) => ({ items: [{ ...n, read: false }, ...s.items].slice(0, 40), rung: s.rung + 1 }))
+        // un aviso nuevo de la misma tienda reemplaza al anterior: la barra no se llena de historial
+        set((s) => ({ items: [{ ...n, read: false }, ...s.items.filter((x) => !n.subId || x.subId !== n.subId)].slice(0, 10), rung: s.rung + 1 }))
         return true
       },
-      markAllRead: () => set((s) => ({ items: s.items.map((i) => ({ ...i, read: true })) })),
+      markSeen: () => set((s) => ({ items: s.items.map((i) => ({ ...i, read: true, seenAt: i.seenAt ?? Date.now() })) })),
+      prune: () => {
+        const now = Date.now()
+        const keep = get().items.filter((i) => !i.seenAt || now - i.seenAt < SEEN_TTL_MS)
+        if (keep.length !== get().items.length) set({ items: keep })
+      },
       clear: () => set({ items: [] }),
     }),
     { name: 'cm:notifications:v1', storage: safeStorage, partialize: (s) => ({ items: s.items }) },

@@ -29,7 +29,7 @@ export function OrderWatcher() {
           known.set(sub.id, sub.status)
           const title = STATUS_NOTICE[sub.status]
           if (!prev || prev === sub.status || !title) continue
-          const fresh = useNotifications.getState().push({ id: `${sub.id}:${sub.status}`, orderId: o.id, storeName: sub.storeName, status: sub.status, title, at: new Date().toISOString() })
+          const fresh = useNotifications.getState().push({ id: `${sub.id}:${sub.status}`, subId: sub.id, orderId: o.id, storeName: sub.storeName, status: sub.status, title, at: new Date().toISOString() })
           if (!fresh) continue
           void playTing(sub.status === 'ready')
           navigator.vibrate?.(sub.status === 'ready' ? [60, 50, 60] : 40)
