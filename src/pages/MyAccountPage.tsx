@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { remoteEnabled, supabase } from '../remote/client'
 import { useProfile } from '../remote/profile'
+import { PasswordForm } from '../remote/AccountGate'
 import { useSession } from '../remote/session'
 import { REQUEST_CATEGORIES, STATUS_LABEL, STATUS_STYLE, type StoreRequest } from '../state/storeRequests'
 import { btn, input } from '../ui/bits'
@@ -12,6 +13,7 @@ export function MyAccountPage() {
   const role = useProfile((p) => p.role)
   const [reqs, setReqs] = useState<StoreRequest[] | null>(null)
   const [open, setOpen] = useState(false)
+  const [pwd, setPwd] = useState(false)
 
   const load = useCallback(async () => {
     if (!supabase || !s.userId) return
@@ -78,6 +80,20 @@ export function MyAccountPage() {
               onCancel={() => setOpen(false)}
             />
           )}
+          {s.isAdmin && (
+            <Link to="/admin" className={btn.secondary}>
+              Administración
+            </Link>
+          )}
+          {s.storeIds.length > 0 && (
+            <Link to="/mi-negocio" className={btn.secondary}>
+              Mi negocio
+            </Link>
+          )}
+          <button className={btn.ghost} onClick={() => setPwd(!pwd)}>
+            Cambiar contraseña
+          </button>
+          {pwd && <PasswordForm onDone={() => setPwd(false)} />}
           <button className={btn.ghost} onClick={() => void s.signOut()}>
             Cerrar sesión
           </button>

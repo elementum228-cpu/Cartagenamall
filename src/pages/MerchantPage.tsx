@@ -9,7 +9,7 @@ import { stockKey, totalStock } from '../lib/inventory'
 import { ORDER_STATUS_LABEL } from '../services/orders'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
-import { AccountBar, AccountGate } from '../remote/AccountGate'
+import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useMerchant } from '../state/merchant'
@@ -108,7 +108,7 @@ function MerchantContent() {
 }
 
 function DemoNotice() {
-  if (remoteEnabled()) return <AccountBar />
+  if (remoteEnabled()) return null
   return (
     <p className="flex items-start gap-2 rounded-2xl bg-amber-100 px-3.5 py-2.5 text-xs font-semibold text-amber-900">
       <Info className="mt-0.5 size-4 shrink-0" />

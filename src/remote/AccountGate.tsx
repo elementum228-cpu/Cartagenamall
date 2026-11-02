@@ -112,7 +112,7 @@ export function SignInForm() {
 }
 
 /** Crear o cambiar la contraseña de la cuenta con la que se entró. */
-function PasswordForm({ onDone }: { onDone: () => void }) {
+export function PasswordForm({ onDone }: { onDone: () => void }) {
   const setPassword = useSession((s) => s.setPassword)
   const toast = useUI((s) => s.toast)
   const [pw, setPw] = useState('')
@@ -132,8 +132,8 @@ function PasswordForm({ onDone }: { onDone: () => void }) {
         }
       }}
     >
-      <input className={input} type="password" autoComplete="new-password" placeholder="Nueva contraseña (mínimo 6)" value={pw} onChange={(e) => setPw(e.target.value)} />
-      <button className={btn.primary} disabled={pw.length < 6 || busy}>
+      <input className={input} type="password" autoComplete="new-password" placeholder="Nueva contraseña (mínimo 8)" value={pw} onChange={(e) => setPw(e.target.value)} />
+      <button className={btn.primary} disabled={pw.length < 8 || busy}>
         {busy ? 'Guardando…' : 'Guardar'}
       </button>
     </form>
