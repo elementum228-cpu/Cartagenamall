@@ -34,7 +34,7 @@ const TOWERS = OUTLINE.map((p, i) => {
   return r >= rp && r >= rn && !GATE_IDX.has(i) ? i : -1
 }).filter((i) => i >= 0)
 
-const WH = 2.6
+const WH = 1.7
 const Y = 0.12
 const SEA = -0.5
 /** Cara exterior de la muralla oeste: donde arranca el puente (junto a la garita, frente a Planly). */
