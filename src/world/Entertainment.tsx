@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
-import { CORDON, STONE, STONE_DARK, WallLantern } from './Fortress'
+import { CORDON, Garita, STONE, STONE_DARK, WallLantern } from './Fortress'
 import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
@@ -16,22 +16,33 @@ import { Person } from './Person'
 // y blancos; alrededor, locales con toldos a rayas para videojuegos, realidad virtual, esports y
 // comida rápida. Por ahora es solo la escena: los locales todavía no se alquilan.
 
-/** Centro y radio de la isla (mundo). */
-export const ENTERTAINMENT = { x: -70, z: -4, r: 21 } as const
+/** Centro de la isla (mundo): en el mar libre al oeste del baluarte suroeste, con un puente corto. */
+export const ENTERTAINMENT = { x: -58, z: 4, r: 18 } as const
 const C = ENTERTAINMENT
 const Y = 0.12
 const SEA = -0.5
+const WH = 2.6
 /** Cara exterior de la muralla oeste: donde arranca el puente. */
 const WALL_X = -(31 + 1.1)
-const BRIDGE_W = 3.6
-const BRIDGE_END = C.x + C.r - 0.8
+const BRIDGE_W = 3.2
+/**
+ * Contorno del castillo-isla (relativo al centro, sentido horario): baluartes que salen al mar y
+ * entrantes, como una fortaleza que sigue la costa. La puerta queda en el lado este (hacia el puente).
+ */
+const OUTLINE: [number, number][] = [
+  [14, -3], [13, -9], [17, -12], [8, -13.5], [3, -17], [-5, -13], [-12, -15.5], [-14.5, -7], [-18, -2],
+  [-14.5, 5], [-15, 11], [-9, 12.5], [-5, 17], [3, 12.5], [9, 14], [13, 9.5], [14, 3],
+]
+/** Vértices con garita (los salientes). */
+const TOWERS = [2, 4, 6, 8, 12, 14]
+const GATE_X = 14
 const IRON = '#2f3438'
 const ASPHALT = '#3d4147'
 const RED = '#d9453d'
 const CREAM = '#fbf3e4'
 
 // ── pista: un óvalo (dos rectas y dos curvas) ─────────────────────────────────────────────────────
-const TRACK = { a: 5.2, r: 5.4, w: 3.2 }
+const TRACK = { a: 2.8, r: 3.4, w: 2.3 }
 const LAP = 4 * TRACK.a + 2 * Math.PI * TRACK.r
 
 /** Contorno del óvalo a `off` del eje de la pista (local a la isla). u en [0,1). */
@@ -96,7 +107,7 @@ function Track() {
   }, [])
   const curbs = useMemo(() => {
     const out: { x: number; z: number; rot: number; red: boolean }[] = []
-    const n = 64
+    const n = 48
     for (const off of [-TRACK.w / 2 - 0.12, TRACK.w / 2 + 0.12]) {
       for (let i = 0; i < n; i++) {
         const p = trackPoint(i / n, off)
@@ -112,7 +123,7 @@ function Track() {
       {/* interior con césped, palmeras y el mural del circuito */}
       <mesh geometry={geos.infield} material={mat(PALETTE.grass)} position={[0, Y, 0]} receiveShadow />
       {curbs.map((c, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(c.red ? RED : '#f7f2e8')} position={[c.x, Y + 0.06, c.z]} rotation={[0, c.rot, 0]} scale={[0.26, 0.12, (LAP / 64) * 0.52]} />
+        <mesh key={i} geometry={GEO.box} material={mat(c.red ? RED : '#f7f2e8')} position={[c.x, Y + 0.06, c.z]} rotation={[0, c.rot, 0]} scale={[0.26, 0.12, (LAP / 48) * 0.55]} />
       ))}
       {/* línea de salida/meta a cuadros */}
       <group position={[start.x, Y + 0.075, start.z]} rotation={[0, start.rot, 0]}>
@@ -218,97 +229,96 @@ function Palm({ x, z, h = 3.4, y = Y, seed = 0 }: { x: number; z: number; h?: nu
   )
 }
 
-// ── locales ───────────────────────────────────────────────────────────────────────────────────────
-const STALLS: { name: string; sub: string; color: string; awning: string }[] = [
-  { name: 'ARCADE', sub: 'Máquinas y premios', color: '#ffe3a3', awning: '#d9453d' },
-  { name: 'VIDEOJUEGOS', sub: 'Consolas y torneos', color: '#cfe3ff', awning: '#2f6fd1' },
-  { name: 'REALIDAD VIRTUAL', sub: 'Mundos en 3D', color: '#e6d4ff', awning: '#7a4fd1' },
-  { name: 'ESPORTS', sub: 'Gaming en vivo', color: '#c9f0e4', awning: '#1b9e84' },
-  { name: 'HELADOS', sub: 'Y granizados', color: '#ffd6e2', awning: '#e0558a' },
-  { name: 'COMIDA RÁPIDA', sub: 'Para recargar', color: '#ffe0bd', awning: '#e07a2f' },
-  { name: 'SIMULADORES', sub: 'Carreras y vuelo', color: '#dfe6ee', awning: '#d9453d' },
-  { name: 'KARTS', sub: 'Alquiler y boletas', color: '#fff0b3', awning: '#f2c230' },
-  { name: 'TIENDA GAMER', sub: 'Figuras y regalos', color: '#d8f0c8', awning: '#4fa86a' },
-  { name: 'JUEGOS DE MESA', sub: 'Cafetería y torneos', color: '#f3dccb', awning: '#b5674d' },
+// ── locales abiertos y disponibles ────────────────────────────────────────────────────────────────
+// Igual que dentro del mall: cortes sin techo para ver el interior, mostrador, toldo y un cartel
+// "TU NEGOCIO AQUÍ" con el rubro sugerido. Todos libres (todavía no se alquilan).
+const STALLS: { name: string; color: string; awning: string }[] = [
+  { name: 'ARCADE', color: '#ffe3a3', awning: '#d9453d' },
+  { name: 'VIDEOJUEGOS', color: '#cfe3ff', awning: '#2f6fd1' },
+  { name: 'REALIDAD VIRTUAL', color: '#e6d4ff', awning: '#7a4fd1' },
+  { name: 'ESPORTS', color: '#c9f0e4', awning: '#1b9e84' },
+  { name: 'HELADOS', color: '#ffd6e2', awning: '#e0558a' },
+  { name: 'COMIDA RÁPIDA', color: '#ffe0bd', awning: '#e07a2f' },
+  { name: 'SIMULADORES', color: '#dfe6ee', awning: '#d9453d' },
+  { name: 'TIENDA GAMER', color: '#d8f0c8', awning: '#4fa86a' },
 ]
-const STALL_R = 17
-const STALL_ARC: [number, number] = [Math.PI * 0.2, Math.PI * 1.8] // deja libre el lado del puente (ángulo 0)
+const STALL_RX = 11.6
+const STALL_RZ = 9.6
+/** Ángulos (0 = lado del puente, que queda libre para la puerta). */
+const STALL_ANGLES = [0.75, 1.3, 1.85, 2.4, 3.55, 4.1, 4.7, 5.5]
 
-function stallSign(name: string, sub: string, color: string) {
+function stallSign(name: string, color: string) {
   const c = document.createElement('canvas')
   c.width = 512
   c.height = 160
   const g = c.getContext('2d')!
-  g.fillStyle = '#1b1f2b'
+  g.fillStyle = color
   g.beginPath()
   g.roundRect(0, 0, 512, 160, 28)
   g.fill()
-  g.strokeStyle = color
-  g.lineWidth = 8
-  g.stroke()
   g.fillStyle = '#ffffff'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.font = `800 ${name.length > 11 ? 54 : 70}px system-ui, sans-serif`
-  g.fillText(name, 256, 62)
-  g.fillStyle = '#9fe3dc'
-  g.font = '600 38px system-ui, sans-serif'
-  g.fillText(sub, 256, 123)
+  g.font = '800 62px system-ui, sans-serif'
+  g.fillText('TU NEGOCIO AQUÍ', 256, 58)
+  g.fillStyle = 'rgba(255,255,255,0.92)'
+  g.font = `700 ${name.length > 11 ? 40 : 48}px system-ui, sans-serif`
+  g.fillText(name, 256, 118)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 4
   return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
 }
 
-/** Un local (local: la fachada mira a +z, hacia el centro de la isla). */
+/** Un local abierto (local: la fachada mira a +z, hacia la pista). */
 function Stall({ s, signMat }: { s: (typeof STALLS)[number]; signMat: THREE.Material }) {
-  const W = 4.6
-  const D = 3.6
-  const H = 3
+  const W = 4.4
+  const D = 3.4
+  const H = 2.2
   const stripes = 8
+  const wall = mat(s.color)
   return (
     <group>
-      {/* cuerpo y azotea */}
-      <mesh geometry={GEO.rounded} material={mat(s.color)} position={[0, H / 2, -0.4]} scale={[W, H, D - 0.8]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, H + 0.08, -0.4]} scale={[W + 0.2, 0.16, D - 0.6]} />
-      {/* vitrina iluminada y mostrador */}
-      <mesh geometry={GEO.box} material={glowMat('#ffe7b0', 1.2, { dayGlow: 0.25 })} position={[0, 1.5, 1.01]} scale={[W - 1.4, 1.2, 0.04]} />
-      <mesh geometry={GEO.box} material={mat(PALETTE.woodDark)} position={[0, 0.45, 1.25]} scale={[W - 1.2, 0.9, 0.5]} castShadow />
-      <mesh geometry={GEO.box} material={mat('#f4ead8')} position={[0, 0.94, 1.25]} scale={[W - 1, 0.08, 0.64]} />
-      {/* toldo a rayas */}
-      {Array.from({ length: stripes }, (_, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? CREAM : s.awning)} position={[(i - (stripes - 1) / 2) * (W / stripes), 2.55, 1.35]} rotation={[0.5, 0, 0]} scale={[W / stripes, 0.07, 1.55]} castShadow />
-      ))}
-      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 2.18, 2.05]} scale={[W, 0.2, 0.06]} />
-      {/* cartel sobre la azotea */}
-      <mesh geometry={GEO.plane} material={signMat} position={[0, H + 0.85, 1.4]} scale={[3.6, 1.12, 1]} rotation={[-0.12, 0, 0]} />
+      {/* piso del local y paredes cortadas (sin techo: se ve el interior) */}
+      <mesh geometry={GEO.box} material={mat('#f6efe0')} position={[0, 0.06, 0]} scale={[W, 0.12, D]} receiveShadow />
+      <mesh geometry={GEO.box} material={wall} position={[0, H / 2, -D / 2 + 0.1]} scale={[W, H, 0.2]} castShadow receiveShadow />
       {[-1, 1].map((sx) => (
-        <mesh key={sx} geometry={GEO.cylinderLow} material={mat(IRON)} position={[sx * 1.7, H + 0.4, 1.2]} scale={[0.07, 0.8, 0.07]} />
+        <mesh key={sx} geometry={GEO.box} material={wall} position={[sx * (W / 2 - 0.1), H / 2 - 0.3, 0]} scale={[0.2, H - 0.6, D]} castShadow receiveShadow />
       ))}
-      {/* trasera: cartel y ventanas, para que también se lea desde el lado del mar */}
-      <mesh geometry={GEO.plane} material={signMat} position={[0, H + 0.85, -1.8]} rotation={[0.12, Math.PI, 0]} scale={[3.6, 1.12, 1]} />
-      {[-1.3, 0, 1.3].map((x) => (
-        <mesh key={x} geometry={GEO.box} material={glowMat('#ffe7b0', 1.2, { dayGlow: 0.2 })} position={[x, 1.7, -1.72]} scale={[0.8, 1, 0.04]} />
+      {/* mostrador y estante vacío */}
+      <mesh geometry={GEO.box} material={mat(PALETTE.woodDark)} position={[0, 0.45, 0.9]} scale={[W - 1.2, 0.9, 0.5]} castShadow />
+      <mesh geometry={GEO.box} material={mat('#f4ead8')} position={[0, 0.94, 0.9]} scale={[W - 1, 0.08, 0.64]} />
+      <mesh geometry={GEO.box} material={mat(PALETTE.wood)} position={[0, 1.3, -D / 2 + 0.3]} scale={[W - 0.8, 0.08, 0.4]} />
+      <mesh geometry={GEO.box} material={mat(PALETTE.wood)} position={[0, 1.7, -D / 2 + 0.3]} scale={[W - 0.8, 0.08, 0.4]} />
+      {/* toldo a rayas, voladizo y luces */}
+      {Array.from({ length: stripes }, (_, i) => (
+        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? CREAM : s.awning)} position={[(i - (stripes - 1) / 2) * (W / stripes), 2.45, 1.45]} rotation={[0.5, 0, 0]} scale={[W / stripes, 0.07, 1.55]} castShadow />
       ))}
-      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 0.3, -1.76]} scale={[W - 0.4, 0.5, 0.06]} />
-      {/* globos de luz */}
+      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 2.08, 2.1]} scale={[W, 0.2, 0.06]} />
       {[-1.6, -0.55, 0.55, 1.6].map((x) => (
-        <mesh key={x} geometry={GEO.sphere} material={glowMat('#fff1c9', 2, { dayGlow: 0.5 })} position={[x, 2.25, 2.1]} scale={0.14} />
+        <mesh key={x} geometry={GEO.sphere} material={glowMat('#fff1c9', 2, { dayGlow: 0.5 })} position={[x, 2.0, 2.15]} scale={0.13} />
       ))}
+      {/* cartel de local disponible, sobre el toldo */}
+      <mesh geometry={GEO.plane} material={signMat} position={[0, 3.35, 0.3]} scale={[3.2, 1, 1]} rotation={[-0.1, 0, 0]} />
+      {[-1, 1].map((sx) => (
+        <mesh key={sx} geometry={GEO.cylinderLow} material={mat(IRON)} position={[sx * 1.5, 2.9, 0.2]} scale={[0.07, 0.9, 0.07]} />
+      ))}
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.5)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.14, 1.4]} scale={[4, 2.6, 1]} />
     </group>
   )
 }
 
 function Stalls() {
-  const stalls = useMemo(() => {
-    const n = STALLS.length
-    return STALLS.map((s, i) => {
-      const a = STALL_ARC[0] + ((STALL_ARC[1] - STALL_ARC[0]) * (i + 0.5)) / n
-      const x = Math.cos(a) * STALL_R
-      const z = Math.sin(a) * STALL_R
-      return { s, x, z, rot: Math.atan2(-Math.cos(a), -Math.sin(a)), mat: stallSign(s.name, s.sub, s.awning) }
-    })
-  }, [])
+  const stalls = useMemo(
+    () =>
+      STALLS.map((s, i) => {
+        const a = STALL_ANGLES[i]
+        const x = Math.cos(a) * STALL_RX
+        const z = Math.sin(a) * STALL_RZ
+        return { s, x, z, rot: Math.atan2(-x, -z), mat: stallSign(s.name, s.awning) }
+      }),
+    [],
+  )
   return (
     <>
       {stalls.map((o) => (
@@ -321,23 +331,56 @@ function Stalls() {
 }
 
 // ── isla, paseos y decoración ─────────────────────────────────────────────────────────────────────
+function outlineGeometry(scale: number, depth: number, y: number) {
+  const shape = new THREE.Shape(OUTLINE.map(([x, z]) => new THREE.Vector2(x * scale, z * scale)))
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false })
+  g.rotateX(Math.PI / 2) // extruye hacia -y
+  g.translate(0, y, 0)
+  return g
+}
+
+/** Tramo de muralla con almenas y cordón entre dos puntos del contorno. */
+function WallRun({ a, b }: { a: [number, number]; b: [number, number] }) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+  const rot = Math.atan2(b[0] - a[0], b[1] - a[1])
+  const n = Math.max(1, Math.floor(len / 1.5))
+  return (
+    <group position={[(a[0] + b[0]) / 2, 0, (a[1] + b[1]) / 2]} rotation={[0, rot, 0]}>
+      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, (WH - 1.2) / 2 + 0.1, 0]} scale={[0.9, WH + 1.2, len + 0.55]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, WH - 0.4, 0]} scale={[1.05, 0.14, len + 0.6]} />
+      {Array.from({ length: n }, (_, k) => (
+        <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[0, WH + 0.25, (k - (n - 1) / 2) * (len / n)]} scale={[0.6, 0.55, 0.8]} castShadow />
+      ))}
+    </group>
+  )
+}
+
 function Ground() {
-  const ring = useMemo(() => Array.from({ length: 36 }, (_, i) => (i / 36) * Math.PI * 2), [])
+  const geos = useMemo(
+    () => ({
+      slope: outlineGeometry(1.12, 1.8, SEA + 0.1),
+      base: outlineGeometry(1.04, Y - SEA + 0.1, Y - 0.04),
+      floor: outlineGeometry(0.98, 0.05, Y + 0.01),
+    }),
+    [],
+  )
   return (
     <group>
-      {/* talud de piedra bajo el agua y piso de arena */}
-      <mesh geometry={GEO.cylinder} material={mat(STONE_DARK)} position={[0, SEA - 0.4, 0]} scale={[C.r * 2 + 1.4, 1.6, C.r * 2 + 1.4]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={mat(STONE[0])} position={[0, (SEA + Y) / 2 - 0.05, 0]} scale={[C.r * 2 + 0.4, Y - SEA - 0.1, C.r * 2 + 0.4]} castShadow receiveShadow />
-      <mesh geometry={GEO.cylinder} material={mat('#efe2c4')} position={[0, Y - 0.05, 0]} scale={[C.r * 2 - 0.4, 0.1, C.r * 2 - 0.4]} receiveShadow />
-      {/* adoquín decorativo en un anillo entre los locales y la pista */}
-      <mesh geometry={GEO.cylinder} material={mat('#e2cfa6')} position={[0, Y, 0]} scale={[26, 0.02, 26]} receiveShadow />
-      {/* borde de piedra a modo de malecón */}
-      {ring.map((a, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? STONE[1] : CORDON)} position={[Math.cos(a) * (C.r - 0.1), Y + 0.15, Math.sin(a) * (C.r - 0.1)]} rotation={[0, -a, 0]} scale={[0.5, 0.3, 3.7]} />
+      <mesh geometry={geos.slope} material={mat(STONE_DARK)} receiveShadow />
+      <mesh geometry={geos.base} material={mat(STONE[0])} castShadow receiveShadow />
+      <mesh geometry={geos.floor} material={mat('#efe2c4')} receiveShadow />
+      {/* murallas con almenas (la puerta queda abierta hacia el puente) y garitas en los baluartes */}
+      {OUTLINE.map((p, i) => {
+        const q = OUTLINE[(i + 1) % OUTLINE.length]
+        if (i === OUTLINE.length - 1) return null // tramo de la puerta (este)
+        return <WallRun key={i} a={[p[0] * 0.99, p[1] * 0.99]} b={[q[0] * 0.99, q[1] * 0.99]} />
+      })}
+      {TOWERS.map((i) => (
+        <Garita key={i} x={OUTLINE[i][0] * 0.99} z={OUTLINE[i][1] * 0.99} y={WH} />
       ))}
       {/* rocas en la orilla */}
-      {[0.9, 2.2, 3.5, 4.1, 5.4].map((a, i) => (
-        <mesh key={i} geometry={GEO.sphere} material={mat(STONE_DARK)} position={[Math.cos(a) * (C.r + 1), SEA + 0.1, Math.sin(a) * (C.r + 1)]} scale={[1.6 + (i % 2), 0.9, 1.3]} />
+      {[0, 3, 5, 9, 11].map((i, k) => (
+        <mesh key={i} geometry={GEO.sphere} material={mat(STONE_DARK)} position={[OUTLINE[i][0] * 1.13, SEA + 0.1, OUTLINE[i][1] * 1.13]} scale={[1.6 + (k % 2), 0.9, 1.3]} />
       ))}
     </group>
   )
@@ -364,37 +407,26 @@ function Planter({ x, z, flowers }: { x: number; z: number; flowers: string }) {
 }
 
 const DECOR = (() => {
-  const palms: [number, number, number][] = []
-  const lamps: [number, number][] = []
-  const planters: [number, number, string][] = []
-  // palmeras y faroles en el espacio libre entre locales
-  for (let i = 0; i <= STALLS.length; i++) {
-    const a = STALL_ARC[0] + ((STALL_ARC[1] - STALL_ARC[0]) * i) / STALLS.length
-    palms.push([Math.cos(a) * (STALL_R + 0.4), Math.sin(a) * (STALL_R + 0.4), 3 + (i % 3) * 0.5])
-    const b = a + 0.16
-    lamps.push([Math.cos(b) * (STALL_R - 3.6), Math.sin(b) * (STALL_R - 3.6)])
-  }
-  // jardineras y palmeras junto al paso del puente
-  for (const s of [-1, 1]) {
-    palms.push([C.r - 3.4, s * 5.6, 3.6])
-    planters.push([C.r - 5.2, s * 3.8, s > 0 ? '#e8879c' : '#f2cc8f'])
-  }
+  const palms: [number, number, number][] = [[-2.6, -0.4, 3.4], [2.6, 0.5, 3.1], [0, -0.8, 3.9], [10.2, -6.5, 3.2], [10.6, 6.4, 3.4], [-10.8, 0.5, 3.3], [4.5, -11.4, 3.2], [-6, 11, 3.4]]
+  const lamps: [number, number][] = [[6.6, -7.2], [6.6, 7.2], [-6.6, -7.2], [-6.6, 7.2], [10.8, -2.2], [10.8, 2.2], [0, 9.4], [0, -9.4]]
+  const planters: [number, number, string][] = [[11.6, -3.8, '#e8879c'], [11.6, 3.8, '#f2cc8f']]
   return { palms, lamps, planters }
 })()
 
 /** Gente paseando junto a los locales y la pista. */
 const VISITORS: [number, number, string, number][] = [
-  [9.5, 7.6, '#e07a5f', 0.5], [-9.2, 8.2, '#3d7ea6', 2.6], [13.2, -2.5, '#f2cc8f', -1.7],
-  [-13.5, 1.5, '#6c5b7b', 1.4], [0.5, -10.4, '#2a9d8f', 3.1], [-6.5, -9.6, '#e9c46a', 0.2],
-  [7.2, -9.2, '#d9453d', -0.4], [12.6, 4.6, '#8ab17d', -1.3], [-1.5, 10.8, '#3d7ea6', 3.3],
+  [8.2, 5.6, '#e07a5f', 0.5], [-8.4, 5.2, '#3d7ea6', 2.6], [9.6, -1.8, '#f2cc8f', -1.7],
+  [-9.5, -3.5, '#6c5b7b', 1.4], [0.5, -8.6, '#2a9d8f', 3.1], [-5.5, -8.2, '#e9c46a', 0.2],
+  [5.2, 7.6, '#d9453d', -0.4],
 ]
 
 // ── puente y entrada ──────────────────────────────────────────────────────────────────────────────
 function Bridge() {
-  const len = WALL_X - BRIDGE_END // largo (positivo: de la isla a la muralla)
-  const cx = (WALL_X + BRIDGE_END) / 2
+  const end = C.x + GATE_X - 0.6
+  const len = WALL_X - end // largo (corto: de la isla a la muralla)
+  const cx = (WALL_X + end) / 2
   const pw = BRIDGE_W
-  const arches = 3
+  const arches = 1
   return (
     <group position={[cx, 0, C.z]}>
       {/* cuerpo de piedra y piso de adoquín */}
@@ -405,8 +437,8 @@ function Bridge() {
         <group key={s}>
           <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, Y + 0.38, s * (pw / 2 - 0.15)]} scale={[len, 0.76, 0.3]} castShadow />
           <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, Y + 0.8, s * (pw / 2 - 0.15)]} scale={[len, 0.1, 0.44]} />
-          {Array.from({ length: 5 }, (_, i) => (
-            <mesh key={i} geometry={GEO.box} material={mat(STONE[0])} position={[(i - 2) * (len / 4.4), Y + 0.55, s * (pw / 2 - 0.15)]} scale={[0.42, 1.1, 0.42]} castShadow />
+          {Array.from({ length: 3 }, (_, i) => (
+            <mesh key={i} geometry={GEO.box} material={mat(STONE[0])} position={[(i - 1) * (len / 2.2), Y + 0.55, s * (pw / 2 - 0.15)]} scale={[0.42, 1.1, 0.42]} castShadow />
           ))}
         </group>
       ))}
@@ -415,9 +447,9 @@ function Bridge() {
         const x = (i - (arches - 1) / 2) * (len / arches)
         return (
           <group key={i} position={[x, SEA, 0]}>
-            <mesh geometry={GEO.cylinder} material={mat('#31475a')} rotation={[Math.PI / 2, 0, 0]} scale={[1.9, pw + 0.06, 1.9]} />
-            <mesh geometry={GEO.cylinder} material={mat(CORDON)} rotation={[Math.PI / 2, 0, 0]} scale={[2.25, pw - 0.04, 2.25]} />
-            <mesh geometry={GEO.cylinder} material={mat('#31475a')} rotation={[Math.PI / 2, 0, 0]} scale={[1.9, pw + 0.06, 1.9]} />
+            <mesh geometry={GEO.cylinder} material={mat('#31475a')} rotation={[Math.PI / 2, 0, 0]} scale={[2.4, pw + 0.06, 2.4]} />
+            <mesh geometry={GEO.cylinder} material={mat(CORDON)} rotation={[Math.PI / 2, 0, 0]} scale={[2.8, pw - 0.04, 2.8]} />
+            <mesh geometry={GEO.cylinder} material={mat('#31475a')} rotation={[Math.PI / 2, 0, 0]} scale={[2.4, pw + 0.06, 2.4]} />
           </group>
         )
       })}
@@ -483,7 +515,7 @@ function Portal() {
     return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
   }, [])
   return (
-    <group position={[C.r - 1.6, Y, 0]} rotation={[0, Math.PI / 2, 0]}>
+    <group position={[GATE_X - 0.8, Y, 0]} rotation={[0, Math.PI / 2, 0]}>
       {[-1, 1].map((s) => (
         <group key={s} position={[s * (BRIDGE_W / 2 + 0.7), 0, 0]}>
           <mesh geometry={GEO.box} material={mat(s > 0 ? '#e0558a' : '#2f6fd1')} position={[0, 2, 0]} scale={[1, 4, 1]} castShadow />
@@ -492,8 +524,8 @@ function Portal() {
         </group>
       ))}
       <mesh geometry={GEO.box} material={mat(CREAM)} position={[0, 3.6, 0]} scale={[BRIDGE_W + 1.4, 0.4, 0.7]} castShadow />
-      <mesh geometry={GEO.plane} material={sign} position={[0, 4.65, 0.2]} scale={[5.2, 1.22, 1]} />
-      <mesh geometry={GEO.plane} material={sign} position={[0, 4.65, -0.2]} rotation={[0, Math.PI, 0]} scale={[5.2, 1.22, 1]} />
+      <mesh geometry={GEO.plane} material={sign} position={[0, 4.65, 0.2]} scale={[4.6, 1.08, 1]} />
+      <mesh geometry={GEO.plane} material={sign} position={[0, 4.65, -0.2]} rotation={[0, Math.PI, 0]} scale={[4.6, 1.08, 1]} />
       {/* banderines */}
       {Array.from({ length: 9 }, (_, i) => (
         <mesh key={i} geometry={GEO.cone} material={mat(['#d9453d', '#f2c230', '#2f6fd1', '#4fa86a', '#e0558a'][i % 5])} position={[(i - 4) * 0.7, 3.2 - Math.sin((i / 8) * Math.PI) * 0.3 + 0.2, 0.45]} rotation={[Math.PI, 0, 0]} scale={[0.3, 0.45, 0.3]} />
@@ -535,7 +567,7 @@ export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
           </group>
         ))}
       </group>
-      <ScreenLabel label={label} position={[C.x, 7.5, C.z]} pixelHeight={30} maxZoomRatio={1.6} priority={LABEL_PRIORITY.corridor + 5} />
+      <ScreenLabel label={label} position={[C.x, 8, C.z]} pixelHeight={30} maxZoomRatio={1.6} priority={LABEL_PRIORITY.corridor + 5} />
     </group>
   )
 }
