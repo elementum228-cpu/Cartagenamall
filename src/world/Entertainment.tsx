@@ -40,7 +40,7 @@ const SEA = -0.5
 /** Cara exterior de la muralla oeste: donde arranca el puente (junto a la garita, frente a Planly). */
 const WALL_X = -(31 + 1.1)
 const BRIDGE_W = 3.2
-const BRIDGE_LEN = 10.5
+const BRIDGE_LEN = 13.5
 const BRIDGE_Z = 10
 /** Centro de la isla (mundo): junto a la garita del muro oeste, a la derecha de Planly. */
 export const ENTERTAINMENT = { x: WALL_X - BRIDGE_LEN + 0.6 - GATE_X, z: BRIDGE_Z, r: 16 } as const
@@ -474,8 +474,11 @@ function Bridge() {
   const cx = (WALL_X + end) / 2
   const pw = BRIDGE_W
   const HUMP = 1.5
-  const N = 14
+  const N = 28
   const sl = len / N
+  // vano del arco: elíptico, por donde pasa el agua
+  const archA = Math.min(3.4, len / 2 - 1.6)
+  const archH = Y + HUMP - 0.4 - SEA
   // perfil en arco: sube desde los dos extremos hasta la clave, como en la foto de referencia
   const h = (u: number) => HUMP * Math.sin(Math.PI * u)
   const slices = Array.from({ length: N }, (_, i) => {
@@ -488,8 +491,12 @@ function Bridge() {
     <group position={[cx, 0, BRIDGE_Z]}>
       {slices.map((sg, i) => (
         <group key={i} position={[sg.x, 0, 0]}>
-          {/* piedra bajo el piso */}
-          <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, (SEA + sg.top) / 2 - 0.15, 0]} scale={[sl + 0.02, sg.top - SEA - 0.3, pw]} castShadow receiveShadow />
+          {/* piedra bajo el piso: en el centro solo queda el grosor del arco y el agua pasa por debajo */}
+          {(() => {
+            const k = Math.abs(sg.x) < archA ? Math.sqrt(1 - (sg.x / archA) ** 2) : 0
+            const bottom = SEA - 0.3 + (k > 0 ? (archH + 0.3) * k : 0)
+            return <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, (bottom + sg.top) / 2, 0]} scale={[sl + 0.02, sg.top - bottom, pw]} castShadow receiveShadow />
+          })()}
           <group position={[0, sg.top, 0]} rotation={[0, 0, sg.slope]}>
             <mesh geometry={GEO.box} material={mat('#e2cfa6')} position={[0, 0, 0]} scale={[sl + 0.06, 0.12, pw - 0.3]} receiveShadow />
             {[-1, 1].map((s) => (
@@ -516,18 +523,11 @@ function Bridge() {
           )
         }),
       )}
-      {/* arco de piedra: vano abierto al agua, con aro claro a cada cara */}
-      <group position={[0, SEA, 0]}>
-        <mesh geometry={GEO.cylinder} material={mat('#31475a')} rotation={[Math.PI / 2, 0, 0]} scale={[3.4, pw + 0.06, 3.4]} />
-        {[-1, 1].map((s) => (
-          <mesh key={s} geometry={GEO.cylinder} material={mat(CORDON)} position={[0, 0, s * (pw / 2 + 0.01)]} rotation={[Math.PI / 2, 0, 0]} scale={[3.8, 0.12, 3.8]} />
-        ))}
-      </group>
     </group>
   )
 }
 
-/** Puerta de piedra en la muralla oeste (mira al oeste, hacia el puente). */
+/** Paso en la muralla oeste: un hueco con arco que une el mall con el puente (se ve desde ambos lados). */
 function WallDoor() {
   const stone = mat(STONE[0])
   const D = 2.2 + 0.5
@@ -538,13 +538,63 @@ function WallDoor() {
       ))}
       <mesh geometry={GEO.box} material={stone} position={[0, 3, 0]} scale={[3.6, 1.1, D]} castShadow />
       <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 3.62, 0]} scale={[3.8, 0.14, D + 0.1]} />
-      <mesh geometry={GEO.box} material={mat('#3a2f28')} position={[0, 1.2, D / 2 + 0.02]} scale={[2, 2.4, 0.02]} />
-      <mesh geometry={GEO.halfDisc} material={mat('#3a2f28')} position={[0, 2.4, D / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.02, 1]} />
-      <mesh geometry={GEO.box} material={glowMat('#ffb86b', 1.4)} position={[0, 0.5, D / 2 + 0.05]} scale={[1.5, 0.9, 0.01]} />
-      {[-1, 1].map((s) => (
-        <WallLantern key={s} x={s * 1.9} y={2.3} z={D / 2 + 0.25} />
+      {/* el vano atraviesa la muralla: sombra al fondo, luz cálida y piso de paso */}
+      <mesh geometry={GEO.box} material={mat('#3a2f28')} position={[0, 1.2, 0]} scale={[2, 2.4, D - 0.1]} />
+      <mesh geometry={GEO.halfDisc} material={mat('#3a2f28')} position={[0, 2.4, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[1, D - 0.1, 1]} />
+      <mesh geometry={GEO.box} material={glowMat('#ffb86b', 1.4)} position={[0, 0.16, 0]} scale={[1.9, 0.04, D - 0.1]} />
+      {[1, -1].map((f) => (
+        <group key={f} rotation={[0, f === 1 ? 0 : Math.PI, 0]}>
+          <mesh geometry={GEO.halfDisc} material={mat(CORDON)} position={[0, 2.4, D / 2 + 0.01]} rotation={[Math.PI / 2, 0, 0]} scale={[1.12, 0.02, 1.12]} />
+          <mesh geometry={GEO.box} material={glowMat('#ffb86b', 1.4)} position={[0, 0.8, D / 2 + 0.03]} scale={[1.5, 1.5, 0.01]} />
+          {[-1, 1].map((s) => (
+            <WallLantern key={s} x={s * 1.9} y={2.3} z={D / 2 + 0.25} />
+          ))}
+        </group>
       ))}
     </group>
+  )
+}
+
+/** Visitantes que cruzan del mall a la isla (y de vuelta) por el puente: salen del paso y entran a la puerta. */
+const CROSSERS: { phase: number; dir: 1 | -1; lane: number; color: string; skin: string; speed: number }[] = [
+  { phase: 0.0, dir: 1, lane: -0.7, color: '#e07a5f', skin: '#e5b48f', speed: 1 },
+  { phase: 0.22, dir: -1, lane: 0.7, color: '#3d7ea6', skin: '#8d5a3b', speed: 1.1 },
+  { phase: 0.45, dir: 1, lane: 0.5, color: '#f2cc8f', skin: '#c58c64', speed: 0.9 },
+  { phase: 0.62, dir: -1, lane: -0.5, color: '#6c5b7b', skin: '#e5b48f', speed: 1 },
+  { phase: 0.8, dir: 1, lane: 0, color: '#2a9d8f', skin: '#8d5a3b', speed: 1.05 },
+  { phase: 0.35, dir: -1, lane: 0.1, color: '#d9453d', skin: '#c58c64', speed: 0.95 },
+]
+function BridgeCrossers({ reduceMotion }: { reduceMotion: boolean }) {
+  const refs = useRef<(THREE.Group | null)[]>([])
+  const x0 = WALL_X + 1.4 // dentro del paso de la muralla
+  const x1 = C.x + GATE_X - 2.4 // pasado el portal de la isla
+  const span = x0 - x1
+  useFrame(({ clock }) => {
+    const t = reduceMotion ? 0 : clock.elapsedTime
+    CROSSERS.forEach((c, i) => {
+      const g = refs.current[i]
+      if (!g) return
+      const u = (((c.phase + (t * 0.9 * c.speed) / span) % 1) + 1) % 1
+      const f = c.dir === 1 ? u : 1 - u // 0 = mall, 1 = isla
+      const x = x0 - f * span
+      // altura del puente (misma curva que Bridge) y paso de caminata
+      const bu = THREE.MathUtils.clamp((x - (C.x + GATE_X - 0.6)) / (WALL_X - (C.x + GATE_X - 0.6)), 0, 1)
+      const hump = 1.5 * Math.sin(Math.PI * bu)
+      g.position.set(x, Y + 0.06 + hump + Math.abs(Math.sin(t * 7 + i * 2)) * 0.03, BRIDGE_Z + c.lane)
+      g.rotation.y = c.dir === 1 ? -Math.PI / 2 : Math.PI / 2
+      // entran y salen por las puertas: aparecen y se achican en los extremos
+      const edge = Math.min(f, 1 - f) / 0.07
+      g.scale.setScalar(THREE.MathUtils.clamp(edge, 0, 1))
+    })
+  })
+  return (
+    <>
+      {CROSSERS.map((c, i) => (
+        <group key={i} ref={(el) => (refs.current[i] = el)} userData={{ dynamic: true }}>
+          <Person color={c.color} skin={c.skin} />
+        </group>
+      ))}
+    </>
   )
 }
 
@@ -620,6 +670,7 @@ export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
           <Portal />
         </group>
       </Batch>
+      <BridgeCrossers reduceMotion={reduceMotion} />
       <group position={[C.x, 0, C.z]}>
         <Karts reduceMotion={reduceMotion} />
         {VISITORS.map(([x, z, color, rot], i) => (
