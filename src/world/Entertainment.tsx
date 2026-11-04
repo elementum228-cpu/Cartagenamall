@@ -16,23 +16,33 @@ import { Person } from './Person'
 // y blancos; alrededor, locales con toldos a rayas para videojuegos, realidad virtual, esports y
 // comida rápida. Por ahora es solo la escena: los locales todavía no se alquilan.
 
-/** Contorno redondeado del castillo-isla (relativo al centro): lóbulos suaves donde van los torreones. */
-const OUTLINE: [number, number][] = Array.from({ length: 64 }, (_, i) => {
-  const t = (i / 64) * Math.PI * 2
-  const r = 14.5 + 1.7 * Math.cos(3 * t - 0.6) + 0.8 * Math.cos(2 * t + 0.8)
-  return [Math.cos(t) * r * 1.06, Math.sin(t) * r * 0.92]
-})
-/** La puerta mira al este (hacia la muralla): los tramos cerca de t = 0 quedan abiertos. */
-const GATE_IDX = new Set([62, 63, 0, 1, 2])
-const GATE_X = OUTLINE[0][0]
-/** Torreones redondos: en los máximos locales del contorno (sin la puerta). */
-const TOWERS = OUTLINE.map((p, i) => {
-  const n = OUTLINE.length
-  const r = Math.hypot(p[0] / 1.06, p[1] / 0.92)
-  const rp = Math.hypot(OUTLINE[(i + n - 1) % n][0] / 1.06, OUTLINE[(i + n - 1) % n][1] / 0.92)
-  const rn = Math.hypot(OUTLINE[(i + 1) % n][0] / 1.06, OUTLINE[(i + 1) % n][1] / 0.92)
-  return r >= rp && r >= rn && !GATE_IDX.has(i) ? i : -1
-}).filter((i) => i >= 0)
+/**
+ * Contorno del castillo-isla: un rectángulo de esquinas muy redondeadas (con torreones en ellas).
+ * El lado este queda abierto en el centro: es la puerta hacia el puente.
+ */
+const HX = 15
+const HZ = 12
+const CR = 5
+const GATE_HALF = 3.4
+const { OUTLINE, TOWERS } = (() => {
+  const pts: [number, number][] = [[HX, -GATE_HALF]]
+  const towers: number[] = []
+  const arc = (cx: number, cz: number, t0: number, t1: number) => {
+    const n = 8
+    for (let i = 0; i <= n; i++) {
+      const t = t0 + ((t1 - t0) * i) / n
+      pts.push([cx + Math.cos(t) * CR, cz + Math.sin(t) * CR])
+      if (i === n / 2) towers.push(pts.length - 1)
+    }
+  }
+  arc(HX - CR, -HZ + CR, 0, -Math.PI / 2) // noreste
+  arc(-HX + CR, -HZ + CR, -Math.PI / 2, -Math.PI) // noroeste
+  arc(-HX + CR, HZ - CR, Math.PI, Math.PI / 2) // suroeste
+  arc(HX - CR, HZ - CR, Math.PI / 2, 0) // sureste
+  pts.push([HX, GATE_HALF])
+  return { OUTLINE: pts, TOWERS: towers }
+})()
+const GATE_X = HX
 
 const WH = 1.7
 const Y = 0.12
@@ -275,11 +285,25 @@ const STALLS: { name: string; color: string; awning: string }[] = [
   { name: 'COMIDA RÁPIDA', color: '#ffe0bd', awning: '#e07a2f' },
   { name: 'SIMULADORES', color: '#dfe6ee', awning: '#d9453d' },
   { name: 'TIENDA GAMER', color: '#d8f0c8', awning: '#4fa86a' },
+  { name: 'JUEGOS DE MESA', color: '#f3dccb', awning: '#b5674d' },
+  { name: 'CAFÉ GAMER', color: '#fff0b3', awning: '#f2c230' },
+  { name: 'KARTS', color: '#cfe8ee', awning: '#13a5c4' },
 ]
-const STALL_RX = 10.2
-const STALL_RZ = 8.2
-/** Ángulos (0 = lado del puente, que queda libre para la puerta). */
-const STALL_ANGLES = [0.85, 1.4, 1.95, 2.55, 3.55, 4.1, 4.65, 5.45]
+const UNIT_W = 4.4
+const UNIT_D = 3.2
+/** Hileras pegadas a la muralla: norte (4), sur (4) y oeste (3); el lado este es la entrada. */
+const STALL_SLOTS = (() => {
+  const out: { x: number; z: number; rot: number }[] = []
+  const zb = HZ - 0.55 - UNIT_D / 2
+  const xb = HX - 0.55 - UNIT_D / 2
+  const row = (n: number, f: (c: number) => { x: number; z: number; rot: number }) => {
+    for (let i = 0; i < n; i++) out.push(f((i - (n - 1) / 2) * UNIT_W))
+  }
+  row(4, (c) => ({ x: c - 1, z: -zb, rot: 0 }))
+  row(4, (c) => ({ x: c - 1, z: zb, rot: Math.PI }))
+  row(3, (c) => ({ x: -xb, z: c, rot: Math.PI / 2 }))
+  return out
+})()
 
 function stallSign(name: string, color: string) {
   const c = document.createElement('canvas')
@@ -304,59 +328,54 @@ function stallSign(name: string, color: string) {
   return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
 }
 
-/** Un local abierto (local: la fachada mira a +z, hacia la pista): sin carpa ni techo, como en el mall. */
-function Stall({ s, signMat }: { s: (typeof STALLS)[number]; signMat: THREE.Material }) {
-  const W = 4.4
-  const D = 3.2
+/** Un local abierto (local: la fachada mira a +z): pared de fondo y divisorias como en el mall, sin techo ni carpa. */
+function Stall({ s, signMat, lastWall }: { s: (typeof STALLS)[number]; signMat: THREE.Material; lastWall: boolean }) {
+  const W = UNIT_W
+  const D = UNIT_D
   const wall = mat(s.color)
+  const party = mat('#f3ead8')
   return (
     <group>
-      {/* piso del local con marco de color y paredes bajas cortadas (se ve todo el interior) */}
-      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 0.05, 0]} scale={[W + 0.2, 0.1, D + 0.2]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat('#f6efe0')} position={[0, 0.07, 0]} scale={[W - 0.2, 0.1, D - 0.2]} receiveShadow />
-      <mesh geometry={GEO.box} material={wall} position={[0, 1.3, -D / 2 + 0.1]} scale={[W, 2.6, 0.2]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 2.62, -D / 2 + 0.1]} scale={[W + 0.1, 0.12, 0.3]} />
-      {[-1, 1].map((sx) => (
+      {/* piso con marco de color */}
+      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 0.05, 0]} scale={[W, 0.1, D]} receiveShadow />
+      <mesh geometry={GEO.box} material={mat('#f6efe0')} position={[0, 0.07, 0]} scale={[W - 0.3, 0.1, D - 0.3]} receiveShadow />
+      {/* pared de fondo (contra la muralla) y divisorias laterales compartidas con el local vecino */}
+      <mesh geometry={GEO.box} material={wall} position={[0, 1.1, -D / 2 + 0.1]} scale={[W, 2.2, 0.2]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 2.26, -D / 2 + 0.1]} scale={[W + 0.1, 0.12, 0.3]} />
+      {(lastWall ? [-1, 1] : [-1]).map((sx) => (
         <group key={sx}>
-          <mesh geometry={GEO.box} material={wall} position={[sx * (W / 2 - 0.1), 0.55, 0]} scale={[0.2, 1.1, D]} castShadow receiveShadow />
-          <mesh geometry={GEO.box} material={mat(s.awning)} position={[sx * (W / 2 - 0.1), 1.14, 0]} scale={[0.28, 0.08, D + 0.1]} />
+          <mesh geometry={GEO.box} material={party} position={[sx * (W / 2), 1.1, 0]} scale={[0.2, 2.2, D]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={mat(s.awning)} position={[sx * (W / 2), 2.26, 0]} scale={[0.3, 0.12, D + 0.1]} />
         </group>
       ))}
-      {/* interior: mostrador, estantes y una máquina de muestra */}
-      <mesh geometry={GEO.box} material={mat(PALETTE.woodDark)} position={[0, 0.5, 0.5]} scale={[W - 1.4, 1, 0.5]} castShadow />
-      <mesh geometry={GEO.box} material={mat('#f4ead8')} position={[0, 1.02, 0.5]} scale={[W - 1.2, 0.08, 0.62]} />
-      {[1.0, 1.55, 2.1].map((y) => (
-        <mesh key={y} geometry={GEO.box} material={mat(PALETTE.wood)} position={[0, y, -D / 2 + 0.38]} scale={[W - 0.9, 0.07, 0.4]} />
+      {/* interior: mostrador, estantes y franja de luz */}
+      <mesh geometry={GEO.box} material={mat(PALETTE.woodDark)} position={[0, 0.5, 0.55]} scale={[W - 1.4, 1, 0.5]} castShadow />
+      <mesh geometry={GEO.box} material={mat('#f4ead8')} position={[0, 1.02, 0.55]} scale={[W - 1.2, 0.08, 0.62]} />
+      {[0.9, 1.45, 2.0].map((y) => (
+        <mesh key={y} geometry={GEO.box} material={mat(PALETTE.wood)} position={[0, y, -D / 2 + 0.38]} scale={[W - 0.7, 0.07, 0.4]} />
       ))}
-      <mesh geometry={GEO.box} material={glowMat('#ffe7b0', 1.1, { dayGlow: 0.2 })} position={[0, 1.8, -D / 2 + 0.22]} scale={[W - 1.4, 0.05, 0.04]} />
-      {/* cartel de local disponible, igual al del mall, sobre un poste */}
-      <mesh geometry={GEO.plane} material={signMat} position={[0, 3.25, -0.2]} scale={[3.2, 1, 1]} rotation={[-0.1, 0, 0]} />
+      <mesh geometry={GEO.box} material={glowMat('#ffe7b0', 1.1, { dayGlow: 0.2 })} position={[0, 2.12, -D / 2 + 0.22]} scale={[W - 1.2, 0.05, 0.04]} />
+      {/* cartel de local disponible, igual al del mall, sobre la pared de fondo */}
+      <mesh geometry={GEO.plane} material={signMat} position={[0, 3.0, -D / 2 + 0.35]} scale={[3.2, 1, 1]} rotation={[-0.1, 0, 0]} />
       {[-1, 1].map((sx) => (
-        <mesh key={sx} geometry={GEO.cylinderLow} material={mat(IRON)} position={[sx * 1.5, 2.9, -0.3]} scale={[0.07, 0.8, 0.07]} />
+        <mesh key={sx} geometry={GEO.cylinderLow} material={mat(IRON)} position={[sx * 1.5, 2.6, -D / 2 + 0.3]} scale={[0.07, 0.8, 0.07]} />
       ))}
       {/* aro en el piso frente al local, como las plazas libres del mall */}
-      <mesh geometry={GEO.ring} material={glowMat(s.awning, 1, { opacity: 0.8, dayGlow: 0.45 })} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.16, 1.6]} scale={[0.95, 0.95, 1]} />
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.5)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.15, 1.2]} scale={[4, 3, 1]} />
+      <mesh geometry={GEO.ring} material={glowMat(s.awning, 1, { opacity: 0.8, dayGlow: 0.45 })} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.14, D / 2 + 0.8]} scale={[0.95, 0.95, 1]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.5)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.13, D / 2 + 0.5]} scale={[4, 3, 1]} />
     </group>
   )
 }
 
 function Stalls() {
-  const stalls = useMemo(
-    () =>
-      STALLS.map((s, i) => {
-        const a = STALL_ANGLES[i]
-        const x = Math.cos(a) * STALL_RX
-        const z = Math.sin(a) * STALL_RZ
-        return { s, x, z, rot: Math.atan2(-x, -z), mat: stallSign(s.name, s.awning) }
-      }),
-    [],
-  )
+  const stalls = useMemo(() => STALLS.map((s) => stallSign(s.name, s.awning)), [])
+  // la última de cada hilera lleva su divisoria de cierre
+  const ends = new Set([3, 7, 10])
   return (
     <>
-      {stalls.map((o) => (
-        <group key={o.s.name} position={[o.x, Y, o.z]} rotation={[0, o.rot, 0]}>
-          <Stall s={o.s} signMat={o.mat} />
+      {STALL_SLOTS.map((o, i) => (
+        <group key={STALLS[i].name} position={[o.x, Y, o.z]} rotation={[0, o.rot, 0]}>
+          <Stall s={STALLS[i]} signMat={stalls[i]} lastWall={ends.has(i)} />
         </group>
       ))}
     </>
@@ -417,7 +436,7 @@ function Ground() {
       <mesh geometry={geos.floor} material={mat('#efe2c4')} receiveShadow />
       {/* murallas con almenas (la puerta queda abierta hacia el puente) y torreones redondos */}
       {OUTLINE.map((p, i) => {
-        if (GATE_IDX.has(i) && GATE_IDX.has((i + 1) % n)) return null
+        if (i === n - 1) return null // tramo abierto: la puerta
         const q = OUTLINE[(i + 1) % n]
         return <WallRun key={i} a={[p[0] * 0.99, p[1] * 0.99]} b={[q[0] * 0.99, q[1] * 0.99]} />
       })}
@@ -425,7 +444,7 @@ function Ground() {
         <RoundTower key={i} x={OUTLINE[i][0] * 0.99} z={OUTLINE[i][1] * 0.99} />
       ))}
       {/* rocas en la orilla */}
-      {[6, 18, 30, 44, 55].map((i, k) => (
+      {[4, 12, 21, 30, 36].map((i, k) => (
         <mesh key={i} geometry={GEO.sphere} material={mat(STONE_DARK)} position={[OUTLINE[i][0] * 1.13, SEA + 0.1, OUTLINE[i][1] * 1.13]} scale={[1.6 + (k % 2), 0.9, 1.3]} />
       ))}
     </group>
@@ -454,16 +473,16 @@ function Planter({ x, z, flowers }: { x: number; z: number; flowers: string }) {
 
 const DECOR = (() => {
   const palms: [number, number, number][] = [] // sin palmeras: los locales quedan despejados
-  const lamps: [number, number][] = [[8.6, -2.6], [8.6, 2.6], [-8.2, -3.6], [-8.2, 3.6], [0, 8.4], [0, -8.4]]
-  const planters: [number, number, string][] = [[11.4, -4, '#e8879c'], [11.4, 4, '#f2cc8f']]
+  const lamps: [number, number][] = [[-7, -6.9], [0, -6.9], [6.5, -6.9], [-7, 6.9], [0, 6.9], [6.5, 6.9], [-9.5, -3.4], [-9.5, 3.4], [10.2, -3.2], [10.2, 3.2]]
+  const planters: [number, number, string][] = [[11.2, -6, '#e8879c'], [11.2, 6, '#f2cc8f'], [-9.6, 0, '#e8879c']]
   return { palms, lamps, planters }
 })()
 
 /** Gente paseando junto a los locales y la pista. */
 const VISITORS: [number, number, string, number][] = [
-  [8.2, 5.6, '#e07a5f', 0.5], [-8.4, 5.2, '#3d7ea6', 2.6], [9.6, -1.8, '#f2cc8f', -1.7],
-  [-9.5, -3.5, '#6c5b7b', 1.4], [0.5, -8.6, '#2a9d8f', 3.1], [-5.5, -8.2, '#e9c46a', 0.2],
-  [5.2, 7.6, '#d9453d', -0.4],
+  [8.8, -6, '#e07a5f', 0.5], [-8.4, 5.6, '#3d7ea6', 2.6], [9.8, 1.8, '#f2cc8f', -1.7],
+  [-9.4, -2.2, '#6c5b7b', 1.4], [3.2, 7.2, '#2a9d8f', 3.1], [-4.4, -7.2, '#e9c46a', 0.2],
+  [5.2, -7.4, '#d9453d', -0.4],
 ]
 
 // ── puente y entrada ──────────────────────────────────────────────────────────────────────────────
