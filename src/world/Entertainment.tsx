@@ -145,9 +145,7 @@ function Track() {
         )}
       </group>
       {/* palmeras y jardín en el interior de la pista */}
-      <Palm x={-2.5} z={0} h={3.6} seed={0.4} y={Y + 0.1} />
-      <Palm x={2.6} z={0.6} h={3.2} seed={2.1} y={Y + 0.1} />
-      <Palm x={0} z={-0.6} h={4.1} seed={3.3} y={Y + 0.1} />
+      <Palm x={0} z={-0.6} h={3.4} seed={3.3} y={Y + 0.1} />
       <mesh geometry={GEO.sphere} material={mat(PALETTE.leaf)} position={[0, Y + 0.4, 1]} scale={[2.2, 0.8, 1.2]} />
       <mesh geometry={GEO.sphere} material={mat('#e8879c')} position={[-0.6, Y + 0.78, 1.1]} scale={0.38} />
       <mesh geometry={GEO.sphere} material={mat('#f2cc8f')} position={[0.7, Y + 0.74, 0.9]} scale={0.34} />
@@ -456,7 +454,7 @@ function Planter({ x, z, flowers }: { x: number; z: number; flowers: string }) {
 }
 
 const DECOR = (() => {
-  const palms: [number, number, number][] = [[-2.6, -0.4, 3.4], [2.6, 0.5, 3.1], [0, -0.8, 3.9], [8.4, -5.6, 3.2], [8.6, 5.6, 3.4], [-8.8, 0.5, 3.3], [3.2, -9.6, 3.2], [-4.8, 9.4, 3.4]]
+  const palms: [number, number, number][] = [[10.6, -6.4, 3.2], [10.6, 6.4, 3.2]] // solo junto a la puerta: los locales quedan despejados
   const lamps: [number, number][] = [[8.6, -2.6], [8.6, 2.6], [-8.2, -3.6], [-8.2, 3.6], [0, 8.4], [0, -8.4]]
   const planters: [number, number, string][] = [[11.4, -4, '#e8879c'], [11.4, 4, '#f2cc8f']]
   return { palms, lamps, planters }
