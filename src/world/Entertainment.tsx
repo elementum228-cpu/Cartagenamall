@@ -137,9 +137,14 @@ function Track() {
   const start = trackPoint(0.02)
   return (
     <group position={[0, 0, 0]}>
-      <mesh geometry={geos.asphalt} material={mat(ASPHALT, { rough: 0.95 })} position={[0, Y, 0]} receiveShadow />
+      <mesh geometry={geos.asphalt} material={glowMat(ASPHALT, 0.7)} position={[0, Y, 0]} receiveShadow />
       {/* interior con césped, palmeras y el mural del circuito */}
       <mesh geometry={geos.infield} material={mat(PALETTE.grass)} position={[0, Y, 0]} receiveShadow />
+      {/* línea central discontinua que brilla de noche */}
+      {Array.from({ length: 40 }, (_, i) => {
+        const c = trackPoint(i / 40)
+        return <mesh key={`d${i}`} geometry={GEO.box} material={glowMat('#ffe9a8', 1.3, { dayGlow: 0.08 })} position={[c.x, Y + 0.08, c.z]} rotation={[0, c.rot, 0]} scale={[0.1, 0.01, (LAP / 40) * 0.38]} />
+      })}
       {/* neón en el borde del interior: la pista se ilumina de noche */}
       <mesh geometry={geos.neon} material={glowMat('#38e0ff', 1.8)} position={[0, Y + 0.09, 0]} />
       {curbs.map((c, i) => (
@@ -176,7 +181,7 @@ function Track() {
           <group key={i} position={[p.x, Y, p.z]}>
             <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 0.6, 0]} scale={[0.07, 1.2, 0.07]} />
             <mesh geometry={GEO.sphere} material={glowMat('#fff1c9', 2.4, { dayGlow: 0.4 })} position={[0, 1.25, 0]} scale={0.22} />
-            <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.7)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]} scale={[3.4, 3.4, 1]} />
+            <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.9)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]} scale={[5.2, 5.2, 1]} />
           </group>
         )
       })}
@@ -252,7 +257,8 @@ function Karts({ reduceMotion }: { reduceMotion: boolean }) {
           {[-1, 1].map((sx) => (
             <mesh key={sx} geometry={GEO.sphere} material={glowMat('#fff6c8', 3, { dayGlow: 0.3 })} position={[sx * 0.2, 0.17, 0.55]} scale={0.14} />
           ))}
-          <mesh geometry={GEO.plane} material={lightPoolMat('#fff1c9', 0.9)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0.9]} scale={[1.8, 2.6, 1]} />
+          <mesh geometry={GEO.plane} material={lightPoolMat('#fff1c9', 1.3)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 1.1]} scale={[2.4, 3.6, 1]} />
+          <mesh geometry={GEO.plane} material={lightPoolMat(k.color, 1.4)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} scale={[2.6, 2.6, 1]} />
           <mesh geometry={GEO.sphere} material={mat('#f2d6b8')} position={[0, 0.5, -0.05]} scale={0.26} />
           <mesh geometry={GEO.sphere} material={mat(k.color)} position={[0, 0.58, -0.05]} scale={[0.3, 0.2, 0.3]} />
           {[-1, 1].flatMap((sx) =>
