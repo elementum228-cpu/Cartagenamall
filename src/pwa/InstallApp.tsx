@@ -13,7 +13,8 @@ const BANNER_DELAY_MS = 45_000
 /** Botón «Instalar la app» para menús y la página de cuenta. Se oculta si ya está instalada. */
 export function InstallButton({ className, onDone }: { className: string; onDone?: () => void }) {
   const installed = useInstall((s) => s.installed)
-  if (installed) return null
+  // la presentación privada no se puede instalar en el celular
+  if (installed || import.meta.env.VITE_DEMO === '1') return null
   return (
     <button
       className={className}
@@ -29,6 +30,11 @@ export function InstallButton({ className, onDone }: { className: string; onDone
 
 /** Hoja con los pasos para instalar y la invitación que aparece una vez. Va una sola vez en la app. */
 export function InstallLayer() {
+  // la presentación privada no se puede instalar
+  return import.meta.env.VITE_DEMO === '1' ? null : <InstallLayerInner />
+}
+
+function InstallLayerInner() {
   const sheet = useInstall((s) => s.sheet)
   const installed = useInstall((s) => s.installed)
   const deferred = useInstall((s) => s.deferred)
