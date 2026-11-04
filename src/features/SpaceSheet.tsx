@@ -29,6 +29,7 @@ const spaceColor = (space: SpaceSlot) => (space.type === 'court' ? COURT_COLOR :
 function placeName(space: SpaceSlot) {
   const zone = ZONE_BY_ID[space.zoneId]
   if (space.type === 'court') return `${FLOOR_BY_ID[space.floorId].name} · Jardín de la fortaleza`
+  if (zone.id === 'G') return `${FLOOR_BY_ID[space.floorId].name} · Isla de Entretenimiento`
   return `${FLOOR_BY_ID[space.floorId].name} · ${zone.id === 'E' ? zone.name : `Pasillo ${zone.id} · ${zone.name}`}`
 }
 
@@ -37,9 +38,9 @@ function Header({ space }: { space: SpaceSlot }) {
   return (
     <div className="px-5 pt-3 pb-2" style={{ background: `linear-gradient(180deg, ${color}18, transparent)` }}>
       <p className="text-[11px] font-extrabold tracking-[0.14em] uppercase" style={{ color }}>
-        {FLOOR_BY_ID[space.floorId].name} · {space.type === 'court' ? 'Zona de deportes' : `Espacio ${space.label}`} · disponible
+        {FLOOR_BY_ID[space.floorId].name} · {space.type === 'court' ? 'Zona de deportes' : space.type === 'track' ? 'Pista de karts' : `Espacio ${space.label}`} · disponible
       </p>
-      <h2 className="mt-1 pr-12 text-2xl font-extrabold tracking-tight">{space.type === 'court' ? '¡Opera la zona de deportes!' : '¡Tu negocio podría estar aquí!'}</h2>
+      <h2 className="mt-1 pr-12 text-2xl font-extrabold tracking-tight">{space.type === 'court' ? '¡Opera la zona de deportes!' : space.type === 'track' ? '¡Opera la pista de karts!' : '¡Tu negocio podría estar aquí!'}</h2>
     </div>
   )
 }
@@ -119,7 +120,7 @@ function Body({ space }: { space: SpaceSlot }) {
         </p>
       )}
       <button className={`${btn.primary} w-full`} onClick={() => setStep('form')}>
-        <StoreIcon className="size-4" /> {space.type === 'court' ? 'Reclamar la zona de deportes' : 'Reclamar este espacio'}
+        <StoreIcon className="size-4" /> {space.type === 'court' ? 'Reclamar la zona de deportes' : space.type === 'track' ? 'Reclamar la pista de karts' : 'Reclamar este espacio'}
       </button>
     </div>
   )
@@ -150,7 +151,7 @@ function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: s
   const prices = useSpacePricing()
   const [f, setF] = useState<FormState>({
     businessName: '',
-    categoryId: space.type === 'court' ? 'deportes' : zone.categories[0].id,
+    categoryId: space.type === 'court' ? 'deportes' : space.type === 'track' ? 'karts' : zone.categories[0].id,
     ownerName: '',
     whatsapp: '',
     email: '',
@@ -224,7 +225,7 @@ function ClaimForm({ space, onDone, onBack }: { space: SpaceSlot; onDone: (id: s
           {field('email')}
         </label>
       </div>
-      {space.type !== 'court' && (
+      {space.type !== 'court' && space.type !== 'track' && space.type !== 'booth' && (
         <fieldset>
           <legend className="mb-1.5 text-sm font-semibold">Tipo de espacio</legend>
           <div className="grid grid-cols-3 gap-2">

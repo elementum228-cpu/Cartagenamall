@@ -1,4 +1,5 @@
 import { COURT, SPORTS_HALF } from '../football/config'
+import { ENT_CENTER, ENT_COLOR, ENT_SLOTS, ENT_SUGGESTED, ENT_TRACK, ENT_UNIT } from '../entertainment/config'
 import type { FloorConfig, FloorId, MallConfig, SpaceSlot, SpaceType, SpaceTypeInfo, ZoneConfig, ZoneId } from '../domain/types'
 
 // ── Geometría base ──────────────────────────────────────────────────────────────
@@ -40,6 +41,20 @@ export const SPACE_TYPES: Record<SpaceType, SpaceTypeInfo> = {
     monthlyPriceCOP: 450_000,
     size: [2 * SPORTS_HALF[0], 2 * SPORTS_HALF[1]],
     features: ['Dos canchas de fútbol 5 (A y B) con césped, arcos y malla', 'Iluminación nocturna y bancas', 'Reservas por hora desde el mall', 'Cartel con tu marca sobre la malla', 'Precio por hora definido por ti'],
+  },
+  booth: {
+    type: 'booth',
+    name: 'Local de entretenimiento',
+    monthlyPriceCOP: 49_900,
+    size: ENT_UNIT,
+    features: ['Local abierto con fachada y letrero', 'Vitrina y mostrador', 'En la isla de entretenimiento, junto a la pista', 'Catálogo y promociones'],
+  },
+  track: {
+    type: 'track',
+    name: 'Pista de karts',
+    monthlyPriceCOP: 150_000,
+    size: [2 * (ENT_TRACK.a + ENT_TRACK.r + ENT_TRACK.w / 2), 2 * (ENT_TRACK.r + ENT_TRACK.w / 2)],
+    features: ['Pista de karts con luces nocturnas y karts en carrera', 'Arco de salida con tu marca', 'Reservas y boletas desde el mall', 'Eventos y torneos', 'Precio por vuelta definido por ti'],
   },
 }
 
@@ -334,6 +349,40 @@ const DISTRICT_SPACES: SpaceSlot[] = (
 }))
 
 /**
+ * Zona de entretenimiento: isla-castillo al oeste de la fortaleza (se cruza por un puente frente a
+ * Planly). 11 locales abiertos y una pista de karts, todos reclamables.
+ */
+export const ENTERTAINMENT_ZONE: ZoneConfig = {
+  id: 'G',
+  name: 'Entretenimiento',
+  color: ENT_COLOR,
+  angle: 0,
+  focus: [ENT_CENTER[0] + 2, ENT_CENTER[1]],
+  categories: [
+    { id: 'videojuegos', name: 'Videojuegos y arcade', zoneId: 'G' },
+    { id: 'realidad-virtual', name: 'Realidad virtual y simuladores', zoneId: 'G' },
+    { id: 'esports', name: 'Esports y gaming', zoneId: 'G' },
+    { id: 'karts', name: 'Karts y pista', zoneId: 'G' },
+    { id: 'comida-diversion', name: 'Comida y helados', zoneId: 'G' },
+    { id: 'juegos-mesa', name: 'Juegos de mesa y tienda gamer', zoneId: 'G' },
+  ],
+}
+
+/** Los 11 locales de la isla de entretenimiento (se reclaman como cualquier local). */
+const ENTERTAINMENT_SPACES: SpaceSlot[] = ENT_SLOTS.map((t, k) => ({
+  id: `P1-G${k + 1}`,
+  floorId: 'P1',
+  zoneId: 'G' as ZoneId,
+  type: 'booth' as SpaceType,
+  label: `EN-${String(k + 1).padStart(2, '0')}`,
+  position: t.at,
+  rotation: t.rot,
+  size: ENT_UNIT,
+}))
+/** Rubro sugerido por local (solo orienta; cada negocio elige el suyo). */
+export const ENTERTAINMENT_SUGGESTED: Record<string, string> = Object.fromEntries(ENT_SLOTS.map((_, k) => [`P1-G${k + 1}`, ENT_SUGGESTED[k]]))
+
+/**
  * Isla Tecnología: un castillo-isla de una sola planta, lejos en el mar (se llega en avión
  * desde el aeropuerto). Murallas con torres, puerta hacia la pista, plaza con fuente y locales
  * outlet repartidos alrededor. Usa las coordenadas del piso 1 (al nivel del mar).
@@ -394,7 +443,7 @@ export const FLOORS = MALL.floors
 export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))
 /** Piso 1 (en cruz): lo usan la estructura, decoración y ambiente específicos de esa planta. */
 export const P1 = FLOORS[0]
-export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES]
+export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES, ...ENTERTAINMENT_SPACES]
 
 /**
  * ¿El punto (x, z) cae dentro de un local o isla (más `margin` alrededor)? Las zonas de locales
@@ -427,10 +476,21 @@ export const COURT_SPACE: SpaceSlot = {
   rotation: 0,
   size: SPACE_TYPES.court.size,
 }
-export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries([...SPACES, COURT_SPACE].map((s) => [s.id, s]))
-export const ZONES: ZoneConfig[] = [...FLOORS.flatMap((f) => f.zones), DISTRICT_ZONE]
+/** La pista de karts: como la cancha, un espacio único con su propio dibujo (no está en SPACES). */
+export const TRACK_SPACE: SpaceSlot = {
+  id: 'PISTA',
+  floorId: 'P1',
+  zoneId: 'G',
+  type: 'track',
+  label: 'Pista de karts',
+  position: ENT_CENTER,
+  rotation: 0,
+  size: SPACE_TYPES.track.size,
+}
+export const SPACE_BY_ID: Record<string, SpaceSlot> = Object.fromEntries([...SPACES, COURT_SPACE, TRACK_SPACE].map((s) => [s.id, s]))
+export const ZONES: ZoneConfig[] = [...FLOORS.flatMap((f) => f.zones), DISTRICT_ZONE, ENTERTAINMENT_ZONE]
 export const ZONE_BY_ID = Object.fromEntries(ZONES.map((z) => [z.id, z])) as Record<ZoneId, ZoneConfig>
-export const FLOOR_OF_ZONE = Object.fromEntries([...FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id])), [DISTRICT_ZONE.id, 'P1']]) as Record<ZoneId, FloorId>
+export const FLOOR_OF_ZONE = Object.fromEntries([...FLOORS.flatMap((f) => f.zones.map((z) => [z.id, f.id])), [DISTRICT_ZONE.id, 'P1'], [ENTERTAINMENT_ZONE.id, 'P1']]) as Record<ZoneId, FloorId>
 export const CATEGORIES = ZONES.flatMap((z) => z.categories)
 export const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]))
 

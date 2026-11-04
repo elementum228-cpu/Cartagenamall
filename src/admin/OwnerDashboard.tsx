@@ -1,7 +1,7 @@
-import { Building2, Eye, MapPin, RotateCcw, Search, Trophy, Utensils } from 'lucide-react'
+import { Building2, Eye, Gamepad2, MapPin, RotateCcw, Search, Trophy, Utensils } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { COURT_SPACE, FLOORS, FLOOR_BY_ID, SHOP_SPACE_TYPES, SPACES, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
+import { COURT_SPACE, TRACK_SPACE, FLOORS, FLOOR_BY_ID, SHOP_SPACE_TYPES, SPACES, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
 import type { SpaceSlot, SpaceType, Store } from '../domain/types'
 import { COURT_COLOR } from '../football/open'
 import { formatCOP } from '../lib/format'
@@ -15,7 +15,7 @@ import { SEASONS, resolveSeason, useSeasonSettings, type SeasonMode } from '../s
 // Vista del dueño del centro comercial: ocupación e ingresos de un vistazo, precios por tipo de
 // espacio, amenidades y la lista de todos los espacios con su precio editable.
 
-const ALL_SPACES: SpaceSlot[] = [...SPACES, COURT_SPACE]
+const ALL_SPACES: SpaceSlot[] = [...SPACES, COURT_SPACE, TRACK_SPACE]
 type Filter = 'todos' | 'disponibles' | 'ocupados'
 
 interface Row {
@@ -128,12 +128,12 @@ export function PriceInput({ value, onSave, label }: { value: number; onSave: (n
 function TypePrices({ rows }: { rows: Row[] }) {
   const pricing = useSpacePricing()
   const toast = useUI((s) => s.toast)
-  const types: SpaceType[] = [...SHOP_SPACE_TYPES, 'court']
+  const types: SpaceType[] = [...SHOP_SPACE_TYPES, 'booth', 'court', 'track']
   return (
     <section>
       <h3 className="mb-1 text-sm font-extrabold">Precio por tipo de espacio</h3>
       <p className="mb-3 text-xs text-ink-soft">Se aplica a todos los espacios de ese tipo, salvo los que tengan un precio propio en la lista de abajo.</p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {types.map((t) => {
           const count = rows.filter((r) => r.space.type === t).length
           const changed = pricing.types[t] !== undefined
@@ -175,6 +175,7 @@ function Amenities({ rows }: { rows: Row[] }) {
   const pricing = useSpacePricing()
   const navigate = useNavigate()
   const court = rows.find((r) => r.space.id === COURT_SPACE.id)!
+  const track = rows.find((r) => r.space.id === TRACK_SPACE.id)!
   const food = rows.filter((r) => r.space.zoneId === 'E')
   const foodBusy = food.filter((r) => r.store).length
   const foodZone = ZONE_BY_ID.E
@@ -207,6 +208,33 @@ function Amenities({ rows }: { rows: Row[] }) {
               </>
             ) : (
               'Libre: se muestra vacía con «TU NEGOCIO AQUÍ». Asígnale un negocio en Espacios para activarla.'
+            )}
+          </p>
+        </div>
+        <div className="rounded-3xl border border-line bg-card p-4">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 place-items-center rounded-2xl text-white" style={{ background: ZONE_BY_ID.G.color }}>
+              <Gamepad2 className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-extrabold">Pista de karts · Isla de Entretenimiento</p>
+              <p className="text-xs text-ink-soft">{FLOOR_BY_ID.P1.name} · Al oeste de la fortaleza</p>
+            </div>
+            <Status row={track} />
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+            <PriceInput label="Precio mensual de la pista" value={track.price} onSave={(n) => pricing.setSpacePrice(TRACK_SPACE.id, n)} />
+            <button className="flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold text-ink-soft hover:bg-ink/5" onClick={() => viewOnMap(TRACK_SPACE, navigate)}>
+              <Eye className="size-4" /> Ver
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-ink-soft">
+            {track.store ? (
+              <>
+                La opera <b className="text-ink">{track.store.name}</b>.
+              </>
+            ) : (
+              'Libre: muestra «Disponible» sobre la pista. Asígnale un negocio en Espacios para que aparezca como operador.'
             )}
           </p>
         </div>
@@ -250,6 +278,7 @@ function viewOnMap(space: SpaceSlot, navigate: ReturnType<typeof useNavigate>) {
 
 const groupName = (space: SpaceSlot) => {
   if (space.id === COURT_SPACE.id) return `${FLOOR_BY_ID.P1.name} · Amenidades`
+  if (space.zoneId === 'G') return `${FLOOR_BY_ID.P1.name} · Isla de Entretenimiento`
   const zone = ZONE_BY_ID[space.zoneId]
   return `${FLOOR_BY_ID[space.floorId].name} · ${zone.id === 'E' ? zone.name : `Pasillo ${zone.id} · ${zone.name}`}`
 }

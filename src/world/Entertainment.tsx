@@ -10,6 +10,13 @@ import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
 import { Person } from './Person'
+import { TRACK_SPACE } from '../config/mall'
+import { useCatalog } from '../state/catalog'
+import { useClaims } from '../state/claims'
+import { useSpacePrice } from '../state/spacePricing'
+import { useUI } from '../state/ui'
+import { formatCOP } from '../lib/format'
+import { ENT_COLOR, ENT_BRIDGE_Z, ENT_CENTER, ENT_HX, ENT_HZ, ENT_TRACK, ENT_WALL_X } from '../entertainment/config'
 
 // Isla de Entretenimiento (propuesta de diseño): una isla redonda al oeste de la fortaleza, unida a
 // la muralla por un puente de piedra con arcos. En el centro, una pista de karts con bordillos rojos
@@ -20,8 +27,8 @@ import { Person } from './Person'
  * Contorno del castillo-isla: un rectángulo de esquinas muy redondeadas (con torreones en ellas).
  * El lado este queda abierto en el centro: es la puerta hacia el puente.
  */
-const HX = 15
-const HZ = 12
+const HX = ENT_HX
+const HZ = ENT_HZ
 const CR = 5
 const GATE_HALF = 3.4
 const { OUTLINE, TOWERS } = (() => {
@@ -48,19 +55,16 @@ const WH = 1.7
 const Y = 0.12
 const SEA = -0.5
 /** Cara exterior de la muralla oeste: donde arranca el puente (junto a la garita, frente a Planly). */
-const WALL_X = -(31 + 1.1)
+const WALL_X = ENT_WALL_X
 const BRIDGE_W = 3.2
-const BRIDGE_LEN = 13.5
-const BRIDGE_Z = 10
-/** Centro de la isla (mundo): junto a la garita del muro oeste, a la derecha de Planly. */
-export const ENTERTAINMENT = { x: WALL_X - BRIDGE_LEN + 0.6 - GATE_X, z: BRIDGE_Z, r: 16 } as const
-const C = ENTERTAINMENT
+const BRIDGE_Z = ENT_BRIDGE_Z
+const C = { x: ENT_CENTER[0], z: ENT_CENTER[1] }
 const IRON = '#2f3438'
 const ASPHALT = '#3d4147'
 const RED = '#d9453d'
 
 // ── pista: un óvalo (dos rectas y dos curvas) ─────────────────────────────────────────────────────
-const TRACK = { a: 3.6, r: 4.0, w: 2.9 }
+const TRACK = ENT_TRACK
 const LAP = 4 * TRACK.a + 2 * Math.PI * TRACK.r
 
 /** Contorno del óvalo a `off` del eje de la pista (local a la isla). u en [0,1). */
@@ -281,115 +285,6 @@ function Palm({ x, z, h = 3.4, y = Y, seed = 0 }: { x: number; z: number; h?: nu
         return <mesh key={k} geometry={GEO.box} material={mat(k % 2 ? PALETTE.leafDark : '#5f9a58')} position={[Math.sin(a) * 0.8, h + 0.05, Math.cos(a) * 0.8]} rotation={[0.38, a, 0]} scale={[0.5, 0.08, 1.8]} castShadow />
       })}
     </group>
-  )
-}
-
-// ── locales abiertos y disponibles ────────────────────────────────────────────────────────────────
-// Igual que dentro del mall: cortes sin techo para ver el interior, mostrador, toldo y un cartel
-// "TU NEGOCIO AQUÍ" con el rubro sugerido. Todos libres (todavía no se alquilan).
-const STALLS: { name: string; color: string; awning: string }[] = [
-  { name: 'ARCADE', color: '#ffe3a3', awning: '#d9453d' },
-  { name: 'VIDEOJUEGOS', color: '#cfe3ff', awning: '#2f6fd1' },
-  { name: 'REALIDAD VIRTUAL', color: '#e6d4ff', awning: '#7a4fd1' },
-  { name: 'ESPORTS', color: '#c9f0e4', awning: '#1b9e84' },
-  { name: 'HELADOS', color: '#ffd6e2', awning: '#e0558a' },
-  { name: 'COMIDA RÁPIDA', color: '#ffe0bd', awning: '#e07a2f' },
-  { name: 'SIMULADORES', color: '#dfe6ee', awning: '#d9453d' },
-  { name: 'TIENDA GAMER', color: '#d8f0c8', awning: '#4fa86a' },
-  { name: 'JUEGOS DE MESA', color: '#f3dccb', awning: '#b5674d' },
-  { name: 'CAFÉ GAMER', color: '#fff0b3', awning: '#f2c230' },
-  { name: 'KARTS', color: '#cfe8ee', awning: '#13a5c4' },
-]
-const UNIT_W = 4.4
-const UNIT_D = 3.2
-/** Hileras pegadas a la muralla: norte (4), sur (4) y oeste (3); el lado este es la entrada. */
-const STALL_SLOTS = (() => {
-  const out: { x: number; z: number; rot: number }[] = []
-  const zb = HZ - 0.55 - UNIT_D / 2
-  const xb = HX - 0.55 - UNIT_D / 2
-  const row = (n: number, f: (c: number) => { x: number; z: number; rot: number }) => {
-    for (let i = 0; i < n; i++) out.push(f((i - (n - 1) / 2) * UNIT_W))
-  }
-  row(4, (c) => ({ x: c - 1, z: -zb, rot: 0 }))
-  row(4, (c) => ({ x: c - 1, z: zb, rot: Math.PI }))
-  row(3, (c) => ({ x: -xb, z: c, rot: Math.PI / 2 }))
-  return out
-})()
-
-function stallSign(name: string, color: string) {
-  const c = document.createElement('canvas')
-  c.width = 512
-  c.height = 160
-  const g = c.getContext('2d')!
-  g.fillStyle = color
-  g.beginPath()
-  g.roundRect(0, 0, 512, 160, 28)
-  g.fill()
-  g.fillStyle = '#ffffff'
-  g.textAlign = 'center'
-  g.textBaseline = 'middle'
-  g.font = '800 62px system-ui, sans-serif'
-  g.fillText('TU NEGOCIO AQUÍ', 256, 58)
-  g.fillStyle = 'rgba(255,255,255,0.92)'
-  g.font = `700 ${name.length > 11 ? 40 : 48}px system-ui, sans-serif`
-  g.fillText(name, 256, 118)
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.anisotropy = 4
-  return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
-}
-
-/** Un local abierto (local: la fachada mira a +z): pared de fondo y divisorias como en el mall, sin techo ni carpa. */
-function Stall({ s, signMat, lastWall }: { s: (typeof STALLS)[number]; signMat: THREE.Material; lastWall: boolean }) {
-  const W = UNIT_W
-  const D = UNIT_D
-  const wall = mat(s.color)
-  const party = mat('#f3ead8')
-  return (
-    <group>
-      {/* piso con marco de color */}
-      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 0.05, 0]} scale={[W, 0.1, D]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat('#f6efe0')} position={[0, 0.07, 0]} scale={[W - 0.3, 0.1, D - 0.3]} receiveShadow />
-      {/* pared de fondo (contra la muralla) y divisorias laterales compartidas con el local vecino */}
-      <mesh geometry={GEO.box} material={wall} position={[0, 1.1, -D / 2 + 0.1]} scale={[W, 2.2, 0.2]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(s.awning)} position={[0, 2.26, -D / 2 + 0.1]} scale={[W + 0.1, 0.12, 0.3]} />
-      {(lastWall ? [-1, 1] : [-1]).map((sx) => (
-        <group key={sx}>
-          <mesh geometry={GEO.box} material={party} position={[sx * (W / 2), 1.1, 0]} scale={[0.2, 2.2, D]} castShadow receiveShadow />
-          <mesh geometry={GEO.box} material={mat(s.awning)} position={[sx * (W / 2), 2.26, 0]} scale={[0.3, 0.12, D + 0.1]} />
-        </group>
-      ))}
-      {/* interior: mostrador, estantes y franja de luz */}
-      <mesh geometry={GEO.box} material={mat(PALETTE.woodDark)} position={[0, 0.5, 0.55]} scale={[W - 1.4, 1, 0.5]} castShadow />
-      <mesh geometry={GEO.box} material={mat('#f4ead8')} position={[0, 1.02, 0.55]} scale={[W - 1.2, 0.08, 0.62]} />
-      {[0.9, 1.45, 2.0].map((y) => (
-        <mesh key={y} geometry={GEO.box} material={mat(PALETTE.wood)} position={[0, y, -D / 2 + 0.38]} scale={[W - 0.7, 0.07, 0.4]} />
-      ))}
-      <mesh geometry={GEO.box} material={glowMat('#ffe7b0', 1.1, { dayGlow: 0.2 })} position={[0, 2.12, -D / 2 + 0.22]} scale={[W - 1.2, 0.05, 0.04]} />
-      {/* cartel de local disponible, igual al del mall, sobre la pared de fondo */}
-      <mesh geometry={GEO.plane} material={signMat} position={[0, 3.0, -D / 2 + 0.35]} scale={[3.2, 1, 1]} rotation={[-0.1, 0, 0]} />
-      {[-1, 1].map((sx) => (
-        <mesh key={sx} geometry={GEO.cylinderLow} material={mat(IRON)} position={[sx * 1.5, 2.6, -D / 2 + 0.3]} scale={[0.07, 0.8, 0.07]} />
-      ))}
-      {/* aro en el piso frente al local, como las plazas libres del mall */}
-      <mesh geometry={GEO.ring} material={glowMat(s.awning, 1, { opacity: 0.8, dayGlow: 0.45 })} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.14, D / 2 + 0.8]} scale={[0.95, 0.95, 1]} />
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.5)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.13, D / 2 + 0.5]} scale={[4, 3, 1]} />
-    </group>
-  )
-}
-
-function Stalls() {
-  const stalls = useMemo(() => STALLS.map((s) => stallSign(s.name, s.awning)), [])
-  // la última de cada hilera lleva su divisoria de cierre
-  const ends = new Set([3, 7, 10])
-  return (
-    <>
-      {STALL_SLOTS.map((o, i) => (
-        <group key={STALLS[i].name} position={[o.x, Y, o.z]} rotation={[0, o.rot, 0]}>
-          <Stall s={STALLS[i]} signMat={stalls[i]} lastWall={ends.has(i)} />
-        </group>
-      ))}
-    </>
   )
 }
 
@@ -685,6 +580,72 @@ function Portal() {
   )
 }
 
+/**
+ * La pista como espacio reclamable: toda la pista es tocable. Libre, abre su ficha para reclamarla;
+ * con un negocio que la opera, abre su ficha. Un cartel sobre el césped dice en qué estado está.
+ */
+function TrackSpace({ night }: { night: boolean }) {
+  const operator = useCatalog((s) => {
+    const id = s.assignments[TRACK_SPACE.id]
+    return id ? (s.stores.find((st) => st.id === id) ?? null) : null
+  })
+  const pending = useClaims((s) => s.claims.some((c) => c.spaceId === TRACK_SPACE.id && c.status === 'pending'))
+  const price = useSpacePrice(TRACK_SPACE.id)
+  const ring = useRef<THREE.Mesh>(null)
+  const label = useMemo(
+    () =>
+      getGlassPill(operator ? operator.name : pending ? 'Pista en revisión' : 'Pista de karts', {
+        dot: ENT_COLOR,
+        sub: operator ? 'Operador de la pista · toca para ver' : pending ? 'Solicitud enviada' : `Disponible · ${formatCOP(price)}/mes`,
+        logo: operator?.logo ?? null,
+        dark: night,
+      }),
+    [operator, pending, price, night],
+  )
+  const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ color: pending ? '#f5b544' : ENT_COLOR, transparent: true, depthWrite: false, toneMapped: false }), [pending])
+  const hit = useMemo(() => {
+    const shape = new THREE.Shape(stadiumShape(TRACK.a, TRACK.r + TRACK.w / 2 + 0.4).getPoints(32))
+    const g = new THREE.ShapeGeometry(shape)
+    g.rotateX(-Math.PI / 2)
+    return g
+  }, [])
+  const hitMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }), [])
+  useFrame(({ clock }) => {
+    if (!ring.current) return
+    const p = (clock.elapsedTime * 0.5) % 1
+    ring.current.scale.setScalar(2.2 + p * 2.2)
+    ;(ring.current.material as THREE.MeshBasicMaterial).opacity = 0.6 * (1 - p)
+  })
+  const open = () => {
+    const ui = useUI.getState()
+    if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
+    if (operator) ui.openStore(operator.id)
+    else ui.selectSpace(TRACK_SPACE.id)
+    ui.requestFocus({ kind: 'space', id: TRACK_SPACE.id })
+  }
+  return (
+    <group>
+      <mesh
+        geometry={hit}
+        material={hitMat}
+        position={[0, Y + 0.3, 0]}
+        onClick={(e) => {
+          if (e.delta > 8) return
+          e.stopPropagation()
+          open()
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => (document.body.style.cursor = '')}
+      />
+      {!operator && <mesh ref={ring} userData={{ dynamic: true }} geometry={GEO.ring} material={ringMat} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.45, 0.3]} raycast={() => null} />}
+      <ScreenLabel label={label} position={[0, 2.4, 0]} pixelHeight={34} maxZoomRatio={2.4} priority={LABEL_PRIORITY.store} onClick={open} />
+    </group>
+  )
+}
+
 export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const label = useMemo(() => getGlassPill('Entretenimiento', { dot: '#e0558a', sub: 'Pista de karts y videojuegos', dark: night }), [night])
@@ -697,7 +658,6 @@ export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
         <group position={[C.x, 0, C.z]}>
           <Ground />
           <Track />
-          <Stalls />
           {DECOR.palms.map(([x, z, h], i) => (
             <Palm key={i} x={x} z={z} h={h} seed={i * 1.3} />
           ))}
@@ -712,6 +672,7 @@ export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
       </Batch>
       <BridgeCrossers reduceMotion={reduceMotion} />
       <group position={[C.x, 0, C.z]}>
+        <TrackSpace night={night} />
         <Karts reduceMotion={reduceMotion} />
         {VISITORS.map(([x, z, color, rot], i) => (
           <group key={i} position={[x, Y, z]} rotation={[0, rot, 0]}>

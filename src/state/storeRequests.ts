@@ -9,7 +9,7 @@ export interface StoreRequest {
   status: RequestStatus
   created_at: string
 }
-export const REQUEST_CATEGORIES = ['Moda', 'Tecnología', 'Belleza', 'Lifestyle', 'Gastronomía', 'Servicios', 'Otro']
+export const REQUEST_CATEGORIES = ['Moda', 'Tecnología', 'Belleza', 'Lifestyle', 'Gastronomía', 'Servicios', 'Entretenimiento', 'Otro']
 export const STATUS_LABEL: Record<RequestStatus, string> = { pendiente: 'Pendiente', aprobada: 'Aprobada', rechazada: 'Rechazada' }
 export const STATUS_STYLE: Record<RequestStatus, string> = {
   pendiente: 'bg-amber-100 text-amber-800',

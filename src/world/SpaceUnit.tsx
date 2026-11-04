@@ -179,7 +179,7 @@ function displayColors(store: Store, products: Product[]) {
 // ── Vitrinas según el rubro de la zona ─────────────────────────────────────────
 
 type Kind = 'fashion' | 'tech' | 'beauty' | 'lifestyle' | 'food' | 'cafe' | 'dessert'
-const ZONE_KIND: Record<ZoneId, Kind> = { A: 'fashion', B: 'tech', C: 'beauty', D: 'lifestyle', E: 'food', F: 'lifestyle', I: 'lifestyle' }
+const ZONE_KIND: Record<ZoneId, Kind> = { A: 'fashion', B: 'tech', C: 'beauty', D: 'lifestyle', E: 'food', F: 'lifestyle', G: 'tech', I: 'lifestyle' }
 
 /** Rubro visual de la vitrina: por zona, y en gastronomía según la categoría del negocio. */
 function kindOf(store: Store): Kind {

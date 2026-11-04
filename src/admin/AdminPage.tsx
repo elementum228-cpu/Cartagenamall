@@ -1,7 +1,7 @@
 import { ArrowLeft, Check, Plug, RotateCcw, ShieldAlert, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CATEGORIES, CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
+import { CATEGORIES, CATEGORY_BY_ID, COURT_SPACE, TRACK_SPACE, FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
 import { COURT_COLOR } from '../football/open'
 import type { FacadeStyle, OrderStatus, Product, ProductIcon, Promotion, PromotionType, SpaceClaim, SpaceSlot, Store } from '../domain/types'
 import { formatCOP, formatDateTime } from '../lib/format'
@@ -152,6 +152,18 @@ function SpacesAdmin() {
         <p className="mb-2 text-xs text-ink-soft">Libre, se muestra vacía con «TU NEGOCIO AQUÍ». Al asignarle un negocio se activa: partido, reservas por hora y su nombre en el cartel.</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <SpaceCard s={COURT_SPACE} />
+        </div>
+      </section>
+      <section>
+        <h2 className="mb-2 flex items-center gap-2 text-sm font-extrabold">
+          <span className="size-3 rounded-full" style={{ background: ZONE_BY_ID.G.color }} /> {FLOOR_BY_ID.P1.name} · Isla de Entretenimiento (11 locales y la pista de karts)
+        </h2>
+        <p className="mb-2 text-xs text-ink-soft">Los locales y la pista se reclaman como cualquier espacio. Al asignarle un negocio a la pista, su nombre y logo aparecen sobre ella.</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <SpaceCard s={TRACK_SPACE} />
+          {SPACES.filter((s) => s.zoneId === 'G').map((s) => (
+            <SpaceCard key={s.id} s={s} />
+          ))}
         </div>
       </section>
     </div>

@@ -1,9 +1,9 @@
 // Modelo de dominio de MallPlay. Todo lo que la UI y los servicios intercambian pasa por
 // estos tipos, de modo que reemplazar los datos mock por Supabase/GrowDesk no toque los componentes.
 
-export type ZoneId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'I'
+export type ZoneId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'I'
 export type FloorId = string
-export type SpaceType = 'island' | 'local' | 'premium' | 'court'
+export type SpaceType = 'island' | 'local' | 'premium' | 'court' | 'booth' | 'track'
 
 export interface Category {
   id: string
