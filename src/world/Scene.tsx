@@ -23,6 +23,7 @@ import { useAirportFeature } from '../state/airportFeature'
 import { Airport } from './Airport'
 import { Island } from './Island'
 import { Harbor } from './Harbor'
+import { Entertainment } from './Entertainment'
 import { District } from './District'
 import { Halloween } from './Halloween'
 import { useSeason } from '../state/season'
@@ -139,6 +140,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       <group dispose={null}>
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
         <Harbor reduceMotion={reduceMotion} />
+        <Entertainment reduceMotion={reduceMotion} />
         {airportOn && <Airport reduceMotion={reduceMotion} />}
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />

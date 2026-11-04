@@ -29,7 +29,7 @@ const OVERVIEW_ZOOM = 0.54
 /** En pantallas verticales la fortaleza se encuadra más cerca (se recortan apenas las puntas de los baluartes). */
 const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
 /** Vista general y piso 1: se puede recorrer todo, incluidos el muelle, los barcos y el mar alrededor. */
-const OVERVIEW_BOUNDS = 66
+const OVERVIEW_BOUNDS = 92
 const P1_BOUNDS = 62
 /** Alcance de la cámara con el muelle turístico abierto. */
 const HARBOR_BOUNDS = 70
