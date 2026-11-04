@@ -2,7 +2,7 @@
 // Páginas: primero la red (siempre la versión publicada más nueva) y, sin conexión, la copia guardada.
 // Archivos del sitio (JS/CSS con hash, íconos, fuentes): copia guardada y se refresca por detrás.
 // Nada de Supabase ni otros servicios se guarda aquí.
-const CACHE = 'cm-v2'
+const CACHE = 'cm-v3'
 const SCOPE = new URL(self.registration.scope)
 const SHELL = new URL('./', SCOPE).href
 
@@ -19,7 +19,8 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-const sameSite = (url) => url.origin === SCOPE.origin && url.pathname.startsWith(SCOPE.pathname)
+// La presentación privada (carpeta «presentacion/») es otra aplicación en el mismo sitio: este service worker no la toca.
+const sameSite = (url) => url.origin === SCOPE.origin && url.pathname.startsWith(SCOPE.pathname) && !url.pathname.startsWith(SCOPE.pathname + 'presentacion/')
 const fonts = (url) => url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com'
 
 self.addEventListener('fetch', (event) => {

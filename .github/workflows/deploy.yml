@@ -34,6 +34,14 @@ jobs:
           # repositorio (Settings → Secrets and variables → Actions → Variables).
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://ccdrxnpoqsniiaeygqhb.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || 'sb_publishable_bxk4Pytn9kX48-Cu3Al7Ig_pvMnA7nu' }}
+      # Presentación privada por invitación: otra compilación del mismo código (VITE_DEMO=1) que se publica
+      # en la subcarpeta presentacion/ del mismo sitio. No incluye la app: solo la puerta con código.
+      - run: npx vite build --outDir dist/presentacion --emptyOutDir false
+        env:
+          VITE_DEMO: '1'
+          VITE_BASE: /${{ github.event.repository.name }}/presentacion/
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://ccdrxnpoqsniiaeygqhb.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || 'sb_publishable_bxk4Pytn9kX48-Cu3Al7Ig_pvMnA7nu' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
