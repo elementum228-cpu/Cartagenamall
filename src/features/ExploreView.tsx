@@ -25,6 +25,7 @@ import { useCanAdmin } from '../remote/session'
 import { ShipPill, ShipTestButton } from '../ship/ShipLayer'
 import { usePirateShip } from '../state/pirate'
 import { useAirportFeature } from '../state/airportFeature'
+import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useFlight } from '../airport/flight'
 import { BOATS, BOAT_IDS } from '../tourism/config'
 import { startTour } from './GuidedTour'
@@ -110,6 +111,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const promotions = useCatalog((s) => s.promotions)
   const discovered = usePersonal((s) => s.discovered)
   const season = useSeason()
+  const entOn = useEntertainmentFeature((s) => s.enabled)
   const passportDone = usePassport((s) => PASSPORT_STAMPS.filter((p) => s.stamps[p.id]).length)
   const now = useNow()
   const secretTotal = promotions.filter((p) => p.type === 'secret' && isPromotionLive(p, now)).length
@@ -162,7 +164,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         aria-label="Categorías del mall"
       >
         {/* Isla Tecnología no va en la fila: se llega en avión desde el aeropuerto */}
-        {ZONES.filter((z) => z.id !== 'I').map((z) => {
+        {ZONES.filter((z) => z.id !== 'I' && (z.id !== 'G' || entOn)).map((z) => {
           const Icon = ZONE_ICON[z.id]
           return (
             <button
@@ -533,6 +535,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       {use3D && <HalloweenToggle className={item} />}
       {use3D && <PirateToggle className={item} />}
       {use3D && <AirportToggle className={item} />}
+      {use3D && <EntertainmentToggle className={item} />}
         </>
       )}
     </>
@@ -677,6 +680,34 @@ function AirportToggle({ className }: { className: string }) {
       }}
     >
       <Plane className="size-4" /> {enabled ? 'Aeropuerto: ocultar' : 'Aeropuerto: mostrar'}
+    </button>
+  )
+}
+
+/** Muestra u oculta la Isla de Entretenimiento (locales, pista y puente) para todos los visitantes. */
+function EntertainmentToggle({ className }: { className: string }) {
+  const enabled = useEntertainmentFeature((s) => s.enabled)
+  const setEnabled = useEntertainmentFeature((s) => s.setEnabled)
+  return (
+    <button
+      className={enabled ? `${className} !bg-deep/85 !text-white` : className}
+      aria-pressed={enabled}
+      aria-label={enabled ? 'Ocultar la Isla de Entretenimiento' : 'Mostrar la Isla de Entretenimiento'}
+      onClick={() => {
+        const on = !enabled
+        const ui = useUI.getState()
+        if (!on) {
+          // al apagarla: se cierran sus fichas y paneles y se vuelve a la vista general
+          ui.openTrack(false)
+          const sel = ui.selectedSpaceId
+          if (sel === 'PISTA' || sel?.startsWith('P1-G')) ui.selectSpace(null)
+          ui.setOverview(true)
+        }
+        setEnabled(on)
+        if (on) ui.requestFocus({ kind: 'zone', id: 'G' })
+      }}
+    >
+      <Gamepad2 className="size-4" /> {enabled ? 'Entretenimiento: ocultar' : 'Entretenimiento: mostrar'}
     </button>
   )
 }

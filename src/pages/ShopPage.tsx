@@ -7,6 +7,7 @@ import type { ZoneId } from '../domain/types'
 import { EMPTY_FILTERS, searchProducts, type SearchFilters, type SortMode } from '../lib/search'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { usePricing } from '../state/pricing'
+import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useUI } from '../state/ui'
 import { Chip, EmptyState, SectionTitle, StoreLogo, input } from '../ui/bits'
 import { ProductCard } from '../ui/ProductCard'
@@ -21,6 +22,7 @@ const PRICE_RANGES: { label: string; min: number | null; max: number | null }[] 
 
 /** Modo Comprar: marketplace tradicional sobre el mismo catálogo, carrito y promociones. */
 export function ShopPage() {
+  const entOn = useEntertainmentFeature((s) => s.enabled)
   const [params, setParams] = useSearchParams()
   const products = useCatalog((s) => s.products)
   const stores = useCatalog((s) => s.stores)
@@ -107,7 +109,7 @@ export function ShopPage() {
           <Chip active={!f.zoneId} onClick={() => update({ zona: null, cat: null })}>
             Todo el mall
           </Chip>
-          {ZONES.map((z) => (
+          {ZONES.filter((z) => z.id !== 'G' || entOn).map((z) => (
             <Chip key={z.id} color={z.color} active={f.zoneId === z.id} onClick={() => update({ zona: f.zoneId === z.id ? null : z.id, cat: null })}>
               {z.name}
             </Chip>

@@ -11,6 +11,7 @@ import { useSpacePricing, type Pricing } from '../state/spacePricing'
 import { useSeasonSettings, type SeasonMode } from '../state/season'
 import { useOrders } from '../state/orders'
 import { useAirportFeature } from '../state/airportFeature'
+import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { usePirateShip } from '../state/pirate'
 import { useReservations, type CourtReservation } from '../state/reservations'
 import { useUI } from '../state/ui'
@@ -412,16 +413,17 @@ export async function loadFeatures() {
   if (!supabase) return
   const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'features').maybeSingle()
   if (error) return
-  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean }> | null)?.doc
+  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean }> | null)?.doc
   if (!doc) return
   applyRemote(() => {
     useAirportFeature.setState({ enabled: !!doc.airport })
+    useEntertainmentFeature.setState({ enabled: !!doc.entertainment })
     usePirateShip.setState({ parked: !!doc.pirateParked })
   })
 }
 
 function pushFeatures() {
-  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked }
+  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled }
   enqueue(async () => {
     const { error } = await supabase!.from('mall_settings').upsert({ key: 'features', doc })
     if (error) throw new Error(error.message)
@@ -470,6 +472,10 @@ export function startRemoteSync() {
     pushShipOffers(prev.offers, next.offers)
   })
   useAirportFeature.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
+    pushFeatures()
+  })
+  useEntertainmentFeature.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
     pushFeatures()
   })

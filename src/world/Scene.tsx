@@ -20,10 +20,11 @@ import { Lighting } from './Lighting'
 import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
 import { useAirportFeature } from '../state/airportFeature'
+import { useEntertainmentFeature } from '../state/entertainmentFeature'
+import { Entertainment } from './Entertainment'
 import { Airport } from './Airport'
 import { Island } from './Island'
 import { Harbor } from './Harbor'
-import { Entertainment } from './Entertainment'
 import { District } from './District'
 import { Halloween } from './Halloween'
 import { useSeason } from '../state/season'
@@ -50,6 +51,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const season = useSeason()
   const airportOn = useAirportFeature((s) => s.enabled)
+  const entOn = useEntertainmentFeature((s) => s.enabled)
   const assignments = useCatalog((s) => s.assignments)
   const products = useCatalog((s) => s.products)
   const promotions = useCatalog((s) => s.promotions)
@@ -73,9 +75,9 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
 
   const availableByZone = useMemo(() => {
     const m: Record<string, SpaceSlot[]> = {}
-    for (const sp of SPACES) if (!storeById[assignments[sp.id]]) (m[sp.zoneId] ??= []).push(sp)
+    for (const sp of SPACES) if ((entOn || sp.zoneId !== 'G') && !storeById[assignments[sp.id]]) (m[sp.zoneId] ??= []).push(sp)
     return m
-  }, [assignments, storeById])
+  }, [assignments, storeById, entOn])
 
   const pendingSpaces = useMemo(() => new Set(claims.filter((c) => c.status === 'pending').map((c) => c.spaceId)), [claims])
   const secretPromos = useMemo(() => promotions.filter((p) => p.type === 'secret' && isPromotionLive(p, minute)), [promotions, minute])
@@ -140,7 +142,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       <group dispose={null}>
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
         <Harbor reduceMotion={reduceMotion} />
-        <Entertainment reduceMotion={reduceMotion} />
+        {entOn && <Entertainment reduceMotion={reduceMotion} />}
         {airportOn && <Airport reduceMotion={reduceMotion} />}
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
@@ -154,7 +156,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         {FLOORS.map((floor) => {
           const mode = modeFor(floor, active, overview)
           const interactive = mode === 'full'
-          const spaces = SPACES.filter((s) => s.floorId === floor.id)
+          const spaces = SPACES.filter((s) => s.floorId === floor.id && (entOn || s.zoneId !== 'G'))
           const cross = floor.layout === 'cross'
           return (
             <MallFloor

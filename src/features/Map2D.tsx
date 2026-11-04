@@ -3,6 +3,7 @@ import { FLOOR_BY_ID, FOOD_LAYOUT, LAYOUT, SPACES, ZONE_BY_ID } from '../config/
 import type { FloorConfig } from '../domain/types'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useClaims } from '../state/claims'
+import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useUI } from '../state/ui'
 import { usePromoEvents } from '../promotions/store'
 
@@ -16,7 +17,8 @@ export function Map2D({ reason }: { reason?: string }) {
   const selected = useUI((s) => s.selectedSpaceId)
   const selectSpace = useUI((s) => s.selectSpace)
   const floor = FLOOR_BY_ID[useUI((s) => s.activeFloor)]
-  const spaces = SPACES.filter((s) => s.floorId === floor.id)
+  const entOn = useEntertainmentFeature((s) => s.enabled)
+  const spaces = SPACES.filter((s) => s.floorId === floor.id && (entOn || s.zoneId !== 'G'))
   const claims = useClaims((s) => s.claims)
   const pending = useMemo(() => new Set(claims.filter((c) => c.status === 'pending').map((c) => c.spaceId)), [claims])
   const events = usePromoEvents((s) => s.events)
