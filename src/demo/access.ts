@@ -1,4 +1,9 @@
-import { supabase } from '../remote/client'
+import { createClient } from '@supabase/supabase-js'
+
+// Cliente solo para validar el código de invitación: sin sesión y sin guardar nada.
+const gateUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
+const gateKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const supabase = gateUrl && gateKey ? createClient(gateUrl, gateKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }) : null
 
 // Entrada a la versión de prueba con código de invitación. El código se valida en la base de datos
 // (demo_enter), que también anota la entrada y controla cuántos dispositivos lo usan. Se vuelve a

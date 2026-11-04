@@ -39,7 +39,7 @@ const STEPS: Step[] = [
   { img: comerciante, kicker: 'Para los negocios', title: 'Cada emprendedor maneja su local', body: 'Desde su panel sube logo y productos, lanza ofertas relámpago y elige en el plano dónde esconder sus ofertas.' },
 ]
 
-export function Landing({ guest }: { guest: string }) {
+export function Landing({ guest, onOpenApp }: { guest: string; onOpenApp: () => void }) {
   const tourRef = useRef<HTMLElement>(null)
   return (
     <MotionConfig reducedMotion="user">
@@ -52,7 +52,7 @@ export function Landing({ guest }: { guest: string }) {
           </span>
         </header>
 
-        <Hero onTour={() => tourRef.current?.scrollIntoView({ behavior: 'smooth' })} />
+        <Hero onTour={() => tourRef.current?.scrollIntoView({ behavior: 'smooth' })} onOpenApp={onOpenApp} />
         <What />
         <section ref={tourRef} className="scroll-mt-16 px-4 py-16 md:px-8 md:py-24">
           <div className="mx-auto max-w-5xl">
@@ -91,7 +91,7 @@ function Phone({ src, alt }: { src: string; alt: string }) {
   )
 }
 
-function Hero({ onTour }: { onTour: () => void }) {
+function Hero({ onTour, onOpenApp }: { onTour: () => void; onOpenApp: () => void }) {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-deep via-[#0a3b57] to-[#0b5f63] px-4 pt-12 pb-20 text-white md:px-8 md:pt-20 md:pb-28">
       <div className="pointer-events-none absolute -top-40 -right-40 size-[480px] rounded-full bg-teal-bright/20 blur-3xl" />
@@ -103,9 +103,14 @@ function Hero({ onTour }: { onTour: () => void }) {
           <p className="mt-4 max-w-lg text-[17px] leading-relaxed text-white/80">
             MallPlay reúne a los emprendedores de la ciudad en un mall 3D que se recorre desde el celular: se explora, se descubren ofertas y se compra en un solo lugar.
           </p>
-          <button onClick={onTour} className="glass-teal mt-7 flex h-[52px] items-center gap-2 rounded-full pr-5 pl-6 text-[16px] font-semibold">
-            <Play className="size-5" fill="currentColor" /> Ver el recorrido guiado
-          </button>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <button onClick={onOpenApp} className="glass-teal flex h-[52px] items-center gap-2 rounded-full pr-5 pl-6 text-[16px] font-semibold">
+              <Compass className="size-5" /> Explorar la app
+            </button>
+            <button onClick={onTour} className="flex h-[52px] items-center gap-2 rounded-full bg-white/10 pr-5 pl-5 text-[15px] font-semibold text-white backdrop-blur transition hover:bg-white/15">
+              <Play className="size-4" fill="currentColor" /> Ver el recorrido guiado
+            </button>
+          </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 40, rotate: 2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ ...SPRING, delay: 0.12 }}>
           <Phone src={fortaleza} alt="Vista general de MallPlay: la fortaleza con sus pasillos" />

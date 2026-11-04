@@ -1,9 +1,12 @@
 import { motion } from 'motion/react'
 import { ArrowRight, KeyRound, Lock } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
 import { MallMark } from '../ui/MallMark'
 import { enterDemo, pendingCode, type DemoAccess } from './access'
 import { Landing } from './Landing'
+
+// La app completa se carga solo al pedirla; corre en el navegador con datos de demostración.
+const DemoMall = lazy(() => import('./DemoMall'))
 
 // Presentación privada: una landing con lo que es el proyecto y un recorrido guiado con capturas, detrás
 // de un código de invitación. No da acceso a la app. El nombre del invitado va como marca de agua.
@@ -18,6 +21,7 @@ const REASON: Record<Exclude<DemoAccess, { ok: true }>['reason'], string> = {
 
 export default function DemoApp() {
   const [access, setAccess] = useState<DemoAccess | null>(null)
+  const [view, setView] = useState<'landing' | 'app'>('landing')
 
   useEffect(() => {
     const code = pendingCode()
@@ -29,7 +33,13 @@ export default function DemoApp() {
   if (!access.ok) return <Gate initialError={access.reason === 'none' ? null : REASON[access.reason]} onEnter={setAccess} />
   return (
     <>
-      <Landing guest={access.name} />
+      {view === 'landing' ? (
+        <Landing guest={access.name} onOpenApp={() => setView('app')} />
+      ) : (
+        <Suspense fallback={<Splash />}>
+          <DemoMall onExit={() => setView('landing')} />
+        </Suspense>
+      )}
       <Watermark guest={access.name} />
     </>
   )
@@ -104,7 +114,7 @@ function Gate({ initialError, onEnter }: { initialError: string | null; onEnter:
 function Watermark({ guest }: { guest: string }) {
   const text = `${guest} · MallPlay · Vista privada`
   return (
-    <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden select-none" aria-hidden>
+    <div className="pointer-events-none fixed inset-0 z-[2147483000] overflow-hidden select-none" aria-hidden>
       <div className="absolute -inset-1/2 flex rotate-[-24deg] flex-col justify-center gap-24">
         {Array.from({ length: 14 }, (_, i) => (
           <p key={i} className="text-[13px] font-semibold whitespace-nowrap text-[rgb(127_140_149/0.16)]" style={{ marginLeft: (i % 2) * 120 }}>

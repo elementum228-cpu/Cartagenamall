@@ -68,7 +68,7 @@ const MerchantPage = lazy(() => import('./pages/MerchantPage'))
  * `#admin` en la URL.
  */
 function Router({ children }: { children: ReactNode }) {
-  if (import.meta.env.VITE_ROUTER === 'memory')
+  if (import.meta.env.VITE_ROUTER === 'memory' || import.meta.env.VITE_DEMO === '1')
     return <MemoryRouter initialEntries={[location.hash === '#admin' ? '/admin' : '/']}>{children}</MemoryRouter>
   return <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>{children}</BrowserRouter>
 }
