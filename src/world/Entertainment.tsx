@@ -60,7 +60,7 @@ const ASPHALT = '#3d4147'
 const RED = '#d9453d'
 
 // ── pista: un óvalo (dos rectas y dos curvas) ─────────────────────────────────────────────────────
-const TRACK = { a: 2.8, r: 3.4, w: 2.3 }
+const TRACK = { a: 3.6, r: 4.0, w: 2.9 }
 const LAP = 4 * TRACK.a + 2 * Math.PI * TRACK.r
 
 /** Contorno del óvalo a `off` del eje de la pista (local a la isla). u en [0,1). */
@@ -220,22 +220,27 @@ function Flag({ x, z, tilt }: { x: number; z: number; tilt: number }) {
 }
 
 /** Karts que dan vueltas a la pista (se animan; con movimiento reducido quedan quietos). */
-const KARTS: { u: number; speed: number; color: string; lane: number }[] = [
-  { u: 0.05, speed: 0.1, color: '#f2c230', lane: 0.6 },
-  { u: 0.3, speed: 0.085, color: '#d9453d', lane: -0.6 },
-  { u: 0.55, speed: 0.11, color: '#3d8fd1', lane: 0.2 },
-  { u: 0.8, speed: 0.092, color: '#4fa86a', lane: -0.3 },
+const KARTS: { u: number; speed: number; color: string; lane: number; sway: number }[] = [
+  { u: 0.02, speed: 0.15, color: '#f2c230', lane: 0.7, sway: 0.35 },
+  { u: 0.18, speed: 0.135, color: '#d9453d', lane: -0.7, sway: 0.4 },
+  { u: 0.36, speed: 0.165, color: '#3d8fd1', lane: 0.2, sway: 0.5 },
+  { u: 0.52, speed: 0.14, color: '#4fa86a', lane: -0.3, sway: 0.3 },
+  { u: 0.7, speed: 0.155, color: '#e0558a', lane: 0.55, sway: 0.45 },
+  { u: 0.86, speed: 0.13, color: '#7a4fd1', lane: -0.5, sway: 0.35 },
 ]
 function Karts({ reduceMotion }: { reduceMotion: boolean }) {
   const refs = useRef<(THREE.Group | null)[]>([])
   useFrame(({ clock }) => {
-    const t = reduceMotion ? 0 : clock.elapsedTime
+    // con movimiento reducido siguen rodando, pero más despacio
+    const t = clock.elapsedTime * (reduceMotion ? 0.35 : 1)
     KARTS.forEach((k, i) => {
       const g = refs.current[i]
       if (!g) return
-      const p = trackPoint(k.u + t * k.speed, k.lane)
+      // cambian un poco de carril al adelantarse
+      const lane = k.lane + Math.sin(t * 0.7 + i * 1.9) * k.sway * 0.5
+      const p = trackPoint(k.u + t * k.speed, lane)
       g.position.set(p.x, Y + 0.12, p.z)
-      g.rotation.y = p.rot
+      g.rotation.set(0, p.rot, Math.sin(t * 6 + i) * 0.03)
     })
   })
   return (
@@ -473,8 +478,8 @@ function Planter({ x, z, flowers }: { x: number; z: number; flowers: string }) {
 
 const DECOR = (() => {
   const palms: [number, number, number][] = [] // sin palmeras: los locales quedan despejados
-  const lamps: [number, number][] = [[-7, -6.9], [0, -6.9], [6.5, -6.9], [-7, 6.9], [0, 6.9], [6.5, 6.9], [-9.5, -3.4], [-9.5, 3.4], [10.2, -3.2], [10.2, 3.2]]
-  const planters: [number, number, string][] = [[11.2, -6, '#e8879c'], [11.2, 6, '#f2cc8f'], [-9.6, 0, '#e8879c']]
+  const lamps: [number, number][] = [[-7, -6.9], [0, -7], [6.5, -7], [-7, 7], [0, 7], [6.5, 7], [-10, -3.4], [-10, 3.4], [10.2, -3.2], [10.2, 3.2]]
+  const planters: [number, number, string][] = [[11.2, -6, '#e8879c'], [11.2, 6, '#f2cc8f'], [-10.3, 0, '#e8879c']]
   return { palms, lamps, planters }
 })()
 
