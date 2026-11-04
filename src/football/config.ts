@@ -82,7 +82,7 @@ export const COURT_INFO = {
  * Horarios ocupados de demostración: determinísticos por fecha y hora (no es disponibilidad real).
  * `dayKey` = 'AAAA-MM-DD'.
  */
-export function demoTaken(dayKey: string, hour: number, court: CourtId = 'A'): boolean {
+export function demoTaken(dayKey: string, hour: number, court: CourtId | 'KARTS' = 'A'): boolean {
   let h = 2166136261
   for (const c of `${dayKey}|${hour}|${court === 'A' ? '' : court}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619)
   const r = ((h >>> 0) % 1000) / 1000

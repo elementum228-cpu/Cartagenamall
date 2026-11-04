@@ -257,7 +257,7 @@ function pushReservations(prev: CourtReservation[], next: CourtReservation[]) {
       const row = { id: r.id, day: r.day, hour: r.hour, status: 'pending', doc: r }
       let { error } = await db.from('court_reservations').insert({ ...row, court: r.court ?? 'A' })
       // sin la migración 0005 la tabla aún no tiene la columna de cancha: se guarda como antes
-      if (error && /court/.test(error.message)) ({ error } = await db.from('court_reservations').insert(row))
+      if (error && r.court !== 'KARTS' && /court/.test(error.message)) ({ error } = await db.from('court_reservations').insert(row))
       if (error) {
         // otro navegador tomó el horario un instante antes
         applyRemote(() => useReservations.setState((s) => ({ reservations: s.reservations.filter((x) => x.id !== r.id) })))
@@ -276,11 +276,11 @@ function pushReservations(prev: CourtReservation[], next: CourtReservation[]) {
 }
 
 /** Horas ocupadas de un día (de cualquier persona) para la grilla de reservas. */
-export async function courtTakenHours(day: string, court: 'A' | 'B' = 'A'): Promise<number[] | null> {
+export async function courtTakenHours(day: string, court: 'A' | 'B' | 'KARTS' = 'A'): Promise<number[] | null> {
   if (!supabase) return null
   let { data, error } = await supabase.rpc('court_taken_hours', { p_day: day, p_court: court })
   // sin la migración 0005 (una sola cancha): las horas ocupadas de la única cancha
-  if (error) ({ data, error } = await supabase.rpc('court_taken_hours', { p_day: day }))
+  if (error && court !== 'KARTS') ({ data, error } = await supabase.rpc('court_taken_hours', { p_day: day }))
   if (error) return null
   return (data as number[]) ?? []
 }

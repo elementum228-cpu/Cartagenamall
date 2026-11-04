@@ -78,6 +78,9 @@ interface UIState {
   /** Panel de la cancha sintética abierto. */
   courtOpen: boolean
   openCourt: (open: boolean) => void
+  /** Panel de reservas de la pista de karts abierto. */
+  trackOpen: boolean
+  openTrack: (open: boolean) => void
   focus: FocusRequest | null
   toasts: Toast[]
   selectSpace: (id: string | null) => void
@@ -115,10 +118,10 @@ export const useUI = create<UIState>()((set, get) => ({
   },
   doorNonce: 0,
   tourStep: null,
-  setTourStep: (step) => set(step === null ? { tourStep: null } : { tourStep: step, selectedSpaceId: null, openStoreId: null, courtOpen: false }),
+  setTourStep: (step) => set(step === null ? { tourStep: null } : { tourStep: step, selectedSpaceId: null, openStoreId: null, courtOpen: false, trackOpen: false }),
   // de vuelta a la vista de la fortaleza: al abrir la puerta otra vez la cámara entra de nuevo
   showDoor: () =>
-    set({ doorNonce: Date.now(), overview: true, activeFloor: 'P1', selectedSpaceId: null, openStoreId: null, courtOpen: false, focus: { kind: 'overview', nonce: Date.now() + Math.random() } }),
+    set({ doorNonce: Date.now(), overview: true, activeFloor: 'P1', selectedSpaceId: null, openStoreId: null, courtOpen: false, trackOpen: false, focus: { kind: 'overview', nonce: Date.now() + Math.random() } }),
   arriveMall: () => set({ overview: true, activeFloor: 'P1', selectedSpaceId: null, focus: { kind: 'enter', nonce: Date.now() + Math.random() } }),
   enterMall: () => set({ overview: false, activeFloor: 'P1', selectedSpaceId: null, focus: { kind: 'enter', nonce: Date.now() + Math.random() } }),
   setOverview: (on) => set({ overview: on, selectedSpaceId: null, focus: { kind: on ? 'overview' : 'home', nonce: Date.now() + Math.random() } }),
@@ -131,39 +134,41 @@ export const useUI = create<UIState>()((set, get) => ({
   clue: null,
   focus: null,
   toasts: [],
-  selectSpace: (id) => set(id ? { selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: false, harbor: null, showroom: null } : { selectedSpaceId: null, openStoreId: null, peek: false }),
+  selectSpace: (id) => set(id ? { selectedSpaceId: id, openStoreId: null, courtOpen: false, trackOpen: false, peek: false, harbor: null, showroom: null } : { selectedSpaceId: null, openStoreId: null, peek: false }),
   peek: false,
-  peekSpace: (id) => set({ selectedSpaceId: id, openStoreId: null, courtOpen: false, peek: true, harbor: null, showroom: null }),
+  peekSpace: (id) => set({ selectedSpaceId: id, openStoreId: null, courtOpen: false, trackOpen: false, peek: true, harbor: null, showroom: null }),
   openPeek: () => set({ peek: false }),
-  openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, harbor: null, showroom: null, shipOpen: false } : { openStoreId: null, selectedSpaceId: null }),
+  openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, trackOpen: false, harbor: null, showroom: null, shipOpen: false } : { openStoreId: null, selectedSpaceId: null }),
   courtOpen: false,
-  openCourt: (open) => set(open ? { courtOpen: true, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { courtOpen: false }),
+  trackOpen: false,
+  openTrack: (open) => set(open ? { trackOpen: true, courtOpen: false, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { trackOpen: false }),
+  openCourt: (open) => set(open ? { courtOpen: true, trackOpen: false, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { courtOpen: false, trackOpen: false }),
   openProduct: (id) => set({ productSheetId: id }),
   openSecret: (id) => set({ secretPromoId: id }),
   openHarbor: (boat) =>
     set(
       boat
-        ? { airportOpen: false, harbor: { boat, view: 'card' }, shipOpen: false, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
+        ? { airportOpen: false, harbor: { boat, view: 'card' }, shipOpen: false, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, trackOpen: false, peek: false, focus: { kind: 'harbor', nonce: Date.now() + Math.random() } }
         : { harbor: null },
     ),
   airportOpen: false,
   openAirport: (open) =>
     set(
       open
-        ? { airportOpen: true, shipOpen: false, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'airport', nonce: Date.now() + Math.random() } }
+        ? { airportOpen: true, shipOpen: false, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, trackOpen: false, peek: false, focus: { kind: 'airport', nonce: Date.now() + Math.random() } }
         : { airportOpen: false },
     ),
   shipOpen: false,
   openShip: (open) =>
     set(
       open
-        ? { airportOpen: false, shipOpen: true, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'ship', nonce: Date.now() + Math.random() } }
+        ? { airportOpen: false, shipOpen: true, harbor: null, showroom: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, trackOpen: false, peek: false, focus: { kind: 'ship', nonce: Date.now() + Math.random() } }
         : { shipOpen: false },
     ),
   openShowroom: (id) =>
     set(
       id
-        ? { airportOpen: false, showroom: id, shipOpen: false, harbor: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, peek: false, focus: { kind: 'showroom', id, nonce: Date.now() + Math.random() } }
+        ? { airportOpen: false, showroom: id, shipOpen: false, harbor: null, selectedSpaceId: null, openStoreId: null, courtOpen: false, trackOpen: false, peek: false, focus: { kind: 'showroom', id, nonce: Date.now() + Math.random() } }
         : { showroom: null },
     ),
   setHarborView: (view) => set((s) => (s.harbor ? { harbor: { ...s.harbor, view } } : s)),

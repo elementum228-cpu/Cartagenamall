@@ -37,3 +37,23 @@ export const ENT_SUGGESTED = ['Arcade', 'Videojuegos', 'Realidad virtual', 'Espo
 /** Pista de karts: centro (la isla) y óvalo. */
 export const ENT_TRACK = { a: 3.6, r: 4.0, w: 2.9 } as const
 export const ENT_COLOR = '#e0558a'
+
+/** Datos comerciales de la pista de karts (demostración, COP). */
+export const TRACK_INFO = {
+  name: 'Pista de karts',
+  category: 'Karts y carreras',
+  description: 'Pista de karts al aire libre dentro de la isla de entretenimiento, con luces nocturnas y arco de salida. Cada turno es una carrera privada de una hora para tu grupo (hasta 8 pilotos): casco, karts y cronometraje incluidos.',
+  features: ['Pista iluminada para correr de noche', 'Karts para adultos y juveniles', 'Casco y cronometraje incluidos', 'Turno privado de 1 hora para tu grupo', 'Podio y fotos de la carrera', 'Locales de comida y juegos al lado'],
+  /** Precio por turno de 1 hora (demostración). */
+  pricePerTurn: 160_000,
+  nightPricePerTurn: 200_000,
+  nightFrom: 18,
+  openHours: [10, 22] as [number, number],
+  maxPilots: 8,
+  events: [
+    { title: 'Gran Premio MallPlay', when: 'Sábados · 7:00 p. m.', detail: 'Clasificación y final. Inscripción por piloto.' },
+    { title: 'Karts para empresas', when: 'Entre semana · con reserva', detail: 'Eventos de integración con cronometraje y premios.' },
+    { title: 'Escuela de pilotos', when: 'Domingos · 10:00 a. m.', detail: 'Para jóvenes de 12 a 17 años, con instructor.' },
+  ],
+}
+export const trackPriceAt = (hour: number) => (hour >= TRACK_INFO.nightFrom ? TRACK_INFO.nightPricePerTurn : TRACK_INFO.pricePerTurn)

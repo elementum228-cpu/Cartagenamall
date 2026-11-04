@@ -596,7 +596,7 @@ function TrackSpace({ night }: { night: boolean }) {
     () =>
       getGlassPill(operator ? operator.name : pending ? 'Pista en revisión' : 'Pista de karts', {
         dot: ENT_COLOR,
-        sub: operator ? 'Operador de la pista · toca para ver' : pending ? 'Solicitud enviada' : `Disponible · ${formatCOP(price)}/mes`,
+        sub: operator ? 'Reserva tu turno · toca para ver' : pending ? 'Solicitud enviada' : `Disponible · ${formatCOP(price)}/mes`,
         logo: operator?.logo ?? null,
         dark: night,
       }),
@@ -619,7 +619,7 @@ function TrackSpace({ night }: { night: boolean }) {
   const open = () => {
     const ui = useUI.getState()
     if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
-    if (operator) ui.openStore(operator.id)
+    if (operator) ui.openTrack(true)
     else ui.selectSpace(TRACK_SPACE.id)
     ui.requestFocus({ kind: 'space', id: TRACK_SPACE.id })
   }

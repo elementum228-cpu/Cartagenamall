@@ -263,7 +263,7 @@ function Booking() {
 
 function MyReservations() {
   const all = useReservations((s) => s.reservations)
-  const reservations = useMemo(() => all.filter((r) => r.status === 'pending'), [all])
+  const reservations = useMemo(() => all.filter((r) => r.status === 'pending' && r.court !== 'KARTS'), [all])
   const cancel = useReservations((s) => s.cancel)
   if (!reservations.length) return null
   return (

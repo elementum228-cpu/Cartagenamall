@@ -938,17 +938,18 @@ function StoreOwners({ storeId }: { storeId: string }) {
 function CourtAdmin() {
   const reservations = useReservations((s) => s.reservations)
   const cancel = useReservations((s) => s.cancel)
-  if (!reservations.length) return <Card>Aún no hay reservas de la cancha.</Card>
+  if (!reservations.length) return <Card>Aún no hay reservas de la cancha ni de la pista de karts.</Card>
   return (
     <div className="space-y-2">
       {reservations.map((r) => (
         <Card key={r.id} className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="font-bold">
+              {r.court === 'KARTS' ? 'Pista de karts · ' : ''}
               {r.day} · {r.hour}:00 <span className="font-mono text-xs text-ink-soft">{r.id}</span>
             </p>
             <p className="text-xs text-ink-soft">
-              {r.name} · {r.whatsapp} · {r.players} jugadores · {formatCOP(r.price)}
+              {r.name} · {r.whatsapp} · {r.players} {r.court === 'KARTS' ? 'pilotos' : 'jugadores'} · {formatCOP(r.price)}
             </p>
           </div>
           <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${r.status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-sand-2 text-ink-soft'}`}>{r.status === 'pending' ? 'Pendiente' : 'Cancelada'}</span>
