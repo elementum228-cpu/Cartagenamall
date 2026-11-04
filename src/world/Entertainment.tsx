@@ -48,7 +48,6 @@ const C = ENTERTAINMENT
 const IRON = '#2f3438'
 const ASPHALT = '#3d4147'
 const RED = '#d9453d'
-const CREAM = '#fbf3e4'
 
 // ── pista: un óvalo (dos rectas y dos curvas) ─────────────────────────────────────────────────────
 const TRACK = { a: 2.8, r: 3.4, w: 2.3 }
@@ -454,7 +453,7 @@ function Planter({ x, z, flowers }: { x: number; z: number; flowers: string }) {
 }
 
 const DECOR = (() => {
-  const palms: [number, number, number][] = [[10.6, -6.4, 3.2], [10.6, 6.4, 3.2]] // solo junto a la puerta: los locales quedan despejados
+  const palms: [number, number, number][] = [] // sin palmeras: los locales quedan despejados
   const lamps: [number, number][] = [[8.6, -2.6], [8.6, 2.6], [-8.2, -3.6], [-8.2, 3.6], [0, 8.4], [0, -8.4]]
   const planters: [number, number, string][] = [[11.4, -4, '#e8879c'], [11.4, 4, '#f2cc8f']]
   return { palms, lamps, planters }
@@ -598,48 +597,59 @@ function BridgeCrossers({ reduceMotion }: { reduceMotion: boolean }) {
   )
 }
 
-/** Portal de la isla junto al puente: dos torres de colores y un arco con el nombre. */
+/** Portal de la isla junto al puente: dos pilares de piedra con remate, un dintel y un letrero iluminado. */
 function Portal() {
   const sign = useMemo(() => {
     const c = document.createElement('canvas')
     c.width = 1024
-    c.height = 240
+    c.height = 256
     const g = c.getContext('2d')!
     const grad = g.createLinearGradient(0, 0, 1024, 0)
-    grad.addColorStop(0, '#7a4fd1')
+    grad.addColorStop(0, '#6a3fc4')
     grad.addColorStop(1, '#d9453d')
     g.fillStyle = grad
-    g.beginPath()
-    g.roundRect(0, 0, 1024, 240, 44)
-    g.fill()
+    g.fillRect(0, 0, 1024, 256)
+    g.strokeStyle = '#ffe9a8'
+    g.lineWidth = 10
+    g.strokeRect(16, 16, 992, 224)
     g.fillStyle = '#ffffff'
     g.textAlign = 'center'
     g.textBaseline = 'middle'
-    g.font = '800 104px system-ui, sans-serif'
-    g.fillText('ENTRETENIMIENTO', 512, 96)
+    g.font = '800 96px system-ui, sans-serif'
+    g.fillText('ENTRETENIMIENTO', 512, 104)
     g.fillStyle = '#ffe9a8'
-    g.font = '600 56px system-ui, sans-serif'
-    g.fillText('🎮 Juegos · Karts · Diversión', 512, 184)
+    g.font = '600 52px system-ui, sans-serif'
+    g.fillText('Juegos · Karts · Diversión', 512, 192)
     const tex = new THREE.CanvasTexture(c)
     tex.colorSpace = THREE.SRGBColorSpace
     tex.anisotropy = 4
     return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })
   }, [])
+  const span = BRIDGE_W + 1.6
   return (
     <group position={[GATE_X - 0.8, Y, 0]} rotation={[0, Math.PI / 2, 0]}>
       {[-1, 1].map((s) => (
-        <group key={s} position={[s * (BRIDGE_W / 2 + 0.7), 0, 0]}>
-          <mesh geometry={GEO.box} material={mat(s > 0 ? '#e0558a' : '#2f6fd1')} position={[0, 2, 0]} scale={[1, 4, 1]} castShadow />
-          <mesh geometry={GEO.cone} material={mat(CREAM)} position={[0, 4.5, 0]} scale={[1.5, 1.1, 1.5]} castShadow />
-          <mesh geometry={GEO.sphere} material={glowMat('#fff1c9', 2, { dayGlow: 0.5 })} position={[0, 3.7, 0.52]} scale={0.22} />
+        <group key={s} position={[s * (span / 2), 0, 0]}>
+          <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, 2, 0]} scale={[0.95, 4, 0.95]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={mat(s > 0 ? '#d9453d' : '#6a3fc4')} position={[0, 0.9, 0]} scale={[1.05, 0.5, 1.05]} />
+          <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 4.05, 0]} scale={[1.2, 0.18, 1.2]} />
+          <mesh geometry={GEO.sphere} material={glowMat('#fff1c9', 2.2, { dayGlow: 0.5 })} position={[0, 4.45, 0]} scale={0.5} />
         </group>
       ))}
-      <mesh geometry={GEO.box} material={mat(CREAM)} position={[0, 3.6, 0]} scale={[BRIDGE_W + 1.4, 0.4, 0.7]} castShadow />
-      <mesh geometry={GEO.plane} material={sign} position={[0, 4.65, 0.2]} scale={[4.6, 1.08, 1]} />
-      <mesh geometry={GEO.plane} material={sign} position={[0, 4.65, -0.2]} rotation={[0, Math.PI, 0]} scale={[4.6, 1.08, 1]} />
-      {/* banderines */}
+      {/* dintel de piedra y letrero grande con marco, girado un poco hacia la cámara */}
+      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, 3.7, 0]} scale={[span + 0.6, 0.5, 0.8]} castShadow />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 3.98, 0]} scale={[span + 0.8, 0.12, 0.95]} />
+      <group position={[0, 5.15, 0]} rotation={[0, -0.7, 0]}>
+        <mesh geometry={GEO.box} material={mat('#1b1f2b')} position={[0, 0, 0]} scale={[5.5, 1.5, 0.16]} />
+        <mesh geometry={GEO.plane} material={sign} position={[0, 0, 0.09]} scale={[5.3, 1.32, 1]} />
+        <mesh geometry={GEO.plane} material={sign} position={[0, 0, -0.09]} rotation={[0, Math.PI, 0]} scale={[5.3, 1.32, 1]} />
+        {[-1, 1].map((s) => (
+          <mesh key={s} geometry={GEO.box} material={mat(IRON)} position={[s * 2.2, -0.95, 0]} scale={[0.1, 0.5, 0.1]} />
+        ))}
+      </group>
+      {/* banderines bajo el dintel */}
       {Array.from({ length: 9 }, (_, i) => (
-        <mesh key={i} geometry={GEO.cone} material={mat(['#d9453d', '#f2c230', '#2f6fd1', '#4fa86a', '#e0558a'][i % 5])} position={[(i - 4) * 0.7, 3.2 - Math.sin((i / 8) * Math.PI) * 0.3 + 0.2, 0.45]} rotation={[Math.PI, 0, 0]} scale={[0.3, 0.45, 0.3]} />
+        <mesh key={i} geometry={GEO.cone} material={mat(['#d9453d', '#f2c230', '#2f6fd1', '#4fa86a', '#e0558a'][i % 5])} position={[(i - 4) * (span / 9), 3.25 - Math.sin((i / 8) * Math.PI) * 0.25, 0.45]} rotation={[Math.PI, 0, 0]} scale={[0.28, 0.42, 0.28]} />
       ))}
     </group>
   )
