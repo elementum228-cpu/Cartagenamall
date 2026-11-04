@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { COURT_SPACE, SPACE_BY_ID, ZONES } from '../config/mall'
+import { useEntertainmentFeature } from './entertainmentFeature'
 import type { Store } from '../domain/types'
 import { useCatalog } from './catalog'
 import { useOrders } from './orders'
@@ -27,6 +29,14 @@ export const PASSPORT_PRIZE = 'Bono de $20.000 para usar en la tienda que elijas
 
 /** Tarjeta de sellos de una tienda: cuántos sellos pide y qué regala. Sin configurar, esta. */
 export const DEFAULT_LOYALTY = { stamps: 5, reward: '10 % de descuento en tu próxima compra', active: false }
+/** El sello de Entretenimiento solo cuenta mientras la isla está visible (la activa el administrador). */
+export const stampVisible = (s: { id: string }, entertainmentOn = useEntertainmentFeature.getState().enabled) => s.id !== 'G' || entertainmentOn
+/** Sellos vigentes del pasaporte (sin el de Entretenimiento si la isla está oculta). */
+export function usePassportStamps() {
+  const on = useEntertainmentFeature((s) => s.enabled)
+  return useMemo(() => PASSPORT_STAMPS.filter((s) => stampVisible(s, on)), [on])
+}
+
 export const MIN_LOYALTY_STAMPS = 3
 export const MAX_LOYALTY_STAMPS = 12
 export const loyaltyOf = (store: Pick<Store, 'loyalty'> | undefined) => ({ ...DEFAULT_LOYALTY, ...(store?.loyalty ?? {}) })
@@ -98,7 +108,7 @@ export const usePassport = create<PassportState>()(
       claimPassportPrize: () => {
         const s = get()
         if (s.passportPrize) return s.passportPrize
-        if (!PASSPORT_STAMPS.every((p) => s.stamps[p.id])) return null
+        if (!PASSPORT_STAMPS.filter((p) => stampVisible(p)).every((p) => s.stamps[p.id])) return null
         const r: Redemption = { code: rewardCode(), storeId: '', reward: PASSPORT_PRIZE, at: new Date().toISOString() }
         set({ passportPrize: r })
         return r

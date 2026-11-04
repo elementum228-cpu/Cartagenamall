@@ -14,7 +14,7 @@ import { useIsNight } from '../lib/useIsNight'
 import { useIsDesktop } from '../lib/useMedia'
 import { useCatalog } from '../state/catalog'
 import { usePersonal } from '../state/personal'
-import { PASSPORT_STAMPS, usePassport } from '../state/passport'
+import { usePassport, usePassportStamps } from '../state/passport'
 import { useSeason, useSeasonSettings } from '../state/season'
 import { usePrefs, useUI } from '../state/ui'
 import { Countdown, StoreLogo } from '../ui/bits'
@@ -112,7 +112,8 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const discovered = usePersonal((s) => s.discovered)
   const season = useSeason()
   const entOn = useEntertainmentFeature((s) => s.enabled)
-  const passportDone = usePassport((s) => PASSPORT_STAMPS.filter((p) => s.stamps[p.id]).length)
+  const stampList = usePassportStamps()
+  const passportDone = usePassport((s) => stampList.filter((p) => s.stamps[p.id]).length)
   const now = useNow()
   const secretTotal = promotions.filter((p) => p.type === 'secret' && isPromotionLive(p, now)).length
   // Indicador textual de la oferta relámpago: la que se está presentando o, si no, la más reciente.
@@ -203,11 +204,11 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           </span>
           Secretas {Math.min(discovered.length, secretTotal)}/{secretTotal}
         </Link>
-        <Link to="/pasaporte" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none" aria-label={`Mi pasaporte: ${passportDone} de ${PASSPORT_STAMPS.length} sellos`}>
+        <Link to="/pasaporte" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none" aria-label={`Mi pasaporte: ${passportDone} de ${stampList.length} sellos`}>
           <span className="grid size-5 place-items-center rounded-full bg-teal text-white">
             <BookOpen className="size-3" strokeWidth={2} />
           </span>
-          Pasaporte {passportDone}/{PASSPORT_STAMPS.length}
+          Pasaporte {passportDone}/{stampList.length}
         </Link>
         {flash && flashEvent && (
           <button

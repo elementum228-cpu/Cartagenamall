@@ -7,7 +7,7 @@ import { formatDateTime } from '../lib/format'
 import { useMinute } from '../lib/useMinute'
 import { HUNT_LENGTH, huntEndsAt, huntFor, huntWeek } from '../promotions/hunt'
 import { useCatalog } from '../state/catalog'
-import { PASSPORT_PRIZE, PASSPORT_STAMPS, huntProgress, loyaltyOf, usePassport, type Redemption } from '../state/passport'
+import { PASSPORT_PRIZE, huntProgress, loyaltyOf, usePassport, usePassportStamps, type Redemption } from '../state/passport'
 import { usePersonal } from '../state/personal'
 import { useUI } from '../state/ui'
 import { StoreLogo } from '../ui/bits'
@@ -17,8 +17,9 @@ const SPRING = { type: 'spring', stiffness: 360, damping: 32 } as const
 /** Pasaporte del mall: sellos por recorrerlo, búsqueda del tesoro y tarjetas de sellos de las tiendas. */
 export function PassportPage() {
   const stamps = usePassport((s) => s.stamps)
-  const done = PASSPORT_STAMPS.filter((p) => stamps[p.id]).length
-  const complete = done === PASSPORT_STAMPS.length
+  const stampList = usePassportStamps()
+  const done = stampList.filter((p) => stamps[p.id]).length
+  const complete = done === stampList.length
   const prize = usePassport((s) => s.passportPrize)
   const [shown, setShown] = useState<Redemption | null>(null)
 
@@ -36,10 +37,10 @@ export function PassportPage() {
         <h1 className="mt-1 text-[26px] leading-tight font-bold tracking-[-0.02em]">Recorre el mall, gana sellos</h1>
         <div className="mt-3 flex items-center gap-3">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/15">
-            <motion.div className="h-full rounded-full bg-amber" initial={{ width: 0 }} animate={{ width: `${(done / PASSPORT_STAMPS.length) * 100}%` }} transition={{ ...SPRING, delay: 0.15 }} />
+            <motion.div className="h-full rounded-full bg-amber" initial={{ width: 0 }} animate={{ width: `${(done / stampList.length) * 100}%` }} transition={{ ...SPRING, delay: 0.15 }} />
           </div>
           <span className="text-[13px] font-semibold tabular-nums">
-            {done}/{PASSPORT_STAMPS.length}
+            {done}/{stampList.length}
           </span>
         </div>
         <div className="mt-2 flex items-center gap-2 text-[12.5px] text-white/80">
@@ -49,7 +50,7 @@ export function PassportPage() {
 
       <section className="glass-strong rounded-[28px] p-4">
         <ul className="grid grid-cols-4 gap-x-2 gap-y-4">
-          {PASSPORT_STAMPS.map((p, i) => (
+          {stampList.map((p, i) => (
             <motion.li key={p.id} className="flex flex-col items-center text-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING, delay: 0.05 + i * 0.03 }}>
               <StampSeal id={p.id} earned={!!stamps[p.id]} size={64} />
               <span className="mt-1.5 text-[11.5px] leading-tight font-semibold">{p.name}</span>

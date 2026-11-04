@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Compass, Gem, MapPin, Scissors, Shirt, Smartphone, Sparkles, Store as StoreIcon, Trophy, Utensils, Zap, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Compass, Gamepad2, Gem, MapPin, Scissors, Shirt, Smartphone, Sparkles, Store as StoreIcon, Trophy, Utensils, Zap, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { COURT_SPACE, FLOOR_OF_ZONE, MALL, SPACES, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
@@ -7,6 +7,8 @@ import { COURT_COLOR } from '../football/open'
 import { playSparkle, playWhoosh } from '../lib/doorSound'
 import { formatCOP } from '../lib/format'
 import { isPromotionLive } from '../lib/pricing'
+import { useEntertainmentFeature } from '../state/entertainmentFeature'
+import { ENT_COLOR } from '../entertainment/config'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { spacePrice, useSpacePricing } from '../state/spacePricing'
 import { useUI } from '../state/ui'
@@ -354,12 +356,14 @@ function useTourSteps(): Step[] {
   const promotions = useCatalog((s) => s.promotions)
   const { storeById, spaceByStore } = useCatalogMaps()
   const pricing = useSpacePricing()
+  const entOn = useEntertainmentFeature((s) => s.enabled)
 
   return useMemo(() => {
     const ui = () => useUI.getState()
     const storesIn = (zone: ZoneId) => SPACES.filter((sp) => sp.zoneId === zone && assignments[sp.id]).map((sp) => storeById[assignments[sp.id]]?.name).filter(Boolean) as string[]
-    const freeSpaces = SPACES.filter((sp) => !assignments[sp.id])
-    const totalStores = SPACES.filter((sp) => assignments[sp.id]).length
+    const tourSpaces = SPACES.filter((sp) => entOn || sp.zoneId !== 'G')
+    const freeSpaces = tourSpaces.filter((sp) => !assignments[sp.id])
+    const totalStores = tourSpaces.filter((sp) => assignments[sp.id]).length
     const zoneStep = (id: ZoneId): Step => {
       const z = ZONE_BY_ID[id]
       const names = storesIn(id)
@@ -392,7 +396,7 @@ function useTourSteps(): Step[] {
         kicker: 'Bienvenido a',
         title: MALL.name,
         body: <>Un centro comercial dentro de una fortaleza amurallada, como el Centro Histórico. Te mostramos lo que hay en menos de un minuto.</>,
-        chips: [`${totalStores} tiendas`, '2 pisos', 'Zona de deportes', 'Ofertas escondidas'],
+        chips: [`${totalStores} tiendas`, '2 pisos', 'Zona de deportes', ...(entOn ? ['Entretenimiento'] : []), 'Ofertas escondidas'],
         go: () => ui().enterMall(),
       },
       zoneStep('A'),
@@ -430,6 +434,27 @@ function useTourSteps(): Step[] {
           ui().requestFocus({ kind: 'court' })
         },
       },
+      ...(entOn
+        ? [
+            {
+              key: 'entretenimiento',
+              icon: Gamepad2,
+              color: ENT_COLOR,
+              kicker: 'Isla · Piso 1',
+              title: 'Entretenimiento',
+              body: (
+                <>
+                  Cruza el puente frente a Planly: una isla-castillo con una pista de karts en el centro, rodeada de locales abiertos de videojuegos, realidad virtual, esports, comida y helados.
+                </>
+              ),
+              chips: [...storesIn('G').slice(0, 3), 'Pista de karts'],
+              go: () => {
+                ui().setFloor('P1')
+                ui().requestFocus({ kind: 'zone', id: 'G' })
+              },
+            } as Step,
+          ]
+        : []),
       {
         key: 'comidas',
         icon: Utensils,
@@ -491,5 +516,5 @@ function useTourSteps(): Step[] {
       go: () => ui().setOverview(true),
     })
     return steps
-  }, [assignments, promotions, storeById, spaceByStore, pricing])
+  }, [assignments, promotions, storeById, spaceByStore, pricing, entOn])
 }
