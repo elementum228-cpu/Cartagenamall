@@ -639,7 +639,7 @@ function Portal() {
       {/* dintel de piedra y letrero grande con marco, girado un poco hacia la cámara */}
       <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, 3.7, 0]} scale={[span + 0.6, 0.5, 0.8]} castShadow />
       <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 3.98, 0]} scale={[span + 0.8, 0.12, 0.95]} />
-      <group position={[0, 5.15, 0]} rotation={[0, -0.7, 0]}>
+      <group position={[0, 5.15, 0]}>
         <mesh geometry={GEO.box} material={mat('#1b1f2b')} position={[0, 0, 0]} scale={[5.5, 1.5, 0.16]} />
         <mesh geometry={GEO.plane} material={sign} position={[0, 0, 0.09]} scale={[5.3, 1.32, 1]} />
         <mesh geometry={GEO.plane} material={sign} position={[0, 0, -0.09]} rotation={[0, Math.PI, 0]} scale={[5.3, 1.32, 1]} />
