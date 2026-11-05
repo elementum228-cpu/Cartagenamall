@@ -162,3 +162,72 @@ export function CategoriesManager({ store }: { store: Store }) {
     </section>
   )
 }
+
+/** Elegir la categoría de un artículo y crear una nueva ahí mismo, sin salir del formulario. */
+export function CategoryPicker({ store, value, onChange }: { store: Store; value: string; onChange: (id: string) => void }) {
+  const upsertStore = useCatalog((s) => s.upsertStore)
+  const words = categoryWords(store)
+  const cats = storeCategories(store)
+  const [creating, setCreating] = useState(false)
+  const [name, setName] = useState('')
+  const names = cats.map((c) => c.name.toLowerCase())
+  const create = (raw: string) => {
+    const n = raw.trim().slice(0, 30)
+    if (n.length < 2) return
+    const existing = cats.find((c) => c.name.toLowerCase() === n.toLowerCase())
+    if (existing) {
+      onChange(existing.id)
+    } else {
+      const id = newCategoryId(n, cats.map((c) => c.id))
+      upsertStore({ ...store, categories: [...cats, { id, name: n }] })
+      onChange(id)
+    }
+    setName('')
+    setCreating(false)
+  }
+  const chip = (on: boolean) => `rounded-full border px-3.5 py-2 text-[13px] font-bold transition active:scale-95 ${on ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-soft hover:border-ink/40'}`
+  const ideas = suggestedCategories(store).filter((s) => !names.includes(s.toLowerCase()))
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={words.title}>
+        <button type="button" role="radio" aria-checked={value === ''} className={chip(value === '')} onClick={() => onChange('')}>
+          Sin categoría
+        </button>
+        {cats.map((c) => (
+          <button key={c.id} type="button" role="radio" aria-checked={value === c.id} className={chip(value === c.id)} onClick={() => onChange(c.id)}>
+            {c.name}
+          </button>
+        ))}
+        <button type="button" onClick={() => setCreating((v) => !v)} aria-expanded={creating} className="inline-flex items-center gap-1 rounded-full border border-dashed border-teal px-3.5 py-2 text-[13px] font-bold text-teal transition hover:bg-teal/8 active:scale-95">
+          <Plus className="size-3.5" /> Nueva categoría
+        </button>
+      </div>
+      {creating && (
+        <div className="mt-3 rounded-2xl border border-line bg-sand/60 p-3">
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              create(name)
+            }}
+          >
+            <input autoFocus className={`${input} flex-1`} value={name} maxLength={30} onChange={(e) => setName(e.target.value)} placeholder={words.placeholder} aria-label="Nombre de la nueva categoría" />
+            <button type="submit" className={btn.primary} disabled={name.trim().length < 2}>
+              Crear
+            </button>
+          </form>
+          {ideas.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {ideas.map((s) => (
+                <button key={s} type="button" onClick={() => create(s)} className="rounded-full bg-white px-3 py-1.5 text-[12.5px] font-semibold text-ink-soft ring-1 ring-line transition hover:text-teal active:scale-95">
+                  + {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

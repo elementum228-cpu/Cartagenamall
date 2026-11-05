@@ -13,6 +13,7 @@ import { ORDER_STATUS_LABEL, overallStatus, statusOptions } from '../services/or
 import { useCart } from '../state/cart'
 import { remoteEnabled, supabase } from '../remote/client'
 import { useReservations } from '../state/reservations'
+import { StoreColors } from '../ui/StoreColors'
 import { seedRemoteCatalog } from '../remote/sync'
 import { AccountBar, AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
@@ -425,12 +426,7 @@ function StoreEditor({ store, onDone }: { store: Store; onDone: () => void }) {
         <Field label="Descripción" wide>
           <textarea className={`${input} min-h-20`} value={f.description} onChange={(e) => set('description', e.target.value)} />
         </Field>
-        <Field label="Color de marca">
-          <input type="color" className="h-12 w-full rounded-xl border border-line" value={f.brandColor} onChange={(e) => set('brandColor', e.target.value)} />
-        </Field>
-        <Field label="Color de acento">
-          <input type="color" className="h-12 w-full rounded-xl border border-line" value={f.accentColor} onChange={(e) => set('accentColor', e.target.value)} />
-        </Field>
+        <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
         <Field label="Fachada">
           <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
             <option value="awning">Toldo</option>

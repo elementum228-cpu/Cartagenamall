@@ -21,8 +21,9 @@ import { useUI } from '../state/ui'
 import { ProductImage } from '../ui/ProductImage'
 import { EmptyState, StoreLogo, btn, input } from '../ui/bits'
 import { MerchantPromotions } from './MerchantPromotions'
-import { CategoriesManager } from './MerchantCategories'
+import { CategoriesManager, CategoryPicker } from './MerchantCategories'
 import { MerchantDashboard } from './MerchantDashboard'
+import { StoreColors } from '../ui/StoreColors'
 import { instagramHandle } from '../lib/instagram'
 import { categoryWords, groupOf, storeCategories } from '../lib/storeCategories'
 
@@ -389,12 +390,7 @@ function ProfileEditor({ store }: { store: Store }) {
             <option value="minimal">Minimalista con luz</option>
           </select>
         </Field>
-        <Field label="Color de marca">
-          <input type="color" className="h-12 w-full rounded-xl border border-line" value={f.brandColor} onChange={(e) => set('brandColor', e.target.value)} />
-        </Field>
-        <Field label="Color de fondo">
-          <input type="color" className="h-12 w-full rounded-xl border border-line" value={f.accentColor} onChange={(e) => set('accentColor', e.target.value)} />
-        </Field>
+        <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
         <Field label="Instagram" hint={instagramHandle(f.instagram) ? `Tus clientes llegan a instagram.com/${instagramHandle(f.instagram)}` : 'Escribe tu usuario (@minegocio): aparece como botón en tu ficha.'}>
           <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@minegocio" autoCapitalize="none" />
         </Field>
@@ -600,15 +596,8 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
         <Field label="Descripción" wide>
           <textarea className={`${input} min-h-20`} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} />
         </Field>
-        <Field label={`En ${categoryWords(store).title.toLowerCase()}`} hint={ownCategories.length ? undefined : 'Crea tus categorías en la lista de arriba para ordenar tu tienda.'}>
-          <select className={input} value={shopCategory} onChange={(e) => setShopCategory(e.target.value)}>
-            <option value="">Sin categoría</option>
-            {ownCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+        <Field label={categoryWords(store).title} wide>
+          <CategoryPicker store={store} value={shopCategory} onChange={setShopCategory} />
         </Field>
         <Field label="Rubro (para las búsquedas)">
           <select className={input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>

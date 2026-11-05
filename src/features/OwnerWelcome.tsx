@@ -7,6 +7,7 @@ import { useSession } from '../remote/session'
 import { isFoodCategory } from '../lib/restaurant'
 import { useCatalog } from '../state/catalog'
 import { btn } from '../ui/bits'
+import { categoryWords, newCategoryId, suggestedCategories } from '../lib/storeCategories'
 import type { Store } from '../domain/types'
 import { create } from 'zustand'
 
@@ -61,11 +62,14 @@ export function OwnerWelcome() {
   const upsertStore = useCatalog((s) => s.upsertStore)
   const forced = useWelcome((s) => s.forced)
   const navigate = useNavigate()
-  const [step, setStep] = useState<'hello' | 'type' | 'plan'>('hello')
+  const [step, setStep] = useState<'hello' | 'type' | 'cats' | 'plan'>('hello')
   const [kind, setKind] = useState<Kind>('restaurant')
   // en el paso del tipo: nada elegido hasta que la persona toca una opción
   const [picked, setPicked] = useState<Kind | null>(null)
   const [closed, setClosed] = useState(false)
+  // categorías con las que arranca el catálogo (opcional): nombres elegidos entre las ideas o escritos por la persona
+  const [catNames, setCatNames] = useState<string[]>([])
+  const [catDraft, setCatDraft] = useState('')
   const store = useMemo(() => (import.meta.env.DEV && location.search.includes('welcometest') ? stores.find((s) => s.id === 'STORE-004') : remoteEnabled() && session.userId ? stores.find((s) => s.setup === 'pending' && session.storeIds.includes(s.id)) : undefined), [stores, session.userId, session.storeIds])
 
   useEffect(() => {
@@ -77,7 +81,15 @@ export function OwnerWelcome() {
 
   const finish = (go: boolean) => {
     if (!store) return
-    upsertStore({ ...store, businessType: kind, setup: 'done', categoryId: kind === 'restaurant' && !isFoodCategory(store.categoryId) ? 'gastronomia' : store.categoryId })
+    const taken = (store.categories ?? []).map((c) => c.id)
+    const fresh: { id: string; name: string }[] = []
+    for (const name of catNames) {
+      if ((store.categories ?? []).some((c) => c.name.toLowerCase() === name.toLowerCase())) continue
+      const id = newCategoryId(name, taken)
+      taken.push(id)
+      fresh.push({ id, name })
+    }
+    upsertStore({ ...store, categories: [...(store.categories ?? []), ...fresh], businessType: kind, setup: 'done', categoryId: kind === 'restaurant' && !isFoodCategory(store.categoryId) ? 'gastronomia' : store.categoryId })
     setClosed(true)
     navigate(go ? `/mi-negocio?tienda=${store.id}&tab=articulos&nuevo=1` : `/mi-negocio?tienda=${store.id}`)
   }
@@ -185,6 +197,42 @@ export function OwnerWelcome() {
               </motion.div>
             )}
 
+            {step === 'cats' && (
+              <motion.div key="cats" className="flex flex-1 flex-col justify-center" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
+                <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">¿Cómo vas a organizar {kind === 'restaurant' ? 'tu menú' : kind === 'service' ? 'tus servicios' : 'tu catálogo'}?</h2>
+                <p className="mt-1 text-sm opacity-80">Las categorías ayudan a tus clientes a encontrar lo que buscan. Elige las que quieras o escribe las tuyas; las cambias cuando quieras.</p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {[...suggestedCategories({ ...store, businessType: kind }), ...catNames.filter((n) => !suggestedCategories({ ...store, businessType: kind }).includes(n))].map((n) => {
+                    const on = catNames.includes(n)
+                    return (
+                      <button
+                        key={n}
+                        onClick={() => setCatNames((c) => (on ? c.filter((x) => x !== n) : [...c, n]))}
+                        aria-pressed={on}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[14px] font-bold transition active:scale-95 ${on ? 'bg-white text-ink ring-[3px] ring-teal-bright' : 'bg-white/12 text-white ring-1 ring-white/20 backdrop-blur'}`}
+                      >
+                        {on && <Check className="size-4 text-teal" strokeWidth={3} />} {n}
+                      </button>
+                    )
+                  })}
+                </div>
+                <form
+                  className="mt-4 flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const n = catDraft.trim().slice(0, 30)
+                    if (n.length > 1 && !catNames.some((x) => x.toLowerCase() === n.toLowerCase())) setCatNames((c) => [...c, n])
+                    setCatDraft('')
+                  }}
+                >
+                  <input className="h-12 min-w-0 flex-1 rounded-2xl border-0 bg-white/15 px-4 text-[15px] text-white outline-none placeholder:text-white/60 focus:bg-white/20 focus:ring-2 focus:ring-white/50" value={catDraft} maxLength={30} onChange={(e) => setCatDraft(e.target.value)} placeholder={categoryWords({ ...store, businessType: kind }).placeholder} aria-label="Escribir otra categoría" />
+                  <button type="submit" className="h-12 rounded-2xl bg-white/20 px-4 text-sm font-bold backdrop-blur disabled:opacity-40" disabled={catDraft.trim().length < 2}>
+                    Agregar
+                  </button>
+                </form>
+              </motion.div>
+            )}
+
             {step === 'plan' && (
               <motion.div key="plan" className="flex flex-1 flex-col justify-center" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
                 <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">{PLAN[kind].title}</h2>
@@ -208,9 +256,21 @@ export function OwnerWelcome() {
               </button>
             )}
             {step === 'type' && (
-              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={!picked} onClick={() => setStep('plan')}>
+              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={!picked} onClick={() => setStep('cats')}>
                 Continuar <ChevronRight className="size-4" />
               </button>
+            )}
+            {step === 'cats' && (
+              <>
+                <button className={`${btn.primary} w-full !bg-white !text-ink`} onClick={() => setStep('plan')}>
+                  {catNames.length ? `Continuar con ${catNames.length} ${catNames.length === 1 ? 'categoría' : 'categorías'}` : 'Continuar'} <ChevronRight className="size-4" />
+                </button>
+                {catNames.length > 0 && (
+                  <button className="w-full py-1 text-sm font-semibold opacity-85" onClick={() => { setCatNames([]); setStep('plan') }}>
+                    Omitir por ahora
+                  </button>
+                )}
+              </>
             )}
             {step === 'plan' && (
               <>
@@ -223,7 +283,7 @@ export function OwnerWelcome() {
               </>
             )}
             {step !== 'hello' && (
-              <button className="w-full text-xs font-semibold opacity-70" onClick={() => setStep(step === 'plan' ? 'type' : 'hello')}>
+              <button className="w-full text-xs font-semibold opacity-70" onClick={() => setStep(step === 'plan' ? 'cats' : step === 'cats' ? 'type' : 'hello')}>
                 ← Atrás
               </button>
             )}

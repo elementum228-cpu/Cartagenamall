@@ -88,6 +88,7 @@ const ZONES_P1: Omit<ZoneConfig, 'focus'>[] = [
     categories: [
       { id: 'moda-femenina', name: 'Ropa femenina', zoneId: 'A' },
       { id: 'moda-masculina', name: 'Ropa masculina', zoneId: 'A' },
+      { id: 'moda-infantil', name: 'Ropa infantil y bebé', zoneId: 'A' },
       { id: 'accesorios', name: 'Accesorios', zoneId: 'A' },
       { id: 'calzado', name: 'Calzado', zoneId: 'A' },
     ],

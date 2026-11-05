@@ -52,7 +52,7 @@ export function suggestedCategories(store: Pick<Store, 'categoryId' | 'zoneId'> 
   if (store.businessType === 'service') return ['Cortes', 'Barba', 'Tratamientos', 'Paquetes', 'Asesorías']
   switch (store.zoneId) {
     case 'A':
-      return ['Camisas', 'Vestidos', 'Pantalones', 'Calzado', 'Accesorios']
+      return ['Ropa de bebé', 'Vestidos', 'Camisas', 'Pantalones', 'Pijamas', 'Calzado', 'Accesorios']
     case 'B':
       return ['Celulares', 'Audio', 'Accesorios', 'Computación', 'Wearables']
     case 'C':
