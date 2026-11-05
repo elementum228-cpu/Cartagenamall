@@ -180,7 +180,7 @@ export function subOrderMessage(order: Order, sub: SubOrder, formatPrice: (n: nu
     (l) => `• ${l.qty} × ${l.name}${l.variantName ? ` (${l.variantName})` : ''}${l.size ? ` talla ${l.size}` : ''} — ${formatPrice(l.lineTotal)}${l.promoCode ? ` [código ${l.promoCode}]` : ''}`,
   )
   return [
-    `Hola ${sub.storeName}, vengo de MallPlay 👋 Me gustaría hacer este pedido (${sub.id}):`,
+    `Hola ${sub.storeName}, vengo de MallPlay. Me gustaría hacer este pedido (${sub.id}):`,
     ...lines,
     `Subtotal estimado: ${formatPrice(sub.subtotal)}`,
     `Entrega: ${order.delivery.mode === 'pickup' ? 'Recojo en el local' : `Domicilio — ${order.delivery.address}`}`,
