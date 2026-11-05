@@ -161,6 +161,8 @@ export interface Product {
   cutout?: string
   /** Ajuste del producto sobre el fondo: tamaño relativo y desplazamiento horizontal (fracción del ancho). */
   photoFit?: { scale: number; dx: number; dy?: number }
+  /** ¿Se muestra la foto montada sobre el fondo de la tienda (true) o la foto original (false)? */
+  photoStudio?: boolean
   icon: ProductIcon
   categoryId: string
   /** Categoría propia dentro de la tienda (id de Store.categories); sin ella se agrupa por rubro. */

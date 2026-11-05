@@ -724,7 +724,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
   const [shopCategory, setShopCategory] = useState(base?.shopCategory ?? '')
   const ownCategories = storeCategories(store)
   const [icon, setIcon] = useState<ProductIcon>(base?.icon ?? 'gift')
-  const [photo, setPhoto] = useState<PhotoState>({ image: base?.image ?? null, original: base?.photoOriginal, cutout: base?.cutout, fit: base?.photoFit })
+  const [photo, setPhoto] = useState<PhotoState>({ image: base?.image ?? null, original: base?.photoOriginal, cutout: base?.cutout, fit: base?.photoFit, studio: base?.photoStudio })
   const [variants, setVariants] = useState(base?.variants.map((v) => v.name).join(', ') ?? '')
   const [sizes, setSizes] = useState(base?.sizes.join(', ') ?? '')
   const [stock, setStock] = useState(isCopy ? String(Math.max(...Object.values(seed!.inventory), 0) || 5) : '5')
@@ -784,6 +784,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
       photoOriginal: photos.original,
       cutout: photos.cutout,
       photoFit: photos.cutout ? photo.fit : undefined,
+      photoStudio: photos.cutout ? photo.studio : undefined,
       icon,
       categoryId,
       shopCategory: ownCategories.some((c) => c.id === shopCategory) ? shopCategory : undefined,

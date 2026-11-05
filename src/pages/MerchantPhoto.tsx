@@ -17,6 +17,8 @@ export interface PhotoState {
   original?: string
   cutout?: string
   fit?: { scale: number; dx: number; dy?: number }
+  /** Modo elegido: con el fondo de la tienda o foto original. */
+  studio?: boolean
 }
 
 type Cut = HTMLImageElement | HTMLCanvasElement
@@ -49,7 +51,9 @@ export function ProductPhotoField({ store, value, onChange, placeholder }: { sto
   const valueRef = useRef(value)
   valueRef.current = value
   const [busy, setBusy] = useState<null | 'model' | 'run'>(null)
-  const [studio, setStudio] = useState(!!value.cutout)
+  const [studio, setStudio] = useState(value.studio ?? !!value.cutout)
+  /** Si la persona eligió explícitamente «Foto original», una foto nueva no la devuelve al fondo de la tienda. */
+  const chose = useRef(false)
   const [fit, setFitState] = useState<Fit>({ ...FIT0, ...value.fit })
   const fitRef = useRef(fit)
   const [ready, setReady] = useState(false)
@@ -118,14 +122,14 @@ export function ProductPhotoField({ store, value, onChange, placeholder }: { sto
     if (!touched.current || !ready || !cut.current) return
     const v = valueRef.current
     if (!studio || !bg) {
-      if (v.original) onChange({ ...v, image: v.original, fit })
+      if (v.original) onChange({ ...v, image: v.original, fit, studio: false })
       return
     }
     let live = true
     const t = setTimeout(async () => {
       try {
         const out = await composeOnBackground(bg.url, cut.current as Cut & { width: number; height: number }, slotFor(fit)!)
-        if (live) onChange({ ...valueRef.current, image: out, fit })
+        if (live) onChange({ ...valueRef.current, image: out, fit, studio: true })
       } catch {
         if (live) toast('No se pudo cargar el fondo de la tienda.', 'error')
       }
@@ -157,8 +161,8 @@ export function ProductPhotoField({ store, value, onChange, placeholder }: { sto
         setCut(c)
         setFit(FIT0)
         setMoved(false)
-        setStudio(true)
-        onChange({ image: original, original, cutout: c.toDataURL('image/png'), fit: FIT0 })
+        if (!chose.current) setStudio(true)
+        onChange({ image: original, original, cutout: c.toDataURL('image/png'), fit: FIT0, studio: chose.current ? studio : true })
         setReady(true)
       } catch (err) {
         toast(err instanceof Error ? err.message : 'No se pudo quitar el fondo; se usará la foto tal cual.', 'error')
@@ -317,6 +321,7 @@ export function ProductPhotoField({ store, value, onChange, placeholder }: { sto
               aria-pressed={studio === on}
               onClick={() => {
                 touch()
+                chose.current = true
                 setStudio(on)
               }}
               className={`rounded-full px-3 py-2 text-[12.5px] font-bold transition ${studio === on ? 'bg-ink text-white' : 'text-ink-soft'}`}
