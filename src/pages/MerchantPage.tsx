@@ -26,6 +26,7 @@ import { CATEGORIES, CATEGORY_BY_ID, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from
 import type { DeliveryMode, FacadeStyle, OrderStatus, Product, ProductIcon, Store } from '../domain/types'
 import { formatCOP, formatDateTime } from '../lib/format'
 import { readImageFile, storedBytes } from '../lib/image'
+import { uploadStorePhoto } from '../remote/photos'
 import { stockKey, totalStock } from '../lib/inventory'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
@@ -368,7 +369,7 @@ function Card({ children, className = '' }: { children: ReactNode; className?: s
 }
 
 /** Botón que abre el selector de archivos (cámara o galería en móvil) y entrega la imagen reducida. */
-function ImagePicker({ kind, label, onImage, children }: { kind: 'logo' | 'product'; label: string; onImage: (dataUrl: string) => void; children?: ReactNode }) {
+function ImagePicker({ kind, storeId, label, onImage, children }: { kind: 'logo' | 'product'; storeId?: string; label: string; onImage: (dataUrl: string) => void; children?: ReactNode }) {
   const ref = useRef<HTMLInputElement>(null)
   const toast = useUI((s) => s.toast)
   const [busy, setBusy] = useState(false)
@@ -386,6 +387,15 @@ function ImagePicker({ kind, label, onImage, children }: { kind: 'logo' | 'produ
           if (!file) return
           setBusy(true)
           try {
+            if (kind === 'product' && storeId && remoteEnabled()) {
+              // Con base de datos compartida la foto va a Storage (1280 px). Si falla, se guarda reducida como antes.
+              try {
+                onImage(await uploadStorePhoto(storeId, await readImageFile(file, 'product-hd')))
+                return
+              } catch {
+                toast('No se pudo subir a la nube; se guardó en este dispositivo.')
+              }
+            }
             onImage(await readImageFile(file, kind))
           } catch (err) {
             toast(err instanceof Error ? err.message : 'No se pudo usar la imagen.', 'error')
@@ -578,7 +588,7 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
           <p className="text-sm text-ink-soft">
             {mine.length} {words.plural} · {mine.filter((p) => p.active).length} visibles
           </p>
-          <p className="text-[11px] text-ink-soft">Espacio usado en este navegador: {(catalogBytes() / 1_048_576).toFixed(1)} MB de unos 5 MB</p>
+          {!remoteEnabled() && <p className="text-[11px] text-ink-soft">Espacio usado en este navegador: {(catalogBytes() / 1_048_576).toFixed(1)} MB de unos 5 MB</p>}
         </div>
         <button className={btn.primary} onClick={() => newOne()}>
           <Plus className="size-4" /> {words.add}
@@ -796,7 +806,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
           />
         )}
         <div className="flex flex-col gap-2">
-          <ImagePicker kind="product" label={image ? 'Cambiar foto' : 'Subir foto'} onImage={setImage}>
+          <ImagePicker kind="product" storeId={store.id} label={image ? 'Cambiar foto' : 'Subir foto'} onImage={setImage}>
             <Camera className="size-4" />
           </ImagePicker>
           {image && (

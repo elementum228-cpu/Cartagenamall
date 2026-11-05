@@ -1,12 +1,14 @@
 // Reduce una imagen elegida por el comerciante antes de guardarla: localStorage tiene ~5 MB para
 // todo el catálogo, así que los logos quedan en 256 px y las fotos de producto en 640 px.
 
-export type ImageKind = 'logo' | 'product' | 'avatar'
+export type ImageKind = 'logo' | 'product' | 'product-hd' | 'avatar'
 
 const LIMITS: Record<ImageKind, { max: number; type: string; quality: number }> = {
   logo: { max: 256, type: 'image/png', quality: 1 },
   product: { max: 640, type: 'image/jpeg', quality: 0.8 },
   avatar: { max: 320, type: 'image/jpeg', quality: 0.85 },
+  // Fotos que van a Supabase Storage (no a localStorage): más resolución para verse bien en pantallas grandes.
+  'product-hd': { max: 1280, type: 'image/jpeg', quality: 0.84 },
 }
 
 /** Tamaño máximo del archivo original (antes de reducirlo). */
