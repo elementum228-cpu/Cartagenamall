@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.63.0",
     "motion": "^12.43.0",
+    "onnxruntime-web": "^1.31.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5",

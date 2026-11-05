@@ -156,6 +156,11 @@ export interface Product {
   price: number
   /** Foto real (URL o data URL subida desde Mi negocio). null mientras se usa el placeholder ilustrado. */
   image: string | null
+  /** Foto original sin tratar y recorte (PNG) del producto, para volver atrás o reaplicar el fondo de la tienda. */
+  photoOriginal?: string
+  cutout?: string
+  /** Ajuste del producto sobre el fondo: tamaño relativo y desplazamiento horizontal (fracción del ancho). */
+  photoFit?: { scale: number; dx: number }
   icon: ProductIcon
   categoryId: string
   /** Categoría propia dentro de la tienda (id de Store.categories); sin ella se agrupa por rubro. */

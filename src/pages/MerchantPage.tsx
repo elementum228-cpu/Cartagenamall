@@ -7,7 +7,6 @@ import {
   Copy,
   Zap,
   ArrowLeftRight,
-  Camera,
   ClipboardList,
   ImagePlus,
   Info,
@@ -47,6 +46,7 @@ import { CategoriesManager, CategoryPicker } from './MerchantCategories'
 import { MerchantDashboard } from './MerchantDashboard'
 import { StoreColors } from '../ui/StoreColors'
 import { PhotoBackgroundEditor } from '../ui/PhotoBackground'
+import { ProductPhotoField, type PhotoState } from './MerchantPhoto'
 import { instagramHandle } from '../lib/instagram'
 import { categoryWords, groupOf, groupsWithProducts, storeCategories } from '../lib/storeCategories'
 
@@ -724,7 +724,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
   const [shopCategory, setShopCategory] = useState(base?.shopCategory ?? '')
   const ownCategories = storeCategories(store)
   const [icon, setIcon] = useState<ProductIcon>(base?.icon ?? 'gift')
-  const [image, setImage] = useState<string | null>(base?.image ?? null)
+  const [photo, setPhoto] = useState<PhotoState>({ image: base?.image ?? null, original: base?.photoOriginal, cutout: base?.cutout, fit: base?.photoFit })
   const [variants, setVariants] = useState(base?.variants.map((v) => v.name).join(', ') ?? '')
   const [sizes, setSizes] = useState(base?.sizes.join(', ') ?? '')
   const [stock, setStock] = useState(isCopy ? String(Math.max(...Object.values(seed!.inventory), 0) || 5) : '5')
@@ -732,7 +732,26 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
   const [active, setActive] = useState(base?.active ?? true)
   const valid = name.trim().length > 1 && Number(price) > 0
 
-  const save = (another = false) => {
+  const [saving, setSaving] = useState(false)
+  /** Con base de datos, las fotos (final, original y recorte) viajan a Storage; sin ella solo se guarda la final. */
+  const persistPhotos = async () => {
+    const up = async (u?: string | null) => {
+      if (!u || !u.startsWith('data:') || !remoteEnabled()) return u ?? undefined
+      try {
+        return await uploadStorePhoto(store.id, u)
+      } catch {
+        return u
+      }
+    }
+    if (!remoteEnabled()) return { image: photo.image, original: undefined, cutout: undefined }
+    const [image, original, cutout] = await Promise.all([up(photo.image), up(photo.original), up(photo.cutout)])
+    return { image: image ?? null, original, cutout }
+  }
+
+  const save = async (another = false) => {
+    setSaving(true)
+    const photos = await persistPhotos()
+    setSaving(false)
     const vs = variants
       .split(',')
       .map((x) => x.trim())
@@ -761,7 +780,10 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
       name: name.trim(),
       description: description.trim() || 'Sin descripción.',
       price: Math.round(Number(price)),
-      image,
+      image: photos.image,
+      photoOriginal: photos.original,
+      cutout: photos.cutout,
+      photoFit: photos.cutout ? photo.fit : undefined,
       icon,
       categoryId,
       shopCategory: ownCategories.some((c) => c.id === shopCategory) ? shopCategory : undefined,
@@ -791,33 +813,12 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
           <X className="size-5" />
         </button>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        {image ? (
-          <img src={image} alt="Foto del artículo" className="size-28 rounded-2xl object-cover ring-1 ring-line" />
-        ) : (
-          <ProductImage
-            product={{
-              ...(product ?? ({} as Product)),
-              name: name || 'Artículo',
-              image: null,
-              icon,
-              variants: [],
-            }}
-            brandColor={store.brandColor}
-            className="size-28 rounded-2xl"
-          />
-        )}
-        <div className="flex flex-col gap-2">
-          <ImagePicker kind="product" storeId={store.id} label={image ? 'Cambiar foto' : 'Subir foto'} onImage={setImage}>
-            <Camera className="size-4" />
-          </ImagePicker>
-          {image && (
-            <button className={btn.ghost} onClick={() => setImage(null)}>
-              <X className="size-4" /> Quitar foto
-            </button>
-          )}
-        </div>
-      </div>
+      <ProductPhotoField
+        store={store}
+        value={photo}
+        onChange={setPhoto}
+        placeholder={<ProductImage product={{ ...(product ?? ({} as Product)), name: name || 'Artículo', image: null, icon, variants: [] }} brandColor={store.brandColor} className="size-40 rounded-2xl" />}
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nombre">
           <input className={input} value={name} maxLength={50} onChange={(e) => setName(e.target.value)} autoFocus={!product} onFocus={(e) => isCopy && e.currentTarget.select()} />
@@ -892,12 +893,12 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
           Cancelar
         </button>
         {!product && onAnother && (
-          <button className={btn.secondary} disabled={!valid} onClick={() => save(true)}>
+          <button className={btn.secondary} disabled={!valid || saving} onClick={() => void save(true)}>
             Guardar y agregar otro
           </button>
         )}
-        <button className={btn.primary} disabled={!valid} onClick={() => save()}>
-          {product ? `Guardar ${catalogWords(store).one}` : `Crear ${catalogWords(store).one}`}
+        <button className={btn.primary} disabled={!valid || saving} onClick={() => void save()}>
+          {saving ? 'Guardando…' : product ? `Guardar ${catalogWords(store).one}` : `Crear ${catalogWords(store).one}`}
         </button>
       </div>
     </Card>
