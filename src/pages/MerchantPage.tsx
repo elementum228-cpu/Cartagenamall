@@ -1,6 +1,25 @@
 import { messageFor } from '../lib/messages'
 import { MessagesEditor } from './MerchantMessages'
-import { PartyPopper, BarChart3, Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Package, Pencil, Plus, Store as StoreIcon, Trash2, X } from 'lucide-react'
+import {
+  PartyPopper,
+  BarChart3,
+  ChevronDown,
+  Copy,
+  Zap,
+  ArrowLeftRight,
+  Camera,
+  ClipboardList,
+  ImagePlus,
+  Info,
+  MapPin,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Store as StoreIcon,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CATEGORIES, CATEGORY_BY_ID, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
@@ -27,7 +46,7 @@ import { CategoriesManager, CategoryPicker } from './MerchantCategories'
 import { MerchantDashboard } from './MerchantDashboard'
 import { StoreColors } from '../ui/StoreColors'
 import { instagramHandle } from '../lib/instagram'
-import { categoryWords, groupOf, storeCategories } from '../lib/storeCategories'
+import { categoryWords, groupOf, groupsWithProducts, storeCategories } from '../lib/storeCategories'
 
 // «Mi negocio»: el comerciante edita su perfil (logo, colores, fachada), su catálogo con fotos y
 // atiende sus subórdenes. Lo que guarda aparece al instante en el mall 3D, en Comprar y en su ficha.
@@ -35,11 +54,35 @@ import { categoryWords, groupOf, storeCategories } from '../lib/storeCategories'
 type Tab = 'resumen' | 'perfil' | 'articulos' | 'promociones' | 'pedidos'
 
 const ICON_LABELS: Record<ProductIcon, string> = {
-  shirt: 'Camisa', dress: 'Vestido', pants: 'Pantalón', hat: 'Sombrero', shoe: 'Zapato', sandal: 'Sandalia', bag: 'Bolso',
-  headphones: 'Audífonos', charger: 'Cargador', phone: 'Celular', watch: 'Reloj', laptop: 'Portátil', speaker: 'Parlante',
-  perfume: 'Perfume', lipstick: 'Labial', serum: 'Sérum', brush: 'Brocha', candle: 'Vela', coffee: 'Café', gift: 'Regalo',
-  hammock: 'Hamaca', sweet: 'Dulce', plate: 'Plato', fish: 'Pescado', dessert: 'Postre', drink: 'Bebida', meat: 'Carne',
-  noodles: 'Sopa / fideos', croissant: 'Panadería',
+  shirt: 'Camisa',
+  dress: 'Vestido',
+  pants: 'Pantalón',
+  hat: 'Sombrero',
+  shoe: 'Zapato',
+  sandal: 'Sandalia',
+  bag: 'Bolso',
+  headphones: 'Audífonos',
+  charger: 'Cargador',
+  phone: 'Celular',
+  watch: 'Reloj',
+  laptop: 'Portátil',
+  speaker: 'Parlante',
+  perfume: 'Perfume',
+  lipstick: 'Labial',
+  serum: 'Sérum',
+  brush: 'Brocha',
+  candle: 'Vela',
+  coffee: 'Café',
+  gift: 'Regalo',
+  hammock: 'Hamaca',
+  sweet: 'Dulce',
+  plate: 'Plato',
+  fish: 'Pescado',
+  dessert: 'Postre',
+  drink: 'Bebida',
+  meat: 'Carne',
+  noodles: 'Sopa / fideos',
+  croissant: 'Panadería',
 }
 
 /** Aviso honesto cuando el navegador ya no tiene espacio para guardar. */
@@ -65,16 +108,29 @@ function MerchantContent() {
   const session = useSession()
   // con base de datos: solo las tiendas que la cuenta administra (el admin, todas)
   // el dueño ve su local solo cuando termina la bienvenida (primero el aviso y la animación); el administrador ve todos
-  const stores = useMemo(() => (remoteEnabled() && !session.isAdmin ? allStores.filter((s) => session.storeIds.includes(s.id) && s.setup !== 'pending') : allStores), [allStores, session.isAdmin, session.storeIds])
-  const waiting = useMemo(() => (remoteEnabled() && !session.isAdmin ? allStores.find((s) => session.storeIds.includes(s.id) && s.setup === 'pending') : undefined), [allStores, session.isAdmin, session.storeIds])
+  const stores = useMemo(
+    () => (remoteEnabled() && !session.isAdmin ? allStores.filter((s) => session.storeIds.includes(s.id) && s.setup !== 'pending') : allStores),
+    [allStores, session.isAdmin, session.storeIds],
+  )
+  const waiting = useMemo(
+    () => (remoteEnabled() && !session.isAdmin ? allStores.find((s) => session.storeIds.includes(s.id) && s.setup === 'pending') : undefined),
+    [allStores, session.isAdmin, session.storeIds],
+  )
   const reopenWelcome = useWelcome((w) => w.reopen)
   const storeId = useMerchant((s) => s.storeId)
   const setStoreId = useMerchant((s) => s.setStoreId)
   const [params, setParams] = useSearchParams()
   const requested = params.get('tienda')
-  const [tab, setTab] = useState<Tab>(() => (['pedidos', 'articulos', 'promociones', 'perfil', 'resumen'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'resumen'))
+  const [tab, setTab] = useState<Tab>(() =>
+    ['pedidos', 'articulos', 'promociones', 'perfil', 'resumen'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'resumen',
+  )
   const [startNew, setStartNew] = useState(params.get('nuevo') === '1')
-  const pending = useOrders((o) => o.orders.reduce((n, ord) => n + ord.subOrders.filter((x) => x.storeId === (requested ?? storeId) && (x.status === 'pending_confirmation' || x.status === 'received')).length, 0))
+  const pending = useOrders((o) =>
+    o.orders.reduce(
+      (n, ord) => n + ord.subOrders.filter((x) => x.storeId === (requested ?? storeId) && (x.status === 'pending_confirmation' || x.status === 'received')).length,
+      0,
+    ),
+  )
   // Desde la ficha de una tienda se llega con ?tienda=: queda como la tienda de la sesión.
   useEffect(() => {
     if (!requested) return
@@ -154,12 +210,19 @@ function MerchantContent() {
               >
                 <Icon className="size-[21px]" strokeWidth={1.8} />
                 {label}
-                {id === 'pedidos' && pending > 0 && <span className="absolute top-0 right-1 grid min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[10px] leading-[18px] font-bold text-white">{pending}</span>}
+                {id === 'pedidos' && pending > 0 && (
+                  <span className="absolute top-0 right-1 grid min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[10px] leading-[18px] font-bold text-white">
+                    {pending}
+                  </span>
+                )}
               </button>
             </li>
           ))}
           <li className="flex justify-center">
-            <Link to="/" className="flex min-h-[48px] min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[10px] font-semibold text-[#66737C] active:scale-[0.97]">
+            <Link
+              to="/"
+              className="flex min-h-[48px] min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[10px] font-semibold text-[#66737C] active:scale-[0.97]"
+            >
               <MapPin className="size-[21px]" strokeWidth={1.8} />
               Al mall
             </Link>
@@ -176,8 +239,8 @@ function DemoNotice() {
     <p className="flex items-start gap-2 rounded-2xl bg-amber-100 px-3.5 py-2.5 text-xs font-semibold text-amber-900">
       <Info className="mt-0.5 size-4 shrink-0" />
       <span>
-        Demostración sin cuentas: lo que guardas se ve al instante en el mall, pero solo en este navegador. Para que otras personas lo vean desde sus
-        teléfonos hace falta conectar una base de datos y un inicio de sesión (siguiente paso del proyecto).
+        Demostración sin cuentas: lo que guardas se ve al instante en el mall, pero solo en este navegador. Para que otras personas lo vean desde sus teléfonos hace falta conectar
+        una base de datos y un inicio de sesión (siguiente paso del proyecto).
       </span>
     </p>
   )
@@ -252,7 +315,12 @@ function Header({ store, onSwitch }: { store: Store; onSwitch: () => void }) {
   const sp = spaceByStore[store.id]
   const space = SPACE_BY_ID[sp]
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-3 rounded-3xl border border-line bg-card p-4" style={{ background: `linear-gradient(160deg, ${store.accentColor}, #fffdf9 80%)` }}>
+    <div
+      className="mt-4 flex flex-wrap items-center gap-3 rounded-3xl border border-line bg-card p-4"
+      style={{
+        background: `linear-gradient(160deg, ${store.accentColor}, #fffdf9 80%)`,
+      }}
+    >
       <StoreLogo store={store} size={60} />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold text-ink-soft">Mi negocio</p>
@@ -393,7 +461,14 @@ function ProfileEditor({ store }: { store: Store }) {
           </select>
         </Field>
         <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
-        <Field label="Instagram" hint={instagramHandle(f.instagram) ? `Tus clientes llegan a instagram.com/${instagramHandle(f.instagram)}` : 'Escribe tu usuario (@minegocio): aparece como botón en tu ficha.'}>
+        <Field
+          label="Instagram"
+          hint={
+            instagramHandle(f.instagram)
+              ? `Tus clientes llegan a instagram.com/${instagramHandle(f.instagram)}`
+              : 'Escribe tu usuario (@minegocio): aparece como botón en tu ficha.'
+          }
+        >
           <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@minegocio" autoCapitalize="none" />
         </Field>
         <Field label="WhatsApp">
@@ -418,7 +493,11 @@ function ProfileEditor({ store }: { store: Store }) {
           className={btn.primary}
           disabled={!dirty || !valid}
           onClick={() => {
-            const next = { ...f, name: f.name.trim(), logoText: f.logoText.trim() }
+            const next = {
+              ...f,
+              name: f.name.trim(),
+              logoText: f.logoText.trim(),
+            }
             upsert(next)
             setF(next)
             saved('Perfil guardado. Ya se ve en el mall.')
@@ -439,6 +518,11 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
   const remove = useCatalog((s) => s.deleteProduct)
   const saved = useSaveToast()
   const [editing, setEditing] = useState<string | 'new' | null>(startNew ? 'new' : null)
+  /** Datos de partida para un artículo nuevo: copia de otro, o lo que se repite al agregar varios seguidos. */
+  const [seed, setSeed] = useState<Product | undefined>()
+  const [nonce, setNonce] = useState(0)
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState<string | null>(null)
   useEffect(() => {
     if (!startNew) return
     setEditing('new')
@@ -449,7 +533,43 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
   const words = catalogWords(store)
   const editingProduct = editing && editing !== 'new' ? mine.find((p) => p.id === editing) : undefined
 
-  if (editing) return <ProductEditor key={editing} store={store} product={editingProduct} onDone={() => setEditing(null)} />
+  const newOne = (from?: Product) => {
+    setSeed(from)
+    setNonce((n) => n + 1)
+    setEditing('new')
+  }
+
+  if (editing)
+    return (
+      <ProductEditor
+        key={`${editing}-${nonce}`}
+        store={store}
+        product={editingProduct}
+        seed={editing === 'new' ? seed : undefined}
+        onDone={() => {
+          setSeed(undefined)
+          setEditing(null)
+        }}
+        onAnother={(last) =>
+          newOne({
+            ...last,
+            name: '',
+            price: 0,
+            image: null,
+            description: '',
+            id: '',
+            variants: [],
+            sizes: [],
+            inventory: {},
+            featured: false,
+          })
+        }
+      />
+    )
+
+  const groups = groupsWithProducts(store, mine)
+  const needle = q.trim().toLowerCase()
+  const shownList = mine.filter((p) => (!cat || groupOf(store, p).id === cat) && (!needle || `${p.name} ${p.description}`.toLowerCase().includes(needle)))
 
   return (
     <div className="space-y-3">
@@ -460,11 +580,65 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
           </p>
           <p className="text-[11px] text-ink-soft">Espacio usado en este navegador: {(catalogBytes() / 1_048_576).toFixed(1)} MB de unos 5 MB</p>
         </div>
-        <button className={btn.primary} onClick={() => setEditing('new')}>
+        <button className={btn.primary} onClick={() => newOne()}>
           <Plus className="size-4" /> {words.add}
         </button>
       </div>
-      <CategoriesManager store={store} />
+      <details className="group rounded-2xl border border-line bg-card" open={!mine.length}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+          <span>
+            <span className="block text-sm font-bold">{categoryWords(store).title}</span>
+            <span className="block text-[12px] text-ink-soft">
+              {storeCategories(store).length ? `${storeCategories(store).length} creadas · toca para ordenar o agregar` : 'Crea categorías para que tus clientes filtren'}
+            </span>
+          </span>
+          <ChevronDown className="size-5 shrink-0 text-ink-soft transition group-open:rotate-180" />
+        </summary>
+        <div className="px-1 pb-1">
+          <CategoriesManager store={store} />
+        </div>
+      </details>
+      {mine.length > 5 && (
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 rounded-2xl border border-line bg-white px-3.5 focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/15">
+            <Search className="size-4 shrink-0 text-ink-soft" />
+            <input
+              className="h-11 w-full bg-transparent text-[15px] outline-none"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={`Buscar en tus ${words.plural}…`}
+              aria-label="Buscar"
+            />
+            {q && (
+              <button onClick={() => setQ('')} aria-label="Borrar búsqueda" className="text-ink-soft">
+                <X className="size-4" />
+              </button>
+            )}
+          </label>
+          {groups.length > 1 && (
+            <div className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4">
+              {[
+                { id: null as string | null, name: 'Todo', n: mine.length },
+                ...groups.map((g) => ({
+                  id: g.id as string | null,
+                  name: g.name,
+                  n: mine.filter((p) => groupOf(store, p).id === g.id).length,
+                })),
+              ].map((g) => (
+                <button
+                  key={g.id ?? 'all'}
+                  onClick={() => setCat(g.id)}
+                  aria-pressed={cat === g.id}
+                  className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-bold transition ${cat === g.id ? 'border-ink bg-ink text-white' : 'border-line bg-card text-ink-soft'}`}
+                >
+                  {g.name} · {g.n}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {mine.length > 5 && !shownList.length && <p className="rounded-2xl bg-sand p-4 text-sm text-ink-soft">No hay {words.plural} con eso.</p>}
       {!mine.length && (
         <EmptyState icon={<Package className="size-6" />} title={`Aún no tienes ${words.plural} en tu ${words.title.toLowerCase()}`}>
           {food
@@ -475,33 +649,44 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
         </EmptyState>
       )}
       <ul className="space-y-2">
-        {mine.map((p) => (
-          <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-line bg-card p-2.5">
-            <ProductImage product={p} brandColor={store.brandColor} className="size-16 shrink-0 rounded-xl" />
-            <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 text-sm leading-tight font-bold">{p.name}</p>
-              <p className="text-sm font-extrabold">{formatCOP(p.price)}</p>
-              <p className="text-[11px] text-ink-soft">
-                {groupOf(store, p).name} · {totalStock(p)} en inventario {p.featured && '· Destacado'}
-              </p>
-            </div>
-            <label className="flex flex-col items-center gap-0.5 text-[10px] font-bold text-ink-soft">
-              <input
-                type="checkbox"
-                className="size-5 accent-brand"
-                checked={p.active}
-                onChange={(e) => {
-                  upsert({ ...p, active: e.target.checked })
-                  saved(e.target.checked ? `${p.name} visible` : `${p.name} oculto`)
+        {shownList.map((p) => (
+          <li key={p.id} className={`rounded-2xl border border-line bg-card p-2.5 ${p.active ? '' : 'opacity-75'}`}>
+            <div className="flex items-center gap-3">
+              <ProductImage product={p} brandColor={store.brandColor} className="size-16 shrink-0 rounded-xl" />
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 text-sm leading-tight font-bold">{p.name}</p>
+                <p className="text-sm font-extrabold">{formatCOP(p.price)}</p>
+                <p className="text-[11px] text-ink-soft">
+                  {groupOf(store, p).name} · {totalStock(p) > 0 ? `${totalStock(p)} en inventario` : 'Agotado'} {p.featured && '· Destacado'}
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={p.active}
+                aria-label={`Mostrar ${p.name} en la tienda`}
+                onClick={() => {
+                  upsert({ ...p, active: !p.active })
+                  saved(!p.active ? `${p.name} visible` : `${p.name} oculto`)
                 }}
-                aria-label={`Mostrar ${p.name}`}
-              />
-              Visible
-            </label>
-            <button className={btn.icon} onClick={() => setEditing(p.id)} aria-label={`Editar ${p.name}`}>
-              <Pencil className="size-4" />
-            </button>
-            <ConfirmDelete label={`Eliminar ${p.name}`} onConfirm={() => remove(p.id)} />
+                className="flex shrink-0 flex-col items-center gap-1 text-[10px] font-bold text-ink-soft"
+              >
+                <span className={`relative h-6 w-11 rounded-full transition ${p.active ? 'bg-emerald-500' : 'bg-ink/25'}`}>
+                  <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${p.active ? 'left-[22px]' : 'left-0.5'}`} />
+                </span>
+                {p.active ? 'Visible' : 'Oculto'}
+              </button>
+            </div>
+            <div className="mt-2 flex items-center gap-1 border-t border-line pt-2">
+              <button className={`${btn.ghost} !px-2.5 !py-1.5 text-[13px]`} onClick={() => setEditing(p.id)} aria-label={`Editar ${p.name}`}>
+                <Pencil className="size-4" /> Editar
+              </button>
+              <button className={`${btn.ghost} !px-2.5 !py-1.5 text-[13px]`} onClick={() => newOne(p)} aria-label={`Duplicar ${p.name}`}>
+                <Copy className="size-4" /> Duplicar
+              </button>
+              <span className="ml-auto">
+                <ConfirmDelete label={`Eliminar ${p.name}`} onConfirm={() => remove(p.id)} />
+              </span>
+            </div>
           </li>
         ))}
       </ul>
@@ -509,30 +694,46 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
   )
 }
 
-function ProductEditor({ store, product, onDone }: { store: Store; product?: Product; onDone: () => void }) {
+/** Precio con puntos de miles mientras se escribe: 150000 → 150.000. */
+const withThousands = (digits: string) => (digits ? Number(digits).toLocaleString('es-CO') : '')
+
+function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Store; product?: Product; seed?: Product; onDone: () => void; onAnother?: (saved: Product) => void }) {
   const upsert = useCatalog((s) => s.upsertProduct)
   const products = useCatalog((s) => s.products)
   const saved = useSaveToast()
   const zoneCategories = CATEGORIES.filter((c) => c.zoneId === store.zoneId)
-  const [name, setName] = useState(product?.name ?? '')
-  const [price, setPrice] = useState(product ? String(product.price) : '')
-  const [description, setDescription] = useState(product?.description ?? '')
-  const [categoryId, setCategoryId] = useState(product?.categoryId ?? store.categoryId)
-  const [shopCategory, setShopCategory] = useState(product?.shopCategory ?? '')
+  // `base` rellena el formulario: el artículo que se edita, o el que se está copiando / repitiendo.
+  const base = product ?? seed
+  const isCopy = !product && !!seed?.name
+  const [name, setName] = useState(isCopy ? `${seed!.name} (copia)` : (product?.name ?? ''))
+  const [price, setPrice] = useState(base?.price ? String(base.price) : '')
+  const [description, setDescription] = useState(base?.description === 'Sin descripción.' ? '' : (base?.description ?? ''))
+  const [categoryId, setCategoryId] = useState(base?.categoryId ?? store.categoryId)
+  const [shopCategory, setShopCategory] = useState(base?.shopCategory ?? '')
   const ownCategories = storeCategories(store)
-  const [icon, setIcon] = useState<ProductIcon>(product?.icon ?? 'gift')
-  const [image, setImage] = useState<string | null>(product?.image ?? null)
-  const [variants, setVariants] = useState(product?.variants.map((v) => v.name).join(', ') ?? '')
-  const [sizes, setSizes] = useState(product?.sizes.join(', ') ?? '')
-  const [stock, setStock] = useState('5')
-  const [featured, setFeatured] = useState(product?.featured ?? false)
-  const [active, setActive] = useState(product?.active ?? true)
+  const [icon, setIcon] = useState<ProductIcon>(base?.icon ?? 'gift')
+  const [image, setImage] = useState<string | null>(base?.image ?? null)
+  const [variants, setVariants] = useState(base?.variants.map((v) => v.name).join(', ') ?? '')
+  const [sizes, setSizes] = useState(base?.sizes.join(', ') ?? '')
+  const [stock, setStock] = useState(isCopy ? String(Math.max(...Object.values(seed!.inventory), 0) || 5) : '5')
+  const [featured, setFeatured] = useState(base?.featured ?? false)
+  const [active, setActive] = useState(base?.active ?? true)
   const valid = name.trim().length > 1 && Number(price) > 0
 
-  const save = () => {
-    const vs = variants.split(',').map((x) => x.trim()).filter(Boolean)
-    const ss = sizes.split(',').map((x) => x.trim()).filter(Boolean)
-    const slug = (v: string) => v.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-')
+  const save = (another = false) => {
+    const vs = variants
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+    const ss = sizes
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+    const slug = (v: string) =>
+      v
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[^a-z0-9]+/g, '-')
     const variantObjs = vs.map((v) => product?.variants.find((x) => x.name === v) ?? { id: slug(v), name: v })
     // Se conserva el inventario de las combinaciones que siguen existiendo; las nuevas toman el valor indicado.
     const inventory: Record<string, number> = {}
@@ -542,7 +743,7 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
         inventory[k] = product?.inventory[k] ?? (Number(stock) || 0)
       }
     const max = products.reduce((m, p) => Math.max(m, Number(p.id.replace(/\D/g, '')) || 0), 0)
-    upsert({
+    const out: Product = {
       id: product?.id ?? (remoteEnabled() ? uniqueId('P') : `P-${max + 1}`),
       storeId: store.id,
       name: name.trim(),
@@ -559,7 +760,13 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
       inventory,
       featured,
       active,
-    })
+    }
+    upsert(out)
+    if (another && onAnother) {
+      saved(`«${out.name}» creado. Agrega el siguiente.`)
+      onAnother(out)
+      return
+    }
     saved(product ? 'Artículo actualizado' : 'Artículo creado. Ya aparece en tu tienda.')
     onDone()
   }
@@ -576,7 +783,17 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
         {image ? (
           <img src={image} alt="Foto del artículo" className="size-28 rounded-2xl object-cover ring-1 ring-line" />
         ) : (
-          <ProductImage product={{ ...(product ?? ({} as Product)), name: name || 'Artículo', image: null, icon, variants: [] }} brandColor={store.brandColor} className="size-28 rounded-2xl" />
+          <ProductImage
+            product={{
+              ...(product ?? ({} as Product)),
+              name: name || 'Artículo',
+              image: null,
+              icon,
+              variants: [],
+            }}
+            brandColor={store.brandColor}
+            className="size-28 rounded-2xl"
+          />
         )}
         <div className="flex flex-col gap-2">
           <ImagePicker kind="product" label={image ? 'Cambiar foto' : 'Subir foto'} onImage={setImage}>
@@ -591,10 +808,16 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nombre">
-          <input className={input} value={name} maxLength={50} onChange={(e) => setName(e.target.value)} />
+          <input className={input} value={name} maxLength={50} onChange={(e) => setName(e.target.value)} autoFocus={!product} onFocus={(e) => isCopy && e.currentTarget.select()} />
         </Field>
         <Field label="Precio (COP)">
-          <input className={input} inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))} placeholder="45000" />
+          <input
+            className={input}
+            inputMode="numeric"
+            value={withThousands(price)}
+            onChange={(e) => setPrice(e.target.value.replace(/\D/g, '').slice(0, 9))}
+            placeholder="45.000"
+          />
         </Field>
         <Field label="Descripción" wide>
           <textarea className={`${input} min-h-20`} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} />
@@ -602,50 +825,66 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
         <Field label={categoryWords(store).title} wide>
           <CategoryPicker store={store} value={shopCategory} onChange={setShopCategory} />
         </Field>
-        <Field label="Rubro (para las búsquedas)">
-          <select className={input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            {zoneCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Ilustración si no hay foto">
-          <select className={input} value={icon} onChange={(e) => setIcon(e.target.value as ProductIcon)}>
-            {(Object.keys(ICON_LABELS) as ProductIcon[]).map((i) => (
-              <option key={i} value={i}>
-                {ICON_LABELS[i]}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Colores o variantes (opcional)" hint="Separados por coma: Rojo, Azul">
-          <input className={input} value={variants} onChange={(e) => setVariants(e.target.value)} />
-        </Field>
-        <Field label="Tallas (opcional)" hint="Separadas por coma: S, M, L">
-          <input className={input} value={sizes} onChange={(e) => setSizes(e.target.value)} />
-        </Field>
         {!product && (
           <Field label="Unidades disponibles" hint="Por cada combinación de color y talla.">
             <input className={input} inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value.replace(/\D/g, ''))} />
           </Field>
         )}
-        <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
-          <label className="flex items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" className="size-5 accent-brand" checked={active} onChange={(e) => setActive(e.target.checked)} /> Visible en la tienda
-          </label>
-          <label className="flex items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" className="size-5 accent-brand" checked={featured} onChange={(e) => setFeatured(e.target.checked)} /> Destacado
-          </label>
-        </div>
+        <details className="group rounded-2xl border border-line bg-sand/40 sm:col-span-2" open={!!(product && (product.variants.length || product.sizes.length))}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
+            <span>
+              Más opciones
+              <span className="block text-[11px] font-medium text-ink-soft">Colores, tallas, rubro, ilustración y destacado</span>
+            </span>
+            <ChevronDown className="size-5 shrink-0 text-ink-soft transition group-open:rotate-180" />
+          </summary>
+          <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
+            <Field label="Rubro (para las búsquedas)">
+              <select className={input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                {zoneCategories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Ilustración si no hay foto">
+              <select className={input} value={icon} onChange={(e) => setIcon(e.target.value as ProductIcon)}>
+                {(Object.keys(ICON_LABELS) as ProductIcon[]).map((i) => (
+                  <option key={i} value={i}>
+                    {ICON_LABELS[i]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Colores o variantes (opcional)" hint="Separados por coma: Rojo, Azul">
+              <input className={input} value={variants} onChange={(e) => setVariants(e.target.value)} />
+            </Field>
+            <Field label="Tallas (opcional)" hint="Separadas por coma: S, M, L">
+              <input className={input} value={sizes} onChange={(e) => setSizes(e.target.value)} />
+            </Field>
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" className="size-5 accent-brand" checked={featured} onChange={(e) => setFeatured(e.target.checked)} /> Destacado
+              </label>
+            </div>
+          </div>
+        </details>
+        <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+          <input type="checkbox" className="size-5 accent-brand" checked={active} onChange={(e) => setActive(e.target.checked)} /> Visible en la tienda
+        </label>
       </div>
       {product && <InventoryEditor product={product} />}
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <button className={btn.secondary} onClick={onDone}>
           Cancelar
         </button>
-        <button className={btn.primary} disabled={!valid} onClick={save}>
+        {!product && onAnother && (
+          <button className={btn.secondary} disabled={!valid} onClick={() => save(true)}>
+            Guardar y agregar otro
+          </button>
+        )}
+        <button className={btn.primary} disabled={!valid} onClick={() => save()}>
           {product ? `Guardar ${catalogWords(store).one}` : `Crear ${catalogWords(store).one}`}
         </button>
       </div>
@@ -673,7 +912,15 @@ function InventoryEditor({ product }: { product: Product }) {
               className="mt-1 w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand"
               inputMode="numeric"
               value={live.inventory[k]}
-              onChange={(e) => upsert({ ...live, inventory: { ...live.inventory, [k]: Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0) } })}
+              onChange={(e) =>
+                upsert({
+                  ...live,
+                  inventory: {
+                    ...live.inventory,
+                    [k]: Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0),
+                  },
+                })
+              }
             />
           </label>
         ))}
@@ -744,7 +991,13 @@ function MerchantOrders({ store }: { store: Store }) {
             ['done', `Entregados (${done.length})`],
           ] as const
         ).map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={view === id} onClick={() => setView(id)} className={`rounded-xl py-2.5 text-sm font-bold transition ${view === id ? 'bg-white text-brand shadow-soft' : 'text-ink-soft'}`}>
+          <button
+            key={id}
+            role="tab"
+            aria-selected={view === id}
+            onClick={() => setView(id)}
+            className={`rounded-xl py-2.5 text-sm font-bold transition ${view === id ? 'bg-white text-brand shadow-soft' : 'text-ink-soft'}`}
+          >
             {label}
           </button>
         ))}
@@ -754,7 +1007,9 @@ function MerchantOrders({ store }: { store: Store }) {
           Quitar todos los entregados y cancelados
         </button>
       )}
-      {!shown.length && <p className="rounded-2xl bg-sand p-4 text-sm text-ink-soft">{view === 'active' ? 'No tienes pedidos por atender. ¡Buen trabajo!' : 'Aún no hay pedidos entregados.'}</p>}
+      {!shown.length && (
+        <p className="rounded-2xl bg-sand p-4 text-sm text-ink-soft">{view === 'active' ? 'No tienes pedidos por atender. ¡Buen trabajo!' : 'Aún no hay pedidos entregados.'}</p>
+      )}
       <ul className="space-y-3">
         {shown.map(({ order, sub }) => {
           const next = nextStep(order.delivery.mode, sub.status)
@@ -782,7 +1037,17 @@ function MerchantOrders({ store }: { store: Store }) {
                 </ul>
                 {order.notes && <p className="rounded-xl bg-sand px-3 py-2 text-xs text-ink-soft">Nota del cliente: {order.notes}</p>}
                 <div className="flex items-center justify-between">
-                  <a href={whatsappLink(order.customer.whatsapp, messageFor(store, 'toCustomer', { cliente: order.customer.name }))} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-brand underline-offset-2 hover:underline">
+                  <a
+                    href={whatsappLink(
+                      order.customer.whatsapp,
+                      messageFor(store, 'toCustomer', {
+                        cliente: order.customer.name,
+                      }),
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-brand underline-offset-2 hover:underline"
+                  >
                     Escribir al cliente · {order.customer.whatsapp}
                   </a>
                   <span className="text-lg font-extrabold">{formatCOP(sub.subtotal)}</span>
