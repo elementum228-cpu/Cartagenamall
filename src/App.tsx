@@ -316,9 +316,14 @@ function TopBar() {
   )
 }
 
-function Badge({ n }: { n: number }) {
+/** Globito con la cantidad. `icon`: sobre un ícono pequeño, sale por la esquina para no taparlo. */
+function Badge({ n, icon = false }: { n: number; icon?: boolean }) {
   if (!n) return null
-  return <span className="absolute -top-0.5 -right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[10.5px] font-bold text-white ring-2 ring-white/90">{n > 99 ? '99+' : n}</span>
+  return (
+    <span className={`absolute grid h-[17px] min-w-[17px] place-items-center rounded-full bg-coral px-1 text-[10px] leading-none font-bold text-white ring-2 ring-white/90 ${icon ? '-top-2.5 -right-3.5' : '-top-1 -right-1'}`}>
+      {n > 99 ? '99+' : n}
+    </span>
+  )
 }
 
 function BottomNav() {
@@ -351,7 +356,7 @@ function BottomNav() {
             >
               <span className="relative">
                 <t.icon className="size-[21px]" strokeWidth={1.8} />
-                {t.badge ? <Badge n={t.badge} /> : null}
+                {t.badge ? <Badge n={t.badge} icon /> : null}
               </span>
               {t.label}
             </NavLink>
