@@ -160,7 +160,7 @@ export interface Product {
   photoOriginal?: string
   cutout?: string
   /** Ajuste del producto sobre el fondo: tamaño relativo y desplazamiento horizontal (fracción del ancho). */
-  photoFit?: { scale: number; dx: number }
+  photoFit?: { scale: number; dx: number; dy?: number }
   icon: ProductIcon
   categoryId: string
   /** Categoría propia dentro de la tienda (id de Store.categories); sin ella se agrupa por rubro. */

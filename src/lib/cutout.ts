@@ -59,7 +59,7 @@ export function alphaBounds(alpha: ArrayLike<number>, w: number, h: number, min 
   return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }
 }
 
-/** Quita el fondo de una imagen. Devuelve el producto recortado (PNG con transparencia) ajustado a su contorno. */
+/** Quita el fondo de una imagen. Devuelve la foto con el fondo transparente (mismo encuadre que la original). */
 export async function removeBackground(src: HTMLImageElement | ImageBitmap, onStage?: (s: 'model' | 'run') => void): Promise<HTMLCanvasElement> {
   onStage?.('model')
   const [ort, sess] = [await import('onnxruntime-web/wasm'), await getSession()]
@@ -118,10 +118,26 @@ export async function removeBackground(src: HTMLImageElement | ImageBitmap, onSt
     a[i] = alpha[i * 4 + 3]
     img.data[i * 4 + 3] = a[i]
   }
-  const box = alphaBounds(a, w, h)
-  if (!box) throw new Error('No se encontró el producto en la foto. Prueba con una foto más clara.')
+  if (!alphaBounds(a, w, h)) throw new Error('No se encontró el producto en la foto. Prueba con una foto más clara.')
   pctx.putImageData(img, 0, 0)
+  // Se devuelve con el tamaño completo de la foto de trabajo (sin recortar al contorno): así el retoque puede
+  // restaurar partes desde la foto original, que tiene exactamente el mismo encuadre.
+  return photo
+}
 
+/** Recorta un producto con transparencia a su contorno (con un pequeño margen). */
+export function trimToContent(src: HTMLImageElement | HTMLCanvasElement): HTMLCanvasElement {
+  const w = 'naturalWidth' in src ? src.naturalWidth : src.width
+  const h = 'naturalHeight' in src ? src.naturalHeight : src.height
+  const tmp = document.createElement('canvas')
+  tmp.width = w
+  tmp.height = h
+  const tctx = tmp.getContext('2d', { willReadFrequently: true })!
+  tctx.drawImage(src, 0, 0)
+  const data = tctx.getImageData(0, 0, w, h).data
+  const a = new Uint8ClampedArray(w * h)
+  for (let i = 0; i < w * h; i++) a[i] = data[i * 4 + 3]
+  const box = alphaBounds(a, w, h) ?? { x: 0, y: 0, w, h }
   const pad = Math.round(Math.max(box.w, box.h) * 0.02)
   const x = Math.max(0, box.x - pad)
   const y = Math.max(0, box.y - pad)
@@ -130,6 +146,6 @@ export async function removeBackground(src: HTMLImageElement | ImageBitmap, onSt
   const res = document.createElement('canvas')
   res.width = cw
   res.height = ch
-  res.getContext('2d')!.drawImage(photo, x, y, cw, ch, 0, 0, cw, ch)
+  res.getContext('2d')!.drawImage(tmp, x, y, cw, ch, 0, 0, cw, ch)
   return res
 }
