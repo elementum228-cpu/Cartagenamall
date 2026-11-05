@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { useIsNight } from '../lib/useIsNight'
 import { useUI } from '../state/ui'
 import { trackHarbor } from '../tourism/store'
-import { BASIN, BOATS, HARBOR, LAUNCH_IDS, SEA_Y } from '../tourism/config'
+import { BASIN, BOATS, HARBOR, LAUNCH_IDS, SEA_Y, STORE_OF_BOAT } from '../tourism/config'
 import type { BoatConfig } from '../tourism/types'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -14,6 +14,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
+import { BoatFlash } from './BoatFlash'
 import { Person } from './Person'
 import { DiscountShip } from './DiscountShip'
 import { PirateShip } from './PirateShip'
@@ -441,6 +442,7 @@ function Boat({ boat, selected, reduceMotion }: { boat: BoatConfig; selected: bo
         <mesh geometry={GEO.box} material={glowMat('#fff1c9', 1.6)} position={[0, 1.33, -0.35]} scale={[1.1, 0.02, 1.4]} />
       </group>
       </group>
+      <BoatFlash storeId={STORE_OF_BOAT[boat.id]} width={1.7 * BOAT_SCALE} length={3.6 * BOAT_SCALE} height={2.2} onOpen={open} reduceMotion={reduceMotion} />
       {/* indicador táctil: anillo de color con centro y pulso lento, sobre el agua junto a la popa */}
       <group ref={spot} position={[0, 0.08, -2.05 * BOAT_SCALE]}>
         <mesh ref={pulse} geometry={GEO.ring} material={mats.pulse} rotation={[-Math.PI / 2, 0, 0]} />

@@ -1,12 +1,14 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Anchor, ChevronLeft, ChevronRight, Clock, Info, MapPin, MessageCircle, Palmtree, PartyPopper, Ship, Sailboat, Star, Sunset, Users, Wine, type LucideIcon } from 'lucide-react'
+import { Anchor, Zap, ChevronLeft, ChevronRight, Clock, Info, MapPin, MessageCircle, Palmtree, PartyPopper, Ship, Sailboat, Star, Sunset, Users, Wine, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { formatCOP } from '../lib/format'
 import { useUI } from '../state/ui'
 import { BOATS, CATEGORY_LABEL } from '../tourism/config'
 import { experiencesFor, trackHarbor, useTourism } from '../tourism/store'
 import type { BoatId, Experience, ExperienceCategory } from '../tourism/types'
-import { Chip } from '../ui/bits'
+import { Chip, Countdown } from '../ui/bits'
+import { usePromoEvents } from '../promotions/store'
+import { useCatalog } from '../state/catalog'
 import { Sheet } from '../ui/Sheet'
 
 // Ficha del muelle turístico: al tocar una lancha, primero su tarjeta (qué planes ofrece) y con
@@ -75,6 +77,25 @@ const slide = (dir: 1 | -1) => ({
 
 const BOAT_STORE: Record<BoatId, string> = { mar: 'STORE-LANCHA-MAR', bahia: 'STORE-LANCHA-BAHIA', pirata: 'STORE-PIRATA' }
 
+/** Oferta relámpago vigente del negocio (el barco se ilumina en el mapa mientras dura). */
+function BoatOffer({ storeId }: { storeId: string }) {
+  const event = usePromoEvents((s) => s.events.find((e) => e.storeId === storeId && e.type === 'flash' && e.status === 'active'))
+  const promo = useCatalog((s) => s.promotions.find((p) => p.id === event?.promotionId))
+  if (!event || !promo) return null
+  return (
+    <div className="mb-3 flex items-center gap-3 rounded-2xl bg-amber/20 px-3.5 py-3 ring-1 ring-amber/50">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-amber text-deep">
+        <Zap className="size-4.5" strokeWidth={2.2} fill="currentColor" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[14px] leading-tight font-bold">Relámpago −{event.discount}%</p>
+        <p className="truncate text-[12px] text-ink-soft">{promo.title}</p>
+      </div>
+      <Countdown endsAt={promo.endsAt} className="!font-sans text-[12.5px] font-bold" />
+    </div>
+  )
+}
+
 function BoatCard({ boat }: { boat: BoatId }) {
   const b = BOATS[boat]
   const all = useTourism((s) => s.experiences)
@@ -92,6 +113,7 @@ function BoatCard({ boat }: { boat: BoatId }) {
           )
         })}
       </ul>
+      <BoatOffer storeId={BOAT_STORE[boat]} />
       <button
         onClick={() => {
           useUI.getState().setHarborView('list')

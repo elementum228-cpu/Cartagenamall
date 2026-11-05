@@ -3,7 +3,8 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { usePirateShip } from '../state/pirate'
 import { useUI } from '../state/ui'
-import { BASIN, HARBOR, PIRATE_BERTH, SEA_Y } from '../tourism/config'
+import { BASIN, HARBOR, PIRATE_BERTH, SEA_Y, STORE_OF_BOAT } from '../tourism/config'
+import { BoatFlash } from './BoatFlash'
 import { trackHarbor } from '../tourism/store'
 import { cameraState } from './cameraState'
 import { GEO, mat } from './materials'
@@ -436,6 +437,7 @@ export function PirateShip({ reduceMotion, selected }: { reduceMotion: boolean; 
         <mesh ref={glowRef} geometry={GEO.sphere} material={mats.glow} position={[0, 0.03, -0.4]} scale={[5.4, 0.02, 13]} visible={false} />
         <mesh ref={wake} geometry={GEO.sphere} material={mats.wake} position={[0, 0.04, -5]} visible={false} />
         <mesh geometry={GEO.plane} material={lightPoolMat('#c13cff', 0.7)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} scale={[7, 13, 1]} />
+        <BoatFlash storeId={STORE_OF_BOAT.pirata} width={4} length={11} height={5} onOpen={open} reduceMotion={reduceMotion} />
         <group ref={hull}>
           <ShipModel />
           <mesh ref={party} geometry={GEO.plane} material={mats.party} rotation={[-Math.PI / 2, 0, 0]} position={[0, DY + 0.04, -0.6]} scale={[2.8, 6.2, 1]} visible={false} />

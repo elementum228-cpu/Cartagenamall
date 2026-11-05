@@ -1,4 +1,5 @@
 import { Clock, Gem, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
+import { BOAT_OF_STORE } from '../tourism/config'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SPACE_BY_ID } from '../config/mall'
@@ -374,7 +375,8 @@ function PromotionForm({ store, onDone, initialType }: { store: Store; onDone: (
     code,
     hideAt,
   }
-  const placed = !!spaceByStore[store.id]
+  // Los barcos del muelle son negocios sin local: sus ofertas también se ven en el mapa (el barco se ilumina).
+  const placed = !!spaceByStore[store.id] || !!BOAT_OF_STORE[store.id]
   const error = validatePromotion(draft) ?? (type === 'secret' && !hideAt && !placed ? 'Elige en el mapa dónde esconderla.' : null)
 
   if (!mine.length)
@@ -497,7 +499,13 @@ function useShowInMall(store: Store) {
   const navigate = useNavigate()
   const { spaceByStore } = useCatalogMaps()
   return () => {
+    const boat = BOAT_OF_STORE[store.id]
     const sp = spaceByStore[store.id]
+    if (!sp && boat) {
+      navigate('/')
+      useUI.getState().openHarbor(boat)
+      return
+    }
     if (!sp) return
     navigate('/')
     const ui = useUI.getState()

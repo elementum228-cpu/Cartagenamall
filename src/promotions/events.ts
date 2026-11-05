@@ -1,5 +1,6 @@
 import { SPACE_BY_ID, spaceFrontPoint } from '../config/mall'
 import type { FloorId, Promotion } from '../domain/types'
+import { BOATS, BOAT_OF_STORE } from '../tourism/config'
 
 // Gestor de eventos de promoción (puro, sin three): convierte las promociones del catálogo en
 // eventos con vigencia y decide cuándo una oferta relámpago se "presenta" en el mall (fachada
@@ -58,29 +59,31 @@ export function syncPromotionEvents(prev: PromotionEvent[], { promotions, assign
   for (const p of promotions) {
     const spaceId = spaceByStore[p.storeId]
     const space = SPACE_BY_ID[spaceId]
-    if (!p.active || !space) continue
+    // Los barcos del muelle son negocios sin local: sus ofertas también son eventos (el barco se ilumina).
+    const boat = space ? undefined : BOAT_OF_STORE[p.storeId]
+    if (!p.active || (!space && !boat)) continue
     const id = `${p.id}@${p.startsAt}`
     const start = Date.parse(p.startsAt)
     const end = p.endsAt ? Date.parse(p.endsAt) : null
     const status: PromoEventStatus = start > now ? 'scheduled' : end !== null && end <= now ? 'ended' : 'active'
     const old = byId.get(id)
     const type = typeOf(p)
-    let spotlight: SpotlightState = old?.spotlight ?? (type === 'flash' ? 'pending' : 'none')
+    let spotlight: SpotlightState = boat ? 'none' : (old?.spotlight ?? (type === 'flash' ? 'pending' : 'none'))
     if (status === 'ended' && spotlight !== 'none') spotlight = 'done'
     live.add(id)
     next.push({
       id,
       promotionId: p.id,
       storeId: p.storeId,
-      floorId: space.floorId,
-      spaceId,
+      floorId: space ? space.floorId : 'P1',
+      spaceId: space ? spaceId : `BOAT:${boat}`,
       type,
       startTime: start,
       endTime: end,
       status,
       discount: p.discountPercent,
       title: p.title,
-      targetPosition: spaceFrontPoint(space, 1.2),
+      targetPosition: space ? spaceFrontPoint(space, 1.2) : BOATS[boat!].position,
       spotlight,
       spotlightStart: old?.spotlightStart ?? null,
       spotlightEnd: old?.spotlightEnd ?? null,

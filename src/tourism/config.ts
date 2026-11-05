@@ -83,6 +83,10 @@ export const BOATS: Record<BoatId, BoatConfig> = {
     rotation: 0,
   },
 }
+/** Negocios del muelle: cada barco es la tienda de un negocio (ofertas, productos y pedidos como cualquier local). */
+export const BOAT_OF_STORE: Record<string, BoatId> = { 'STORE-LANCHA-MAR': 'mar', 'STORE-LANCHA-BAHIA': 'bahia', 'STORE-PIRATA': 'pirata' }
+export const STORE_OF_BOAT: Record<BoatId, string> = { mar: 'STORE-LANCHA-MAR', bahia: 'STORE-LANCHA-BAHIA', pirata: 'STORE-PIRATA' }
+
 /** Todo lo que se puede tocar en el muelle. */
 export const BOAT_IDS = Object.keys(BOATS) as BoatId[]
 /** Las dos lanchas amarradas (el barco pirata se dibuja aparte: navega). */

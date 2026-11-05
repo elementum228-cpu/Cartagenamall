@@ -1,4 +1,5 @@
 import { openCourtOrClaim } from '../football/open'
+import { BOAT_OF_STORE } from '../tourism/config'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
 import { Anchor, Gamepad2, Plane, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
@@ -215,6 +216,11 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             onClick={() => {
               // Lo elige la persona: se acerca la cámara y se abre la ficha con la oferta.
               setFloor(flashEvent.floorId)
+              const boat = BOAT_OF_STORE[flashEvent.storeId]
+              if (boat && flashEvent.spaceId.startsWith('BOAT:')) {
+                useUI.getState().openHarbor(boat)
+                return
+              }
               selectSpace(flashEvent.spaceId)
               if (use3D) requestFocus({ kind: 'space', id: flashEvent.spaceId })
             }}
