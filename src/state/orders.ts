@@ -10,6 +10,8 @@ interface OrdersState {
   mine: string[]
   nextNumber: number
   add: (order: Order) => void
+  /** Pedido que registra el comercio a mano (venta en el local o por WhatsApp): no es «mío» como cliente y descuenta el inventario. */
+  addManual: (order: Order, adjustStock: boolean) => void
   setSubOrderStatus: (subOrderId: string, status: OrderStatus) => void
   /** El comercio quita de su lista un pedido entregado o cancelado. */
   archiveSubOrder: (subOrderId: string) => void
@@ -28,6 +30,10 @@ export const useOrders = create<OrdersState>()(
       mine: [],
       nextNumber: 1,
       add: (order) => set((s) => ({ orders: [order, ...s.orders], mine: [order.id, ...s.mine].slice(0, 200), nextNumber: s.nextNumber + 1 })),
+      addManual: (order, adjustStock) => {
+        if (adjustStock) for (const sub of order.subOrders) useCatalog.getState().commitStock(sub.lines, 1)
+        set((s) => ({ orders: [{ ...order, subOrders: order.subOrders.map((x) => ({ ...x, manual: true, stockCommitted: adjustStock })) }, ...s.orders] }))
+      },
       archiveSubOrder: (subId) =>
         set((s) => ({ orders: s.orders.map((o) => ({ ...o, subOrders: o.subOrders.map((x) => (x.id === subId ? { ...x, archived: true } : x)) })) })),
       removeOrder: (orderId) => set((s) => ({ orders: s.orders.filter((o) => o.id !== orderId), mine: s.mine.filter((id) => id !== orderId) })),

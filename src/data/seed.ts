@@ -17,6 +17,7 @@ export const SEED_STORES: Store[] = [
     instagram: '@brisatextil.demo',
     whatsapp: '+57 300 000 0001',
     status: 'open',
+    categories: [{ id: 'camisas', name: 'Camisas y camisetas' }, { id: 'vestidos', name: 'Vestidos' }, { id: 'pantalones', name: 'Pantalones' }, { id: 'accesorios', name: 'Accesorios' }],
   },
   {
     id: 'STORE-002',
@@ -62,6 +63,7 @@ export const SEED_STORES: Store[] = [
     instagram: '@coralbelleza.demo',
     whatsapp: '+57 300 000 0004',
     status: 'open',
+    categories: [{ id: 'champu', name: 'Champú y cabello' }, { id: 'tratamientos', name: 'Tratamientos' }, { id: 'maquillaje', name: 'Maquillaje' }, { id: 'fragancias', name: 'Fragancias' }],
   },
   {
     id: 'STORE-005',
@@ -97,6 +99,7 @@ SEED_STORES.push(
     instagram: '@saborcaribe.demo',
     whatsapp: '+57 300 000 0006',
     status: 'open',
+    categories: [{ id: 'fuertes', name: 'Platos fuertes' }, { id: 'bebidas', name: 'Bebidas' }],
   },
   {
     id: 'STORE-102',
@@ -112,6 +115,7 @@ SEED_STORES.push(
     instagram: '@marfuego.demo',
     whatsapp: '+57 300 000 0007',
     status: 'open',
+    categories: [{ id: 'entradas', name: 'Entradas' }, { id: 'fuertes', name: 'Platos fuertes' }],
   },
   {
     id: 'STORE-103',
@@ -157,6 +161,7 @@ SEED_STORES.push(
     instagram: '@cafedelcentro.demo',
     whatsapp: '+57 300 000 0010',
     status: 'open',
+    categories: [{ id: 'cafes', name: 'Cafés' }, { id: 'panaderia', name: 'Panadería' }],
   },
   {
     id: 'STORE-106',
@@ -172,6 +177,7 @@ SEED_STORES.push(
     instagram: '@dulcemomento.demo',
     whatsapp: '+57 300 000 0011',
     status: 'open',
+    categories: [{ id: 'postres', name: 'Postres' }, { id: 'helados', name: 'Helados' }],
   },
 )
 
@@ -228,7 +234,17 @@ function p(input: ProductInput): Product {
 const TALLAS = ['S', 'M', 'L', 'XL']
 const CALZADO = ['36', '37', '38', '39', '40', '41', '42']
 
-export const SEED_PRODUCTS: Product[] = [
+/** Categoría propia de ejemplo por producto (cada dueño crea las suyas desde Mi negocio). */
+const SEED_SHOP_CATEGORY: Record<string, string> = {
+  'P-101': 'camisas', 'P-102': 'camisas', 'P-103': 'vestidos', 'P-104': 'pantalones', 'P-105': 'accesorios', 'P-106': 'pantalones',
+  'P-401': 'tratamientos', 'P-402': 'tratamientos', 'P-403': 'maquillaje', 'P-404': 'fragancias', 'P-405': 'maquillaje', 'P-406': 'fragancias',
+  'P-601': 'fuertes', 'P-602': 'fuertes', 'P-603': 'fuertes', 'P-604': 'bebidas',
+  'P-701': 'entradas', 'P-702': 'fuertes', 'P-703': 'fuertes', 'P-704': 'entradas',
+  'P-1001': 'cafes', 'P-1002': 'cafes', 'P-1003': 'panaderia', 'P-1004': 'cafes',
+  'P-1101': 'postres', 'P-1102': 'helados', 'P-1103': 'postres',
+}
+
+const RAW_PRODUCTS: Product[] = [
   // ── Brisa Textil ──
   p({ id: 'P-101', storeId: 'STORE-001', name: 'Camiseta básica de algodón', description: 'Algodón peinado 180 g, corte recto. Fresca y resistente al lavado.', price: 60_000, icon: 'shirt', categoryId: 'moda-masculina', compareGroup: 'camiseta', tags: ['camiseta', 'algodón', 'básico'], variants: [v('blanco', 'Blanco', '#f4f1ea'), v('arena', 'Arena', '#d8c3a5'), v('azul', 'Azul mar', '#2f5d7c')], sizes: TALLAS, featured: true, soldOut: ['azul|XL'] }),
   p({ id: 'P-102', storeId: 'STORE-001', name: 'Camisa de lino manga larga', description: 'Lino 100 %, botones de coco. Perfecta para atardeceres en la muralla.', price: 129_000, icon: 'shirt', categoryId: 'moda-masculina', compareGroup: 'camisa', tags: ['camisa', 'lino'], variants: [v('crudo', 'Crudo', '#ece3d0'), v('oliva', 'Oliva', '#7d8461')], sizes: TALLAS, featured: true }),
@@ -295,6 +311,8 @@ export const SEED_PRODUCTS: Product[] = [
   p({ id: 'P-1102', storeId: 'STORE-106', name: 'Helado artesanal de corozo', description: 'Dos bolas en vaso o cono.', price: 9_000, icon: 'dessert', categoryId: 'postres', compareGroup: 'helado', tags: ['helado', 'frutas'], variants: [v('vaso', 'Vaso'), v('cono', 'Cono')], sizes: [], featured: true, base: 25 }),
   p({ id: 'P-1103', storeId: 'STORE-106', name: 'Enyucado', description: 'Postre de yuca, coco y queso, horneado.', price: 8_000, icon: 'dessert', categoryId: 'postres', compareGroup: 'postre', tags: ['postre', 'típico'], variants: [], sizes: [], base: 16 }),
 ]
+
+export const SEED_PRODUCTS: Product[] = RAW_PRODUCTS.map((pr) => (SEED_SHOP_CATEGORY[pr.id] ? { ...pr, shopCategory: SEED_SHOP_CATEGORY[pr.id] } : pr))
 
 const HOUR = 3_600_000
 

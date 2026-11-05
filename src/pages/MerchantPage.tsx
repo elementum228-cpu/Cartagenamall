@@ -1,4 +1,4 @@
-import { Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Package, Pencil, Plus, Store as StoreIcon, Trash2, X } from 'lucide-react'
+import { BarChart3, Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Package, Pencil, Plus, Store as StoreIcon, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CATEGORIES, CATEGORY_BY_ID, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
@@ -21,11 +21,15 @@ import { useUI } from '../state/ui'
 import { ProductImage } from '../ui/ProductImage'
 import { EmptyState, StoreLogo, btn, input } from '../ui/bits'
 import { MerchantPromotions } from './MerchantPromotions'
+import { CategoriesManager } from './MerchantCategories'
+import { MerchantDashboard } from './MerchantDashboard'
+import { instagramHandle } from '../lib/instagram'
+import { categoryWords, groupOf, storeCategories } from '../lib/storeCategories'
 
 // «Mi negocio»: el comerciante edita su perfil (logo, colores, fachada), su catálogo con fotos y
 // atiende sus subórdenes. Lo que guarda aparece al instante en el mall 3D, en Comprar y en su ficha.
 
-type Tab = 'perfil' | 'articulos' | 'promociones' | 'pedidos'
+type Tab = 'resumen' | 'perfil' | 'articulos' | 'promociones' | 'pedidos'
 
 const ICON_LABELS: Record<ProductIcon, string> = {
   shirt: 'Camisa', dress: 'Vestido', pants: 'Pantalón', hat: 'Sombrero', shoe: 'Zapato', sandal: 'Sandalia', bag: 'Bolso',
@@ -65,7 +69,7 @@ function MerchantContent() {
   const setStoreId = useMerchant((s) => s.setStoreId)
   const [params, setParams] = useSearchParams()
   const requested = params.get('tienda')
-  const [tab, setTab] = useState<Tab>(() => (['pedidos', 'articulos', 'promociones'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'perfil'))
+  const [tab, setTab] = useState<Tab>(() => (['pedidos', 'articulos', 'promociones', 'perfil', 'resumen'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'resumen'))
   const [startNew, setStartNew] = useState(params.get('nuevo') === '1')
   const pending = useOrders((o) => o.orders.reduce((n, ord) => n + ord.subOrders.filter((x) => x.storeId === (requested ?? storeId) && (x.status === 'pending_confirmation' || x.status === 'received')).length, 0))
   // Desde la ficha de una tienda se llega con ?tienda=: queda como la tienda de la sesión.
@@ -73,7 +77,7 @@ function MerchantContent() {
     if (!requested) return
     if (stores.some((s) => s.id === requested)) setStoreId(requested)
     const t = params.get('tab')
-    if (t === 'pedidos' || t === 'articulos' || t === 'promociones' || t === 'perfil') setTab(t)
+    if (t === 'pedidos' || t === 'articulos' || t === 'promociones' || t === 'perfil' || t === 'resumen') setTab(t)
     if (params.get('nuevo') === '1') setStartNew(true)
     setParams({}, { replace: true })
   }, [requested, stores, setStoreId, setParams])
@@ -99,6 +103,7 @@ function MerchantContent() {
       <nav className="scrollbar-none mt-4 hidden gap-1 overflow-x-auto md:flex" aria-label="Secciones de mi negocio">
         {(
           [
+            ['resumen', 'Resumen', BarChart3],
             ['perfil', 'Perfil y logo', StoreIcon],
             ['articulos', catalogWords(store).tab, Package],
             ['promociones', 'Promociones', Zap],
@@ -117,6 +122,7 @@ function MerchantContent() {
         ))}
       </nav>
       <div className="mt-4">
+        {tab === 'resumen' && <MerchantDashboard key={store.id} store={store} goTab={setTab} />}
         {tab === 'perfil' && <ProfileEditor key={store.id} store={store} />}
         {tab === 'articulos' && <ProductsManager store={store} startNew={startNew} onStarted={() => setStartNew(false)} />}
         {tab === 'promociones' && <MerchantPromotions store={store} />}
@@ -125,9 +131,10 @@ function MerchantContent() {
 
       {/* móvil: barra propia del negocio (reemplaza a la del mall) */}
       <nav className="glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 rounded-[26px] px-1.5 md:hidden" aria-label="Secciones de mi negocio">
-        <ul className="grid h-16 grid-cols-5 items-center">
+        <ul className="grid h-16 grid-cols-6 items-center">
           {(
             [
+              ['resumen', 'Resumen', BarChart3],
               ['perfil', 'Perfil', StoreIcon],
               ['articulos', catalogWords(store).tab, Package],
               ['promociones', 'Promos', Zap],
@@ -138,7 +145,7 @@ function MerchantContent() {
               <button
                 onClick={() => setTab(id)}
                 aria-current={tab === id}
-                className={`relative flex min-h-[48px] min-w-[58px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1.5 text-[10.5px] font-semibold transition active:scale-[0.97] ${tab === id ? 'bg-teal/12 text-teal' : 'text-[#66737C]'}`}
+                className={`relative flex min-h-[48px] min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[10px] font-semibold transition active:scale-[0.97] ${tab === id ? 'bg-teal/12 text-teal' : 'text-[#66737C]'}`}
               >
                 <Icon className="size-[21px]" strokeWidth={1.8} />
                 {label}
@@ -147,7 +154,7 @@ function MerchantContent() {
             </li>
           ))}
           <li className="flex justify-center">
-            <Link to="/" className="flex min-h-[48px] min-w-[58px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1.5 text-[10.5px] font-semibold text-[#66737C] active:scale-[0.97]">
+            <Link to="/" className="flex min-h-[48px] min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[10px] font-semibold text-[#66737C] active:scale-[0.97]">
               <MapPin className="size-[21px]" strokeWidth={1.8} />
               Al mall
             </Link>
@@ -386,8 +393,8 @@ function ProfileEditor({ store }: { store: Store }) {
         <Field label="Color de fondo">
           <input type="color" className="h-12 w-full rounded-xl border border-line" value={f.accentColor} onChange={(e) => set('accentColor', e.target.value)} />
         </Field>
-        <Field label="Instagram">
-          <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} />
+        <Field label="Instagram" hint={instagramHandle(f.instagram) ? `Tus clientes llegan a instagram.com/${instagramHandle(f.instagram)}` : 'Escribe tu usuario (@minegocio): aparece como botón en tu ficha.'}>
+          <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@minegocio" autoCapitalize="none" />
         </Field>
         <Field label="WhatsApp">
           <input className={input} inputMode="tel" value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
@@ -456,6 +463,7 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
           <Plus className="size-4" /> {words.add}
         </button>
       </div>
+      <CategoriesManager store={store} />
       {!mine.length && (
         <EmptyState icon={<Package className="size-6" />} title={`Aún no tienes ${words.plural} en tu ${words.title.toLowerCase()}`}>
           {food
@@ -473,7 +481,7 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
               <p className="line-clamp-2 text-sm leading-tight font-bold">{p.name}</p>
               <p className="text-sm font-extrabold">{formatCOP(p.price)}</p>
               <p className="text-[11px] text-ink-soft">
-                {totalStock(p)} en inventario {p.featured && '· Destacado'}
+                {groupOf(store, p).name} · {totalStock(p)} en inventario {p.featured && '· Destacado'}
               </p>
             </div>
             <label className="flex flex-col items-center gap-0.5 text-[10px] font-bold text-ink-soft">
@@ -509,6 +517,8 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
   const [price, setPrice] = useState(product ? String(product.price) : '')
   const [description, setDescription] = useState(product?.description ?? '')
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? store.categoryId)
+  const [shopCategory, setShopCategory] = useState(product?.shopCategory ?? '')
+  const ownCategories = storeCategories(store)
   const [icon, setIcon] = useState<ProductIcon>(product?.icon ?? 'gift')
   const [image, setImage] = useState<string | null>(product?.image ?? null)
   const [variants, setVariants] = useState(product?.variants.map((v) => v.name).join(', ') ?? '')
@@ -540,6 +550,7 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
       image,
       icon,
       categoryId,
+      shopCategory: ownCategories.some((c) => c.id === shopCategory) ? shopCategory : undefined,
       tags: name.toLowerCase().split(/\s+/),
       compareGroup: product?.compareGroup,
       variants: variantObjs,
@@ -587,7 +598,17 @@ function ProductEditor({ store, product, onDone }: { store: Store; product?: Pro
         <Field label="Descripción" wide>
           <textarea className={`${input} min-h-20`} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} />
         </Field>
-        <Field label="Categoría">
+        <Field label={`En ${categoryWords(store).title.toLowerCase()}`} hint={ownCategories.length ? undefined : 'Crea tus categorías en la lista de arriba para ordenar tu tienda.'}>
+          <select className={input} value={shopCategory} onChange={(e) => setShopCategory(e.target.value)}>
+            <option value="">Sin categoría</option>
+            {ownCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Rubro (para las búsquedas)">
           <select className={input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             {zoneCategories.map((c) => (
               <option key={c.id} value={c.id}>

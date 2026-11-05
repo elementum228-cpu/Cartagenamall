@@ -79,6 +79,12 @@ export interface SpaceSlot {
 export type StoreStatus = 'open' | 'paused'
 export type FacadeStyle = 'awning' | 'arch' | 'minimal'
 
+/** Categoría propia de una tienda (por ejemplo «Champú» o «Platos fuertes»): la crea el dueño y filtra su catálogo. */
+export interface StoreCategory {
+  id: string
+  name: string
+}
+
 export interface Store {
   id: string
   name: string
@@ -102,6 +108,8 @@ export interface Store {
   businessType?: 'restaurant' | 'shop' | 'service'
   /** «pending»: local recién aprobado cuyo dueño aún no hizo la configuración inicial. */
   setup?: 'pending' | 'done'
+  /** Categorías propias del catálogo, menú o servicios, en el orden que las acomodó el dueño. */
+  categories?: StoreCategory[]
   /** Tarjeta de sellos: cada compra da un sello; al llenarla se canjea este premio. */
   loyalty?: { stamps: number; reward: string; active: boolean }
 }
@@ -130,6 +138,8 @@ export interface Product {
   image: string | null
   icon: ProductIcon
   categoryId: string
+  /** Categoría propia dentro de la tienda (id de Store.categories); sin ella se agrupa por rubro. */
+  shopCategory?: string
   tags: string[]
   /** Productos "similares" entre tiendas comparten grupo para el comparador. */
   compareGroup?: string
@@ -217,6 +227,8 @@ export interface SubOrder {
   stockCommitted: boolean
   /** El comercio ya quitó este pedido de su lista (entregado o cancelado). */
   archived?: boolean
+  /** Pedido que el comercio registró a mano (venta en el local o por WhatsApp), no hecho desde la app. */
+  manual?: boolean
 }
 
 export type DeliveryMode = 'pickup' | 'delivery'

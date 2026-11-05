@@ -1,9 +1,9 @@
 import { Plus, ShoppingBag } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product, Store } from '../domain/types'
 import { needsOptions, totalStock } from '../lib/inventory'
+import { groupProducts } from '../lib/storeCategories'
 import { addToCart } from '../state/actions'
 import { useCart } from '../state/cart'
 import { usePricing } from '../state/pricing'
@@ -12,26 +12,23 @@ import { Price, PromoBadge, SectionTitle } from '../ui/bits'
 import { ProductImage } from '../ui/ProductImage'
 
 /** Menú del restaurante para el cliente: platos agrupados por tipo, con precio y botón para agregar al pedido. */
-export function RestaurantMenu({ store, products }: { store: Store; products: Product[] }) {
+export function RestaurantMenu({ store, products, hideTitle = false }: { store: Store; products: Product[]; hideTitle?: boolean }) {
   const open = store.status === 'open'
-  const groups = useMemo(() => {
-    const by = new Map<string, Product[]>()
-    for (const p of products) by.set(p.categoryId, [...(by.get(p.categoryId) ?? []), p])
-    return [...by.entries()]
-  }, [products])
+  // categorías propias del restaurante (Entradas, Platos fuertes...) o, sin ellas, su rubro
+  const groups = useMemo(() => groupProducts(store, products), [store, products])
   const inCart = useCart((s) => s.items.filter((i) => i.storeId === store.id).reduce((a, i) => a + i.qty, 0))
   const navigate = useNavigate()
 
   return (
     <section className="space-y-4">
-      <SectionTitle aside={<span className="text-xs text-ink-soft">{products.length} platos</span>}>Menú</SectionTitle>
+      {!hideTitle && <SectionTitle aside={<span className="text-xs text-ink-soft">{products.length} platos</span>}>Menú</SectionTitle>}
       {!open && (
         <p className="rounded-2xl bg-amber-100 px-3.5 py-2.5 text-xs font-semibold text-amber-900">Este local está cerrado ahora: puedes ver el menú, pero no recibe pedidos.</p>
       )}
       {!products.length && <p className="rounded-2xl bg-sand p-4 text-sm text-ink-soft">Este restaurante aún no ha publicado su menú.</p>}
-      {groups.map(([cat, items]) => (
-        <div key={cat}>
-          {groups.length > 1 && <p className="mb-1.5 text-[12px] font-bold tracking-wide text-ink-soft uppercase">{CATEGORY_BY_ID[cat]?.name ?? cat}</p>}
+      {groups.map(({ group, items }) => (
+        <div key={group.id}>
+          {groups.length > 1 && <p className="mb-1.5 text-[12px] font-bold tracking-wide text-ink-soft uppercase">{group.name}</p>}
           <ul className="divide-y divide-line overflow-hidden rounded-3xl border border-line bg-card">
             {items.map((p) => (
               <Dish key={p.id} product={p} store={store} open={open} />

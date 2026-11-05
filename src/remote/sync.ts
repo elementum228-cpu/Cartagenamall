@@ -216,6 +216,11 @@ function pushOrders(prev: Order[], next: Order[]) {
       if (error) throw error
       const { error: e2 } = await db.from('sub_orders').insert(o.subOrders.map((s) => ({ id: s.id, order_id: o.id, store_id: s.storeId, status: 'pending_confirmation', doc: s })))
       if (e2) throw e2
+      // los pedidos que el comercio registra a mano nacen ya entregados (la base solo deja crearlos como pendientes)
+      for (const s of o.subOrders.filter((x) => x.status !== 'pending_confirmation')) {
+        const { error: e3 } = await db.from('sub_orders').update({ status: s.status, doc: s }).eq('id', s.id)
+        if (e3) throw e3
+      }
     }
     for (const s of updated) {
       const { error } = await db.from('sub_orders').update({ status: s.status, doc: s }).eq('id', s.id)
