@@ -15,6 +15,7 @@ import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
 import { BoatFlash } from './BoatFlash'
+import { HarborCrowd } from './FlashCrowd'
 import { Person } from './Person'
 import { DiscountShip } from './DiscountShip'
 import { PirateShip } from './PirateShip'
@@ -522,6 +523,7 @@ export function Harbor({ reduceMotion }: { reduceMotion: boolean }) {
       </Batch>
       <WalkLights reduceMotion={reduceMotion} />
       <DockPeople reduceMotion={reduceMotion} />
+      {!reduceMotion && <HarborCrowd />}
       {LAUNCH_IDS.map((id) => (
         <Boat key={id} boat={BOATS[id]} selected={selected === id} reduceMotion={reduceMotion} />
       ))}

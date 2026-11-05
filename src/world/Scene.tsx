@@ -196,7 +196,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                     </>
                   ) : (
                     <>
-                      <FoodCourtDetail detail={detail} />
+                      <FoodCourtDetail detail={detail} crowd={reduceMotion ? 0 : quality === 'high' ? 8 : quality === 'medium' ? 6 : 4} />
                       <FoodCourtLabels />
                     </>
                   )}

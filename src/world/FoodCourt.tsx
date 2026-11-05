@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
 import { Batch } from './Batch'
+import { FoodCrowd } from './FlashCrowd'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
 import { getGlassPill } from './labelTexture'
@@ -358,8 +359,13 @@ export function FoodCourtShell() {
 }
 
 /** Mobiliario y ambiente de la terraza (solo con el piso en detalle). */
-export function FoodCourtDetail({ detail }: { detail: 'high' | 'low' }) {
-  return <Furniture detail={detail} />
+export function FoodCourtDetail({ detail, crowd = 6 }: { detail: 'high' | 'low'; crowd?: number }) {
+  return (
+    <>
+      <Furniture detail={detail} />
+      {crowd > 0 && <FoodCrowd count={crowd} />}
+    </>
+  )
 }
 
 /** Carteles del piso 2: principal y terraza. */
