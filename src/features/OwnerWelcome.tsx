@@ -63,6 +63,8 @@ export function OwnerWelcome() {
   const navigate = useNavigate()
   const [step, setStep] = useState<'hello' | 'type' | 'plan'>('hello')
   const [kind, setKind] = useState<Kind>('restaurant')
+  // en el paso del tipo: nada elegido hasta que la persona toca una opción
+  const [picked, setPicked] = useState<Kind | null>(null)
   const [closed, setClosed] = useState(false)
   const store = useMemo(() => (import.meta.env.DEV && location.search.includes('welcometest') ? stores.find((s) => s.id === 'STORE-004') : remoteEnabled() && session.userId ? stores.find((s) => s.setup === 'pending' && session.storeIds.includes(s.id)) : undefined), [stores, session.userId, session.storeIds])
 
@@ -144,26 +146,38 @@ export function OwnerWelcome() {
               <motion.div key="type" className="flex flex-1 flex-col justify-center" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
                 <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">¿Qué tipo de negocio es {store.name}?</h2>
                 <p className="mt-1 text-sm opacity-80">Así te mostramos las herramientas que necesitas.</p>
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 space-y-3" role="radiogroup" aria-label="Tipo de negocio">
                   {KINDS.map((k) => {
                     const Icon = k.icon
+                    const on = picked === k.id
+                    const dim = picked !== null && !on
                     return (
                       <button
                         key={k.id}
+                        role="radio"
+                        aria-checked={on}
                         onClick={() => {
+                          setPicked(k.id)
                           setKind(k.id)
-                          setStep('plan')
                         }}
-                        className="flex w-full items-center gap-4 rounded-3xl bg-white p-4 text-left text-ink shadow-[0_10px_30px_rgb(0_0_0/0.25)] transition active:scale-[0.98]"
+                        className={`flex w-full items-center gap-4 rounded-3xl p-4 text-left transition duration-200 active:scale-[0.98] ${
+                          on
+                            ? 'scale-[1.02] bg-white text-ink shadow-[0_14px_40px_rgb(0_0_0/0.35)] ring-[3px] ring-teal-bright'
+                            : dim
+                              ? 'bg-white/10 text-white/70 ring-1 ring-white/15 backdrop-blur'
+                              : 'bg-white text-ink shadow-[0_10px_30px_rgb(0_0_0/0.25)]'
+                        }`}
                       >
-                        <span className="grid size-14 shrink-0 place-items-center rounded-2xl text-white" style={{ background: store.brandColor }}>
+                        <span className={`grid size-14 shrink-0 place-items-center rounded-2xl transition ${dim ? 'bg-white/15 text-white/80' : 'text-white'}`} style={dim ? undefined : { background: store.brandColor }}>
                           <Icon className="size-7" />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-lg font-extrabold">{k.name}</span>
-                          <span className="block text-[13px] leading-snug text-ink-soft">{k.hint}</span>
+                          <span className={`block text-[13px] leading-snug ${dim ? 'text-white/65' : 'text-ink-soft'}`}>{k.hint}</span>
                         </span>
-                        <ChevronRight className="size-5 shrink-0 text-ink-soft" />
+                        <span className={`grid size-7 shrink-0 place-items-center rounded-full border-2 transition ${on ? 'border-teal-bright bg-teal-bright text-white' : dim ? 'border-white/30' : 'border-line'}`} aria-hidden>
+                          {on && <Check className="size-4" strokeWidth={3} />}
+                        </span>
                       </button>
                     )
                   })}
@@ -191,6 +205,11 @@ export function OwnerWelcome() {
             {step === 'hello' && (
               <button className={`${btn.primary} w-full !bg-white !text-ink`} onClick={() => setStep('type')}>
                 Empezar <ChevronRight className="size-4" />
+              </button>
+            )}
+            {step === 'type' && (
+              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={!picked} onClick={() => setStep('plan')}>
+                Continuar <ChevronRight className="size-4" />
               </button>
             )}
             {step === 'plan' && (

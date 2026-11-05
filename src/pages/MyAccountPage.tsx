@@ -46,7 +46,7 @@ export function MyAccountPage() {
             <>
               {pendingStore && (
                 <button onClick={reopenWelcome} className="rounded-2xl bg-brand p-4 text-left text-white shadow-soft transition active:scale-[0.98]">
-                  <span className="block text-sm font-bold opacity-90">🎉 ¡Tu solicitud fue aprobada!</span>
+                  <span className="block text-sm font-bold opacity-90">¡Tu solicitud fue aprobada!</span>
                   <span className="block text-lg font-extrabold">{pendingStore.name} ya es tuyo</span>
                   <span className="block text-sm opacity-90">Toca para empezar</span>
                 </button>

@@ -71,7 +71,7 @@ function ShipNotice() {
       orderId: '',
       storeName: 'Barco de los descuentos',
       status: 'confirmed',
-      title: '🛳️ ¡Llegó el barco de los descuentos!',
+      title: '¡Llegó el barco de los descuentos!',
       subtitle: `${useDiscountShip.getState().offers.filter((o) => !o.demo).length || count} locales subieron ofertas · toca para verlo`,
       at: new Date().toISOString(),
       action: 'ship',
@@ -108,7 +108,7 @@ function ShipNotice() {
                 <span className="tracking-wide uppercase">MallPlay</span>
                 <span>ahora</span>
               </span>
-              <span className="mt-0.5 block text-[15px] leading-snug font-bold text-ink">🛳️ ¡Llegó el barco de los descuentos!</span>
+              <span className="mt-0.5 block text-[15px] leading-snug font-bold text-ink">¡Llegó el barco de los descuentos!</span>
               <span className="block text-[13.5px] leading-snug text-ink-soft">
                 {count} locales subieron descuentos especiales. Acércate al muelle antes de que zarpe.
               </span>

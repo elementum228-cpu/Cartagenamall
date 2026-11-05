@@ -120,7 +120,7 @@ export function BellButton({ className }: { className: string }) {
                         className="flex w-full items-start gap-2.5 rounded-2xl bg-brand p-3 text-left text-white shadow-soft transition active:scale-[0.98]"
                       >
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm leading-snug font-bold">{n.action === 'welcome' ? '🎉 ' : ''}{n.title}</span>
+                          <span className="block text-sm leading-snug font-bold">{n.title}</span>
                           <span className="block text-xs font-semibold opacity-90">{n.subtitle}</span>
                         </span>
                         <ChevronRight className="mt-1 size-4 shrink-0" />

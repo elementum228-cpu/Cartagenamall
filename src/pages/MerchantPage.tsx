@@ -1,4 +1,4 @@
-import { BarChart3, Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Package, Pencil, Plus, Store as StoreIcon, Trash2, X } from 'lucide-react'
+import { PartyPopper, BarChart3, Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Package, Pencil, Plus, Store as StoreIcon, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CATEGORIES, CATEGORY_BY_ID, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
@@ -86,7 +86,9 @@ function MerchantContent() {
   if (!store && waiting)
     return (
       <div className="mx-auto max-w-md px-4 pt-10 text-center">
-        <p className="text-5xl">🎉</p>
+        <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-teal/12 text-teal">
+          <PartyPopper className="size-8" />
+        </span>
         <h1 className="mt-3 text-2xl font-extrabold tracking-tight">¡{waiting.name} ya es tuyo!</h1>
         <p className="mt-1 text-sm text-ink-soft">Tu solicitud fue aprobada. Empieza para dejar tu local listo.</p>
         <button className={`${btn.primary} mt-5 w-full`} onClick={reopenWelcome}>
