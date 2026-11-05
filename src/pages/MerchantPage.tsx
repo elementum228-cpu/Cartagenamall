@@ -46,6 +46,7 @@ import { MerchantPromotions } from './MerchantPromotions'
 import { CategoriesManager, CategoryPicker } from './MerchantCategories'
 import { MerchantDashboard } from './MerchantDashboard'
 import { StoreColors } from '../ui/StoreColors'
+import { PhotoBackgroundEditor } from '../ui/PhotoBackground'
 import { instagramHandle } from '../lib/instagram'
 import { categoryWords, groupOf, groupsWithProducts, storeCategories } from '../lib/storeCategories'
 
@@ -471,6 +472,7 @@ function ProfileEditor({ store }: { store: Store }) {
           </select>
         </Field>
         <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
+        <PhotoBackgroundEditor storeId={f.id} value={f.photoBg} onChange={(photoBg) => setF((x) => ({ ...x, photoBg }))} />
         <Field
           label="Instagram"
           hint={
