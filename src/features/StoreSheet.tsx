@@ -1,5 +1,6 @@
 import { messageFor } from '../lib/messages'
-import { ArrowLeft, ArrowUpDown, BookOpen, Check, ChevronDown, Heart, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
+import { absoluteUrl, localPath } from '../lib/links'
+import { ArrowLeft, ArrowUpDown, BookOpen, Check, ChevronDown, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FLOOR_BY_ID, FLOOR_OF_ZONE, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
@@ -114,6 +115,25 @@ function StoreBody({ store }: { store: Store }) {
       <LoyaltyStrip store={store} />
 
       <div className="flex flex-wrap gap-2">
+        <button
+          onClick={async () => {
+            const url = absoluteUrl(localPath(store, SPACE_BY_ID[spaceByStore[store.id]]))
+            // en el celular se abre el menú de compartir; en el computador se copia el enlace
+            if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+              try {
+                await navigator.share({ title: store.name, text: `Visita ${store.name} en MallPlay`, url })
+                return
+              } catch {
+                /* canceló: no se copia */ return
+              }
+            }
+            toast((await copyText(url)) ? 'Enlace copiado. Quien lo abra llega directo a este local.' : url)
+          }}
+          className={btn.secondary}
+          aria-label={`Compartir el enlace de ${store.name}`}
+        >
+          <Share2 className="size-4" /> Compartir
+        </button>
         <button onClick={() => toggleFav(store.id)} className={btn.secondary} aria-pressed={fav}>
           <Heart className={`size-4 ${fav ? 'text-coral' : ''}`} fill={fav ? 'currentColor' : 'none'} />
           {fav ? 'Guardada' : 'Guardar tienda'}

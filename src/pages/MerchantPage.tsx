@@ -1,4 +1,6 @@
 import { messageFor } from '../lib/messages'
+import { absoluteUrl, localPath } from '../lib/links'
+import { copyText } from '../lib/clipboard'
 import { MessagesEditor } from './MerchantMessages'
 import {
   PartyPopper,
@@ -415,6 +417,31 @@ function ImagePicker({ kind, storeId, label, onImage, children }: { kind: 'logo'
 
 // ── Perfil ─────────────────────────────────────────────────────────────────────
 
+/** Enlace directo al local: quien lo abre llega al mall con la cámara sobre este local. */
+function StoreLinkCard({ store }: { store: Store }) {
+  const { spaceByStore } = useCatalogMaps()
+  const toast = useUI((s) => s.toast)
+  const url = absoluteUrl(localPath(store, SPACE_BY_ID[spaceByStore[store.id]]))
+  return (
+    <Card className="space-y-2">
+      <div>
+        <p className="text-sm font-bold">Enlace de tu local</p>
+        <p className="text-[12px] text-ink-soft">Compártelo en Instagram, WhatsApp o tu tarjeta: quien lo abra llega directo a tu local en el mall.</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <input readOnly className={`${input} !h-11 min-w-0 flex-1 truncate font-mono text-[12.5px]`} value={url} onFocus={(e) => e.currentTarget.select()} aria-label="Enlace de tu local" />
+        <button
+          type="button"
+          className={btn.primary}
+          onClick={async () => toast((await copyText(url)) ? 'Enlace copiado.' : 'Selecciona el enlace y cópialo.')}
+        >
+          <Copy className="size-4" /> Copiar
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 function ProfileEditor({ store }: { store: Store }) {
   const upsert = useCatalog((s) => s.upsertStore)
   const saved = useSaveToast()
@@ -442,6 +469,7 @@ function ProfileEditor({ store }: { store: Store }) {
         </div>
       </Card>
 
+      <StoreLinkCard store={store} />
       <Card className="grid gap-3 sm:grid-cols-2">
         <Field label="Nombre del negocio">
           <input className={input} value={f.name} maxLength={28} onChange={(e) => set('name', e.target.value)} />

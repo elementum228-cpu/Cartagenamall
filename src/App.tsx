@@ -35,6 +35,7 @@ import { ComparePage } from './pages/ComparePage'
 import { FavoritesPage } from './pages/FavoritesPage'
 import { LoginPage } from './pages/LoginPage'
 import { MyAccountPage } from './pages/MyAccountPage'
+import { LocalLink } from './pages/LocalLink'
 import { AuthLoginPage, ForgotPasswordPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages'
 import { OffersPage } from './pages/OffersPage'
 import { PassportPage } from './pages/PassportPage'
@@ -143,6 +144,8 @@ function Shell() {
                 elementos «sticky» y quedaría un hueco) */}
             <div className="h-[var(--chrome-top)]" aria-hidden />
             <Routes>
+              <Route path="/local/:code" element={<LocalLink by="local" />} />
+              <Route path="/tienda/:code" element={<LocalLink by="tienda" />} />
               <Route path="/comprar" element={<ShopPage />} />
               <Route path="/carrito" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
