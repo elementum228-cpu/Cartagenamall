@@ -1,3 +1,5 @@
+import { messageFor } from '../lib/messages'
+import { MessagesEditor } from './MerchantMessages'
 import { PartyPopper, BarChart3, Zap, ArrowLeftRight, Camera, ClipboardList, ImagePlus, Info, MapPin, Package, Pencil, Plus, Store as StoreIcon, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -397,6 +399,7 @@ function ProfileEditor({ store }: { store: Store }) {
         <Field label="WhatsApp">
           <input className={input} inputMode="tel" value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
         </Field>
+        <MessagesEditor store={f} onChange={(m) => setF((x) => ({ ...x, messages: m }))} />
         <Field label="Estado" wide>
           <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>
             <option value="open">Abierto: recibe pedidos</option>
@@ -779,7 +782,7 @@ function MerchantOrders({ store }: { store: Store }) {
                 </ul>
                 {order.notes && <p className="rounded-xl bg-sand px-3 py-2 text-xs text-ink-soft">Nota del cliente: {order.notes}</p>}
                 <div className="flex items-center justify-between">
-                  <a href={whatsappLink(order.customer.whatsapp, `Hola ${order.customer.name}, te escribimos de ${store.name} por tu pedido.`)} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-brand underline-offset-2 hover:underline">
+                  <a href={whatsappLink(order.customer.whatsapp, messageFor(store, 'toCustomer', { cliente: order.customer.name }))} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-brand underline-offset-2 hover:underline">
                     Escribir al cliente · {order.customer.whatsapp}
                   </a>
                   <span className="text-lg font-extrabold">{formatCOP(sub.subtotal)}</span>

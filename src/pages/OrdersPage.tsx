@@ -175,12 +175,12 @@ function SubOrderCard({ order, sub, sent, single }: { order: Order; sub: SubOrde
       {store?.whatsapp && sub.status !== 'cancelled' && (
         <div className="px-4 pb-3">
           <a
-            href={whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP))}
+            href={whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP, store))}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => {
               e.preventDefault()
-              openWhatsApp(whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP)))
+              openWhatsApp(whatsappLink(store.whatsapp, subOrderMessage(order, sub, formatCOP, store)))
             }}
             className={`flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition active:scale-[0.98] ${sent ? 'border border-line bg-card text-ink' : 'bg-[#1faa59] text-white shadow-soft'}`}
           >

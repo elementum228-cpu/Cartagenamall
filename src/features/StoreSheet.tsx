@@ -1,3 +1,4 @@
+import { messageFor } from '../lib/messages'
 import { ArrowLeft, BookOpen, Heart, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -112,7 +113,7 @@ function StoreBody({ store }: { store: Store }) {
         </button>
         <button
           onClick={async () => {
-            if (remoteEnabled()) return void window.open(whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de MallPlay`), '_blank', 'noopener')
+            if (remoteEnabled()) return void window.open(whatsappLink(store.whatsapp, messageFor(store, 'greeting', {})), '_blank', 'noopener')
             const ok = await copyText(`${store.whatsapp} — Hola ${store.name}, te escribo desde MallPlay.`)
             toast(ok ? `Número de demostración copiado: ${store.whatsapp}` : `WhatsApp de demostración: ${store.whatsapp}`)
           }}

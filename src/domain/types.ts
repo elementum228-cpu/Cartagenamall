@@ -101,6 +101,8 @@ export interface Store {
   accentColor: string
   facade: FacadeStyle
   instagram: string
+  /** Mensajes de WhatsApp personalizados del negocio (ver lib/messages.ts). */
+  messages?: Partial<Record<'greeting' | 'orderIntro' | 'orderOutro' | 'booking' | 'toCustomer', string>>
   /** Número de demostración, nunca un número real. */
   whatsapp: string
   status: StoreStatus

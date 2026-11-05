@@ -1,3 +1,4 @@
+import { messageFor } from './messages'
 import type { Store } from '../domain/types'
 import { useUI } from '../state/ui'
 
@@ -41,12 +42,12 @@ export function openWhatsApp(url: string): boolean {
 export const isService = (store: Pick<Store, 'businessType'>) => store.businessType === 'service'
 
 /** Enlace de WhatsApp para reservar un servicio (los servicios no se agregan al carrito). */
-export function bookingLink(store: Pick<Store, 'name' | 'whatsapp'>, serviceName: string, price: string) {
-  return whatsappLink(store.whatsapp, `Hola ${store.name}, vengo de MallPlay. Quiero reservar el servicio «${serviceName}» (${price}). ¿Qué horarios tienen disponibles?`)
+export function bookingLink(store: Pick<Store, 'name' | 'whatsapp' | 'messages'>, serviceName: string, price: string) {
+  return whatsappLink(store.whatsapp, messageFor(store, 'booking', { servicio: serviceName, precio: price }))
 }
 
 /** Abre WhatsApp para reservar un servicio; avisa si el negocio aún no tiene número configurado. */
-export function openBooking(store: Pick<Store, 'name' | 'whatsapp'>, serviceName: string, price: string) {
+export function openBooking(store: Pick<Store, 'name' | 'whatsapp' | 'messages'>, serviceName: string, price: string) {
   if (!whatsappDigits(store.whatsapp ?? '')) {
     useUI.getState().toast(`${store.name} aún no configuró su WhatsApp para reservas.`, 'error')
     return false

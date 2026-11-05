@@ -1,3 +1,4 @@
+import { messageFor } from '../lib/messages'
 import { motion } from 'motion/react'
 import { BarChart3, Bot, ChevronRight, Code2, Hotel, Map as MapIcon, Palmtree, Sailboat, ShoppingCart, Users, type LucideIcon } from 'lucide-react'
 import { SHOWROOMS, type ShowroomService } from '../district/showrooms'
@@ -86,7 +87,7 @@ export function ShowroomSheet() {
               </a>
             ) : hasWa ? (
               <button
-                onClick={() => openWhatsApp(whatsappLink(store!.whatsapp, `Hola ${store!.name}, vengo de MallPlay. ${room.ctaLabel}.`))}
+                onClick={() => openWhatsApp(whatsappLink(store!.whatsapp, `${messageFor(store, 'greeting', {})} ${room.ctaLabel}.`))}
                 className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full text-[16px] font-semibold text-white shadow-soft transition active:scale-[0.98]"
                 style={{ background: room.color }}
               >

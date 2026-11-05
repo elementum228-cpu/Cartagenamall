@@ -75,7 +75,7 @@ export function CheckoutPage() {
     // y luego se abre WhatsApp. Con varias tiendas solo se abre la primera; las demás quedan con su botón en la pantalla del pedido.
     const first = result.order.subOrders[0]
     const wa = first && storeById[first.storeId]?.whatsapp
-    const link = first && wa ? whatsappLink(wa, subOrderMessage(result.order, first, formatCOP)) : null
+    const link = first && wa ? whatsappLink(wa, subOrderMessage(result.order, first, formatCOP, storeById[first.storeId])) : null
     navigate(`/pedidos/${result.order.id}?nuevo=1`, { replace: true, state: { waSent: link ? [first.id] : [] } })
     if (link) openWhatsApp(link)
   }

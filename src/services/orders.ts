@@ -1,3 +1,4 @@
+import { messageFor, type WithMessages } from '../lib/messages'
 import type { CartItem, Customer, DeliveryMode, Order, OrderLine, OrderStatus, Product, Promotion, Store, SubOrder } from '../domain/types'
 import { stockFor } from '../lib/inventory'
 import { priceFor } from '../lib/pricing'
@@ -175,16 +176,16 @@ export function overallStatus(order: Order): OrderStatus {
 }
 
 /** Mensaje que la persona puede enviar a cada tienda por WhatsApp. */
-export function subOrderMessage(order: Order, sub: SubOrder, formatPrice: (n: number) => string) {
+export function subOrderMessage(order: Order, sub: SubOrder, formatPrice: (n: number) => string, store?: WithMessages) {
   const lines = sub.lines.map(
     (l) => `• ${l.qty} × ${l.name}${l.variantName ? ` (${l.variantName})` : ''}${l.size ? ` talla ${l.size}` : ''} — ${formatPrice(l.lineTotal)}${l.promoCode ? ` [código ${l.promoCode}]` : ''}`,
   )
   return [
-    `Hola ${sub.storeName}, vengo de MallPlay. Me gustaría hacer este pedido (${sub.id}):`,
+    messageFor(store ?? { name: sub.storeName }, 'orderIntro', { tienda: sub.storeName, pedido: sub.id }),
     ...lines,
     `Subtotal estimado: ${formatPrice(sub.subtotal)}`,
     `Entrega: ${order.delivery.mode === 'pickup' ? 'Recojo en el local' : `Domicilio — ${order.delivery.address}`}`,
     `A nombre de ${order.customer.name} (${order.customer.whatsapp}).`,
-    '¿Me confirman el pedido, el valor y el tiempo de entrega? ¡Gracias!',
+    messageFor(store ?? { name: sub.storeName }, 'orderOutro', { tienda: sub.storeName }),
   ].join('\n')
 }
