@@ -14,6 +14,7 @@ import { useCart } from '../state/cart'
 import { remoteEnabled, supabase } from '../remote/client'
 import { useReservations } from '../state/reservations'
 import { StoreColors } from '../ui/StoreColors'
+import { PhotoBackgroundEditor } from './PhotoBackground'
 import { seedRemoteCatalog } from '../remote/sync'
 import { AccountBar, AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
@@ -427,6 +428,7 @@ function StoreEditor({ store, onDone }: { store: Store; onDone: () => void }) {
           <textarea className={`${input} min-h-20`} value={f.description} onChange={(e) => set('description', e.target.value)} />
         </Field>
         <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
+        <PhotoBackgroundEditor storeId={f.id} value={f.photoBg} onChange={(photoBg) => setF((x) => ({ ...x, photoBg }))} />
         <Field label="Fachada">
           <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
             <option value="awning">Toldo</option>

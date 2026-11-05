@@ -85,6 +85,22 @@ export interface StoreCategory {
   name: string
 }
 
+/** Dónde se apoya el producto sobre el fondo. Todo en fracciones (0–1) del ancho y alto de la imagen del fondo. */
+export interface PhotoSlot {
+  /** Centro horizontal. */
+  x: number
+  /** Línea de apoyo (la base del producto, por ejemplo la superficie del podio). */
+  y: number
+  /** Ancho y alto máximos que puede ocupar el producto. */
+  w: number
+  h: number
+}
+
+export interface PhotoBackground {
+  url: string
+  slot: PhotoSlot
+}
+
 export interface Store {
   id: string
   name: string
@@ -101,6 +117,8 @@ export interface Store {
   accentColor: string
   facade: FacadeStyle
   instagram: string
+  /** Fondo de fotos de la tienda: los productos recortados se colocan sobre él (ver lib/studio.ts). */
+  photoBg?: PhotoBackground
   /** Mensajes de WhatsApp personalizados del negocio (ver lib/messages.ts). */
   messages?: Partial<Record<'greeting' | 'orderIntro' | 'orderOutro' | 'booking' | 'toCustomer', string>>
   /** Número de demostración, nunca un número real. */
