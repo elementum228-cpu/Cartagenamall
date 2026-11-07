@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useStadiumConfig, useStadiumEvents } from './stadiumEvents'
 import { persist } from 'zustand/middleware'
 import type { StadiumEventKind, StadiumPhase } from '../config/stadium'
 import { ConcertMix } from '../audio/crowdMix'
@@ -78,7 +79,13 @@ export async function toggleStadiumSound(): Promise<boolean> {
 
 const concert = new ConcertMix()
 const previewMix = new ConcertMix()
-const songUrl = () => useStadiumSong.getState().url ?? stadiumAudioUrl('stadium')
+/** Evento en escena (si el administrador puso uno). */
+export const activeEventNow = () => {
+  const id = useStadiumConfig.getState().activeEventId
+  return id ? (useStadiumEvents.getState().events.find((e) => e.id === id) ?? null) : null
+}
+/** La canción del evento en escena manda; si no, la del administrador; si no, la del estadio. */
+const songUrl = () => activeEventNow()?.songUrl || useStadiumSong.getState().url || stadiumAudioUrl('stadium')
 useStadiumSong.subscribe((s) => {
   concert.setCrowd(s.crowd)
   previewMix.setCrowd(s.crowd)

@@ -82,6 +82,9 @@ interface UIState {
   openCourt: (open: boolean) => void
   /** Panel de reservas de la pista de karts abierto. */
   trackOpen: boolean
+  /** Ventana del estadio: eventos y boletas. */
+  stadiumOpen: boolean
+  openStadium: (open: boolean) => void
   openTrack: (open: boolean) => void
   focus: FocusRequest | null
   toasts: Toast[]
@@ -142,6 +145,8 @@ export const useUI = create<UIState>()((set, get) => ({
   openPeek: () => set({ peek: false }),
   openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, trackOpen: false, harbor: null, showroom: null, shipOpen: false } : { openStoreId: null, selectedSpaceId: null }),
   courtOpen: false,
+  stadiumOpen: false,
+  openStadium: (open) => set(open ? { stadiumOpen: true, trackOpen: false, courtOpen: false, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { stadiumOpen: false }),
   trackOpen: false,
   openTrack: (open) => set(open ? { trackOpen: true, courtOpen: false, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { trackOpen: false }),
   openCourt: (open) => set(open ? { courtOpen: true, trackOpen: false, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { courtOpen: false, trackOpen: false }),

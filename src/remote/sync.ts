@@ -14,6 +14,8 @@ import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useStadiumEvent, useStadiumPhase, useStadiumSong } from '../state/stadium'
 import type { StadiumPhase } from '../config/stadium'
+import { useRemoteSold, useStadiumConfig, useStadiumEvents, useTickets } from '../state/stadiumEvents'
+import type { StadiumEvent, Ticket } from '../stadium/types'
 import { usePirateShip } from '../state/pirate'
 import { useReservations, type CourtReservation } from '../state/reservations'
 import { useUI } from '../state/ui'
@@ -420,20 +422,21 @@ export async function loadFeatures() {
   if (!supabase) return
   const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'features').maybeSingle()
   if (error) return
-  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert'; stadiumSong?: { url: string | null; title: string; crowd: number } }> | null)?.doc
+  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert'; stadiumSong?: { url: string | null; title: string; crowd: number }; stadiumOperator?: string | null; stadiumActive?: string | null }> | null)?.doc
   if (!doc) return
   applyRemote(() => {
     useAirportFeature.setState({ enabled: !!doc.airport })
     useEntertainmentFeature.setState({ enabled: !!doc.entertainment })
     useStadiumPhase.setState({ phase: doc.stadium === 'almost' || doc.stadium === 'open' ? doc.stadium : 'construction' })
     useStadiumEvent.setState({ kind: doc.stadiumEvent === 'concert' ? 'concert' : 'match' })
+    useStadiumConfig.setState({ operatorStoreId: doc.stadiumOperator ?? null, activeEventId: doc.stadiumActive ?? null })
     useStadiumSong.setState({ url: doc.stadiumSong?.url ?? null, title: doc.stadiumSong?.title ?? '', crowd: typeof doc.stadiumSong?.crowd === 'number' ? doc.stadiumSong.crowd : 0.8 })
     usePirateShip.setState({ parked: !!doc.pirateParked })
   })
 }
 
 function pushFeatures() {
-  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd } }
+  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd }, stadiumOperator: useStadiumConfig.getState().operatorStoreId, stadiumActive: useStadiumConfig.getState().activeEventId }
   enqueue(async () => {
     const { error } = await supabase!.from('mall_settings').upsert({ key: 'features', doc })
     if (error) throw new Error(error.message)
@@ -454,6 +457,95 @@ function pushPricing(p: Pricing) {
   })
 }
 
+// ── Eventos y boletas del estadio ────────────────────────────────────────────
+
+/** Sin la migración 0022 las tablas no existen: el estadio sigue funcionando con los datos de este navegador. */
+let stadiumTables = true
+
+function canManageStadium() {
+  const { isAdmin, storeIds } = useSession.getState()
+  const op = useStadiumConfig.getState().operatorStoreId
+  return isAdmin || (!!op && storeIds.includes(op))
+}
+
+export async function loadStadium() {
+  if (!supabase || !stadiumTables) return
+  const ev = await supabase.from('stadium_events').select('doc')
+  if (ev.error) {
+    stadiumTables = false
+    console.warn('Eventos del estadio: falta la migración 0022_eventos_boletas.sql.', ev.error.message)
+    return
+  }
+  const remote = (ev.data as { doc: StadiumEvent }[]).map((r) => r.doc)
+  applyRemote(() => useStadiumEvents.setState({ events: remote.sort((a, b) => a.startsAt.localeCompare(b.startsAt)) }))
+  // boletas vendidas por tipo (sin datos de compradores): para mostrar cuántas quedan
+  const sold = await supabase.rpc('stadium_sold')
+  if (!sold.error) {
+    const map: Record<string, Record<string, number>> = {}
+    for (const r of sold.data as { event_id: string; tier_id: string; sold: number }[]) (map[r.event_id] ??= {})[r.tier_id] = Number(r.sold)
+    applyRemote(() => useRemoteSold.setState({ sold: map }))
+  }
+  // quien compró consulta el estado de sus boletas con su código (confirmada, usada…)
+  if (!canManageStadium()) {
+    const mine = useTickets.getState().tickets.filter((t) => t.status === 'pending' || t.status === 'confirmed').slice(0, 20)
+    for (const t of mine) {
+      const r = await supabase.rpc('stadium_ticket_by_code', { p_code: t.code })
+      const st = (r.data as { status?: Ticket['status'] } | null)?.status
+      if (!r.error && st && st !== t.status) applyRemote(() => useTickets.setState((s) => ({ tickets: s.tickets.map((x) => (x.id === t.id ? { ...x, status: st } : x)) })))
+    }
+  }
+  // quien administra o vende las boletas ve todas
+  if (canManageStadium()) {
+    const tk = await supabase.from('stadium_tickets').select('doc, status')
+    if (!tk.error) {
+      const list = (tk.data as { doc: Ticket; status: Ticket['status'] }[]).map((r) => ({ ...r.doc, status: r.status }))
+      applyRemote(() => useTickets.setState((s) => ({ tickets: [...list, ...s.tickets.filter((t) => !list.some((x) => x.id === t.id))].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) })))
+    }
+  }
+}
+
+function pushStadiumEvents(prev: StadiumEvent[], next: StadiumEvent[]) {
+  const db = supabase!
+  const before = new Map(prev.map((e) => [e.id, e]))
+  const changed = next.filter((e) => before.get(e.id) !== e)
+  const removed = prev.filter((e) => !next.some((x) => x.id === e.id))
+  if (!changed.length && !removed.length) return
+  enqueue(async () => {
+    for (const e of changed) {
+      const { error } = await db.from('stadium_events').upsert({ id: e.id, starts_at: e.startsAt, status: e.status, doc: e })
+      if (error) throw error
+    }
+    if (removed.length) {
+      const { error } = await db.from('stadium_events').delete().in('id', removed.map((e) => e.id))
+      if (error) throw error
+    }
+  })
+}
+
+function pushTickets(prev: Ticket[], next: Ticket[]) {
+  const db = supabase!
+  const before = new Map(prev.map((t) => [t.id, t]))
+  const created = next.filter((t) => !before.has(t.id))
+  const updated = next.filter((t) => before.has(t.id) && before.get(t.id) !== t)
+  if (!created.length && !updated.length) return
+  enqueue(async () => {
+    for (const t of created) {
+      const { error } = await db.from('stadium_tickets').insert({ id: t.id, event_id: t.eventId, tier_id: t.tierId, qty: t.qty, code: t.code, status: 'pending', doc: t })
+      if (error) {
+        // se agotaron justo antes: la reserva no queda
+        applyRemote(() => useTickets.setState((s) => ({ tickets: s.tickets.filter((x) => x.id !== t.id) })))
+        toast(/sold_out|23505/.test(`${error.code} ${error.message}`) ? 'Esas boletas se acaban de agotar. Elige otra cantidad o tipo.' : `No se pudo reservar: ${error.message}`)
+        void loadStadium()
+      }
+    }
+    if (canManageStadium())
+      for (const t of updated) {
+        const { error } = await db.from('stadium_tickets').update({ status: t.status, doc: t }).eq('id', t.id)
+        if (error) throw error
+      }
+  })
+}
+
 // ── Arranque ─────────────────────────────────────────────────────────────────
 
 let started = false
@@ -466,7 +558,10 @@ export function startRemoteSync() {
   void loadSeason()
   void loadFeatures()
   void loadShip()
+  void loadStadium()
   setInterval(() => void refreshPromotions(), 10_000)
+  // las boletas vendidas cambian seguido: se refrescan para que el cupo sea real
+  setInterval(() => !document.hidden && void loadStadium(), 15_000)
   setInterval(() => !document.hidden && void loadShip(), 8_000)
 
   useCatalog.subscribe((next, prev) => {
@@ -491,6 +586,18 @@ export function startRemoteSync() {
   })
   // el volumen del público se mueve con un deslizador: se espera a que pare para guardarlo
   let songTimer: ReturnType<typeof setTimeout> | undefined
+  useStadiumEvents.subscribe((next, prev) => {
+    if (applying || !stadiumTables || !canManageStadium() || next.events === prev.events) return
+    pushStadiumEvents(prev.events, next.events)
+  })
+  useTickets.subscribe((next, prev) => {
+    if (applying || !stadiumTables || next.tickets === prev.tickets) return
+    pushTickets(prev.tickets, next.tickets)
+  })
+  useStadiumConfig.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || (next.operatorStoreId === prev.operatorStoreId && next.activeEventId === prev.activeEventId)) return
+    pushFeatures()
+  })
   useStadiumSong.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || (next.url === prev.url && next.title === prev.title && next.crowd === prev.crowd)) return
     clearTimeout(songTimer)
@@ -551,5 +658,7 @@ export function startRemoteSync() {
       void loadShip()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ship_offers' }, () => void loadShip())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'stadium_events' }, () => void loadStadium())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'stadium_tickets' }, () => void loadStadium())
     .subscribe()
 }

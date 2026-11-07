@@ -6,6 +6,9 @@ import { remoteEnabled } from '../remote/client'
 import { stopStadiumSound, toggleSongPreview, useStadiumEvent, useStadiumPhase, useStadiumSong, useStadiumSound } from '../state/stadium'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
+import { EventsManager } from '../stadium/EventsManager'
+import { useCatalog } from '../state/catalog'
+import { useStadiumConfig } from '../state/stadiumEvents'
 
 /** Administración del estadio: estado, tipo de evento y la canción del concierto con el ambiente del público. */
 export function StadiumAdmin() {
@@ -18,6 +21,9 @@ export function StadiumAdmin() {
   const toast = useUI((s) => s.toast)
   const file = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const stores = useCatalog((s) => s.stores)
+  const operator = useStadiumConfig((s) => s.operatorStoreId)
+  const setConfig = useStadiumConfig((s) => s.set)
 
   const pick = async (f: File) => {
     if (!/^audio\//.test(f.type) && !/\.(mp3|m4a|aac|wav|ogg|mp4)$/i.test(f.name)) return toast('Elige un archivo de audio (mp3, m4a, wav…).', 'error')
@@ -89,9 +95,26 @@ export function StadiumAdmin() {
       </div>
 
       <div className="rounded-3xl border border-line bg-card p-4">
+        <p className="font-bold">Negocio que opera el estadio</p>
+        <p className="text-xs text-ink-soft">Gestiona eventos y boletas desde «Mi negocio» y recibe las reservas.</p>
+        <select className={`${input} mt-2`} value={operator ?? ''} onChange={(e) => setConfig({ operatorStoreId: e.target.value || null })} aria-label="Negocio operador">
+          <option value="">Solo el administrador</option>
+          {stores.map((st) => (
+            <option key={st.id} value={st.id}>
+              {st.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="rounded-3xl border border-line bg-card p-4">
+        <EventsManager />
+      </div>
+
+      <div className="rounded-3xl border border-line bg-card p-4">
         <p className="font-bold">Canción del concierto</p>
         <p className="text-xs text-ink-soft">
-          Suena dentro del estadio con eco de recinto y el ambiente de una hinchada emocionada: aplausos, gritos de ánimo y bulla, sin cantar. Se oye cuando el evento es
+          Canción general (la de un evento «en escena» tiene prioridad). Suena dentro del estadio con eco de recinto y el ambiente de una hinchada emocionada: aplausos, gritos de ánimo y bulla, sin cantar. Se oye cuando el evento es
           «Concierto» y el estadio está encendido.
         </p>
 

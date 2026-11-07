@@ -2,8 +2,11 @@ import { messageFor } from '../lib/messages'
 import { absoluteUrl, localPath } from '../lib/links'
 import { copyText } from '../lib/clipboard'
 import { MessagesEditor } from './MerchantMessages'
+import { EventsManager } from '../stadium/EventsManager'
+import { useStadiumConfig } from '../state/stadiumEvents'
 import {
   PartyPopper,
+  Trophy,
   BarChart3,
   ChevronDown,
   Copy,
@@ -55,7 +58,7 @@ import { categoryWords, groupOf, groupsWithProducts, storeCategories } from '../
 // «Mi negocio»: el comerciante edita su perfil (logo, colores, fachada), su catálogo con fotos y
 // atiende sus subórdenes. Lo que guarda aparece al instante en el mall 3D, en Comprar y en su ficha.
 
-type Tab = 'resumen' | 'perfil' | 'articulos' | 'promociones' | 'pedidos'
+type Tab = 'resumen' | 'perfil' | 'articulos' | 'promociones' | 'pedidos' | 'estadio'
 
 const ICON_LABELS: Record<ProductIcon, string> = {
   shirt: 'Camisa',
@@ -126,7 +129,7 @@ function MerchantContent() {
   const [params, setParams] = useSearchParams()
   const requested = params.get('tienda')
   const [tab, setTab] = useState<Tab>(() =>
-    ['pedidos', 'articulos', 'promociones', 'perfil', 'resumen'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'resumen',
+    ['pedidos', 'articulos', 'promociones', 'perfil', 'resumen', 'estadio'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'resumen',
   )
   const [startNew, setStartNew] = useState(params.get('nuevo') === '1')
   const pending = useOrders((o) =>
@@ -140,11 +143,12 @@ function MerchantContent() {
     if (!requested) return
     if (stores.some((s) => s.id === requested)) setStoreId(requested)
     const t = params.get('tab')
-    if (t === 'pedidos' || t === 'articulos' || t === 'promociones' || t === 'perfil' || t === 'resumen') setTab(t)
+    if (t === 'pedidos' || t === 'articulos' || t === 'promociones' || t === 'perfil' || t === 'resumen' || t === 'estadio') setTab(t)
     if (params.get('nuevo') === '1') setStartNew(true)
     setParams({}, { replace: true })
   }, [requested, stores, setStoreId, setParams])
   const store = stores.find((s) => s.id === (requested ?? storeId))
+  const operatorId = useStadiumConfig((s) => s.operatorStoreId)
 
   if (!store && waiting)
     return (
@@ -173,6 +177,7 @@ function MerchantContent() {
             ['articulos', catalogWords(store).tab, Package],
             ['promociones', 'Promociones', Zap],
             ['pedidos', 'Pedidos', ClipboardList],
+            ...(store.id === operatorId ? ([['estadio', 'Estadio', Trophy]] as const) : []),
           ] as const
         ).map(([id, label, Icon]) => (
           <button
@@ -192,11 +197,12 @@ function MerchantContent() {
         {tab === 'articulos' && <ProductsManager store={store} startNew={startNew} onStarted={() => setStartNew(false)} />}
         {tab === 'promociones' && <MerchantPromotions store={store} />}
         {tab === 'pedidos' && <MerchantOrders store={store} />}
+        {tab === 'estadio' && store.id === operatorId && <EventsManager />}
       </div>
 
       {/* móvil: barra propia del negocio (reemplaza a la del mall) */}
       <nav className="glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 rounded-[26px] px-1.5 md:hidden" aria-label="Secciones de mi negocio">
-        <ul className="grid h-16 grid-cols-6 items-center">
+        <ul className="grid h-16 auto-cols-fr grid-flow-col items-center">
           {(
             [
               ['resumen', 'Resumen', BarChart3],
@@ -204,6 +210,7 @@ function MerchantContent() {
               ['articulos', catalogWords(store).tab, Package],
               ['promociones', 'Promos', Zap],
               ['pedidos', 'Pedidos', ClipboardList],
+              ...(store.id === operatorId ? ([['estadio', 'Estadio', Trophy]] as const) : []),
             ] as const
           ).map(([id, label, Icon]) => (
             <li key={id} className="flex justify-center">

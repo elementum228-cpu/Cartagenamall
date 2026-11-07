@@ -3,7 +3,8 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { STADIUM, phaseInfo, type StadiumPhase } from '../config/stadium'
 import { BASE, BOWL_Z, N, PX, PZ, at, ring, segBuilt } from './stadiumGeometry'
-import { toggleStadiumSound, toggleWorksSound, useStadiumEvent, useStadiumPhase, useStadiumSong, useStadiumSound } from '../state/stadium'
+import { useUI } from '../state/ui'
+import { activeEventNow, useStadiumEvent, useStadiumPhase, useStadiumSong, useStadiumSound } from '../state/stadium'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -1664,7 +1665,7 @@ function useScreenTexture(reduceMotion: boolean) {
       g.fillText('EN VIVO', 256, 84)
       g.font = '700 26px Manrope, sans-serif'
       // el nombre del concierto que puso el administrador (o el del estadio)
-      const title = useStadiumSong.getState().title.trim()
+      const title = (activeEventNow()?.title ?? useStadiumSong.getState().title).trim()
       g.fillText((title || 'ESTADIO DE CARTAGENA').toUpperCase().slice(0, 30), 256, 120)
     } else {
       g.textAlign = 'center'
@@ -2064,7 +2065,7 @@ export function Stadium({ reduceMotion, quality = 'high' }: { reduceMotion: bool
         pixelHeight={30}
         maxZoomRatio={1.6}
         priority={LABEL_PRIORITY.corridor + 5}
-        onClick={() => void (open ? toggleStadiumSound() : toggleWorksSound())}
+        onClick={() => useUI.getState().openStadium(true)}
       />
     </group>
   )

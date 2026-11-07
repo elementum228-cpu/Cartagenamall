@@ -9,6 +9,7 @@ import { SecretPromoModal } from './features/SecretPromoModal'
 import { SpaceSheet } from './features/SpaceSheet'
 import { FootballCourtInfoPanel } from './features/FootballCourtInfoPanel'
 import { KartTrackPanel } from './features/KartTrackPanel'
+import { StadiumPanel } from './stadium/StadiumPanel'
 import { StoreSheet } from './features/StoreSheet'
 import { HarborSheet } from './features/HarborSheet'
 import { ShowroomSheet } from './features/ShowroomSheet'
@@ -186,6 +187,7 @@ function Shell() {
       <SpaceSheet />
       <FootballCourtInfoPanel />
       <KartTrackPanel />
+      <StadiumPanel />
       <HarborSheet />
       <ShowroomSheet />
       <ShipLayer />
