@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { STADIUM, phaseInfo, type StadiumPhase } from '../config/stadium'
-import { toggleStadiumSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
+import { toggleStadiumSound, toggleWorksSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -668,11 +668,17 @@ function TowerCrane({ cfg, reduceMotion }: { cfg: CraneCfg; reduceMotion: boolea
   const trolley = useRef<THREE.Group>(null)
   const rope = useRef<THREE.Mesh>(null)
   const load = useRef<THREE.Group>(null)
+  const beacon = useRef<THREE.Mesh>(null)
+  const beaconMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ff4d3d', toneMapped: false }), [])
   const { h, jib: L } = cfg
   const yellow = mat(YELLOW)
   useFrame(({ clock }) => {
     const t = reduceMotion ? 3 : clock.elapsedTime
     if (jib.current) jib.current.rotation.y = cfg.rot + Math.sin(t * cfg.speed + cfg.phase) * 1.15
+    // con «Escuchar obras» el piloto parpadea al ritmo del pitido; sin sonido queda fijo
+    const beep = useStadiumSound.getState().works && !reduceMotion
+    beaconMat.color.set(beep && Math.sin(t * Math.PI * 2.4 + cfg.phase) < 0 ? '#5a1f1a' : '#ff4d3d')
+    if (beacon.current) beacon.current.scale.setScalar(beep ? 0.26 : 0.2)
     const u = (Math.sin(t * 0.33 + cfg.phase) + 1) / 2
     const tx = 3.2 + u * (L - 5.5)
     const drop = 3.2 + (Math.sin(t * 0.47 + cfg.phase * 1.7) + 1) * 2.5
@@ -730,7 +736,7 @@ function TowerCrane({ cfg, reduceMotion }: { cfg: CraneCfg; reduceMotion: boolea
         <mesh geometry={GEO.box} material={yellow} position={[0, 2.3, 0]} scale={[0.14, 2.6, 0.14]} castShadow />
         <Beam a={[0, 3.55, 0]} b={[L - 3.2, 1.0, 0]} w={0.035} color="#7b8088" />
         <Beam a={[0, 3.55, 0]} b={[-4.6, 0.3, 0]} w={0.035} color="#7b8088" />
-        <mesh geometry={GEO.sphere} material={glowMat('#ff4d3d', 2.2, { dayGlow: 0.5 })} position={[0, 3.75, 0]} scale={0.2} />
+        <mesh ref={beacon} geometry={GEO.sphere} material={beaconMat} position={[0, 3.75, 0]} scale={0.2} />
         {/* carro con gancho y carga */}
         <group ref={trolley} position={[4, 0, 0]}>
           <mesh geometry={GEO.box} material={mat('#555b62')} position={[0, 0.05, 0]} scale={[0.5, 0.2, 0.9]} />
@@ -847,7 +853,7 @@ const VESTS = ['#ff8a1f', '#f4d03f', '#ff7a45', '#f4d03f']
 const SKIN = ['#8d5a3b', '#c58c64', '#e5b48f', '#a56b45']
 
 /** Rutas (x, z) de los obreros dentro de la isla: caminan de punto a punto y vuelven. */
-const WORK_ROUTES: { pts: [number, number][]; speed: number; phase: number }[] = [
+const WORK_ROUTES: { pts: [number, number][]; speed: number; phase: number; fade?: boolean }[] = [
   {
     pts: [
       [-14, 17.5],
@@ -929,6 +935,10 @@ const WORK_ROUTES: { pts: [number, number][]; speed: number; phase: number }[] =
     speed: 0.8,
     phase: 0.45,
   },
+  // equipos que entran a la obra por el puente: salen de la valla del muro, cruzan la puerta y se reparten por la isla
+  { pts: [[-10, 31.6], [-10, 18], [-14, 8]], speed: 0.9, phase: 0, fade: true },
+  { pts: [[-10, 31.6], [-10, 18], [-4, 10]], speed: 0.8, phase: 0.5, fade: true },
+  { pts: [[-10, 31.6], [-10, 18], [6, 12]], speed: 0.85, phase: 0.25, fade: true },
 ]
 const WELDERS: [number, number, number][] = [
   [17.4, -6.2, -1.6],
@@ -940,7 +950,9 @@ const CIVIL = ['#22a05a', '#f6c619', '#f4f4f0', '#2f3e4e', '#c8553b', '#3f78a0']
 
 function Workers({ reduceMotion, phase }: { reduceMotion: boolean; phase: StadiumPhase }) {
   const civil = phase === 'open'
-  const nRoutes = phase === 'almost' ? 5 : WORK_ROUTES.length
+  const BASE_ROUTES = WORK_ROUTES.length - 3
+  const baseOn = phase === 'almost' ? 5 : BASE_ROUTES
+  const bridgeOn = phase === 'almost' ? 1 : 3
   const nWelders = phase === 'construction' ? WELDERS.length : phase === 'almost' ? 1 : 0
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
@@ -962,8 +974,8 @@ function Workers({ reduceMotion, phase }: { reduceMotion: boolean; phase: Stadiu
 
   useFrame(({ clock }) => {
     const t = reduceMotion ? 0 : clock.elapsedTime
-    const place = (i: number, x: number, z: number, heading: number, bob: number, vis = true) => {
-      const k = vis ? 1 : 0
+    const place = (i: number, x: number, z: number, heading: number, bob: number, vis = true, grow = 1) => {
+      const k = vis ? grow : 0
       o.position.set(x, Y + 0.43 + bob, z)
       o.rotation.set(0, heading, 0)
       o.scale.setScalar(k)
@@ -1001,7 +1013,10 @@ function Workers({ reduceMotion, phase }: { reduceMotion: boolean; phase: Stadiu
         }
         acc += seg
       }
-      place(i, x, z, hd, Math.abs(Math.sin(t * 6 + i)) * 0.05, i < nRoutes)
+      // los que entran por el puente aparecen poco a poco desde la valla
+      const k = r.fade ? Math.min(1, dist / 1.6) : 1
+      const shown = i < BASE_ROUTES ? i < baseOn : i - BASE_ROUTES < bridgeOn
+      place(i, x, z, hd, Math.abs(Math.sin(t * 6 + i)) * 0.05, shown && k > 0.05, k)
     })
     WELDERS.forEach(([x, z, hd], k) => {
       place(WORK_ROUTES.length + k, x, z, hd + Math.sin(t * 0.4 + k) * 0.3, 0, k < nWelders)
@@ -1692,7 +1707,7 @@ export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
         pixelHeight={30}
         maxZoomRatio={1.6}
         priority={LABEL_PRIORITY.corridor + 5}
-        onClick={open ? () => void toggleStadiumSound() : undefined}
+        onClick={() => void (open ? toggleStadiumSound() : toggleWorksSound())}
       />
     </group>
   )

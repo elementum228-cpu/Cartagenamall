@@ -11,42 +11,53 @@ export const useStadiumPhase = create<{ phase: StadiumPhase; setPhase: (p: Stadi
   persist((set) => ({ phase: 'construction', setPhase: (phase) => set({ phase }) }), { name: 'cm:stadium-phase:v1', storage: safeStorage }),
 )
 
-/** «Escuchar el estadio»: suena el audio (si hay) mientras el estadio inaugurado está a la vista. */
-export const useStadiumSound = create<{ playing: boolean; missing: boolean }>()(() => ({ playing: false, missing: false }))
+/**
+ * Sonido del estadio: `playing` = estadio inaugurado «encendido» (suena la canción, luces, hinchada y partido);
+ * `works` = «Escuchar obras» mientras está en construcción (pitido de la grúa y ruido de obra).
+ */
+export const useStadiumSound = create<{ playing: boolean; works: boolean }>()(() => ({ playing: false, works: false }))
 
-let audio: HTMLAudioElement | null = null
+type Kind = 'stadium' | 'works'
+const FILE: Record<Kind, string> = { stadium: 'audio/estadio.mp3', works: 'audio/obras.mp3' }
+const audios: Partial<Record<Kind, HTMLAudioElement>> = {}
+const flag = (k: Kind) => (k === 'stadium' ? 'playing' : 'works')
 
-export function stadiumAudioUrl() {
-  return `${import.meta.env.BASE_URL}audio/estadio.mp3`
-}
+export const stadiumAudioUrl = (k: Kind = 'stadium') => `${import.meta.env.BASE_URL}${FILE[k]}`
 
-/** Reproduce o pausa el audio del estadio. Devuelve false si el archivo todavía no existe. */
-export async function toggleStadiumSound(): Promise<boolean> {
-  const { playing } = useStadiumSound.getState()
-  if (playing) {
-    audio?.pause()
-    useStadiumSound.setState({ playing: false })
+async function toggle(kind: Kind): Promise<boolean> {
+  const key = flag(kind)
+  if (useStadiumSound.getState()[key]) {
+    audios[kind]?.pause()
+    useStadiumSound.setState({ [key]: false })
     return true
   }
   try {
-    if (!audio) {
-      audio = new Audio(stadiumAudioUrl())
-      audio.loop = true
-      audio.preload = 'auto'
-      audio.addEventListener('pause', () => useStadiumSound.setState({ playing: false }))
-      audio.addEventListener('error', () => useStadiumSound.setState({ playing: false, missing: true }))
+    let a = audios[kind]
+    if (!a) {
+      a = new Audio(stadiumAudioUrl(kind))
+      a.loop = true
+      a.preload = 'auto'
+      a.addEventListener('pause', () => useStadiumSound.setState({ [key]: false }))
+      a.addEventListener('error', () => useStadiumSound.setState({ [key]: false }))
+      audios[kind] = a
     }
-    await audio.play()
-    useStadiumSound.setState({ playing: true, missing: false })
+    await a.play()
+    useStadiumSound.setState({ [key]: true })
     return true
   } catch {
-    audio = null
-    useStadiumSound.setState({ playing: false, missing: true })
+    delete audios[kind]
+    useStadiumSound.setState({ [key]: false })
     return false
   }
 }
 
+/** Enciende o apaga el estadio inaugurado (con su canción). Devuelve false si el audio no se pudo reproducir. */
+export const toggleStadiumSound = () => toggle('stadium')
+/** «Escuchar obras»: el sonido de la construcción. */
+export const toggleWorksSound = () => toggle('works')
+
 export function stopStadiumSound() {
-  audio?.pause()
-  useStadiumSound.setState({ playing: false })
+  audios.stadium?.pause()
+  audios.works?.pause()
+  useStadiumSound.setState({ playing: false, works: false })
 }

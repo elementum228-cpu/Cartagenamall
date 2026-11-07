@@ -1,6 +1,7 @@
 import { openCourtOrClaim } from '../football/open'
-import { PHASES, phaseInfo } from '../config/stadium'
-import { stopStadiumSound, toggleStadiumSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
+import { PHASES, STADIUM, phaseInfo } from '../config/stadium'
+import { cameraState } from '../world/cameraState'
+import { stopStadiumSound, toggleStadiumSound, toggleWorksSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { BOAT_OF_STORE } from '../tourism/config'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
 import { Anchor, Volume2, VolumeX, HardHat, Gamepad2, Plane, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
@@ -239,7 +240,6 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           </button>
         )}
         <ShipPill />
-        {use3D && <StadiumSoundPill />}
         {season === 'halloween' && (
           <span className="chrome-text flex h-8 items-center gap-1.5 pr-1 text-[12.5px] leading-none font-semibold">
             <span className="grid size-6 place-items-center rounded-full bg-[#e8761c] text-white shadow-[0_2px_10px_rgb(232_118_28/0.5)]">
@@ -250,6 +250,8 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         )}
         <PromoAnnouncer />
       </div>
+
+      {use3D && <StadiumListenButton />}
 
       {/* Parte baja: ficha del local elegido, botón principal y controles. La fila no captura toques
           (el mapa se puede arrastrar); solo sus botones. */}
@@ -745,31 +747,53 @@ function StadiumToggle({ className }: { className: string }) {
   )
 }
 
-/** Con el estadio inaugurado: enciende (luces, hinchada, partido y sonido) o apaga el estadio. */
-function StadiumSoundPill() {
+/**
+ * Botón junto al estadio, a la derecha: aparece cuando la persona se acerca al estadio. Inaugurado: «Escuchar el
+ * estadio» lo enciende (canción, luces, hinchada y partido). En obra: «Escuchar obras» pone el pitido de las
+ * grúas y el ruido de la construcción.
+ */
+function StadiumListenButton() {
   const phase = useStadiumPhase((s) => s.phase)
   const playing = useStadiumSound((s) => s.playing)
+  const works = useStadiumSound((s) => s.works)
   const toast = useUI((s) => s.toast)
+  const [near, setNear] = useState(false)
+  const open = phase === 'open'
+  const on = open ? playing : works
+  // el mapa vive fuera de React: se mira la cámara varias veces por segundo
   useEffect(() => {
-    if (phase !== 'open') stopStadiumSound()
+    const id = window.setInterval(() => {
+      const t = cameraState.target
+      const d = Math.hypot(t.x - STADIUM.center[0], t.z - STADIUM.center[1])
+      const zoomedIn = cameraState.zoom >= cameraState.fitZoom * 0.95
+      setNear(d < 30 && zoomedIn)
+    }, 250)
+    return () => window.clearInterval(id)
+  }, [])
+  useEffect(() => {
+    // al cambiar de estado se apaga lo que sonaba
+    stopStadiumSound()
   }, [phase])
   useEffect(() => () => stopStadiumSound(), [])
-  if (phase !== 'open') return null
+  const label = open ? (on ? 'Apagar el estadio' : 'Escuchar el estadio') : on ? 'Parar las obras' : 'Escuchar obras'
+  const show = near || on
   return (
-    <button
-      onClick={async () => {
-        if (!playing) useUI.getState().requestFocus({ kind: 'stadium' })
-        const ok = await toggleStadiumSound()
-        if (!ok) toast('El audio del estadio todavía no está disponible.', 'error')
-      }}
-      aria-pressed={playing}
-      aria-label={playing ? 'Apagar el estadio' : 'Escuchar el estadio'}
-      className="chrome-text flex h-8 items-center gap-1.5 rounded-full pr-2 text-[13px] leading-none font-semibold transition active:scale-[0.98]"
-    >
-      <span className={`grid size-6 shrink-0 place-items-center rounded-full text-white shadow-[0_2px_10px_rgb(34_160_90/0.5)] ${playing ? 'motion-safe:animate-pulse' : ''}`} style={{ background: playing ? '#c8553b' : '#22a05a' }}>
-        {playing ? <VolumeX className="size-3.5" strokeWidth={2.2} /> : <Volume2 className="size-3.5" strokeWidth={2.2} />}
-      </span>
-      <span className="font-bold">{playing ? 'Apagar el estadio' : 'Escuchar el estadio'}</span>
-    </button>
+    <div className={`pointer-events-none absolute top-1/2 right-3 z-20 -translate-y-1/2 transition duration-300 md:right-5 ${show ? 'translate-x-0 opacity-100' : 'translate-x-6 opacity-0'}`} aria-hidden={!show}>
+      <button
+        tabIndex={show ? 0 : -1}
+        onClick={async () => {
+          const ok = await (open ? toggleStadiumSound() : toggleWorksSound())
+          if (!ok) toast('El audio todavía no está disponible.', 'error')
+        }}
+        aria-pressed={on}
+        aria-label={label}
+        className={`glass pointer-events-auto flex h-12 items-center gap-2.5 rounded-full pr-4 pl-2 text-[13.5px] font-bold text-ink shadow-soft transition active:scale-[0.97] ${show ? '' : 'pointer-events-none'}`}
+      >
+        <span className={`grid size-8 shrink-0 place-items-center rounded-full text-white ${on ? 'motion-safe:animate-pulse' : ''}`} style={{ background: on ? '#c8553b' : open ? '#22a05a' : '#e8832a' }}>
+          {on ? <VolumeX className="size-4" strokeWidth={2.2} /> : open ? <Volume2 className="size-4" strokeWidth={2.2} /> : <HardHat className="size-4" strokeWidth={2.2} />}
+        </span>
+        {label}
+      </button>
+    </div>
   )
 }
