@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { STADIUM, phaseInfo, type StadiumPhase } from '../config/stadium'
+import { BASE, BOWL_Z, N, PX, PZ, at, ring, segBuilt } from './stadiumGeometry'
 import { toggleStadiumSound, toggleWorksSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
@@ -28,11 +29,6 @@ const S = STADIUM.scale
 const IX = 26
 const IZ = 21
 const IR = 9
-const PX = 9 // medio largo de la cancha
-const PZ = 5.6
-const BOWL_X = PX + 1.6
-const BOWL_Z = PZ + 1.6
-const BOWL_R = 3.2
 const STEPS = 7
 const RUN = 0.9
 const RISE = 0.66
@@ -49,49 +45,6 @@ const SCAFF = '#d3d6da'
 const PLANK = '#d9a441'
 const IRON = '#2f3438'
 const YELLOW = '#f5b800'
-
-// ── geometría paramétrica: contorno de rectángulo redondeado con correspondencia entre desplazamientos ───
-type Pt = { x: number; z: number; nx: number; nz: number }
-function ring(hx: number, hz: number, r: number, ns = 8, nc = 6): Pt[] {
-  const pts: Pt[] = []
-  const sx = hx - r
-  const sz = hz - r
-  const side = (x0: number, z0: number, x1: number, z1: number, nx: number, nz: number) => {
-    for (let i = 0; i <= ns; i++) {
-      const t = i / ns
-      pts.push({ x: x0 + (x1 - x0) * t, z: z0 + (z1 - z0) * t, nx, nz })
-    }
-  }
-  const corner = (cx: number, cz: number, a0: number, a1: number) => {
-    for (let i = 0; i <= nc; i++) {
-      const a = a0 + ((a1 - a0) * i) / nc
-      pts.push({ x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r, nx: Math.cos(a), nz: Math.sin(a) })
-    }
-  }
-  side(hx, -sz, hx, sz, 1, 0) // este
-  corner(sx, sz, 0, Math.PI / 2) // sureste
-  side(sx, hz, -sx, hz, 0, 1) // sur
-  corner(-sx, sz, Math.PI / 2, Math.PI)
-  side(-hx, sz, -hx, -sz, -1, 0) // oeste
-  corner(-sx, -sz, Math.PI, 1.5 * Math.PI)
-  side(-sx, -hz, sx, -hz, 0, -1) // norte
-  corner(sx, -sz, 1.5 * Math.PI, 2 * Math.PI)
-  return pts
-}
-const BASE = ring(BOWL_X, BOWL_Z, BOWL_R)
-const N = BASE.length
-const at = (i: number, d: number): [number, number] => [BASE[i].x + BASE[i].nx * d, BASE[i].z + BASE[i].nz * d]
-
-/** ¿Está terminada esa parte del estadio? El tercio este y la esquina sureste siguen en obra. */
-const built = (i: number, phase: StadiumPhase) => {
-  if (phase === 'open') return true
-  const { x, z } = BASE[i]
-  // casi terminado: solo queda en obra un pedazo de la esquina sureste
-  if (phase === 'almost') return !(x > 12 && z > 3)
-  return !(x > 4.5 || (z > 5 && x > -4))
-}
-/** Un tramo (de i a i+1) está terminado si sus dos extremos lo están. */
-const segBuilt = (i: number, phase: StadiumPhase) => built(i, phase) && built(i + 1, phase)
 
 class Quads {
   pos: number[] = []
