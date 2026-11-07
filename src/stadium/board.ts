@@ -7,11 +7,29 @@ export interface BoardTeam {
   crest: string | null
 }
 
+/** Encuadre de la imagen dentro del cartel: `x` e `y` la mueven (fracción del ancho y del alto), `zoom` la acerca. */
+export interface ImageFit {
+  x: number
+  y: number
+  zoom: number
+}
+
+export const DEFAULT_FIT: ImageFit = { x: 0, y: 0, zoom: 1 }
+export const MAX_ZOOM = 4
+
+export function cleanFit(raw: unknown): ImageFit {
+  const r = (raw ?? {}) as Partial<ImageFit>
+  const n = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
+  return { x: Math.max(-2, Math.min(2, n(r.x, 0))), y: Math.max(-2, Math.min(2, n(r.y, 0))), zoom: Math.max(1, Math.min(MAX_ZOOM, n(r.zoom, 1))) }
+}
+
 export interface EventBoard {
   home: BoardTeam
   away: BoardTeam
   /** Imagen del concierto o evento. */
   image: string | null
+  /** Encuadre de la imagen: desplazamiento (fracción del cartel) y acercamiento (1 a 4). */
+  fit?: ImageFit
   /** Línea corta bajo la imagen o los escudos (p. ej. «Liga BetPlay · Fecha 12»). */
   caption: string
 }
@@ -20,6 +38,7 @@ export const emptyBoard = (): EventBoard => ({
   home: { name: '', crest: null },
   away: { name: '', crest: null },
   image: null,
+  fit: DEFAULT_FIT,
   caption: '',
 })
 
@@ -59,6 +78,7 @@ export function cleanBoard(raw: unknown): EventBoard {
     home: team(r.home),
     away: team(r.away),
     image: typeof r.image === 'string' && r.image ? r.image : null,
+    fit: cleanFit(r.fit),
     caption: typeof r.caption === 'string' ? r.caption.slice(0, 80) : '',
   }
 }

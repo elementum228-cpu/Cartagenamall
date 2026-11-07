@@ -15,7 +15,7 @@ import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
 import { useStadiumBoard, useStadiumConfig, useStadiumEvents } from '../state/stadiumEvents'
 import { boardWhen, resolveBoard } from '../stadium/board'
-import { BOARD_H, BOARD_W, loadImage, paintBoard } from '../stadium/boardPaint'
+import { BOARD_H, BOARD_W, drawCover, loadImage, paintBoard } from '../stadium/boardPaint'
 
 // Estadio en construcción (inspirado en el Jaime Morón de Cartagena): una isla de piedra al norte de la
 // fortaleza con un estadio de bajo polígono a medio hacer. Las gradas del lado oeste y norte ya tienen sus
@@ -1786,11 +1786,8 @@ function useScreenTexture(reduceMotion: boolean) {
         })
       }
       if (poster.img) {
-        const k = Math.max(512 / poster.img.naturalWidth, 224 / poster.img.naturalHeight)
-        const w = poster.img.naturalWidth * k
-        const h = poster.img.naturalHeight * k
         g.globalAlpha = 0.85
-        g.drawImage(poster.img, (512 - w) / 2, (224 - h) / 2, w, h)
+        drawCover(g, poster.img, 512, 224, resolveBoard(activeEventNow(), useStadiumBoard.getState().board).fit)
         g.globalAlpha = 1
         g.fillStyle = 'rgba(0,0,0,0.35)'
         g.fillRect(0, 0, 512, 224)

@@ -1,5 +1,5 @@
 import type { StadiumEventKind } from '../config/stadium'
-import { boardHasContent, type BoardTeam, type EventBoard } from './board'
+import { DEFAULT_FIT, boardHasContent, type BoardTeam, type EventBoard, type ImageFit } from './board'
 
 // Dibuja el cartel del estadio en un lienzo 2D. Lo usan el estadio en 3D (como textura) y la vista previa
 // de la administración, así lo que se ve al editar es lo que se verá en el estadio.
@@ -93,11 +93,17 @@ function crest(g: CanvasRenderingContext2D, cx: number, cy: number, size: number
   g.textBaseline = 'alphabetic'
 }
 
-function cover(g: CanvasRenderingContext2D, img: HTMLImageElement) {
-  const k = Math.max(BOARD_W / img.naturalWidth, BOARD_H / img.naturalHeight)
+/**
+ * Dibuja la imagen cubriendo todo el lienzo `W`×`H`, con el encuadre elegido: `zoom` la acerca y `x`/`y` la
+ * mueven. Nunca deja bordes vacíos (el desplazamiento se limita a lo que la imagen cubre).
+ */
+export function drawCover(g: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number, fit: ImageFit = DEFAULT_FIT) {
+  const k = Math.max(W / img.naturalWidth, H / img.naturalHeight) * Math.max(1, fit.zoom)
   const w = img.naturalWidth * k
   const h = img.naturalHeight * k
-  g.drawImage(img, (BOARD_W - w) / 2, (BOARD_H - h) / 2, w, h)
+  const left = Math.max(W - w, Math.min(0, (W - w) / 2 + fit.x * W))
+  const top = Math.max(H - h, Math.min(0, (H - h) / 2 + fit.y * H))
+  g.drawImage(img, left, top, w, h)
 }
 
 /** Dibuja el cartel completo. Espera a que carguen las imágenes. */
@@ -113,7 +119,7 @@ export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): 
 
   if (kind === 'concert') {
     if (poster) {
-      cover(g, poster)
+      drawCover(g, poster, BOARD_W, BOARD_H, board.fit)
       const shade = g.createLinearGradient(0, BOARD_H * 0.45, 0, BOARD_H)
       shade.addColorStop(0, 'rgba(0,0,0,0)')
       shade.addColorStop(1, 'rgba(0,0,0,0.82)')

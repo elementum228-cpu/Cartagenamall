@@ -6,7 +6,7 @@ import { remoteEnabled } from '../remote/client'
 import { uploadStadiumImage } from '../remote/photos'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
-import { boardWhen, type BoardTeam, type EventBoard } from './board'
+import { DEFAULT_FIT, MAX_ZOOM, boardWhen, type BoardTeam, type EventBoard, type ImageFit } from './board'
 import { BOARD_H, BOARD_W, paintBoard } from './boardPaint'
 
 // Editor del cartel del estadio. En un partido se cargan los dos escudos y los nombres de los equipos; en un
@@ -82,8 +82,13 @@ function TeamFields({ title, team, onChange }: { title: string; team: BoardTeam;
 }
 
 /** Vista previa en vivo: dibuja el cartel tal como saldrá en el estadio. */
-function Preview({ kind, board, title, startsAt }: { kind: StadiumEventKind; board: EventBoard; title: string; startsAt?: string }) {
+/**
+ * Vista previa en vivo: dibuja el cartel tal como saldrá en el estadio. En un concierto con imagen, se puede
+ * arrastrar para moverla (con el dedo o el mouse).
+ */
+function Preview({ kind, board, title, startsAt, onFit }: { kind: StadiumEventKind; board: EventBoard; title: string; startsAt?: string; onFit?: (f: ImageFit) => void }) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const drag = useRef<{ px: number; py: number; fit: ImageFit } | null>(null)
   useEffect(() => {
     if (ref.current)
       void paintBoard(ref.current, {
@@ -93,7 +98,30 @@ function Preview({ kind, board, title, startsAt }: { kind: StadiumEventKind; boa
         when: boardWhen(startsAt),
       })
   }, [kind, board, title, startsAt])
-  return <canvas ref={ref} width={BOARD_W} height={BOARD_H} className="w-full rounded-2xl border border-line bg-black" aria-label="Vista previa del cartel" />
+  const movable = !!onFit && kind === 'concert' && !!board.image
+  return (
+    <canvas
+      ref={ref}
+      width={BOARD_W}
+      height={BOARD_H}
+      className={`w-full rounded-2xl border border-line bg-black ${movable ? 'cursor-grab touch-none active:cursor-grabbing' : ''}`}
+      aria-label="Vista previa del cartel"
+      onPointerDown={(e) => {
+        if (!movable) return
+        e.currentTarget.setPointerCapture(e.pointerId)
+        drag.current = { px: e.clientX, py: e.clientY, fit: board.fit ?? DEFAULT_FIT }
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current
+        if (!d || !onFit) return
+        const r = e.currentTarget.getBoundingClientRect()
+        // arrastrar a la derecha mueve la imagen a la derecha (en fracción del cartel)
+        onFit({ ...d.fit, x: d.fit.x + (e.clientX - d.px) / r.width, y: d.fit.y + (e.clientY - d.py) / r.height })
+      }}
+      onPointerUp={() => (drag.current = null)}
+      onPointerCancel={() => (drag.current = null)}
+    />
+  )
 }
 
 export function BoardEditor({
@@ -122,7 +150,7 @@ export function BoardEditor({
           value={value.image}
           kind="poster"
           aspect="2.28"
-          onChange={(image) => onChange({ ...value, image })}
+          onChange={(image) => onChange({ ...value, image, fit: DEFAULT_FIT })}
         />
       )}
       <label className="block text-xs font-bold text-ink-soft">
@@ -137,7 +165,27 @@ export function BoardEditor({
       </label>
       <div>
         <p className="mb-1 text-xs font-bold text-ink-soft">Así se verá en el estadio</p>
-        <Preview kind={kind} board={value} title={title} startsAt={startsAt} />
+        <Preview kind={kind} board={value} title={title} startsAt={startsAt} onFit={(fit) => onChange({ ...value, fit })} />
+        {kind === 'concert' && value.image && (
+          <div className="mt-2 space-y-2 rounded-2xl bg-sand p-3">
+            <p className="text-[11px] text-ink-soft">Arrastra la imagen sobre la vista previa para moverla.</p>
+            <label className="block text-xs font-bold text-ink-soft">
+              Acercar · {Math.round((value.fit?.zoom ?? 1) * 100)} %
+              <input
+                type="range"
+                className="mt-1 w-full accent-brand"
+                min={100}
+                max={MAX_ZOOM * 100}
+                value={Math.round((value.fit?.zoom ?? 1) * 100)}
+                aria-label="Acercar la imagen"
+                onChange={(e) => onChange({ ...value, fit: { ...(value.fit ?? DEFAULT_FIT), zoom: Number(e.target.value) / 100 } })}
+              />
+            </label>
+            <button className={btn.ghost} onClick={() => onChange({ ...value, fit: DEFAULT_FIT })}>
+              Restablecer encuadre
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
