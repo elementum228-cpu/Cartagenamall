@@ -151,8 +151,8 @@ export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): 
   g.fillStyle = '#f6c619'
   g.fillRect(0, 16, BOARD_W, 8)
   g.fillStyle = '#f6c619'
-  fit(g, heading, '800', 36, BOARD_W - 120, 20)
-  g.fillText(heading, BOARD_W / 2, 74)
+  fit(g, heading, '900', 44, BOARD_W - 120, 22)
+  g.fillText(heading, BOARD_W / 2, 80)
 
   const hasTeams = boardHasContent(board) && !!(board.home.name || board.home.crest || board.away.name || board.away.crest)
   if (!hasTeams) {
@@ -172,18 +172,18 @@ export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): 
     if (when) {
       const [day, time] = when.split(' · ')
       g.fillStyle = '#ffffff'
-      g.font = `800 30px ${FONT}`
-      g.fillText(day, BOARD_W / 2, 318)
+      g.font = `900 40px ${FONT}`
+      g.fillText(day, BOARD_W / 2, 324)
       if (time) {
         g.fillStyle = 'rgba(255,255,255,0.85)'
-        g.font = `700 28px ${FONT}`
-        g.fillText(time, BOARD_W / 2, 354)
+        g.font = `800 36px ${FONT}`
+        g.fillText(time, BOARD_W / 2, 368)
       }
     }
   }
   if (board.caption) {
     g.fillStyle = 'rgba(255,255,255,0.78)'
-    fit(g, board.caption, '700', 28, BOARD_W - 120, 16)
-    g.fillText(board.caption, BOARD_W / 2, 428)
+    fit(g, board.caption, '800', 34, BOARD_W - 120, 18)
+    g.fillText(board.caption, BOARD_W / 2, 430)
   }
 }

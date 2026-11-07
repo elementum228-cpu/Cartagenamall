@@ -254,10 +254,16 @@ function ScaffoldBay({ i }: { i: number }) {
 }
 
 /** Mástiles de acero de la cubierta terminada. */
+/** Zona de la fachada sur ocupada por el cartel: sin mástiles, banderas ni palmeras delante. */
+const inBoardZone = (x: number, z: number) => z > 5 && Math.abs(x - BOARD_X) < 5.6
+
 function RoofMasts({ phase }: { phase: StadiumPhase }) {
   const masts = useMemo(() => {
     const out: { x: number; z: number }[] = []
-    for (let i = 0; i < N - 1; i += 4) if (segBuilt(i, phase)) out.push({ x: at(i, FACADE_D + 0.7)[0], z: at(i, FACADE_D + 0.7)[1] })
+    for (let i = 0; i < N - 1; i += 4) if (segBuilt(i, phase)) {
+      const [x, z] = at(i, FACADE_D + 0.7)
+      if (!inBoardZone(x, z)) out.push({ x, z })
+    }
     return out
   }, [phase])
   return (
@@ -1635,10 +1641,10 @@ function EventBoard() {
   }, [canvas, tex, kind, board, title, when])
   const screen = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
   useFrame(() => screen.color.setScalar(0.42 + 0.58 * nightState.t))
-  const W = 8.4
+  const W = 9.8
   const H = (W * BOARD_H) / BOARD_W
   return (
-    <group position={[BOARD_X, Y + 4.25, BOWL_Z + FACADE_D + 0.1]}>
+    <group position={[BOARD_X, Y + 4.3, BOWL_Z + FACADE_D + 0.1]}>
       {/* marco; el cartel va pegado a la fachada sur, la que mira a la entrada */}
       <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, 0]} scale={[W + 0.5, H + 0.5, 0.2]} castShadow />
       <mesh geometry={GEO.box} material={glowMat('#7fe7b0', 1.5, { dayGlow: 0.05 })} position={[0, 0, 0.06]} scale={[W + 0.3, H + 0.3, 0.06]} />
@@ -1656,7 +1662,7 @@ function Pennants({ phase }: { phase: StadiumPhase }) {
     for (let i = 0; i < N - 1; i += 4)
       if (segBuilt(i, phase)) {
         const [x, z] = at(i, FACADE_D + 0.7)
-        out.push({ x, z, c: k++ % 2 ? '#f6c619' : '#22a05a' })
+        if (!inBoardZone(x, z)) out.push({ x, z, c: k++ % 2 ? '#f6c619' : '#22a05a' })
       }
     return out
   }, [phase])
@@ -1709,9 +1715,7 @@ function OpenDecor() {
         [21, -17.5],
         [-5, 18],
         [4, 18],
-      ].map(([x, z], i) => (
-        <Palm key={i} x={x} z={z} h={3.8 + (i % 2) * 0.8} />
-      ))}
+      ].map(([x, z], i) => (inBoardZone(x, z) ? null : <Palm key={i} x={x} z={z} h={3.8 + (i % 2) * 0.8} />))}
       {/* banderas junto a la puerta */}
       {[-14.5, -5.5].map((x, i) => (
         <group key={x} position={[x, Y, 17.6]}>
