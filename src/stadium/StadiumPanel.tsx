@@ -172,7 +172,7 @@ function EventDetail({ id, onBack, onDone }: { id: string; onBack: () => void; o
         </p>
         <h3 className="text-2xl font-extrabold tracking-tight">{ev.title}</h3>
         {ev.subtitle && <p className="text-sm text-ink-soft">{ev.subtitle}</p>}
-        <p className="mt-2 flex items-center gap-2 text-sm font-semibold capitalize">
+        <p className="mt-2 flex items-center gap-2 text-sm font-semibold">
           <CalendarDays className="size-4 text-brand" /> {p.long} · {p.time}
         </p>
         {ev.description && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{ev.description}</p>}
@@ -332,7 +332,7 @@ export function TicketCard({ ticket: t }: { ticket: Ticket }) {
       <div className="flex items-start justify-between gap-2 p-4 pb-3">
         <div className="min-w-0">
           <p className="truncate text-[15px] font-extrabold">{t.eventTitle}</p>
-          <p className="text-[12.5px] text-ink-soft capitalize">
+          <p className="text-[12.5px] text-ink-soft first-letter:uppercase">
             {p.long} · {p.time}
           </p>
           <p className="mt-1 text-[13px] font-semibold">

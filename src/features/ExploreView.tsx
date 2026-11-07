@@ -8,6 +8,7 @@ import {
   Anchor,
   Music2,
   Volume2,
+  Ticket,
   VolumeX,
   HardHat,
   Gamepad2,
@@ -870,7 +871,7 @@ function StadiumListenButton() {
   // Solo el ícono, en la esquina superior derecha: no tapa el estadio ni la gente.
   return (
     <div
-      className={`pointer-events-none absolute top-[calc(var(--chrome-top)+104px)] right-3 z-20 transition duration-300 md:top-[calc(var(--chrome-top)+96px)] md:right-5 ${show ? 'opacity-100' : 'scale-90 opacity-0'}`}
+      className={`pointer-events-none absolute top-[calc(var(--chrome-top)+104px)] right-3 z-20 flex flex-col items-end transition duration-300 md:top-[calc(var(--chrome-top)+96px)] md:right-5 ${show ? 'opacity-100' : 'scale-90 opacity-0'}`}
       aria-hidden={!show}
     >
       <button
@@ -893,6 +894,15 @@ function StadiumListenButton() {
         ) : (
           <HardHat className="relative size-5" strokeWidth={2.2} />
         )}
+      </button>
+      <button
+        tabIndex={show ? 0 : -1}
+        onClick={() => useUI.getState().openStadium(true)}
+        aria-label="Eventos y boletas del estadio"
+        title="Eventos y boletas"
+        className={`glass pointer-events-auto mt-2 grid size-11 place-items-center rounded-full bg-ink text-white shadow-soft transition active:scale-95 ${show ? '' : 'pointer-events-none'}`}
+      >
+        <Ticket className="size-5" strokeWidth={2.2} />
       </button>
     </div>
   )
