@@ -301,7 +301,16 @@ function Pitch({ phase }: { phase: StadiumPhase }) {
       <mesh geometry={GEO.box} material={mat('#3f8a37')} position={[0, 0.015, 0]} scale={[PX * 2 + 1.6, 0.03, PZ * 2 + 1.6]} receiveShadow />
       {Array.from({ length: stripes }, (_, k) => {
         const dirt = k >= dirtFrom
-        return <mesh key={k} geometry={GEO.box} material={mat(dirt ? (k % 2 ? '#b58c5c' : '#c19768') : k % 2 ? '#4fa03f' : '#5db84b')} position={[-PX + sw * (k + 0.5), 0.04, 0]} scale={[sw, 0.02, PZ * 2]} receiveShadow />
+        return (
+          <mesh
+            key={k}
+            geometry={GEO.box}
+            material={mat(dirt ? (k % 2 ? '#b58c5c' : '#c19768') : k % 2 ? '#4fa03f' : '#5db84b')}
+            position={[-PX + sw * (k + 0.5), 0.04, 0]}
+            scale={[sw, 0.02, PZ * 2]}
+            receiveShadow
+          />
+        )
       })}
       {/* líneas del lado terminado */}
       {line(-PX + 0.05, 0, 0.1, PZ * 2)}
@@ -328,7 +337,10 @@ function Pitch({ phase }: { phase: StadiumPhase }) {
           {[-2.6, 0.2, 2.9].map((z, k) => (
             <mesh key={k} geometry={GEO.box} material={mat('#8a6a45')} position={[PX - 3.2 + k * 0.7, 0.06, z]} scale={[3.4, 0.014, 0.35]} />
           ))}
-          {[[PX - 1.4, -3.6, 1.7], [PX - 4.2, 3.9, 1.3]].map(([x, z, k], i) => (
+          {[
+            [PX - 1.4, -3.6, 1.7],
+            [PX - 4.2, 3.9, 1.3],
+          ].map(([x, z, k], i) => (
             <mesh key={i} geometry={GEO.cone} material={mat('#a67b4c')} position={[x, 0.55, z]} scale={[k * 1.5, 1.1, k * 1.5]} castShadow />
           ))}
           {/* los arcos aún no están: palos de portería apilados */}
@@ -376,7 +388,10 @@ function slab(scale: number, depth: number, y: number) {
 }
 
 function Ground() {
-  const geos = useMemo(() => ({ slope: slab(1.1, 1.8, SEA + 0.1), base: slab(1.03, Y - SEA + 0.1, Y - 0.04), floor: slab(0.99, 0.05, Y + 0.01), pad: slab(0.78, 0.05, Y + 0.06) }), [])
+  const geos = useMemo(
+    () => ({ slope: slab(1.1, 1.8, SEA + 0.1), base: slab(1.03, Y - SEA + 0.1, Y - 0.04), floor: slab(0.99, 0.05, Y + 0.01), pad: slab(0.78, 0.05, Y + 0.06) }),
+    [],
+  )
   const road = useMemo(() => ring(20.5, 17.4, 6, 6, 5), [])
   return (
     <group>
@@ -388,12 +403,30 @@ function Ground() {
       {road.slice(0, -1).map((p, i) => {
         const q = road[i + 1]
         const len = Math.hypot(q.x - p.x, q.z - p.z)
-        return <mesh key={i} geometry={GEO.box} material={mat('#8f8168')} position={[(p.x + q.x) / 2, Y + 0.11, (p.z + q.z) / 2]} rotation={[0, Math.atan2(q.x - p.x, q.z - p.z), 0]} scale={[2.4, 0.02, len + 0.1]} receiveShadow />
+        return (
+          <mesh
+            key={i}
+            geometry={GEO.box}
+            material={mat('#8f8168')}
+            position={[(p.x + q.x) / 2, Y + 0.11, (p.z + q.z) / 2]}
+            rotation={[0, Math.atan2(q.x - p.x, q.z - p.z), 0]}
+            scale={[2.4, 0.02, len + 0.1]}
+            receiveShadow
+          />
+        )
       })}
       {/* rocas en la orilla */}
       {[0, 0.13, 0.27, 0.41, 0.55, 0.68, 0.82, 0.93].map((u, k) => {
         const a = u * Math.PI * 2
-        return <mesh key={k} geometry={GEO.sphere} material={mat(STONE_DARK)} position={[Math.cos(a) * (IX * 1.07), SEA + 0.1, Math.sin(a) * (IZ * 1.07)]} scale={[1.8 + (k % 2), 0.9, 1.4]} />
+        return (
+          <mesh
+            key={k}
+            geometry={GEO.sphere}
+            material={mat(STONE_DARK)}
+            position={[Math.cos(a) * (IX * 1.07), SEA + 0.1, Math.sin(a) * (IZ * 1.07)]}
+            scale={[1.8 + (k % 2), 0.9, 1.4]}
+          />
+        )
       })}
     </group>
   )
@@ -412,7 +445,17 @@ function RoundTower({ x, z, k = 1 }: { x: number; z: number; k?: number }) {
       <mesh geometry={GEO.cylinder} material={mat(CORDON)} position={[0, WH + 0.6, 0]} scale={[4.5, 0.18, 4.5]} />
       {Array.from({ length: 10 }, (_, i) => {
         const a = (i / 10) * Math.PI * 2
-        return <mesh key={i} geometry={GEO.box} material={mat(STONE[1])} position={[Math.cos(a) * 1.95, WH + 1.05, Math.sin(a) * 1.95]} rotation={[0, -a, 0]} scale={[0.46, 0.6, 0.85]} castShadow />
+        return (
+          <mesh
+            key={i}
+            geometry={GEO.box}
+            material={mat(STONE[1])}
+            position={[Math.cos(a) * 1.95, WH + 1.05, Math.sin(a) * 1.95]}
+            rotation={[0, -a, 0]}
+            scale={[0.46, 0.6, 0.85]}
+            castShadow
+          />
+        )
       })}
       <Garita x={0} z={0} y={WH + 0.7} />
     </group>
@@ -473,11 +516,11 @@ function Bridge({ phase }: { phase: StadiumPhase }) {
       ))}
       {/* barrera de obra en el extremo de la muralla: aún no se puede pasar */}
       {phase !== 'open' && (
-      <group position={[0, Y + 0.2, len / 2 - 0.4]}>
-        {[-0.7, 0.7].map((dx) => (
-          <mesh key={dx} geometry={GEO.box} material={mat(dx < 0 ? '#f5b800' : '#2f3438')} position={[dx, 0.5, 0]} scale={[1.3, 0.5, 0.1]} />
-        ))}
-      </group>
+        <group position={[0, Y + 0.2, len / 2 - 0.4]}>
+          {[-0.7, 0.7].map((dx) => (
+            <mesh key={dx} geometry={GEO.box} material={mat(dx < 0 ? '#f5b800' : '#2f3438')} position={[dx, 0.5, 0]} scale={[1.3, 0.5, 0.1]} />
+          ))}
+        </group>
       )}
     </group>
   )
@@ -559,7 +602,11 @@ function Hoarding({ phase }: { phase: StadiumPhase }) {
       <mesh geometry={GEO.box} material={mat('#12302a')} position={[0, 2.95, -0.04]} scale={[6.9, 2.5, 0.14]} castShadow />
       <mesh geometry={GEO.plane} material={signMat} position={[0, 2.95, 0.04]} scale={[6.6, 2.2, 1]} />
       {/* vallas verdes a los lados */}
-      {[-1, 1].flatMap((s) => [0, 1, 2, 3].map((k) => <mesh key={`${s}${k}`} geometry={GEO.box} material={mat(k % 2 ? '#2f8f4f' : '#37a05a')} position={[s * (4.6 + k * 1.4), 0.6, 0.4]} scale={[1.38, 1.2, 0.1]} castShadow />))}
+      {[-1, 1].flatMap((s) =>
+        [0, 1, 2, 3].map((k) => (
+          <mesh key={`${s}${k}`} geometry={GEO.box} material={mat(k % 2 ? '#2f8f4f' : '#37a05a')} position={[s * (4.6 + k * 1.4), 0.6, 0.4]} scale={[1.38, 1.2, 0.1]} castShadow />
+        )),
+      )}
     </group>
   )
 }
@@ -644,7 +691,12 @@ function TowerCrane({ cfg, reduceMotion }: { cfg: CraneCfg; reduceMotion: boolea
     <group position={[cfg.x, Y, cfg.z]}>
       {/* base de concreto con lastre y mástil de celosía */}
       <mesh geometry={GEO.box} material={mat('#a9a196')} position={[0, 0.3, 0]} scale={[3.0, 0.6, 3.0]} castShadow receiveShadow />
-      {[[-1.1, -1.1], [1.1, -1.1], [1.1, 1.1], [-1.1, 1.1]].map(([x, z], k) => (
+      {[
+        [-1.1, -1.1],
+        [1.1, -1.1],
+        [1.1, 1.1],
+        [-1.1, 1.1],
+      ].map(([x, z], k) => (
         <mesh key={k} geometry={GEO.box} material={mat('#8e867b')} position={[x, 0.75, z]} scale={[0.7, 0.3, 0.7]} />
       ))}
       <CraneMast h={h} />
@@ -725,7 +777,14 @@ function DumpTruck() {
       <mesh geometry={GEO.box} material={mat('#6f9fb5', { opacity: 0.8 })} position={[0, 1.4, 1.93]} scale={[1.2, 0.5, 0.05]} />
       <mesh geometry={GEO.box} material={mat('#e0a000')} position={[0, 1.15, -0.55]} scale={[1.55, 0.95, 2.2]} rotation={[0.08, 0, 0]} castShadow />
       <mesh geometry={GEO.box} material={mat('#a67b4c')} position={[0, 1.55, -0.55]} scale={[1.3, 0.2, 1.9]} />
-      {[[-0.75, 1.3], [0.75, 1.3], [-0.75, -1.1], [0.75, -1.1], [-0.75, -1.8], [0.75, -1.8]].map(([x, z], k) => (
+      {[
+        [-0.75, 1.3],
+        [0.75, 1.3],
+        [-0.75, -1.1],
+        [0.75, -1.1],
+        [-0.75, -1.8],
+        [0.75, -1.8],
+      ].map(([x, z], k) => (
         <mesh key={k} geometry={GEO.cylinder} material={mat('#23262a')} position={[x, 0.42, z]} rotation={[0, 0, Math.PI / 2]} scale={[0.84, 0.3, 0.84]} />
       ))}
     </group>
@@ -739,7 +798,14 @@ function MixerTruck({ spin }: { spin: React.RefObject<THREE.Mesh | null> }) {
       <mesh geometry={GEO.box} material={mat('#f2f2ee')} position={[0, 1.25, 1.35]} scale={[1.4, 1.2, 1.1]} castShadow />
       <mesh geometry={GEO.box} material={mat('#6f9fb5', { opacity: 0.8 })} position={[0, 1.4, 1.93]} scale={[1.2, 0.5, 0.05]} />
       <mesh ref={spin} geometry={GEO.cone} material={mat('#e8832a')} position={[0, 1.55, -0.6]} rotation={[Math.PI / 2 + 0.2, 0, 0]} scale={[1.7, 2.6, 1.7]} castShadow />
-      {[[-0.75, 1.3], [0.75, 1.3], [-0.75, -1.1], [0.75, -1.1], [-0.75, -1.8], [0.75, -1.8]].map(([x, z], k) => (
+      {[
+        [-0.75, 1.3],
+        [0.75, 1.3],
+        [-0.75, -1.1],
+        [0.75, -1.1],
+        [-0.75, -1.8],
+        [0.75, -1.8],
+      ].map(([x, z], k) => (
         <mesh key={k} geometry={GEO.cylinder} material={mat('#23262a')} position={[x, 0.42, z]} rotation={[0, 0, Math.PI / 2]} scale={[0.84, 0.3, 0.84]} />
       ))}
     </group>
@@ -782,16 +848,87 @@ const SKIN = ['#8d5a3b', '#c58c64', '#e5b48f', '#a56b45']
 
 /** Rutas (x, z) de los obreros dentro de la isla: caminan de punto a punto y vuelven. */
 const WORK_ROUTES: { pts: [number, number][]; speed: number; phase: number }[] = [
-  { pts: [[-14, 17.5], [14, 17.5]], speed: 0.9, phase: 0 },
-  { pts: [[-14, 17.5], [14, 17.5]], speed: 0.8, phase: 0.55 },
-  { pts: [[20, -12], [20, 12]], speed: 0.85, phase: 0.2 },
-  { pts: [[-20, -12], [-20, 12]], speed: 0.7, phase: 0.7 },
-  { pts: [[-6, -17.4], [10, -17.4]], speed: 0.8, phase: 0.1 },
-  { pts: [[3, 0], [14, -3], [14, 3]], speed: 0.9, phase: 0.4 },
-  { pts: [[8, 4], [4, -4]], speed: 0.6, phase: 0.9 },
-  { pts: [[16, 15.5], [22, 8]], speed: 0.7, phase: 0.3 },
-  { pts: [[-12, -15.8], [-2, -15.8]], speed: 0.75, phase: 0.6 },
-  { pts: [[21, 13], [21, 2]], speed: 0.8, phase: 0.45 },
+  {
+    pts: [
+      [-14, 17.5],
+      [14, 17.5],
+    ],
+    speed: 0.9,
+    phase: 0,
+  },
+  {
+    pts: [
+      [-14, 17.5],
+      [14, 17.5],
+    ],
+    speed: 0.8,
+    phase: 0.55,
+  },
+  {
+    pts: [
+      [20, -12],
+      [20, 12],
+    ],
+    speed: 0.85,
+    phase: 0.2,
+  },
+  {
+    pts: [
+      [-20, -12],
+      [-20, 12],
+    ],
+    speed: 0.7,
+    phase: 0.7,
+  },
+  {
+    pts: [
+      [-6, -17.4],
+      [10, -17.4],
+    ],
+    speed: 0.8,
+    phase: 0.1,
+  },
+  {
+    pts: [
+      [3, 0],
+      [14, -3],
+      [14, 3],
+    ],
+    speed: 0.9,
+    phase: 0.4,
+  },
+  {
+    pts: [
+      [8, 4],
+      [4, -4],
+    ],
+    speed: 0.6,
+    phase: 0.9,
+  },
+  {
+    pts: [
+      [16, 15.5],
+      [22, 8],
+    ],
+    speed: 0.7,
+    phase: 0.3,
+  },
+  {
+    pts: [
+      [-12, -15.8],
+      [-2, -15.8],
+    ],
+    speed: 0.75,
+    phase: 0.6,
+  },
+  {
+    pts: [
+      [21, 13],
+      [21, 2],
+    ],
+    speed: 0.8,
+    phase: 0.45,
+  },
 ]
 const WELDERS: [number, number, number][] = [
   [17.4, -6.2, -1.6],
@@ -844,7 +981,7 @@ function Workers({ reduceMotion, phase }: { reduceMotion: boolean; phase: Stadiu
     WORK_ROUTES.forEach((r, i) => {
       // ida y vuelta por la ruta (ping-pong), a velocidad constante
       const L = routeLen[i]
-      const s = ((t * r.speed * 0.5 + r.phase * L) % (2 * L) + 2 * L) % (2 * L)
+      const s = (((t * r.speed * 0.5 + r.phase * L) % (2 * L)) + 2 * L) % (2 * L)
       const dist = s < L ? s : 2 * L - s
       const fwd = s < L
       let acc = 0
@@ -933,7 +1070,17 @@ function Pipes({ x, z, rot }: { x: number; z: number; rot: number }) {
   return (
     <group position={[x, Y, z]} rotation={[0, rot, 0]}>
       {[0, 1, 2].map((r) =>
-        Array.from({ length: 3 - r }, (_, k) => <mesh key={`${r}${k}`} geometry={GEO.cylinder} material={mat(r % 2 ? '#d2d4d8' : '#7e8794')} position={[k * 0.42 + r * 0.21 - 0.4, 0.22 + r * 0.36, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[0.4, 3, 0.4]} castShadow />),
+        Array.from({ length: 3 - r }, (_, k) => (
+          <mesh
+            key={`${r}${k}`}
+            geometry={GEO.cylinder}
+            material={mat(r % 2 ? '#d2d4d8' : '#7e8794')}
+            position={[k * 0.42 + r * 0.21 - 0.4, 0.22 + r * 0.36, 0]}
+            rotation={[Math.PI / 2, 0, 0]}
+            scale={[0.4, 3, 0.4]}
+            castShadow
+          />
+        )),
       )}
     </group>
   )
@@ -943,7 +1090,16 @@ function Steel({ x, z, rot }: { x: number; z: number; rot: number }) {
   return (
     <group position={[x, Y, z]} rotation={[0, rot, 0]}>
       {[0, 1, 2].map((r) =>
-        [0, 1, 2, 3].map((k) => <mesh key={`${r}${k}`} geometry={GEO.box} material={mat(r === 1 ? '#c8553b' : STEEL)} position={[k * 0.3 - 0.45, 0.12 + r * 0.2, 0]} scale={[0.22, 0.17, 3.4]} castShadow />),
+        [0, 1, 2, 3].map((k) => (
+          <mesh
+            key={`${r}${k}`}
+            geometry={GEO.box}
+            material={mat(r === 1 ? '#c8553b' : STEEL)}
+            position={[k * 0.3 - 0.45, 0.12 + r * 0.2, 0]}
+            scale={[0.22, 0.17, 3.4]}
+            castShadow
+          />
+        )),
       )}
       <mesh geometry={GEO.box} material={mat('#8a6340')} position={[0, 0.02, 0.9]} scale={[1.4, 0.06, 0.2]} />
       <mesh geometry={GEO.box} material={mat('#8a6340')} position={[0, 0.02, -0.9]} scale={[1.4, 0.06, 0.2]} />
@@ -951,7 +1107,12 @@ function Steel({ x, z, rot }: { x: number; z: number; rot: number }) {
   )
 }
 
-const TOWERS: [number, number][] = [[-22.5, -17.5], [22.5, -17.5], [22.5, 17.5], [-22.5, 17.5]]
+const TOWERS: [number, number][] = [
+  [-22.5, -17.5],
+  [22.5, -17.5],
+  [22.5, 17.5],
+  [-22.5, 17.5],
+]
 const LAMP_OFF = new THREE.Color('#4b535b')
 const LAMP_ON = new THREE.Color('#fffbe0')
 
@@ -961,11 +1122,34 @@ function useLit(phase: StadiumPhase) {
   return phase === 'almost' || (phase === 'open' && on)
 }
 
-/** Torres de iluminación y borde de luz de la cubierta. Se prenden y apagan con suavidad. */
+const LAMP_BASE_OFF = new THREE.Color('#5a554d')
+const LAMP_BASE_ON = new THREE.Color('#ffd08a')
+const SEAT_GLOW = new THREE.Color('#fff1d0')
+
+/**
+ * Torres de iluminación, borde de luz de la cubierta y luces en la base del estadio. Los focos miran hacia
+ * adentro (a la cancha); encendidos lanzan un haz de luz, iluminan el piso y las gradas. Se prenden y apagan
+ * con suavidad y solo cuestan materiales básicos (sin luces dinámicas).
+ */
 function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
   const lit = useLit(phase)
   const lamp = useMemo(() => new THREE.MeshBasicMaterial({ color: LAMP_OFF, toneMapped: false }), [])
+  const baseLamp = useMemo(() => new THREE.MeshBasicMaterial({ color: LAMP_BASE_OFF, toneMapped: false }), [])
+  const beam = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: '#fff4d2',
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        toneMapped: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      }),
+    [],
+  )
   const pools = useRef<THREE.Group>(null)
+  const beams = useRef<THREE.Group>(null)
   const level = useRef(0)
   const roofPts = useMemo(() => {
     const out: [number, number][] = []
@@ -973,30 +1157,101 @@ function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
     for (let i = 0; i < N - 1; i += 2) if (segBuilt(i, phase)) out.push(at(i, 3.0))
     return out
   }, [phase])
+  /** Luces del pie de la fachada: una tira continua que baña el muro y el piso. */
+  const basePts = useMemo(() => {
+    const out: { x: number; z: number; rot: number; len: number }[] = []
+    if (phase === 'construction') return out
+    for (let i = 0; i < N - 1; i += 2) {
+      if (!segBuilt(i, phase) || !segBuilt(i + 1, phase)) continue
+      const [x0, z0] = at(i, FACADE_D + 0.55)
+      const [x1, z1] = at(Math.min(i + 2, N - 1), FACADE_D + 0.55)
+      out.push({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, rot: Math.atan2(x1 - x0, z1 - z0), len: Math.hypot(x1 - x0, z1 - z0) })
+    }
+    return out
+  }, [phase])
+  const glow = night ? 1 : 0.45
   useFrame((_, dt) => {
     level.current += ((lit ? 1 : 0) - level.current) * Math.min(1, dt * 3)
-    lamp.color.copy(LAMP_OFF).lerp(LAMP_ON, level.current)
-    if (pools.current) pools.current.visible = level.current > 0.5
+    const l = level.current
+    lamp.color.copy(LAMP_OFF).lerp(LAMP_ON, l)
+    baseLamp.color.copy(LAMP_BASE_OFF).lerp(LAMP_BASE_ON, l)
+    beam.opacity = l * (night ? 0.035 : 0.015)
+    // las gradas se ven iluminadas de noche cuando el estadio está encendido
+    VERTEX_MAT.emissive.copy(SEAT_GLOW)
+    VERTEX_MAT.emissiveIntensity = l * (night ? 0.12 : 0.03)
+    if (pools.current) pools.current.visible = l > 0.4
+    if (beams.current) beams.current.visible = l > 0.05
   })
+  useLayoutEffect(
+    () => () => {
+      VERTEX_MAT.emissiveIntensity = 0
+    },
+    [],
+  )
   return (
     <group userData={{ dynamic: true }}>
-      {TOWERS.map(([x, z], i) => (
-        <group key={i} position={[x, Y, z]}>
-          <mesh geometry={GEO.cylinderLow} material={mat('#8f979f')} position={[0, 5.5, 0]} scale={[0.26, 11, 0.26]} castShadow />
-          <mesh geometry={GEO.box} material={mat('#41484f')} position={[0, 11.1, 0]} scale={[2.6, 1.7, 0.3]} castShadow />
-          {[0, 1, 2].flatMap((r) => [0, 1, 2, 3].map((k) => <mesh key={`${r}${k}`} geometry={GEO.sphere} material={lamp} position={[-0.9 + k * 0.6, 10.7 + r * 0.42, 0.22]} scale={0.34} />))}
-        </group>
-      ))}
-      {/* luz en el piso bajo cada torre y sobre las gradas: solo con las luces encendidas */}
+      {TOWERS.map(([x, z], i) => {
+        // el panel de focos mira hacia el centro del estadio, con una leve inclinación hacia abajo
+        const yaw = Math.atan2(-x, -z)
+        return (
+          <group key={i} position={[x, Y, z]}>
+            <mesh geometry={GEO.cylinderLow} material={mat('#8f979f')} position={[0, 5.5, 0]} scale={[0.26, 11, 0.26]} castShadow />
+            <group position={[0, 11.1, 0]} rotation={[0.42, yaw, 0, 'YXZ']}>
+              <mesh geometry={GEO.box} material={mat('#41484f')} scale={[2.6, 1.7, 0.3]} castShadow />
+              {[0, 1, 2].flatMap((r) =>
+                [0, 1, 2, 3].map((k) => <mesh key={`${r}${k}`} geometry={GEO.sphere} material={lamp} position={[-0.9 + k * 0.6, -0.42 + r * 0.42, 0.22]} scale={0.34} />),
+              )}
+            </group>
+          </group>
+        )
+      })}
+      {/* haces de luz de cada torre hacia la cancha */}
+      <group ref={beams}>
+        {TOWERS.map(([x, z], i) => {
+          const from = new THREE.Vector3(x, Y + 10.9, z)
+          const to = new THREE.Vector3(0, Y + 0.6, 0)
+          const dir = to.clone().sub(from)
+          const len = dir.length()
+          const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize().negate())
+          const mid = from.clone().add(to).multiplyScalar(0.5)
+          return <mesh key={i} geometry={GEO.cone} material={beam} position={mid} quaternion={q} scale={[9, len, 9]} />
+        })}
+      </group>
+      {/* luz en el piso bajo cada torre, en la cancha y sobre las gradas: solo con las luces encendidas */}
       <group ref={pools}>
         {TOWERS.map(([x, z], i) => (
-          <mesh key={i} geometry={GEO.plane} material={lightPoolMat('#fff3c8', night ? 0.8 : 0.35, 0.18)} rotation={[-Math.PI / 2, 0, 0]} position={[x, Y + 0.06, z]} scale={[8, 8, 1]} />
+          <mesh
+            key={i}
+            geometry={GEO.plane}
+            material={lightPoolMat('#fff3c8', night ? 0.5 : 0.2, 0.1)}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[x, Y + 0.06, z]}
+            scale={[9, 9, 1]}
+          />
         ))}
-        <mesh geometry={GEO.plane} material={lightPoolMat('#e8ffd0', night ? 0.9 : 0.4, 0.12)} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.3, 0]} scale={[26, 18, 1]} />
+        <mesh geometry={GEO.plane} material={lightPoolMat('#f0ffd8', night ? 0.22 : 0.1, 0.04)} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.34, 0]} scale={[32, 22, 1]} />
+        <mesh geometry={GEO.plane} material={lightPoolMat('#ffe9b8', night ? 0.2 : 0.06, 0.03)} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.08, 0]} scale={[46, 36, 1]} />
+        {basePts.map((b, i) => (
+          <mesh
+            key={i}
+            geometry={GEO.plane}
+            material={lightPoolMat('#ffcf8a', night ? 0.55 : 0.2, 0.06)}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[b.x, Y + 0.09, b.z]}
+            scale={[4.6 * glow + 1.6, 4.6 * glow + 1.6, 1]}
+          />
+        ))}
       </group>
       {/* tira de luz bajo el borde interior de la cubierta */}
       {roofPts.map(([x, z], i) => (
         <mesh key={i} geometry={GEO.sphere} material={lamp} position={[x, Y + 0.12 + ROOF_IN_H - 0.25, z]} scale={[0.34, 0.2, 0.34]} />
+      ))}
+      {/* luces en la base del estadio, a lo largo de toda la fachada terminada */}
+      {basePts.map((b, i) => (
+        <group key={i} position={[b.x, Y + 0.28, b.z]} rotation={[0, b.rot, 0]}>
+          <mesh geometry={GEO.box} material={baseLamp} scale={[0.24, 0.2, b.len * 0.72]} />
+          <mesh geometry={GEO.box} material={mat('#6c747c')} position={[0, -0.16, 0]} scale={[0.34, 0.12, b.len * 0.78]} />
+        </group>
       ))}
     </group>
   )
@@ -1006,10 +1261,17 @@ function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
 const FAN_SHIRTS = ['#22a05a', '#f6c619', '#f4f4f0', '#22a05a', '#f6c619', '#1d2a33', '#c8553b']
 const FAN_SKIN = ['#8d5a3b', '#c58c64', '#e5b48f', '#a56b45']
 
-/** Hinchas en las gradas: dan saltitos en ola cuando el estadio está encendido. */
+/** Pulso de la hinchada: dos saltos por segundo, como al ritmo de la canción. */
+const BEAT_HZ = 1.9
+const beatOf = (t: number, off = 0) => Math.abs(Math.sin(Math.PI * BEAT_HZ * t + off))
+const smooth01 = (x: number) => x * x * (3 - 2 * x)
+
+/** Hinchas en las gradas: con el estadio encendido saltan al ritmo, con los brazos arriba y una ola que recorre la gradería. */
 function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
+  const armsL = useRef<THREE.InstancedMesh>(null)
+  const armsR = useRef<THREE.InstancedMesh>(null)
   const spots = useMemo(() => {
     const out: { x: number; z: number; y: number; face: number; ph: number; i: number }[] = []
     for (let i = 0; i < N - 1; i++) {
@@ -1027,22 +1289,35 @@ function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
     return out
   }, [])
   const o = useMemo(() => new THREE.Object3D(), [])
+  const energy = useRef(0)
   useLayoutEffect(() => {
     const c = new THREE.Color()
     spots.forEach((f, k) => {
-      bodies.current?.setColorAt(k, c.set(FAN_SHIRTS[(f.i * 5) % FAN_SHIRTS.length]))
-      heads.current?.setColorAt(k, c.set(FAN_SKIN[f.i % FAN_SKIN.length]))
+      const shirt = FAN_SHIRTS[(f.i * 5) % FAN_SHIRTS.length]
+      const skin = FAN_SKIN[f.i % FAN_SKIN.length]
+      bodies.current?.setColorAt(k, c.set(shirt))
+      heads.current?.setColorAt(k, c.set(skin))
+      armsL.current?.setColorAt(k, c.set(skin))
+      armsR.current?.setColorAt(k, c.set(skin))
     })
-    for (const m of [bodies.current, heads.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
+    for (const m of [bodies.current, heads.current, armsL.current, armsR.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
   }, [spots])
   const F = 0.62
-  useFrame(({ clock }) => {
+  const ARM = 0.34 * F
+  useFrame(({ clock }, dt) => {
     const on = useStadiumSound.getState().playing && !reduceMotion
+    // la energía sube y baja con suavidad al encender o apagar
+    energy.current += ((on ? 1 : 0) - energy.current) * Math.min(1, dt * 4)
+    const e = energy.current
     const t = clock.elapsedTime
+    // «ola»: un pulso extra que recorre la gradería cada pocos segundos
     spots.forEach((f, k) => {
-      // ola: el salto recorre la gradería; cada hincha tiene su propio ritmo
-      const hop = on ? Math.max(0, Math.sin(t * 6.2 - f.ph * 3)) * 0.34 + Math.max(0, Math.sin(t * 9 + f.i)) * 0.06 : 0
-      o.position.set(f.x, Y + 0.12 + f.y + 0.43 * F + hop, f.z)
+      const wave = Math.max(0, Math.sin(t * 2.0 - f.ph * 2.4))
+      const eager = f.i % 4 === 0 ? 1.25 : 1
+      const hop = e * smooth01(beatOf(t, (f.i % 5) * 0.22)) * (0.2 + 0.2 * wave) * eager
+      const base = Y + 0.12 + f.y + 0.43 * F + hop
+      o.rotation.order = 'YXZ'
+      o.position.set(f.x, base, f.z)
       o.rotation.set(0, f.face, 0)
       o.scale.setScalar(F)
       o.updateMatrix()
@@ -1051,22 +1326,91 @@ function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
       o.scale.setScalar(0.36 * F)
       o.updateMatrix()
       heads.current?.setMatrixAt(k, o.matrix)
+      // brazos: arriba y abiertos al alentar (con un vaivén), caídos junto al cuerpo en calma
+      const cheer = e * (0.55 + 0.35 * wave)
+      const th = (1 - cheer) * (Math.PI - 0.12) + cheer * (0.38 + 0.22 * Math.sin(t * 11 + f.i))
+      const sy = base + 0.3 * F
+      for (const side of [-1, 1] as const) {
+        const lx = side * (0.2 * F + Math.sin(th) * (ARM / 2))
+        const ly = Math.cos(th) * (ARM / 2)
+        o.position.set(f.x + lx * Math.cos(f.face), sy + ly, f.z - lx * Math.sin(f.face))
+        o.rotation.set(0, f.face, -side * th)
+        o.scale.set(0.1 * F, ARM, 0.1 * F)
+        o.updateMatrix()
+        ;(side < 0 ? armsL : armsR).current?.setMatrixAt(k, o.matrix)
+      }
     })
-    if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true
-    if (heads.current) heads.current.instanceMatrix.needsUpdate = true
+    for (const m of [bodies.current, heads.current, armsL.current, armsR.current]) if (m) m.instanceMatrix.needsUpdate = true
   })
   return (
     <group userData={{ dynamic: true }}>
       <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), spots.length]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), spots.length]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh ref={armsL} args={[GEO.box, mat('#ffffff'), spots.length]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh ref={armsR} args={[GEO.box, mat('#ffffff'), spots.length]} frustumCulled={false} raycast={() => null} />
+    </group>
+  )
+}
+
+/** Confeti verde y amarillo que cae sobre las gradas mientras el estadio está encendido. */
+const CONFETTI = 90
+function Confetti({ reduceMotion }: { reduceMotion: boolean }) {
+  const mesh = useRef<THREE.InstancedMesh>(null)
+  const o = useMemo(() => new THREE.Object3D(), [])
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: CONFETTI }, (_, k) => {
+        const i = Math.floor((k * 37) % (N - 1))
+        const [x, z] = at(i, 1 + ((k * 13) % 50) / 10)
+        return { x, z, ph: (k * 0.6180339) % 1, spin: 2 + (k % 5), speed: 0.18 + (k % 4) * 0.04 }
+      }),
+    [],
+  )
+  const level = useRef(0)
+  useLayoutEffect(() => {
+    const c = new THREE.Color()
+    seeds.forEach((_, k) => mesh.current?.setColorAt(k, c.set(['#22a05a', '#f6c619', '#ffffff', '#f6c619'][k % 4])))
+    if (mesh.current?.instanceColor) mesh.current.instanceColor.needsUpdate = true
+  }, [seeds])
+  useFrame(({ clock }, dt) => {
+    const on = useStadiumSound.getState().playing && !reduceMotion
+    level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 3)
+    const t = clock.elapsedTime
+    seeds.forEach((c, k) => {
+      const u = (t * c.speed + c.ph) % 1
+      o.position.set(c.x + Math.sin(t * 1.3 + k) * 0.5, Y + 0.12 + 10 - u * 9.5, c.z + Math.cos(t * 1.1 + k) * 0.5)
+      o.rotation.set(t * c.spin, t * c.spin * 0.7, 0)
+      o.scale.set(0.2, 0.03, 0.14).multiplyScalar(level.current)
+      o.updateMatrix()
+      mesh.current?.setMatrixAt(k, o.matrix)
+    })
+    if (mesh.current) mesh.current.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      <instancedMesh ref={mesh} args={[GEO.box, mat('#ffffff'), CONFETTI]} frustumCulled={false} raycast={() => null} />
     </group>
   )
 }
 
 /** Las personitas del mall juegan un partido en la cancha mientras el estadio está encendido. */
 const HOME: [number, number][] = [
-  [-7.6, 0], [-4.6, -3], [-4.6, 3], [-1.6, -4.2], [-1.6, 0], [-1.6, 4.2], [1.4, -2], [1.4, 2],
-  [7.6, 0], [4.6, -3], [4.6, 3], [1.8, -4.2], [1.4, 0], [1.8, 4.2], [-1.4, -2], [-1.4, 2],
+  [-7.6, 0],
+  [-4.6, -3],
+  [-4.6, 3],
+  [-1.6, -4.2],
+  [-1.6, 0],
+  [-1.6, 4.2],
+  [1.4, -2],
+  [1.4, 2],
+  [7.6, 0],
+  [4.6, -3],
+  [4.6, 3],
+  [1.8, -4.2],
+  [1.4, 0],
+  [1.8, 4.2],
+  [-1.4, -2],
+  [-1.4, 2],
 ]
 function MatchPlayers({ reduceMotion }: { reduceMotion: boolean }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
@@ -1171,10 +1515,11 @@ function Pennants({ phase }: { phase: StadiumPhase }) {
   const pts = useMemo(() => {
     const out: { x: number; z: number; c: string }[] = []
     let k = 0
-    for (let i = 0; i < N - 1; i += 4) if (segBuilt(i, phase)) {
-      const [x, z] = at(i, FACADE_D + 0.7)
-      out.push({ x, z, c: k++ % 2 ? '#f6c619' : '#22a05a' })
-    }
+    for (let i = 0; i < N - 1; i += 4)
+      if (segBuilt(i, phase)) {
+        const [x, z] = at(i, FACADE_D + 0.7)
+        out.push({ x, z, c: k++ % 2 ? '#f6c619' : '#22a05a' })
+      }
     return out
   }, [phase])
   useFrame(({ clock }) => {
@@ -1199,7 +1544,17 @@ function Palm({ x, z, h = 4.2 }: { x: number; z: number; h?: number }) {
       <mesh geometry={GEO.cylinderLow} material={mat('#a07a55')} position={[0, h / 2, 0]} scale={[0.26, h, 0.26]} castShadow />
       {Array.from({ length: 7 }, (_, k) => {
         const a = (k / 7) * Math.PI * 2
-        return <mesh key={k} geometry={GEO.box} material={mat('#4f8a55')} position={[Math.cos(a) * 0.9, h + 0.05, Math.sin(a) * 0.9]} rotation={[0.35 * Math.cos(a), -a, -0.35 * Math.sin(a)]} scale={[1.9, 0.06, 0.5]} castShadow />
+        return (
+          <mesh
+            key={k}
+            geometry={GEO.box}
+            material={mat('#4f8a55')}
+            position={[Math.cos(a) * 0.9, h + 0.05, Math.sin(a) * 0.9]}
+            rotation={[0.35 * Math.cos(a), -a, -0.35 * Math.sin(a)]}
+            scale={[1.9, 0.06, 0.5]}
+            castShadow
+          />
+        )
       })}
     </group>
   )
@@ -1209,7 +1564,14 @@ function Palm({ x, z, h = 4.2 }: { x: number; z: number; h?: number }) {
 function OpenDecor() {
   return (
     <group>
-      {[[-21, 17.5], [21, 17.5], [-21, -17.5], [21, -17.5], [-5, 18], [4, 18]].map(([x, z], i) => (
+      {[
+        [-21, 17.5],
+        [21, 17.5],
+        [-21, -17.5],
+        [21, -17.5],
+        [-5, 18],
+        [4, 18],
+      ].map(([x, z], i) => (
         <Palm key={i} x={x} z={z} h={3.8 + (i % 2) * 0.8} />
       ))}
       {/* banderas junto a la puerta */}
@@ -1231,7 +1593,18 @@ function OpenDecor() {
   )
 }
 
-const CONES: [number, number][] = [[-7.4, 19.5], [-12.6, 19.5], [-9.2, 14.2], [-10.8, 14.2], [18.8, 14.8], [19.8, 12.8], [20.8, 10.8], [15.5, 17.2], [-18.4, 11.8], [-18.4, 9.4]]
+const CONES: [number, number][] = [
+  [-7.4, 19.5],
+  [-12.6, 19.5],
+  [-9.2, 14.2],
+  [-10.8, 14.2],
+  [18.8, 14.8],
+  [19.8, 12.8],
+  [20.8, 10.8],
+  [15.5, 17.2],
+  [-18.4, 11.8],
+  [-18.4, 9.4],
+]
 
 export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
@@ -1242,61 +1615,85 @@ export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
   const sub = phase === 'open' ? (playing ? 'Apagar el estadio' : 'Escuchar el estadio') : phase === 'almost' ? 'Casi listo' : 'Próximamente'
   const label = useMemo(() => getGlassPill('Estadio', { dot: GOLD, sub, dark: night }), [night, sub])
   const cranes = phase === 'construction' ? CRANES : phase === 'almost' ? CRANES.slice(0, 1) : []
+  // el estadio «late» un poquito con el ambiente cuando está encendido: sube y se estira apenas, al ritmo de la hinchada
+  const bounce = useRef<THREE.Group>(null)
+  const bounceLevel = useRef(0)
+  useFrame(({ clock }, dt) => {
+    const g = bounce.current
+    if (!g) return
+    const on = phase === 'open' && useStadiumSound.getState().playing && !reduceMotion
+    bounceLevel.current += ((on ? 1 : 0) - bounceLevel.current) * Math.min(1, dt * 4)
+    const b = smooth01(beatOf(clock.elapsedTime)) * bounceLevel.current
+    g.scale.y = 1 + 0.011 * b
+    g.position.y = 0.025 * b
+  })
   return (
     <group>
-      <Batch version={`estadio-${phase}`}>
+      <Batch version={`estadio-puente-${phase}`}>
         <Bridge phase={phase} />
-        <group position={[C.x, 0, C.z]} scale={S}>
-          <Ground />
-          <CastleWalls />
-          <Hoarding phase={phase} />
-          <group position={[0, Y + 0.12, 0]}>
-            <mesh geometry={bowl.seats} material={VERTEX_MAT} castShadow receiveShadow />
-            <mesh geometry={bowl.shell} material={VERTEX_MAT} castShadow receiveShadow />
-            <mesh geometry={bowl.roof} material={VERTEX_MAT} castShadow />
-            <RoofMasts phase={phase} />
-            <Skeleton phase={phase} />
-            <Pitch phase={phase} />
-          </group>
-          {phase === 'construction' && (
-            <>
-              <Container x={-19.6} z={-14.5} rot={Math.PI / 2} color="#3f78a0" />
-              <Container x={-19.6} z={-10} rot={Math.PI / 2} color="#c8553b" />
-              <Container x={-19.6} z={-5.5} rot={Math.PI / 2} color="#2f8f4f" />
-              <Pipes x={17.5} z={16.6} rot={0.4} />
-              <Steel x={21.8} z={9.3} rot={Math.PI / 2} />
-              <Steel x={-22} z={3} rot={Math.PI / 2} />
-              <Pile x={13.5} z={-17.7} color="#d6c08f" s={1.1} />
-              <Pile x={16.5} z={-17.2} color="#9d9388" s={0.9} />
-              <Pile x={-14} z={-18} color="#d6c08f" s={0.8} />
-            </>
-          )}
-          {phase !== 'open' && (
-            <>
-              <Office x={-16.5} z={18.4} rot={0} />
-              <Office x={-13} z={18.4} rot={0} />
-              {(phase === 'construction' ? CONES : CONES.slice(0, 4)).map(([x, z], i) => (
-                <Cone key={i} x={x} z={z} />
-              ))}
-              {phase === 'almost' && <Container x={-19.6} z={-14.5} rot={Math.PI / 2} color="#3f78a0" />}
-            </>
-          )}
-          {open && <OpenDecor />}
-          {open && <Scoreboard />}
-        </group>
       </Batch>
-      <group position={[C.x, 0, C.z]} scale={S}>
-        <Lights phase={phase} night={night} />
-        {cranes.map((c, i) => (
-          <TowerCrane key={i} cfg={c} reduceMotion={reduceMotion} />
-        ))}
-        <Trucks reduceMotion={reduceMotion} phase={phase} />
-        <Workers reduceMotion={reduceMotion} phase={phase} />
-        {phase !== 'construction' && <Pennants phase={phase} />}
-        {open && <FanCrowd reduceMotion={reduceMotion} />}
-        {open && <MatchPlayers reduceMotion={reduceMotion} />}
+      <group ref={bounce}>
+        <Batch version={`estadio-${phase}`}>
+          <group position={[C.x, 0, C.z]} scale={S}>
+            <Ground />
+            <CastleWalls />
+            <Hoarding phase={phase} />
+            <group position={[0, Y + 0.12, 0]}>
+              <mesh geometry={bowl.seats} material={VERTEX_MAT} castShadow receiveShadow />
+              <mesh geometry={bowl.shell} material={VERTEX_MAT} castShadow receiveShadow />
+              <mesh geometry={bowl.roof} material={VERTEX_MAT} castShadow />
+              <RoofMasts phase={phase} />
+              <Skeleton phase={phase} />
+              <Pitch phase={phase} />
+            </group>
+            {phase === 'construction' && (
+              <>
+                <Container x={-19.6} z={-14.5} rot={Math.PI / 2} color="#3f78a0" />
+                <Container x={-19.6} z={-10} rot={Math.PI / 2} color="#c8553b" />
+                <Container x={-19.6} z={-5.5} rot={Math.PI / 2} color="#2f8f4f" />
+                <Pipes x={17.5} z={16.6} rot={0.4} />
+                <Steel x={21.8} z={9.3} rot={Math.PI / 2} />
+                <Steel x={-22} z={3} rot={Math.PI / 2} />
+                <Pile x={13.5} z={-17.7} color="#d6c08f" s={1.1} />
+                <Pile x={16.5} z={-17.2} color="#9d9388" s={0.9} />
+                <Pile x={-14} z={-18} color="#d6c08f" s={0.8} />
+              </>
+            )}
+            {phase !== 'open' && (
+              <>
+                <Office x={-16.5} z={18.4} rot={0} />
+                <Office x={-13} z={18.4} rot={0} />
+                {(phase === 'construction' ? CONES : CONES.slice(0, 4)).map(([x, z], i) => (
+                  <Cone key={i} x={x} z={z} />
+                ))}
+                {phase === 'almost' && <Container x={-19.6} z={-14.5} rot={Math.PI / 2} color="#3f78a0" />}
+              </>
+            )}
+            {open && <OpenDecor />}
+            {open && <Scoreboard />}
+          </group>
+        </Batch>
+        <group position={[C.x, 0, C.z]} scale={S}>
+          <Lights phase={phase} night={night} />
+          {cranes.map((c, i) => (
+            <TowerCrane key={i} cfg={c} reduceMotion={reduceMotion} />
+          ))}
+          <Trucks reduceMotion={reduceMotion} phase={phase} />
+          <Workers reduceMotion={reduceMotion} phase={phase} />
+          {phase !== 'construction' && <Pennants phase={phase} />}
+          {open && <FanCrowd reduceMotion={reduceMotion} />}
+          {open && <Confetti reduceMotion={reduceMotion} />}
+          {open && <MatchPlayers reduceMotion={reduceMotion} />}
+        </group>
       </group>
-      <ScreenLabel label={label} position={[C.x, 9, C.z]} pixelHeight={30} maxZoomRatio={1.6} priority={LABEL_PRIORITY.corridor + 5} onClick={open ? () => void toggleStadiumSound() : undefined} />
+      <ScreenLabel
+        label={label}
+        position={[C.x, 9, C.z]}
+        pixelHeight={30}
+        maxZoomRatio={1.6}
+        priority={LABEL_PRIORITY.corridor + 5}
+        onClick={open ? () => void toggleStadiumSound() : undefined}
+      />
     </group>
   )
 }
