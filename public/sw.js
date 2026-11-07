@@ -27,6 +27,8 @@ self.addEventListener('fetch', (event) => {
   const req = event.request
   if (req.method !== 'GET') return
   const url = new URL(req.url)
+  // Archivos grandes o con rangos (audio, modelo y motor de recorte de fotos): los maneja el navegador.
+  if (/\/(audio|models|ort)\//.test(url.pathname)) return
 
   if (req.mode === 'navigate' && sameSite(url)) {
     event.respondWith(

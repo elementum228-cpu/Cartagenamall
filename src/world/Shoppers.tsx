@@ -5,7 +5,7 @@ import { LANE_SPREAD, P1, WALK_LANES, toWorld } from '../config/mall'
 import { playingOn } from '../promotions/events'
 import { interiorCapacity, planStoreVisit, planVisit, type Point } from '../promotions/paths'
 import { usePromoEvents } from '../promotions/store'
-import { HELMETS_ON, helmetColor } from './helmets'
+import { helmetColor, useHelmetsOn } from './helmets'
 import { GEO, mat } from './materials'
 
 // Visitantes en miniatura que caminan por la plaza y los pasillos (dos InstancedMesh, sin sombras).
@@ -123,6 +123,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const hats = useRef<THREE.InstancedMesh>(null)
+  const helmets = useHelmetsOn()
   const agents = useMemo<Agent[]>(() => {
     const routes: Route[] = []
     for (let i = 0; i < 5; i++) routes.push({ kind: 'circle', r: 3.6 + (i % 2) * 0.6, speed: (i % 2 ? 1 : -1) * 0.22, phase: i * 1.3 })
@@ -160,7 +161,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
     if (hats.current?.instanceColor) hats.current.instanceColor.needsUpdate = true
     if (bodies.current?.instanceColor) bodies.current.instanceColor.needsUpdate = true
     if (heads.current?.instanceColor) heads.current.instanceColor.needsUpdate = true
-  }, [agents])
+  }, [agents, helmets])
 
   const o = useMemo(() => new THREE.Object3D(), [])
   useFrame((_, rawDt) => {
@@ -356,7 +357,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
       o.scale.setScalar(0.36)
       o.updateMatrix()
       heads.current?.setMatrixAt(i, o.matrix)
-      if (HELMETS_ON) {
+      if (helmets) {
         o.position.y += 0.02
         o.scale.setScalar(0.4)
         o.updateMatrix()
@@ -374,7 +375,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
       {/* sin raycast: los visitantes nunca tapan el toque a un local */}
       <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), agents.length]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), agents.length]} frustumCulled={false} raycast={() => null} />
-      {HELMETS_ON && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), agents.length]} frustumCulled={false} raycast={() => null} />}
+      {helmets && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), agents.length]} frustumCulled={false} raycast={() => null} />}
     </group>
   )
 }

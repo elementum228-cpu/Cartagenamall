@@ -1,7 +1,8 @@
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { STADIUM } from '../config/stadium'
+import { STADIUM, phaseInfo, type StadiumPhase } from '../config/stadium'
+import { toggleStadiumSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -82,12 +83,15 @@ const N = BASE.length
 const at = (i: number, d: number): [number, number] => [BASE[i].x + BASE[i].nx * d, BASE[i].z + BASE[i].nz * d]
 
 /** ¿Está terminada esa parte del estadio? El tercio este y la esquina sureste siguen en obra. */
-const built = (i: number) => {
+const built = (i: number, phase: StadiumPhase) => {
+  if (phase === 'open') return true
   const { x, z } = BASE[i]
+  // casi terminado: solo queda en obra un pedazo de la esquina sureste
+  if (phase === 'almost') return !(x > 12 && z > 3)
   return !(x > 4.5 || (z > 5 && x > -4))
 }
 /** Un tramo (de i a i+1) está terminado si sus dos extremos lo están. */
-const segBuilt = (i: number) => built(i) && built(i + 1)
+const segBuilt = (i: number, phase: StadiumPhase) => built(i, phase) && built(i + 1, phase)
 
 class Quads {
   pos: number[] = []
@@ -116,13 +120,13 @@ const GREEN_DARK = '#1b7f48'
 const GOLD = '#f6c619'
 
 /** Gradas, barrera de la cancha, fachada y cubierta: tres mallas con color por vértice. */
-function useBowl() {
+function useBowl(phase: StadiumPhase) {
   return useMemo(() => {
     const seats = new Quads()
     const shell = new Quads()
     const roof = new Quads()
     for (let i = 0; i < N - 1; i++) {
-      const ok = segBuilt(i)
+      const ok = segBuilt(i, phase)
       for (let s = 0; s < STEPS; s++) {
         const d0 = s * RUN
         const d1 = (s + 1) * RUN
@@ -174,16 +178,16 @@ function useBowl() {
       }
     }
     return { seats: seats.geometry(), shell: shell.geometry(), roof: roof.geometry() }
-  }, [])
+  }, [phase])
 }
 
 /** Columnas, vigas y cerchas de acero de las gradas que aún están en obra (más andamios por fuera). */
-function Skeleton() {
+function Skeleton({ phase }: { phase: StadiumPhase }) {
   const items = useMemo(() => {
     const cols: { x: number; z: number; h: number; c: string; w: number }[] = []
     const beams: { a: [number, number, number]; b: [number, number, number]; c: string; w: number }[] = []
     for (let i = 0; i < N; i += 2) {
-      if (segBuilt(Math.min(i, N - 2))) continue
+      if (segBuilt(Math.min(i, N - 2), phase)) continue
       const rows: [number, number][] = [
         [FACADE_D + 0.3, 7.6],
         [FACADE_D - 2.7, 6.2],
@@ -194,7 +198,7 @@ function Skeleton() {
         cols.push({ x, z, h, c: CONCRETE, w: 0.34 })
       })
       // vigas entre columnas vecinas
-      if (i + 2 < N && !segBuilt(Math.min(i + 1, N - 2))) {
+      if (i + 2 < N && !segBuilt(Math.min(i + 1, N - 2), phase)) {
         rows.forEach(([d, h], r) => {
           const [x0, z0] = at(i, d)
           const [x1, z1] = at(i + 2, d)
@@ -212,7 +216,7 @@ function Skeleton() {
       }
     }
     return { cols, beams }
-  }, [])
+  }, [phase])
   return (
     <group>
       {items.cols.map((c, k) => (
@@ -224,7 +228,7 @@ function Skeleton() {
       {/* andamios por fuera de las gradas sin terminar */}
       {Array.from({ length: Math.floor((N - 2) / 2) }, (_, k) => {
         const i = k * 2
-        if (segBuilt(i) || segBuilt(i + 1)) return null
+        if (segBuilt(i, phase) || segBuilt(i + 1, phase)) return null
         return <ScaffoldBay key={k} i={i} />
       })}
     </group>
@@ -268,12 +272,12 @@ function ScaffoldBay({ i }: { i: number }) {
 }
 
 /** Mástiles de acero de la cubierta terminada. */
-function RoofMasts() {
+function RoofMasts({ phase }: { phase: StadiumPhase }) {
   const masts = useMemo(() => {
     const out: { x: number; z: number }[] = []
-    for (let i = 0; i < N - 1; i += 4) if (segBuilt(i)) out.push({ x: at(i, FACADE_D + 0.7)[0], z: at(i, FACADE_D + 0.7)[1] })
+    for (let i = 0; i < N - 1; i += 4) if (segBuilt(i, phase)) out.push({ x: at(i, FACADE_D + 0.7)[0], z: at(i, FACADE_D + 0.7)[1] })
     return out
-  }, [])
+  }, [phase])
   return (
     <group>
       {masts.map((m, k) => (
@@ -284,12 +288,14 @@ function RoofMasts() {
 }
 
 // ── cancha ───────────────────────────────────────────────────────────────────────────────────────────
-function Pitch() {
+function Pitch({ phase }: { phase: StadiumPhase }) {
   const stripes = 14
   const sw = (PX * 2) / stripes
   const white = mat('#f6f6f0')
   const line = (x: number, z: number, w: number, d: number) => <mesh geometry={GEO.box} material={white} position={[x, 0.052, z]} scale={[w, 0.012, d]} />
-  const dirtFrom = 11
+  const done = phase !== 'construction'
+  const dirtFrom = done ? stripes : 11
+  const lineLen = PX * 2 * (dirtFrom / stripes)
   return (
     <group position={[0, 0, 0]}>
       <mesh geometry={GEO.box} material={mat('#3f8a37')} position={[0, 0.015, 0]} scale={[PX * 2 + 1.6, 0.03, PZ * 2 + 1.6]} receiveShadow />
@@ -299,30 +305,51 @@ function Pitch() {
       })}
       {/* líneas del lado terminado */}
       {line(-PX + 0.05, 0, 0.1, PZ * 2)}
-      {line(0, -PZ + 0.05, PX * 2 * (dirtFrom / stripes), 0.1)}
-      {line(0, PZ - 0.05, PX * 2 * (dirtFrom / stripes), 0.1)}
+      {line(-PX + lineLen / 2, -PZ + 0.05, lineLen, 0.1)}
+      {line(-PX + lineLen / 2, PZ - 0.05, lineLen, 0.1)}
       {line(0, 0, 0.1, PZ * 2)}
       <mesh geometry={GEO.ring} material={white} position={[0, 0.056, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.55, 1.55, 1]} />
       {line(-PX + 1.9, 0, 0.1, 3.8)}
       {line(-PX + 0.95, -1.9, 1.9, 0.1)}
       {line(-PX + 0.95, 1.9, 1.9, 0.1)}
-      {/* arco del lado terminado */}
-      {[-1, 1].map((s) => (
-        <group key={s} position={[-PX + 0.02, 0, s * 0.85]}>
-          <mesh geometry={GEO.box} material={white} position={[0, 0.5, 0]} scale={[0.09, 1, 0.09]} />
-        </group>
+      {/* arco oeste */}
+      <Goal x={-PX + 0.02} />
+      {done ? (
+        <>
+          {line(PX - 0.05, 0, 0.1, PZ * 2)}
+          {line(PX - 1.9, 0, 0.1, 3.8)}
+          {line(PX - 0.95, -1.9, 1.9, 0.1)}
+          {line(PX - 0.95, 1.9, 1.9, 0.1)}
+          <Goal x={PX - 0.02} />
+        </>
+      ) : (
+        <>
+          {/* lado en obra: huellas de maquinaria y montones de tierra */}
+          {[-2.6, 0.2, 2.9].map((z, k) => (
+            <mesh key={k} geometry={GEO.box} material={mat('#8a6a45')} position={[PX - 3.2 + k * 0.7, 0.06, z]} scale={[3.4, 0.014, 0.35]} />
+          ))}
+          {[[PX - 1.4, -3.6, 1.7], [PX - 4.2, 3.9, 1.3]].map(([x, z, k], i) => (
+            <mesh key={i} geometry={GEO.cone} material={mat('#a67b4c')} position={[x, 0.55, z]} scale={[k * 1.5, 1.1, k * 1.5]} castShadow />
+          ))}
+          {/* los arcos aún no están: palos de portería apilados */}
+          <mesh geometry={GEO.box} material={white} position={[PX - 1.0, 0.18, 4.7]} scale={[0.1, 0.1, 2.6]} />
+          <mesh geometry={GEO.box} material={white} position={[PX - 1.3, 0.18, 4.7]} scale={[0.1, 0.1, 2.6]} />
+        </>
+      )}
+    </group>
+  )
+}
+
+/** Arco de fútbol (dos palos, travesaño y red). */
+function Goal({ x }: { x: number }) {
+  const white = mat('#f6f6f0')
+  return (
+    <group position={[x, 0, 0]}>
+      {[-0.85, 0.85].map((z) => (
+        <mesh key={z} geometry={GEO.box} material={white} position={[0, 0.5, z]} scale={[0.09, 1, 0.09]} />
       ))}
-      <mesh geometry={GEO.box} material={white} position={[-PX + 0.02, 1.0, 0]} scale={[0.09, 0.09, 1.8]} />
-      {/* lado en obra: huellas de maquinaria y montones de tierra */}
-      {[-2.6, 0.2, 2.9].map((z, k) => (
-        <mesh key={k} geometry={GEO.box} material={mat('#8a6a45')} position={[PX - 3.2 + k * 0.7, 0.06, z]} scale={[3.4, 0.014, 0.35]} />
-      ))}
-      {[[PX - 1.4, -3.6, 1.7], [PX - 4.2, 3.9, 1.3]].map(([x, z, s], k) => (
-        <mesh key={k} geometry={GEO.cone} material={mat('#a67b4c')} position={[x, 0.55, z]} scale={[s * 1.5, 1.1, s * 1.5]} castShadow />
-      ))}
-      {/* los arcos aún no están: palos de portería apilados */}
-      <mesh geometry={GEO.box} material={white} position={[PX - 1.0, 0.18, 4.7]} scale={[0.1, 0.1, 2.6]} />
-      <mesh geometry={GEO.box} material={white} position={[PX - 1.3, 0.18, 4.7]} scale={[0.1, 0.1, 2.6]} />
+      <mesh geometry={GEO.box} material={white} position={[0, 1.0, 0]} scale={[0.09, 0.09, 1.8]} />
+      <mesh geometry={GEO.box} material={mat('#ffffff', { opacity: 0.35 })} position={[Math.sign(x) * -0.01 - Math.sign(x) * 0.35, 0.5, 0]} scale={[0.7, 1, 1.7]} />
     </group>
   )
 }
@@ -373,7 +400,7 @@ function Ground() {
 }
 
 // ── muros de castillo alrededor de la isla (como las otras islas de la fortaleza) ──────────────────────────
-const WH = 2.3
+const WH = 3.4
 const WALL_RING = ring(IX - 0.8, IZ - 0.8, IR - 0.8, 8, 7)
 const GATE_X = -10
 
@@ -427,7 +454,7 @@ function CastleWalls() {
 // ── puente (cerrado por obra) ─────────────────────────────────────────────────────────────────────────
 const BRIDGE_X = GATE_X
 /** Del muro norte de la fortaleza a la puerta de la isla, en coordenadas del mundo. */
-function Bridge() {
+function Bridge({ phase }: { phase: StadiumPhase }) {
   const x = C.x + BRIDGE_X * S
   const zWall = -(31 + 1.1)
   const zIsle = C.z + (IZ + 0.4) * S
@@ -445,60 +472,84 @@ function Bridge() {
         </group>
       ))}
       {/* barrera de obra en el extremo de la muralla: aún no se puede pasar */}
+      {phase !== 'open' && (
       <group position={[0, Y + 0.2, len / 2 - 0.4]}>
         {[-0.7, 0.7].map((dx) => (
           <mesh key={dx} geometry={GEO.box} material={mat(dx < 0 ? '#f5b800' : '#2f3438')} position={[dx, 0.5, 0]} scale={[1.3, 0.5, 0.1]} />
         ))}
       </group>
+      )}
     </group>
   )
 }
 
 // ── cartel de «Próximamente» ──────────────────────────────────────────────────────────────────────────
-let signTex: THREE.CanvasTexture | null = null
-function signTexture() {
-  if (signTex) return signTex
+const signTex: Partial<Record<StadiumPhase, THREE.CanvasTexture>> = {}
+function signTexture(phase: StadiumPhase) {
+  const hit = signTex[phase]
+  if (hit) return hit
+  const info = phaseInfo(phase)
   const c = document.createElement('canvas')
   c.width = 1024
   c.height = 512
   const g = c.getContext('2d')!
   g.fillStyle = '#12302a'
   g.fillRect(0, 0, 1024, 512)
-  // franjas de precaución arriba y abajo
-  for (const y of [0, 452]) {
-    for (let x = -60; x < 1100; x += 70) {
-      g.fillStyle = '#f5b800'
-      g.beginPath()
-      g.moveTo(x, y + 60)
-      g.lineTo(x + 35, y + 60)
-      g.lineTo(x + 95, y)
-      g.lineTo(x + 60, y)
-      g.fill()
-    }
-  }
   g.textAlign = 'center'
-  g.fillStyle = '#f6c619'
-  g.font = '800 56px "Plus Jakarta Sans", Manrope, sans-serif'
-  g.fillText('ESTADIO DE CARTAGENA', 512, 150)
-  g.fillStyle = '#ffffff'
-  g.font = '900 118px "Plus Jakarta Sans", Manrope, sans-serif'
-  g.fillText('PRÓXIMAMENTE', 512, 280)
-  // barra de avance
-  g.fillStyle = 'rgba(255,255,255,0.18)'
-  g.fillRect(172, 340, 680, 36)
-  g.fillStyle = '#22a05a'
-  g.fillRect(172, 340, (680 * STADIUM.progress) / 100, 36)
-  g.fillStyle = '#ffffff'
-  g.font = '700 34px Manrope, sans-serif'
-  g.fillText(`Avance de obra ${STADIUM.progress}%`, 512, 420)
-  signTex = new THREE.CanvasTexture(c)
-  signTex.colorSpace = THREE.SRGBColorSpace
-  signTex.anisotropy = 4
-  return signTex
+  if (phase === 'open') {
+    // inaugurado: bandas verde y amarillo
+    g.fillStyle = '#22a05a'
+    g.fillRect(0, 0, 1024, 40)
+    g.fillStyle = '#f6c619'
+    g.fillRect(0, 40, 1024, 22)
+    g.fillRect(0, 450, 1024, 22)
+    g.fillStyle = '#22a05a'
+    g.fillRect(0, 472, 1024, 40)
+    g.fillStyle = '#f6c619'
+    g.font = '800 54px "Plus Jakarta Sans", Manrope, sans-serif'
+    g.fillText('ESTADIO DE CARTAGENA', 512, 160)
+    g.fillStyle = '#ffffff'
+    g.font = '900 112px "Plus Jakarta Sans", Manrope, sans-serif'
+    g.fillText('¡BIENVENIDOS!', 512, 290)
+    g.fillStyle = 'rgba(255,255,255,0.85)'
+    g.font = '700 36px Manrope, sans-serif'
+    g.fillText('Fútbol · Conciertos · Eventos', 512, 372)
+  } else {
+    // franjas de precaución arriba y abajo
+    for (const y of [0, 452]) {
+      for (let x = -60; x < 1100; x += 70) {
+        g.fillStyle = '#f5b800'
+        g.beginPath()
+        g.moveTo(x, y + 60)
+        g.lineTo(x + 35, y + 60)
+        g.lineTo(x + 95, y)
+        g.lineTo(x + 60, y)
+        g.fill()
+      }
+    }
+    g.fillStyle = '#f6c619'
+    g.font = '800 56px "Plus Jakarta Sans", Manrope, sans-serif'
+    g.fillText('ESTADIO DE CARTAGENA', 512, 150)
+    g.fillStyle = '#ffffff'
+    g.font = `900 ${phase === 'almost' ? 92 : 118}px "Plus Jakarta Sans", Manrope, sans-serif`
+    g.fillText(phase === 'almost' ? 'CASI LISTO' : 'PRÓXIMAMENTE', 512, 280)
+    g.fillStyle = 'rgba(255,255,255,0.18)'
+    g.fillRect(172, 340, 680, 36)
+    g.fillStyle = '#22a05a'
+    g.fillRect(172, 340, (680 * info.progress) / 100, 36)
+    g.fillStyle = '#ffffff'
+    g.font = '700 34px Manrope, sans-serif'
+    g.fillText(`Avance de obra ${info.progress}%`, 512, 420)
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 4
+  signTex[phase] = tex
+  return tex
 }
 
-function Hoarding() {
-  const tex = useMemo(() => signTexture(), [])
+function Hoarding({ phase }: { phase: StadiumPhase }) {
+  const tex = useMemo(() => signTexture(phase), [phase])
   const signMat = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
   return (
     <group position={[BRIDGE_X, Y, IZ - 3.4]}>
@@ -695,7 +746,7 @@ function MixerTruck({ spin }: { spin: React.RefObject<THREE.Mesh | null> }) {
   )
 }
 
-function Trucks({ reduceMotion }: { reduceMotion: boolean }) {
+function Trucks({ reduceMotion, phase }: { reduceMotion: boolean; phase: StadiumPhase }) {
   const dump = useRef<THREE.Group>(null)
   const mixer = useRef<THREE.Group>(null)
   const drum = useRef<THREE.Mesh>(null)
@@ -709,6 +760,8 @@ function Trucks({ reduceMotion }: { reduceMotion: boolean }) {
     }
     move(dump.current, t * 0.012)
     move(mixer.current, 0.5 - t * 0.009)
+    if (dump.current) dump.current.visible = phase !== 'open'
+    if (mixer.current) mixer.current.visible = phase === 'construction'
     if (drum.current) drum.current.rotation.y = t * 1.6
   })
   return (
@@ -746,7 +799,12 @@ const WELDERS: [number, number, number][] = [
   [-13.5, 13.6, 0.5],
 ]
 
-function Workers({ reduceMotion }: { reduceMotion: boolean }) {
+const CIVIL = ['#22a05a', '#f6c619', '#f4f4f0', '#2f3e4e', '#c8553b', '#3f78a0']
+
+function Workers({ reduceMotion, phase }: { reduceMotion: boolean; phase: StadiumPhase }) {
+  const civil = phase === 'open'
+  const nRoutes = phase === 'almost' ? 5 : WORK_ROUTES.length
+  const nWelders = phase === 'construction' ? WELDERS.length : phase === 'almost' ? 1 : 0
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const hats = useRef<THREE.InstancedMesh>(null)
@@ -758,27 +816,28 @@ function Workers({ reduceMotion }: { reduceMotion: boolean }) {
   useLayoutEffect(() => {
     const c = new THREE.Color()
     for (let i = 0; i < total; i++) {
-      bodies.current?.setColorAt(i, c.set(VESTS[i % VESTS.length]))
+      bodies.current?.setColorAt(i, c.set(civil ? CIVIL[i % CIVIL.length] : VESTS[i % VESTS.length]))
       heads.current?.setColorAt(i, c.set(SKIN[i % SKIN.length]))
       hats.current?.setColorAt(i, c.set(HELMETS[i % HELMETS.length]))
     }
     for (const m of [bodies.current, heads.current, hats.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
-  }, [total])
+  }, [total, civil])
 
   useFrame(({ clock }) => {
     const t = reduceMotion ? 0 : clock.elapsedTime
-    const place = (i: number, x: number, z: number, heading: number, bob: number) => {
+    const place = (i: number, x: number, z: number, heading: number, bob: number, vis = true) => {
+      const k = vis ? 1 : 0
       o.position.set(x, Y + 0.43 + bob, z)
       o.rotation.set(0, heading, 0)
-      o.scale.setScalar(1)
+      o.scale.setScalar(k)
       o.updateMatrix()
       bodies.current?.setMatrixAt(i, o.matrix)
       o.position.y += 0.52
-      o.scale.setScalar(0.36)
+      o.scale.setScalar(0.36 * k)
       o.updateMatrix()
       heads.current?.setMatrixAt(i, o.matrix)
       o.position.y += 0.02
-      o.scale.setScalar(0.4)
+      o.scale.setScalar(0.4 * k)
       o.updateMatrix()
       hats.current?.setMatrixAt(i, o.matrix)
     }
@@ -805,13 +864,13 @@ function Workers({ reduceMotion }: { reduceMotion: boolean }) {
         }
         acc += seg
       }
-      place(i, x, z, hd, Math.abs(Math.sin(t * 6 + i)) * 0.05)
+      place(i, x, z, hd, Math.abs(Math.sin(t * 6 + i)) * 0.05, i < nRoutes)
     })
     WELDERS.forEach(([x, z, hd], k) => {
-      place(WORK_ROUTES.length + k, x, z, hd + Math.sin(t * 0.4 + k) * 0.3, 0)
+      place(WORK_ROUTES.length + k, x, z, hd + Math.sin(t * 0.4 + k) * 0.3, 0, k < nWelders)
       const sp = sparks.current[k]
       if (sp) {
-        const on = Math.sin(t * 17 + k * 3) > 0.1 && Math.sin(t * 2.3 + k) > -0.3
+        const on = k < nWelders && Math.sin(t * 17 + k * 3) > 0.1 && Math.sin(t * 2.3 + k) > -0.3
         sp.visible = on
         sp.scale.setScalar(on ? 0.16 + Math.abs(Math.sin(t * 40 + k)) * 0.12 : 0.01)
       }
@@ -823,7 +882,7 @@ function Workers({ reduceMotion }: { reduceMotion: boolean }) {
     <group userData={{ dynamic: true }}>
       <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), total]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), total]} frustumCulled={false} raycast={() => null} />
-      <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), total]} frustumCulled={false} raycast={() => null} />
+      {!civil && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), total]} frustumCulled={false} raycast={() => null} />}
       {WELDERS.map(([x, z], k) => (
         <mesh key={k} ref={(m) => void (sparks.current[k] = m)} geometry={GEO.sphere} material={glowMat('#fff3b0', 3, { dayGlow: 1 })} position={[x + 0.35, Y + 0.7, z + 0.2]} />
       ))}
@@ -892,14 +951,282 @@ function Steel({ x, z, rot }: { x: number; z: number; rot: number }) {
   )
 }
 
-function Floodlight({ x, z, night }: { x: number; z: number; night: boolean }) {
-  const lamp = useMemo(() => glowMat('#fffbe8', night ? 4 : 1, { dayGlow: night ? 1.6 : 0.2 }), [night])
+const TOWERS: [number, number][] = [[-22.5, -17.5], [22.5, -17.5], [22.5, 17.5], [-22.5, 17.5]]
+const LAMP_OFF = new THREE.Color('#4b535b')
+const LAMP_ON = new THREE.Color('#fffbe0')
+
+/** ¿Están encendidas las luces? Casi terminado: sí. Inaugurado: mientras el estadio está «encendido» (suena). */
+function useLit(phase: StadiumPhase) {
+  const on = useStadiumSound((s) => s.playing)
+  return phase === 'almost' || (phase === 'open' && on)
+}
+
+/** Torres de iluminación y borde de luz de la cubierta. Se prenden y apagan con suavidad. */
+function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
+  const lit = useLit(phase)
+  const lamp = useMemo(() => new THREE.MeshBasicMaterial({ color: LAMP_OFF, toneMapped: false }), [])
+  const pools = useRef<THREE.Group>(null)
+  const level = useRef(0)
+  const roofPts = useMemo(() => {
+    const out: [number, number][] = []
+    if (phase === 'construction') return out
+    for (let i = 0; i < N - 1; i += 2) if (segBuilt(i, phase)) out.push(at(i, 3.0))
+    return out
+  }, [phase])
+  useFrame((_, dt) => {
+    level.current += ((lit ? 1 : 0) - level.current) * Math.min(1, dt * 3)
+    lamp.color.copy(LAMP_OFF).lerp(LAMP_ON, level.current)
+    if (pools.current) pools.current.visible = level.current > 0.5
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      {TOWERS.map(([x, z], i) => (
+        <group key={i} position={[x, Y, z]}>
+          <mesh geometry={GEO.cylinderLow} material={mat('#8f979f')} position={[0, 5.5, 0]} scale={[0.26, 11, 0.26]} castShadow />
+          <mesh geometry={GEO.box} material={mat('#41484f')} position={[0, 11.1, 0]} scale={[2.6, 1.7, 0.3]} castShadow />
+          {[0, 1, 2].flatMap((r) => [0, 1, 2, 3].map((k) => <mesh key={`${r}${k}`} geometry={GEO.sphere} material={lamp} position={[-0.9 + k * 0.6, 10.7 + r * 0.42, 0.22]} scale={0.34} />))}
+        </group>
+      ))}
+      {/* luz en el piso bajo cada torre y sobre las gradas: solo con las luces encendidas */}
+      <group ref={pools}>
+        {TOWERS.map(([x, z], i) => (
+          <mesh key={i} geometry={GEO.plane} material={lightPoolMat('#fff3c8', night ? 0.8 : 0.35, 0.18)} rotation={[-Math.PI / 2, 0, 0]} position={[x, Y + 0.06, z]} scale={[8, 8, 1]} />
+        ))}
+        <mesh geometry={GEO.plane} material={lightPoolMat('#e8ffd0', night ? 0.9 : 0.4, 0.12)} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.3, 0]} scale={[26, 18, 1]} />
+      </group>
+      {/* tira de luz bajo el borde interior de la cubierta */}
+      {roofPts.map(([x, z], i) => (
+        <mesh key={i} geometry={GEO.sphere} material={lamp} position={[x, Y + 0.12 + ROOF_IN_H - 0.25, z]} scale={[0.34, 0.2, 0.34]} />
+      ))}
+    </group>
+  )
+}
+
+// ── hinchada y partido (estadio inaugurado) ─────────────────────────────────────────────────────────
+const FAN_SHIRTS = ['#22a05a', '#f6c619', '#f4f4f0', '#22a05a', '#f6c619', '#1d2a33', '#c8553b']
+const FAN_SKIN = ['#8d5a3b', '#c58c64', '#e5b48f', '#a56b45']
+
+/** Hinchas en las gradas: dan saltitos en ola cuando el estadio está encendido. */
+function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
+  const bodies = useRef<THREE.InstancedMesh>(null)
+  const heads = useRef<THREE.InstancedMesh>(null)
+  const spots = useMemo(() => {
+    const out: { x: number; z: number; y: number; face: number; ph: number; i: number }[] = []
+    for (let i = 0; i < N - 1; i++) {
+      if (i % 8 === 0) continue
+      for (let st = 0; st < STEPS; st++) {
+        if ((i * 7 + st * 13 + (i >> 2)) % 9 > 4) continue
+        const d = (st + 0.55) * RUN
+        const [ax, az] = at(i, d)
+        const [bx, bz] = at(i + 1, d)
+        const nx = BASE[i].nx
+        const nz = BASE[i].nz
+        out.push({ x: (ax + bx) / 2, z: (az + bz) / 2, y: (st + 1) * RISE, face: Math.atan2(-nx, -nz), ph: i * 0.33 + st * 0.07, i: out.length })
+      }
+    }
+    return out
+  }, [])
+  const o = useMemo(() => new THREE.Object3D(), [])
+  useLayoutEffect(() => {
+    const c = new THREE.Color()
+    spots.forEach((f, k) => {
+      bodies.current?.setColorAt(k, c.set(FAN_SHIRTS[(f.i * 5) % FAN_SHIRTS.length]))
+      heads.current?.setColorAt(k, c.set(FAN_SKIN[f.i % FAN_SKIN.length]))
+    })
+    for (const m of [bodies.current, heads.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
+  }, [spots])
+  const F = 0.62
+  useFrame(({ clock }) => {
+    const on = useStadiumSound.getState().playing && !reduceMotion
+    const t = clock.elapsedTime
+    spots.forEach((f, k) => {
+      // ola: el salto recorre la gradería; cada hincha tiene su propio ritmo
+      const hop = on ? Math.max(0, Math.sin(t * 6.2 - f.ph * 3)) * 0.34 + Math.max(0, Math.sin(t * 9 + f.i)) * 0.06 : 0
+      o.position.set(f.x, Y + 0.12 + f.y + 0.43 * F + hop, f.z)
+      o.rotation.set(0, f.face, 0)
+      o.scale.setScalar(F)
+      o.updateMatrix()
+      bodies.current?.setMatrixAt(k, o.matrix)
+      o.position.y += 0.52 * F
+      o.scale.setScalar(0.36 * F)
+      o.updateMatrix()
+      heads.current?.setMatrixAt(k, o.matrix)
+    })
+    if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true
+    if (heads.current) heads.current.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), spots.length]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), spots.length]} frustumCulled={false} raycast={() => null} />
+    </group>
+  )
+}
+
+/** Las personitas del mall juegan un partido en la cancha mientras el estadio está encendido. */
+const HOME: [number, number][] = [
+  [-7.6, 0], [-4.6, -3], [-4.6, 3], [-1.6, -4.2], [-1.6, 0], [-1.6, 4.2], [1.4, -2], [1.4, 2],
+  [7.6, 0], [4.6, -3], [4.6, 3], [1.8, -4.2], [1.4, 0], [1.8, 4.2], [-1.4, -2], [-1.4, 2],
+]
+function MatchPlayers({ reduceMotion }: { reduceMotion: boolean }) {
+  const bodies = useRef<THREE.InstancedMesh>(null)
+  const heads = useRef<THREE.InstancedMesh>(null)
+  const ball = useRef<THREE.Mesh>(null)
+  const o = useMemo(() => new THREE.Object3D(), [])
+  useLayoutEffect(() => {
+    const c = new THREE.Color()
+    HOME.forEach((_, k) => {
+      bodies.current?.setColorAt(k, c.set(k < 8 ? '#f6c619' : '#2f6fd0'))
+      heads.current?.setColorAt(k, c.set(FAN_SKIN[k % FAN_SKIN.length]))
+    })
+    for (const m of [bodies.current, heads.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
+  }, [])
+  const pos = (k: number, t: number) => {
+    const [hx, hz] = HOME[k]
+    const ax = k === 0 || k === 8 ? 0.6 : 2.6
+    const az = k === 0 || k === 8 ? 1.2 : 2.0
+    const x = hx + Math.sin(t * 0.55 + k * 1.7) * ax + Math.sin(t * 0.21 + k) * 1.2
+    const z = hz + Math.cos(t * 0.47 + k * 2.3) * az
+    return [Math.max(-PX + 0.6, Math.min(PX - 0.6, x)), Math.max(-PZ + 0.6, Math.min(PZ - 0.6, z))] as const
+  }
+  useFrame(({ clock }) => {
+    const on = useStadiumSound.getState().playing
+    const t = reduceMotion ? 0 : clock.elapsedTime
+    HOME.forEach((_, k) => {
+      const [x, z] = pos(k, t)
+      const [x2, z2] = pos(k, t + 0.1)
+      const run = Math.hypot(x2 - x, z2 - z)
+      const vis = on ? 1 : 0
+      o.position.set(x, Y + 0.12 + 0.2 + 0.43 * 0.62 + Math.abs(Math.sin(t * 9 + k)) * 0.06 * Math.min(1, run * 8), z)
+      o.rotation.set(0, Math.atan2(x2 - x, z2 - z), 0)
+      o.scale.setScalar(0.62 * vis)
+      o.updateMatrix()
+      bodies.current?.setMatrixAt(k, o.matrix)
+      o.position.y += 0.52 * 0.62
+      o.scale.setScalar(0.36 * 0.62 * vis)
+      o.updateMatrix()
+      heads.current?.setMatrixAt(k, o.matrix)
+    })
+    // el balón pasa de un jugador a otro
+    if (ball.current) {
+      const cur = Math.floor(t / 2.4) % HOME.length
+      const nxt = (cur + 3) % HOME.length
+      const f = (t % 2.4) / 2.4
+      const [ax, az] = pos(cur, t)
+      const [bx, bz] = pos(nxt, t)
+      ball.current.position.set(ax + (bx - ax) * f, Y + 0.12 + 0.2 + 0.1 + Math.sin(f * Math.PI) * 0.5, az + (bz - az) * f)
+      ball.current.visible = on
+    }
+    if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true
+    if (heads.current) heads.current.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), HOME.length]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), HOME.length]} frustumCulled={false} raycast={() => null} />
+      <mesh ref={ball} geometry={GEO.sphereSmooth} material={mat('#ffffff')} scale={0.26} />
+    </group>
+  )
+}
+
+/** Marcador bajo la cubierta del lado norte. */
+let scoreTex: THREE.CanvasTexture | null = null
+function Scoreboard() {
+  const tex = useMemo(() => {
+    if (scoreTex) return scoreTex
+    const c = document.createElement('canvas')
+    c.width = 1024
+    c.height = 320
+    const g = c.getContext('2d')!
+    g.fillStyle = '#0d1a17'
+    g.fillRect(0, 0, 1024, 320)
+    g.fillStyle = '#22a05a'
+    g.fillRect(0, 0, 1024, 14)
+    g.textAlign = 'center'
+    g.fillStyle = '#f6c619'
+    g.font = '800 64px "Plus Jakarta Sans", Manrope, sans-serif'
+    g.fillText('CARTAGENA   2  :  1   VISITANTE', 512, 150)
+    g.fillStyle = '#ffffff'
+    g.font = '700 46px Manrope, sans-serif'
+    g.fillText("78'   ·   ESTADIO DE CARTAGENA", 512, 250)
+    scoreTex = new THREE.CanvasTexture(c)
+    scoreTex.colorSpace = THREE.SRGBColorSpace
+    return scoreTex
+  }, [])
+  const m = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
+  return (
+    <group position={[0, Y + 0.12 + 5.5, -(BOWL_Z + 3.4)]}>
+      <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, -0.08]} scale={[7.4, 2.4, 0.16]} castShadow />
+      <mesh geometry={GEO.plane} material={m} position={[0, 0, 0.02]} scale={[7.1, 2.1, 1]} />
+      {[-3, 3].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={mat('#6c747c')} position={[x, 1.5, -0.08]} scale={[0.06, 1.2, 0.06]} />
+      ))}
+    </group>
+  )
+}
+
+/** Banderines verde y amarillo en la cubierta, ondeando. */
+function Pennants({ phase }: { phase: StadiumPhase }) {
+  const flags = useRef<(THREE.Mesh | null)[]>([])
+  const pts = useMemo(() => {
+    const out: { x: number; z: number; c: string }[] = []
+    let k = 0
+    for (let i = 0; i < N - 1; i += 4) if (segBuilt(i, phase)) {
+      const [x, z] = at(i, FACADE_D + 0.7)
+      out.push({ x, z, c: k++ % 2 ? '#f6c619' : '#22a05a' })
+    }
+    return out
+  }, [phase])
+  useFrame(({ clock }) => {
+    flags.current.forEach((m, k) => {
+      if (m) m.rotation.y = Math.sin(clock.elapsedTime * 2.4 + k) * 0.35
+    })
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      {pts.map((f, k) => (
+        <group key={k} position={[f.x, Y + 0.12 + ROOF_OUT_H + 0.7, f.z]}>
+          <mesh ref={(m) => void (flags.current[k] = m)} geometry={GEO.cone} material={mat(f.c)} position={[0.4, 0, 0]} rotation={[0, 0, -Math.PI / 2]} scale={[0.5, 1.0, 0.04]} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function Palm({ x, z, h = 4.2 }: { x: number; z: number; h?: number }) {
   return (
     <group position={[x, Y, z]}>
-      <mesh geometry={GEO.cylinderLow} material={mat('#8f979f')} position={[0, 5.5, 0]} scale={[0.26, 11, 0.26]} castShadow />
-      <mesh geometry={GEO.box} material={mat('#41484f')} position={[0, 11.1, 0]} scale={[2.6, 1.7, 0.3]} castShadow />
-      {[0, 1, 2].flatMap((r) => [0, 1, 2, 3].map((k) => <mesh key={`${r}${k}`} geometry={GEO.sphere} material={lamp} position={[-0.9 + k * 0.6, 10.7 + r * 0.42, 0.22]} scale={0.34} />))}
-      <mesh geometry={GEO.plane} material={lightPoolMat('#fff3c8', 0.55)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} scale={[7, 7, 1]} />
+      <mesh geometry={GEO.cylinderLow} material={mat('#a07a55')} position={[0, h / 2, 0]} scale={[0.26, h, 0.26]} castShadow />
+      {Array.from({ length: 7 }, (_, k) => {
+        const a = (k / 7) * Math.PI * 2
+        return <mesh key={k} geometry={GEO.box} material={mat('#4f8a55')} position={[Math.cos(a) * 0.9, h + 0.05, Math.sin(a) * 0.9]} rotation={[0.35 * Math.cos(a), -a, -0.35 * Math.sin(a)]} scale={[1.9, 0.06, 0.5]} castShadow />
+      })}
+    </group>
+  )
+}
+
+/** Detalles del estadio inaugurado: palmeras, banderas en la puerta y taquillas. */
+function OpenDecor() {
+  return (
+    <group>
+      {[[-21, 17.5], [21, 17.5], [-21, -17.5], [21, -17.5], [-5, 18], [4, 18]].map(([x, z], i) => (
+        <Palm key={i} x={x} z={z} h={3.8 + (i % 2) * 0.8} />
+      ))}
+      {/* banderas junto a la puerta */}
+      {[-14.5, -5.5].map((x, i) => (
+        <group key={x} position={[x, Y, 17.6]}>
+          <mesh geometry={GEO.cylinderLow} material={mat('#e8e8e4')} position={[0, 3, 0]} scale={[0.1, 6, 0.1]} />
+          <mesh geometry={GEO.box} material={mat(i ? '#f6c619' : '#22a05a')} position={[0.7, 5.4, 0]} scale={[1.4, 0.9, 0.05]} />
+        </group>
+      ))}
+      {/* taquillas */}
+      {[-17.5, -2.5].map((x) => (
+        <group key={x} position={[x, Y, 14]}>
+          <mesh geometry={GEO.box} material={mat('#f4f1e8')} position={[0, 0.9, 0]} scale={[2.2, 1.8, 1.6]} castShadow />
+          <mesh geometry={GEO.box} material={mat('#22a05a')} position={[0, 1.95, 0]} scale={[2.5, 0.22, 1.9]} />
+          <mesh geometry={GEO.box} material={mat('#6f9fb5')} position={[0, 1.1, 0.82]} scale={[1.3, 0.6, 0.04]} />
+        </group>
+      ))}
     </group>
   )
 }
@@ -908,51 +1235,68 @@ const CONES: [number, number][] = [[-7.4, 19.5], [-12.6, 19.5], [-9.2, 14.2], [-
 
 export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
-  const bowl = useBowl()
-  const label = useMemo(() => getGlassPill('Estadio', { dot: GOLD, sub: 'Próximamente', dark: night }), [night])
+  const phase = useStadiumPhase((s) => s.phase)
+  const bowl = useBowl(phase)
+  const open = phase === 'open'
+  const playing = useStadiumSound((s) => s.playing)
+  const sub = phase === 'open' ? (playing ? 'Apagar el estadio' : 'Escuchar el estadio') : phase === 'almost' ? 'Casi listo' : 'Próximamente'
+  const label = useMemo(() => getGlassPill('Estadio', { dot: GOLD, sub, dark: night }), [night, sub])
+  const cranes = phase === 'construction' ? CRANES : phase === 'almost' ? CRANES.slice(0, 1) : []
   return (
     <group>
-      <Batch version="estadio-obra-1">
-        <Bridge />
+      <Batch version={`estadio-${phase}`}>
+        <Bridge phase={phase} />
         <group position={[C.x, 0, C.z]} scale={S}>
           <Ground />
           <CastleWalls />
-          <Hoarding />
+          <Hoarding phase={phase} />
           <group position={[0, Y + 0.12, 0]}>
             <mesh geometry={bowl.seats} material={VERTEX_MAT} castShadow receiveShadow />
             <mesh geometry={bowl.shell} material={VERTEX_MAT} castShadow receiveShadow />
             <mesh geometry={bowl.roof} material={VERTEX_MAT} castShadow />
-            <RoofMasts />
-            <Skeleton />
-            <Pitch />
+            <RoofMasts phase={phase} />
+            <Skeleton phase={phase} />
+            <Pitch phase={phase} />
           </group>
-          <Container x={-19.6} z={-14.5} rot={Math.PI / 2} color="#3f78a0" />
-          <Container x={-19.6} z={-10} rot={Math.PI / 2} color="#c8553b" />
-          <Container x={-19.6} z={-5.5} rot={Math.PI / 2} color="#2f8f4f" />
-          <Office x={-16.5} z={18.4} rot={0} />
-          <Office x={-13} z={18.4} rot={0} />
-          <Pipes x={17.5} z={16.6} rot={0.4} />
-          <Steel x={21.8} z={9.3} rot={Math.PI / 2} />
-          <Steel x={-22} z={3} rot={Math.PI / 2} />
-          <Pile x={13.5} z={-17.7} color="#d6c08f" s={1.1} />
-          <Pile x={16.5} z={-17.2} color="#9d9388" s={0.9} />
-          <Pile x={-14} z={-18} color="#d6c08f" s={0.8} />
-          {CONES.map(([x, z], i) => (
-            <Cone key={i} x={x} z={z} />
-          ))}
-          {[[-22.5, -17.5], [22.5, -17.5], [22.5, 17.5], [-22.5, 17.5]].map(([x, z], i) => (
-            <Floodlight key={i} x={x} z={z} night={night} />
-          ))}
+          {phase === 'construction' && (
+            <>
+              <Container x={-19.6} z={-14.5} rot={Math.PI / 2} color="#3f78a0" />
+              <Container x={-19.6} z={-10} rot={Math.PI / 2} color="#c8553b" />
+              <Container x={-19.6} z={-5.5} rot={Math.PI / 2} color="#2f8f4f" />
+              <Pipes x={17.5} z={16.6} rot={0.4} />
+              <Steel x={21.8} z={9.3} rot={Math.PI / 2} />
+              <Steel x={-22} z={3} rot={Math.PI / 2} />
+              <Pile x={13.5} z={-17.7} color="#d6c08f" s={1.1} />
+              <Pile x={16.5} z={-17.2} color="#9d9388" s={0.9} />
+              <Pile x={-14} z={-18} color="#d6c08f" s={0.8} />
+            </>
+          )}
+          {phase !== 'open' && (
+            <>
+              <Office x={-16.5} z={18.4} rot={0} />
+              <Office x={-13} z={18.4} rot={0} />
+              {(phase === 'construction' ? CONES : CONES.slice(0, 4)).map(([x, z], i) => (
+                <Cone key={i} x={x} z={z} />
+              ))}
+              {phase === 'almost' && <Container x={-19.6} z={-14.5} rot={Math.PI / 2} color="#3f78a0" />}
+            </>
+          )}
+          {open && <OpenDecor />}
+          {open && <Scoreboard />}
         </group>
       </Batch>
       <group position={[C.x, 0, C.z]} scale={S}>
-        {CRANES.map((c, i) => (
+        <Lights phase={phase} night={night} />
+        {cranes.map((c, i) => (
           <TowerCrane key={i} cfg={c} reduceMotion={reduceMotion} />
         ))}
-        <Trucks reduceMotion={reduceMotion} />
-        <Workers reduceMotion={reduceMotion} />
+        <Trucks reduceMotion={reduceMotion} phase={phase} />
+        <Workers reduceMotion={reduceMotion} phase={phase} />
+        {phase !== 'construction' && <Pennants phase={phase} />}
+        {open && <FanCrowd reduceMotion={reduceMotion} />}
+        {open && <MatchPlayers reduceMotion={reduceMotion} />}
       </group>
-      <ScreenLabel label={label} position={[C.x, 9, C.z]} pixelHeight={30} maxZoomRatio={1.6} priority={LABEL_PRIORITY.corridor + 5} />
+      <ScreenLabel label={label} position={[C.x, 9, C.z]} pixelHeight={30} maxZoomRatio={1.6} priority={LABEL_PRIORITY.corridor + 5} onClick={open ? () => void toggleStadiumSound() : undefined} />
     </group>
   )
 }

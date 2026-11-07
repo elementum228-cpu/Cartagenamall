@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { HELMETS_ON, helmetColor } from './helmets'
+import { helmetColor, useHelmetsOn } from './helmets'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { ESCALATOR, ESCALATOR_FRAME, ESCALATOR_STEP_RATE, ESCALATOR_STEPS, FLOOR_BY_ID, escToWorld } from '../config/mall'
@@ -41,6 +41,7 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
   const riderBodies = useRef<THREE.InstancedMesh>(null)
   const riderHeads = useRef<THREE.InstancedMesh>(null)
   const riderHats = useRef<THREE.InstancedMesh>(null)
+  const helmets = useHelmetsOn()
   const reduceMotion = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
   const o = useMemo(() => new THREE.Object3D(), [])
   const [upX, downX] = ESCALATOR.lanesX
@@ -59,7 +60,7 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
       riderHats.current?.setColorAt(i, c.set(helmetColor(i)))
     }
     for (const m of [riderBodies.current, riderHeads.current, riderHats.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
-  }, [])
+  }, [helmets])
 
   useFrame(({ clock }) => {
     const t = reduceMotion ? 0 : clock.elapsedTime
@@ -143,7 +144,7 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
         o.scale.setScalar(0.36)
         o.updateMatrix()
         rh.setMatrixAt(i, o.matrix)
-        if (HELMETS_ON && riderHats.current) {
+        if (helmets && riderHats.current) {
           o.position.y += 0.02
           o.scale.setScalar(0.4)
           o.updateMatrix()
@@ -197,7 +198,7 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
       <instancedMesh ref={marks} args={[GEO.box, mat('#f5b544'), RAIL_MARKS * 4]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={riderBodies} args={[GEO.capsule, mat('#ffffff'), RIDERS]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={riderHeads} args={[GEO.sphereSmooth, mat('#ffffff'), RIDERS]} frustumCulled={false} raycast={() => null} />
-      {HELMETS_ON && <instancedMesh ref={riderHats} args={[GEO.helmet, mat('#ffffff'), RIDERS]} frustumCulled={false} raycast={() => null} />}
+      {helmets && <instancedMesh ref={riderHats} args={[GEO.helmet, mat('#ffffff'), RIDERS]} frustumCulled={false} raycast={() => null} />}
       {/* rellanos: abajo en la plaza y arriba sobre la terraza */}
       {/* placas de peine: tapan el final de la rampa, los escalones entran por debajo */}
       <mesh geometry={GEO.rounded} material={mat(PALETTE.metal)} position={[centerX, FLOOR_TOP + 0.07, ESCALATOR.bottomZ + 0.55]} scale={[4.2, 0.14, 2.1]} receiveShadow />

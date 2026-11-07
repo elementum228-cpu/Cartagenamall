@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { ESCALATOR, ESCALATOR_FRAME, ESCALATOR_STEP_RATE, ESCALATOR_STEPS, FLOOR_BY_ID, escToWorld } from '../config/mall'
 import type { FloorId } from '../domain/types'
 import { useUI } from '../state/ui'
-import { HELMETS_ON, helmetColor } from './helmets'
+import { helmetColor, useHelmetsOn } from './helmets'
 import { GEO, mat } from './materials'
 import { ESCALATOR_ENDS, navGrids, pointsOfInterest, type Poi, type Point } from './nav'
 
@@ -80,6 +80,7 @@ export function Travelers({ count }: { count: number }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const hats = useRef<THREE.InstancedMesh>(null)
+  const helmets = useHelmetsOn()
   const grids = useMemo(() => navGrids(), [])
   const pois = useMemo(() => pointsOfInterest(), [])
   const byFloor = useMemo<Record<string, Poi[]>>(() => ({ P1: pois.filter((p) => p.floorId === 'P1'), P2: pois.filter((p) => p.floorId === 'P2') }), [pois])
@@ -109,7 +110,7 @@ export function Travelers({ count }: { count: number }) {
       hats.current?.setColorAt(i, c.set(helmetColor(i + 2)))
     })
     for (const m of [bodies.current, heads.current, hats.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
-  }, [travelers])
+  }, [travelers, helmets])
 
   /** Elige qué hacer después de una parada: otro lugar del piso o cambiar de piso por la escalera. */
   const decide = (a: Traveler) => {
@@ -243,7 +244,7 @@ export function Travelers({ count }: { count: number }) {
       o.scale.setScalar(visible ? 0.36 : 0)
       o.updateMatrix()
       heads.current?.setMatrixAt(i, o.matrix)
-      if (HELMETS_ON) {
+      if (helmets) {
         o.position.y += 0.02
         o.scale.setScalar(visible ? 0.4 : 0)
         o.updateMatrix()
@@ -261,7 +262,7 @@ export function Travelers({ count }: { count: number }) {
     <group>
       <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />
-      {HELMETS_ON && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />}
+      {helmets && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />}
     </group>
   )
 }

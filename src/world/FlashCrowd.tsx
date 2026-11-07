@@ -6,7 +6,7 @@ import { appClock } from '../lib/clock'
 import type { PromotionEvent } from '../promotions/events'
 import { usePromoEvents } from '../promotions/store'
 import { BOATS, BOAT_OF_STORE, HARBOR, PIRATE_BERTH } from '../tourism/config'
-import { HELMETS_ON, helmetColor } from './helmets'
+import { helmetColor, useHelmetsOn } from './helmets'
 import { GEO, mat } from './materials'
 
 // Visitantes que acuden a una oferta relámpago donde no hay pasillos con carriles: la terraza de
@@ -56,6 +56,7 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const hats = useRef<THREE.InstancedMesh>(null)
+  const helmets = useHelmetsOn()
   const started = useRef(new Set<string>())
   const simT = useRef(0)
   const walkers = useMemo<Walker[]>(() => Array.from({ length: MAX }, (_, i) => ({ phase: 'idle', x: 0, z: 0, heading: 0, path: [], next: 0, timer: 0, eventId: null, look: [0, 0], seed: i })), [])
@@ -71,7 +72,7 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
     if (hats.current?.instanceColor) hats.current.instanceColor.needsUpdate = true
     if (bodies.current?.instanceColor) bodies.current.instanceColor.needsUpdate = true
     if (heads.current?.instanceColor) heads.current.instanceColor.needsUpdate = true
-  }, [walkers])
+  }, [walkers, helmets])
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
@@ -166,7 +167,7 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
       o.scale.setScalar(0.36 * s)
       o.updateMatrix()
       heads.current?.setMatrixAt(i, o.matrix)
-      if (HELMETS_ON) {
+      if (helmets) {
         o.position.y += 0.02
         o.scale.setScalar(0.4 * s)
         o.updateMatrix()
@@ -187,7 +188,7 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
     <group>
       <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), MAX]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), MAX]} frustumCulled={false} raycast={() => null} />
-      {HELMETS_ON && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), MAX]} frustumCulled={false} raycast={() => null} />}
+      {helmets && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), MAX]} frustumCulled={false} raycast={() => null} />}
     </group>
   )
 }
