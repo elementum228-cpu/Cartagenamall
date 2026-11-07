@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { StadiumPhase } from '../config/stadium'
+import type { StadiumEventKind, StadiumPhase } from '../config/stadium'
 import { safeStorage } from './storage'
 
 /**
@@ -9,6 +9,11 @@ import { safeStorage } from './storage'
  */
 export const useStadiumPhase = create<{ phase: StadiumPhase; setPhase: (p: StadiumPhase) => void }>()(
   persist((set) => ({ phase: 'construction', setPhase: (phase) => set({ phase }) }), { name: 'cm:stadium-phase:v1', storage: safeStorage }),
+)
+
+/** Qué evento se juega o se canta en el estadio inaugurado (lo elige el administrador; se sincroniza con todos). */
+export const useStadiumEvent = create<{ kind: StadiumEventKind; setKind: (k: StadiumEventKind) => void }>()(
+  persist((set) => ({ kind: 'match', setKind: (kind) => set({ kind }) }), { name: 'cm:stadium-event:v1', storage: safeStorage }),
 )
 
 /**

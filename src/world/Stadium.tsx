@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { STADIUM, phaseInfo, type StadiumPhase } from '../config/stadium'
 import { BASE, BOWL_Z, N, PX, PZ, at, ring, segBuilt } from './stadiumGeometry'
-import { toggleStadiumSound, toggleWorksSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
+import { toggleStadiumSound, toggleWorksSound, useStadiumEvent, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -241,7 +241,7 @@ function RoofMasts({ phase }: { phase: StadiumPhase }) {
 }
 
 // ── cancha ───────────────────────────────────────────────────────────────────────────────────────────
-function Pitch({ phase }: { phase: StadiumPhase }) {
+function Pitch({ phase, concert = false }: { phase: StadiumPhase; concert?: boolean }) {
   const stripes = 14
   const sw = (PX * 2) / stripes
   const white = mat('#f6f6f0')
@@ -265,25 +265,33 @@ function Pitch({ phase }: { phase: StadiumPhase }) {
           />
         )
       })}
-      {/* líneas del lado terminado */}
-      {line(-PX + 0.05, 0, 0.1, PZ * 2)}
-      {line(-PX + lineLen / 2, -PZ + 0.05, lineLen, 0.1)}
-      {line(-PX + lineLen / 2, PZ - 0.05, lineLen, 0.1)}
-      {line(0, 0, 0.1, PZ * 2)}
-      <mesh geometry={GEO.ring} material={white} position={[0, 0.056, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.55, 1.55, 1]} />
-      {line(-PX + 1.9, 0, 0.1, 3.8)}
-      {line(-PX + 0.95, -1.9, 1.9, 0.1)}
-      {line(-PX + 0.95, 1.9, 1.9, 0.1)}
-      {/* arco oeste */}
-      <Goal x={-PX + 0.02} />
-      {done ? (
+      {/* concierto: piso de pista sobre el césped, sin líneas ni arcos */}
+      {concert && <mesh geometry={GEO.box} material={mat('#2b3140')} position={[0, 0.075, 0]} scale={[PX * 2 + 0.6, 0.03, PZ * 2 + 0.6]} receiveShadow />}
+      {!concert && (
         <>
-          {line(PX - 0.05, 0, 0.1, PZ * 2)}
-          {line(PX - 1.9, 0, 0.1, 3.8)}
-          {line(PX - 0.95, -1.9, 1.9, 0.1)}
-          {line(PX - 0.95, 1.9, 1.9, 0.1)}
-          <Goal x={PX - 0.02} />
+          {/* líneas del lado terminado */}
+          {line(-PX + 0.05, 0, 0.1, PZ * 2)}
+          {line(-PX + lineLen / 2, -PZ + 0.05, lineLen, 0.1)}
+          {line(-PX + lineLen / 2, PZ - 0.05, lineLen, 0.1)}
+          {line(0, 0, 0.1, PZ * 2)}
+          <mesh geometry={GEO.ring} material={white} position={[0, 0.056, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.55, 1.55, 1]} />
+          {line(-PX + 1.9, 0, 0.1, 3.8)}
+          {line(-PX + 0.95, -1.9, 1.9, 0.1)}
+          {line(-PX + 0.95, 1.9, 1.9, 0.1)}
+          {/* arco oeste */}
+          <Goal x={-PX + 0.02} />
         </>
+      )}
+      {done ? (
+        concert ? null : (
+          <>
+            {line(PX - 0.05, 0, 0.1, PZ * 2)}
+            {line(PX - 1.9, 0, 0.1, 3.8)}
+            {line(PX - 0.95, -1.9, 1.9, 0.1)}
+            {line(PX - 0.95, 1.9, 1.9, 0.1)}
+            <Goal x={PX - 0.02} />
+          </>
+        )
       ) : (
         <>
           {/* lado en obra: huellas de maquinaria y montones de tierra */}
@@ -889,9 +897,36 @@ const WORK_ROUTES: { pts: [number, number][]; speed: number; phase: number; fade
     phase: 0.45,
   },
   // equipos que entran a la obra por el puente: salen de la valla del muro, cruzan la puerta y se reparten por la isla
-  { pts: [[-10, 31.6], [-10, 18], [-14, 8]], speed: 0.9, phase: 0, fade: true },
-  { pts: [[-10, 31.6], [-10, 18], [-4, 10]], speed: 0.8, phase: 0.5, fade: true },
-  { pts: [[-10, 31.6], [-10, 18], [6, 12]], speed: 0.85, phase: 0.25, fade: true },
+  {
+    pts: [
+      [-10, 31.6],
+      [-10, 18],
+      [-14, 8],
+    ],
+    speed: 0.9,
+    phase: 0,
+    fade: true,
+  },
+  {
+    pts: [
+      [-10, 31.6],
+      [-10, 18],
+      [-4, 10],
+    ],
+    speed: 0.8,
+    phase: 0.5,
+    fade: true,
+  },
+  {
+    pts: [
+      [-10, 31.6],
+      [-10, 18],
+      [6, 12],
+    ],
+    speed: 0.85,
+    phase: 0.25,
+    fade: true,
+  },
 ]
 const WELDERS: [number, number, number][] = [
   [17.4, -6.2, -1.6],
@@ -1138,15 +1173,17 @@ function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
     return out
   }, [phase])
   const glow = night ? 1 : 0.45
-  useFrame((_, dt) => {
+  useFrame(({ clock }, dt) => {
     level.current += ((lit ? 1 : 0) - level.current) * Math.min(1, dt * 3)
     const l = level.current
     lamp.color.copy(LAMP_OFF).lerp(LAMP_ON, l)
     baseLamp.color.copy(LAMP_BASE_OFF).lerp(LAMP_BASE_ON, l)
     beam.opacity = l * (night ? 0.035 : 0.015)
     // las gradas se ven iluminadas de noche cuando el estadio está encendido
-    VERTEX_MAT.emissive.copy(SEAT_GLOW)
-    VERTEX_MAT.emissiveIntensity = l * (night ? 0.12 : 0.03)
+    // inaugurado: las gradas se bañan de un color que cambia despacio (verde, dorado, magenta…); si no, luz cálida
+    if (phase === 'open') VERTEX_MAT.emissive.setHSL((clock.elapsedTime * 0.04) % 1, 0.55, 0.6).lerp(SEAT_GLOW, 0.35)
+    else VERTEX_MAT.emissive.copy(SEAT_GLOW)
+    VERTEX_MAT.emissiveIntensity = l * (night ? (phase === 'open' ? 0.2 : 0.12) : 0.04)
     if (pools.current) pools.current.visible = l > 0.4
     if (beams.current) beams.current.visible = l > 0.05
   })
@@ -1234,28 +1271,45 @@ const BEAT_HZ = 1.9
 const beatOf = (t: number, off = 0) => Math.abs(Math.sin(Math.PI * BEAT_HZ * t + off))
 const smooth01 = (x: number) => x * x * (3 - 2 * x)
 
-/** Hinchas en las gradas: con el estadio encendido saltan al ritmo, con los brazos arriba y una ola que recorre la gradería. */
-function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
+type Spot = { x: number; z: number; y: number; face: number; ph: number; i: number }
+
+/** Lugares de los hinchas en las gradas, mirando a la cancha. */
+const STAND_SPOTS: Spot[] = (() => {
+  const out: Spot[] = []
+  for (let i = 0; i < N - 1; i++) {
+    if (i % 8 === 0) continue
+    for (let st = 0; st < STEPS; st++) {
+      if ((i * 7 + st * 13 + (i >> 2)) % 9 > 4) continue
+      const d = (st + 0.55) * RUN
+      const [ax, az] = at(i, d)
+      const [bx, bz] = at(i + 1, d)
+      out.push({ x: (ax + bx) / 2, z: (az + bz) / 2, y: (st + 1) * RISE, face: Math.atan2(-BASE[i].nx, -BASE[i].nz), ph: i * 0.33 + st * 0.07, i: out.length })
+    }
+  }
+  return out
+})()
+
+/** Público de pie en la pista (concierto), mirando a la tarima del lado oeste. */
+const PISTA_SPOTS: Spot[] = (() => {
+  const out: Spot[] = []
+  const h = (a: number, b: number) => (((Math.sin(a * 12.9898 + b * 78.233) * 43758.5453) % 1) + 1) % 1
+  for (let x = -PX + 4.8; x <= PX - 1.1; x += 0.85)
+    for (let z = -PZ + 0.8; z <= PZ - 0.8; z += 0.85) {
+      if (h(x, z) > 0.82) continue
+      out.push({ x: x + (h(z, x) - 0.5) * 0.4, z: z + (h(x + 1, z) - 0.5) * 0.4, y: 0.05, face: -Math.PI / 2 + (h(x, z + 2) - 0.5) * 0.3, ph: x * 0.5 + z * 0.15, i: out.length })
+    }
+  return out
+})()
+
+/**
+ * Gente que alienta: con el estadio encendido salta al ritmo, con los brazos arriba y una ola que recorre el
+ * grupo. `hideWhenOff`: el grupo solo está presente mientras el evento está encendido (el público de la pista).
+ */
+function Crowd({ spots, reduceMotion, hideWhenOff = false, F = 0.62 }: { spots: Spot[]; reduceMotion: boolean; hideWhenOff?: boolean; F?: number }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const armsL = useRef<THREE.InstancedMesh>(null)
   const armsR = useRef<THREE.InstancedMesh>(null)
-  const spots = useMemo(() => {
-    const out: { x: number; z: number; y: number; face: number; ph: number; i: number }[] = []
-    for (let i = 0; i < N - 1; i++) {
-      if (i % 8 === 0) continue
-      for (let st = 0; st < STEPS; st++) {
-        if ((i * 7 + st * 13 + (i >> 2)) % 9 > 4) continue
-        const d = (st + 0.55) * RUN
-        const [ax, az] = at(i, d)
-        const [bx, bz] = at(i + 1, d)
-        const nx = BASE[i].nx
-        const nz = BASE[i].nz
-        out.push({ x: (ax + bx) / 2, z: (az + bz) / 2, y: (st + 1) * RISE, face: Math.atan2(-nx, -nz), ph: i * 0.33 + st * 0.07, i: out.length })
-      }
-    }
-    return out
-  }, [])
   const o = useMemo(() => new THREE.Object3D(), [])
   const energy = useRef(0)
   useLayoutEffect(() => {
@@ -1270,7 +1324,6 @@ function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
     })
     for (const m of [bodies.current, heads.current, armsL.current, armsR.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
   }, [spots])
-  const F = 0.62
   const ARM = 0.34 * F
   useFrame(({ clock }, dt) => {
     const on = useStadiumSound.getState().playing && !reduceMotion
@@ -1278,7 +1331,7 @@ function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
     energy.current += ((on ? 1 : 0) - energy.current) * Math.min(1, dt * 4)
     const e = energy.current
     const t = clock.elapsedTime
-    // «ola»: un pulso extra que recorre la gradería cada pocos segundos
+    const vis = hideWhenOff && useStadiumSound.getState().playing === false && e < 0.03 ? 0 : 1
     spots.forEach((f, k) => {
       const wave = Math.max(0, Math.sin(t * 2.0 - f.ph * 2.4))
       const eager = f.i % 4 === 0 ? 1.25 : 1
@@ -1287,11 +1340,11 @@ function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
       o.rotation.order = 'YXZ'
       o.position.set(f.x, base, f.z)
       o.rotation.set(0, f.face, 0)
-      o.scale.setScalar(F)
+      o.scale.setScalar(F * vis)
       o.updateMatrix()
       bodies.current?.setMatrixAt(k, o.matrix)
       o.position.y += 0.52 * F
-      o.scale.setScalar(0.36 * F)
+      o.scale.setScalar(0.36 * F * vis)
       o.updateMatrix()
       heads.current?.setMatrixAt(k, o.matrix)
       // brazos: arriba y abiertos al alentar (con un vaivén), caídos junto al cuerpo en calma
@@ -1303,7 +1356,7 @@ function FanCrowd({ reduceMotion }: { reduceMotion: boolean }) {
         const ly = Math.cos(th) * (ARM / 2)
         o.position.set(f.x + lx * Math.cos(f.face), sy + ly, f.z - lx * Math.sin(f.face))
         o.rotation.set(0, f.face, -side * th)
-        o.scale.set(0.1 * F, ARM, 0.1 * F)
+        o.scale.set(0.1 * F * vis, ARM * vis, 0.1 * F * vis)
         o.updateMatrix()
         ;(side < 0 ? armsL : armsR).current?.setMatrixAt(k, o.matrix)
       }
@@ -1574,13 +1627,352 @@ const CONES: [number, number][] = [
   [-18.4, 9.4],
 ]
 
+// ── concierto: tarima con pantalla, banda, luces y público en la pista ──────────────────────────────────
+const hueColor = (h: number, l = 0.55) => new THREE.Color().setHSL(((h % 1) + 1) % 1, 0.9, l)
+
+/** Pantalla LED de la tarima: un lienzo pequeño que se redibuja unas 10 veces por segundo. */
+function useScreenTexture(reduceMotion: boolean) {
+  const { canvas, tex } = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 224
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    return { canvas: c, tex: t }
+  }, [])
+  const last = useRef(0)
+  const draw = (t: number, on: boolean) => {
+    const g = canvas.getContext('2d')!
+    g.fillStyle = '#0b0f18'
+    g.fillRect(0, 0, 512, 224)
+    if (on) {
+      const grad = g.createLinearGradient(0, 0, 512, 224)
+      grad.addColorStop(0, `hsl(${(t * 40) % 360} 85% 45%)`)
+      grad.addColorStop(1, `hsl(${(t * 40 + 120) % 360} 85% 42%)`)
+      g.fillStyle = grad
+      g.fillRect(0, 0, 512, 224)
+      // ecualizador
+      for (let i = 0; i < 28; i++) {
+        const h = 24 + Math.abs(Math.sin(t * 3 + i * 0.7) * Math.cos(t * 1.7 + i * 0.3)) * 90
+        g.fillStyle = 'rgba(255,255,255,0.78)'
+        g.fillRect(18 + i * 17.5, 224 - h - 10, 11, h)
+      }
+      g.textAlign = 'center'
+      g.fillStyle = '#ffffff'
+      g.font = '900 54px "Plus Jakarta Sans", Manrope, sans-serif'
+      g.fillText('EN VIVO', 256, 84)
+      g.font = '700 26px Manrope, sans-serif'
+      g.fillText('ESTADIO DE CARTAGENA', 256, 120)
+    } else {
+      g.textAlign = 'center'
+      g.fillStyle = 'rgba(255,255,255,0.55)'
+      g.font = '800 34px "Plus Jakarta Sans", Manrope, sans-serif'
+      g.fillText('ESTADIO DE CARTAGENA', 256, 118)
+    }
+    tex.needsUpdate = true
+  }
+  return {
+    tex,
+    tick: (t: number, on: boolean) => {
+      if (reduceMotion && last.current) return
+      if (t - last.current < 0.1) return
+      last.current = t
+      draw(t, on)
+    },
+  }
+}
+
+/** Tarima del concierto en el lado oeste de la cancha, mirando al público: pantalla LED, estructura de luces, parlantes y banda. */
+function Stage({ reduceMotion }: { reduceMotion: boolean }) {
+  const { tex, tick } = useScreenTexture(reduceMotion)
+  const screenMat = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
+  const beams = useRef<(THREE.Mesh | null)[]>([])
+  const lamps = useRef<(THREE.Mesh | null)[]>([])
+  const band = useRef<(THREE.Group | null)[]>([])
+  const level = useRef(0)
+  const beamMats = useMemo(
+    () =>
+      Array.from(
+        { length: 6 },
+        () =>
+          new THREE.MeshBasicMaterial({
+            color: '#ffffff',
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            toneMapped: false,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending,
+          }),
+      ),
+    [],
+  )
+  const lampMats = useMemo(() => Array.from({ length: 6 }, () => new THREE.MeshBasicMaterial({ color: '#555b63', toneMapped: false })), [])
+  const LX = [-3.4, -2.04, -0.68, 0.68, 2.04, 3.4]
+  const from = useMemo(() => LX.map((x) => new THREE.Vector3(x, 5.15, 0.6)), [])
+  const up = useMemo(() => new THREE.Vector3(0, 1, 0), [])
+  useFrame(({ clock }, dt) => {
+    const on = useStadiumSound.getState().playing
+    level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 3)
+    const l = level.current
+    const t = clock.elapsedTime
+    tick(t, on)
+    from.forEach((f, k) => {
+      const sweep = reduceMotion ? 0 : t
+      const target = new THREE.Vector3(Math.sin(sweep * 0.7 + k * 1.3) * 3.6, 0.6, 3.2 + Math.cos(sweep * 0.9 + k) * 1.6)
+      const dir = target.clone().sub(f)
+      const len = dir.length()
+      const m = beams.current[k]
+      if (m) {
+        m.position.copy(f).add(target).multiplyScalar(0.5)
+        m.quaternion.setFromUnitVectors(up, dir.clone().normalize().negate())
+        m.scale.set(2.4, len, 2.4)
+      }
+      const col = hueColor(t * 0.12 + k / 6)
+      beamMats[k].color.copy(col)
+      beamMats[k].opacity = l * 0.07
+      lampMats[k].color.copy(on ? col : new THREE.Color('#555b63'))
+    })
+    // la banda se mueve al ritmo
+    band.current.forEach((g, k) => {
+      if (!g) return
+      const hop = l * smooth01(beatOf(t, k * 0.4)) * (k === 0 ? 0.22 : 0.12)
+      g.position.y = 0.55 + hop
+      g.rotation.z = l * Math.sin(t * 4 + k) * 0.06
+    })
+  })
+  const PEOPLE: [number, number, string][] = [
+    [0, 1.0, '#e63b6f'],
+    [-1.9, 0.4, '#2f6fd0'],
+    [1.9, 0.4, '#f6c619'],
+    [0.4, -0.9, '#22a05a'],
+  ]
+  return (
+    <group position={[-PX + 0.9, 0.05, 0]} rotation={[0, Math.PI / 2, 0]} userData={{ dynamic: true }}>
+      {/* plataforma y frente iluminado */}
+      <mesh geometry={GEO.box} material={mat('#2b3140')} position={[0, 0.3, 0]} scale={[9, 0.6, 3.6]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={lampMats[0]} position={[0, 0.5, 1.82]} scale={[8.8, 0.1, 0.05]} />
+      {/* pantalla central y pantallas laterales */}
+      <mesh geometry={GEO.box} material={mat('#161b26')} position={[0, 3.1, -1.7]} scale={[8.6, 3.9, 0.2]} castShadow />
+      <mesh geometry={GEO.plane} material={screenMat} position={[0, 3.1, -1.58]} scale={[8.2, 3.5, 1]} />
+      {[-1, 1].map((sd) => (
+        <group key={sd} position={[sd * 5.4, 2.4, -1.0]} rotation={[0, -sd * 0.45, 0]}>
+          <mesh geometry={GEO.box} material={mat('#161b26')} scale={[2.3, 3.2, 0.18]} castShadow />
+          <mesh geometry={GEO.plane} material={screenMat} position={[0, 0, 0.1]} scale={[2.1, 3.0, 1]} />
+        </group>
+      ))}
+      {/* estructura de luces */}
+      <mesh geometry={GEO.box} material={mat('#8f979f')} position={[0, 5.25, 0.5]} scale={[8.6, 0.16, 0.16]} castShadow />
+      {[-4.3, 4.3].map((x) => (
+        <mesh key={x} geometry={GEO.cylinderLow} material={mat('#8f979f')} position={[x, 2.9, 0.5]} scale={[0.16, 5.5, 0.16]} castShadow />
+      ))}
+      {LX.map((x, k) => (
+        <mesh key={x} ref={(m) => void (lamps.current[k] = m)} geometry={GEO.sphere} material={lampMats[k]} position={[x, 5.05, 0.6]} scale={0.4} />
+      ))}
+      {/* parlantes */}
+      {[-1, 1].map((sd) =>
+        [0, 1, 2].map((r) => <mesh key={`${sd}${r}`} geometry={GEO.box} material={mat('#1d2128')} position={[sd * 4.7, 0.9 + r * 0.7, 1.2]} scale={[0.9, 0.62, 0.7]} castShadow />),
+      )}
+      {/* banda: cantante al frente, guitarra, bajo y batería */}
+      {PEOPLE.map(([x, z, c], k) => (
+        <group key={k} ref={(g) => void (band.current[k] = g)} position={[x, 0.55, z]}>
+          <mesh geometry={GEO.capsule} material={mat(c)} position={[0, 0.5, 0]} scale={0.9} castShadow />
+          <mesh geometry={GEO.sphereSmooth} material={mat(['#c58c64', '#8d5a3b', '#e5b48f', '#a56b45'][k])} position={[0, 1.02, 0]} scale={0.34} castShadow />
+        </group>
+      ))}
+      <mesh geometry={GEO.cylinder} material={mat('#c8553b')} position={[0.4, 0.95, -1.4]} scale={[1.1, 0.7, 1.1]} castShadow />
+      {/* haces de luz que barren el público: solo con el concierto encendido */}
+      {beamMats.map((bm, k) => (
+        <mesh key={k} ref={(m) => void (beams.current[k] = m)} geometry={GEO.cone} material={bm} />
+      ))}
+    </group>
+  )
+}
+
+// ── gente que llega al estadio por el puente ────────────────────────────────────────────────────────
+const ARRIVALS = 16
+/** Puertas de la fachada hacia donde se dirigen los que llegan. */
+const DOORS: [number, number][] = [17, 19, 21, 23, 28, 34].map((i) => at(i, FACADE_D + 0.7))
+
+/**
+ * Con el evento encendido, grupos de personas cruzan el puente, pasan la puerta de la isla y se reparten hacia las
+ * entradas del estadio, donde desaparecen al entrar. Se repite sin parar mientras dure el evento.
+ */
+function Arrivals({ reduceMotion }: { reduceMotion: boolean }) {
+  const bodies = useRef<THREE.InstancedMesh>(null)
+  const heads = useRef<THREE.InstancedMesh>(null)
+  const o = useMemo(() => new THREE.Object3D(), [])
+  const level = useRef(0)
+  const walkers = useMemo(
+    () =>
+      Array.from({ length: ARRIVALS }, (_, k) => {
+        const door = DOORS[k % DOORS.length]
+        const lane = ((k * 37) % 7) / 7 - 0.5
+        const pts: [number, number][] = [[GATE_X + lane * 2.2, 31.6], [GATE_X + lane * 2.4, 20.2], [GATE_X + lane * 5, 15.6], [door[0] * 0.55 + GATE_X * 0.45, 16.0], door]
+        const lens = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]))
+        const total = lens.reduce((a, b) => a + b, 0)
+        return { pts, lens, total, off: k * 1.5, speed: 1.5 + (k % 4) * 0.12, shirt: FAN_SHIRTS[k % FAN_SHIRTS.length], skin: FAN_SKIN[k % FAN_SKIN.length] }
+      }),
+    [],
+  )
+  useLayoutEffect(() => {
+    const c = new THREE.Color()
+    walkers.forEach((w, k) => {
+      bodies.current?.setColorAt(k, c.set(w.shirt))
+      heads.current?.setColorAt(k, c.set(w.skin))
+    })
+    for (const m of [bodies.current, heads.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
+  }, [walkers])
+  const CYCLE = 30
+  useFrame(({ clock }, dt) => {
+    const on = useStadiumSound.getState().playing && !reduceMotion
+    level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 2)
+    const t = clock.elapsedTime
+    walkers.forEach((w, k) => {
+      const age = (t + w.off) % CYCLE
+      const dist = age * w.speed
+      let vis = level.current > 0.05 && dist < w.total + 0.5 ? 1 : 0
+      let x = w.pts[0][0]
+      let z = w.pts[0][1]
+      let hd = Math.PI
+      let acc = 0
+      for (let i = 1; i < w.pts.length; i++) {
+        const a = w.pts[i - 1]
+        const b = w.pts[i]
+        const seg = w.lens[i - 1]
+        if (dist <= acc + seg || i === w.pts.length - 1) {
+          const f = Math.min(1, Math.max(0, (dist - acc) / seg))
+          x = a[0] + (b[0] - a[0]) * f
+          z = a[1] + (b[1] - a[1]) * f
+          hd = Math.atan2(b[0] - a[0], b[1] - a[1])
+          break
+        }
+        acc += seg
+      }
+      // aparecen desde la valla del muro y se pierden al cruzar la puerta del estadio
+      const grow = Math.min(1, dist / 1.6, Math.max(0, (w.total - dist) / 1.2))
+      const sc = vis * Math.max(0, grow) * level.current
+      o.position.set(x, Y + 0.43 + Math.abs(Math.sin(t * 6 + k)) * 0.05, z)
+      o.rotation.set(0, hd, 0)
+      o.scale.setScalar(sc)
+      o.updateMatrix()
+      bodies.current?.setMatrixAt(k, o.matrix)
+      o.position.y += 0.52
+      o.scale.setScalar(0.36 * sc)
+      o.updateMatrix()
+      heads.current?.setMatrixAt(k, o.matrix)
+    })
+    if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true
+    if (heads.current) heads.current.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), ARRIVALS]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), ARRIVALS]} frustumCulled={false} raycast={() => null} />
+    </group>
+  )
+}
+
+// ── luces de color dentro del estadio ───────────────────────────────────────────────────────────────
+/** Cinta de LED en el borde de la cancha que cambia de color en cadena, y focos de color que barren las gradas. */
+function InnerLights({ reduceMotion }: { reduceMotion: boolean }) {
+  const ribbon = useRef<THREE.InstancedMesh>(null)
+  const o = useMemo(() => new THREE.Object3D(), [])
+  const level = useRef(0)
+  const segs = useMemo(() => {
+    const out: { x: number; z: number; rot: number; len: number }[] = []
+    for (let i = 0; i < N - 1; i++) {
+      const [x0, z0] = at(i, -0.45)
+      const [x1, z1] = at(i + 1, -0.45)
+      out.push({ x: (x0 + x1) / 2, z: (z0 + z1) / 2, rot: Math.atan2(x1 - x0, z1 - z0), len: Math.hypot(x1 - x0, z1 - z0) })
+    }
+    return out
+  }, [])
+  const cones = useRef<(THREE.Mesh | null)[]>([])
+  const coneMats = useMemo(
+    () =>
+      Array.from(
+        { length: 4 },
+        () =>
+          new THREE.MeshBasicMaterial({
+            color: '#ffffff',
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            toneMapped: false,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending,
+          }),
+      ),
+    [],
+  )
+  const night = useIsNight()
+  const up = useMemo(() => new THREE.Vector3(0, 1, 0), [])
+  const corners = useMemo(() => [at(12, 2.6), at(28, 2.6), at(44, 2.6), at(60, 2.6)].map(([x, z]) => new THREE.Vector3(x, ROOF_IN_H - 0.4, z)), [])
+  const c = useMemo(() => new THREE.Color(), [])
+  useFrame(({ clock }, dt) => {
+    const on = useStadiumSound.getState().playing
+    level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 3)
+    const l = level.current
+    const t = reduceMotion ? 0 : clock.elapsedTime
+    segs.forEach((sg, k) => {
+      o.position.set(sg.x, Y + 0.12 + 1.12, sg.z)
+      o.rotation.set(0, sg.rot, 0)
+      o.scale.set(0.16, 0.12, sg.len * 0.9)
+      o.updateMatrix()
+      ribbon.current?.setMatrixAt(k, o.matrix)
+      if (l > 0.02) c.copy(hueColor(t * 0.18 + k / segs.length, 0.55)).multiplyScalar(l)
+      else c.set('#3a3f45')
+      ribbon.current?.setColorAt(k, c)
+    })
+    if (ribbon.current) {
+      ribbon.current.instanceMatrix.needsUpdate = true
+      if (ribbon.current.instanceColor) ribbon.current.instanceColor.needsUpdate = true
+    }
+    corners.forEach((f, k) => {
+      const m = cones.current[k]
+      if (!m) return
+      const target = new THREE.Vector3(Math.sin(t * 0.5 + k * 1.7) * 5, 0.3, Math.cos(t * 0.6 + k) * 3)
+      const dir = target.clone().sub(f)
+      m.position.copy(f).add(target).multiplyScalar(0.5)
+      m.quaternion.setFromUnitVectors(up, dir.clone().normalize().negate())
+      m.scale.set(4.6, dir.length(), 4.6)
+      coneMats[k].color.copy(hueColor(t * 0.1 + k * 0.25, 0.6))
+      coneMats[k].opacity = l * (night ? 0.075 : 0.03)
+    })
+  })
+  return (
+    <group userData={{ dynamic: true }} position={[0, Y * 0, 0]}>
+      <instancedMesh ref={ribbon} args={[GEO.box, new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }), segs.length]} frustumCulled={false} raycast={() => null} />
+      <group position={[0, Y + 0.12, 0]}>
+        {coneMats.map((m, k) => (
+          <mesh key={k} ref={(mm) => void (cones.current[k] = mm)} geometry={GEO.cone} material={m} />
+        ))}
+      </group>
+    </group>
+  )
+}
+
 export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const phase = useStadiumPhase((s) => s.phase)
   const bowl = useBowl(phase)
   const open = phase === 'open'
+  const kind = useStadiumEvent((s) => s.kind)
+  const concert = open && kind === 'concert'
   const playing = useStadiumSound((s) => s.playing)
-  const sub = phase === 'open' ? (playing ? 'Apagar el estadio' : 'Escuchar el estadio') : phase === 'almost' ? 'Casi listo' : 'Próximamente'
+  const sub =
+    phase === 'open'
+      ? concert
+        ? playing
+          ? 'Apagar el concierto'
+          : 'Escuchar el concierto'
+        : playing
+          ? 'Apagar el estadio'
+          : 'Escuchar el estadio'
+      : phase === 'almost'
+        ? 'Casi listo'
+        : 'Próximamente'
   const label = useMemo(() => getGlassPill('Estadio', { dot: GOLD, sub, dark: night }), [night, sub])
   const cranes = phase === 'construction' ? CRANES : phase === 'almost' ? CRANES.slice(0, 1) : []
   // el estadio «late» un poquito con el ambiente cuando está encendido: sube y se estira apenas, al ritmo de la hinchada
@@ -1601,7 +1993,7 @@ export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
         <Bridge phase={phase} />
       </Batch>
       <group ref={bounce}>
-        <Batch version={`estadio-${phase}`}>
+        <Batch version={`estadio-${phase}-${concert ? 'c' : 'm'}`}>
           <group position={[C.x, 0, C.z]} scale={S}>
             <Ground />
             <CastleWalls />
@@ -1612,7 +2004,7 @@ export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
               <mesh geometry={bowl.roof} material={VERTEX_MAT} castShadow />
               <RoofMasts phase={phase} />
               <Skeleton phase={phase} />
-              <Pitch phase={phase} />
+              <Pitch phase={phase} concert={concert} />
             </group>
             {phase === 'construction' && (
               <>
@@ -1638,7 +2030,7 @@ export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
               </>
             )}
             {open && <OpenDecor />}
-            {open && <Scoreboard />}
+            {open && !concert && <Scoreboard />}
           </group>
         </Batch>
         <group position={[C.x, 0, C.z]} scale={S}>
@@ -1649,9 +2041,13 @@ export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
           <Trucks reduceMotion={reduceMotion} phase={phase} />
           <Workers reduceMotion={reduceMotion} phase={phase} />
           {phase !== 'construction' && <Pennants phase={phase} />}
-          {open && <FanCrowd reduceMotion={reduceMotion} />}
+          {open && <Crowd spots={STAND_SPOTS} reduceMotion={reduceMotion} />}
           {open && <Confetti reduceMotion={reduceMotion} />}
-          {open && <MatchPlayers reduceMotion={reduceMotion} />}
+          {open && !concert && <MatchPlayers reduceMotion={reduceMotion} />}
+          {concert && <Stage reduceMotion={reduceMotion} />}
+          {concert && <Crowd spots={PISTA_SPOTS} reduceMotion={reduceMotion} hideWhenOff />}
+          {open && <Arrivals reduceMotion={reduceMotion} />}
+          {open && <InnerLights reduceMotion={reduceMotion} />}
         </group>
       </group>
       <ScreenLabel

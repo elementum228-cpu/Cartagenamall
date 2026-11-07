@@ -1,10 +1,10 @@
 import { openCourtOrClaim } from '../football/open'
-import { PHASES, STADIUM, phaseInfo } from '../config/stadium'
+import { EVENT_KINDS, PHASES, STADIUM, phaseInfo } from '../config/stadium'
 import { cameraState } from '../world/cameraState'
-import { stopStadiumSound, toggleStadiumSound, toggleWorksSound, useStadiumPhase, useStadiumSound } from '../state/stadium'
+import { stopStadiumSound, toggleStadiumSound, toggleWorksSound, useStadiumEvent, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { BOAT_OF_STORE } from '../tourism/config'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { Anchor, Volume2, VolumeX, HardHat, Gamepad2, Plane, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
+import { Anchor, Music2, Volume2, VolumeX, HardHat, Gamepad2, Plane, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -549,6 +549,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       {use3D && <AirportToggle className={item} />}
       {use3D && <EntertainmentToggle className={item} />}
       {use3D && <StadiumToggle className={item} />}
+      {use3D && <StadiumEventToggle className={item} />}
         </>
       )}
     </>
@@ -747,6 +748,29 @@ function StadiumToggle({ className }: { className: string }) {
   )
 }
 
+/** Administración: con el estadio inaugurado, elige si hoy hay partido de fútbol o concierto. */
+function StadiumEventToggle({ className }: { className: string }) {
+  const phase = useStadiumPhase((s) => s.phase)
+  const kind = useStadiumEvent((s) => s.kind)
+  const setKind = useStadiumEvent((s) => s.setKind)
+  if (phase !== 'open') return null
+  const next = EVENT_KINDS.find((k) => k.id !== kind) ?? EVENT_KINDS[0]
+  return (
+    <button
+      className={className}
+      aria-label={`Evento del estadio: ${EVENT_KINDS.find((k) => k.id === kind)?.label}. Cambiar a ${next.label}`}
+      onClick={() => {
+        stopStadiumSound()
+        setKind(next.id)
+        useUI.getState().requestFocus({ kind: 'stadium' })
+        useUI.getState().toast(`Estadio: ${next.label}.`, 'success')
+      }}
+    >
+      <Music2 className="size-4" /> Evento: {kind === 'concert' ? 'Concierto' : 'Partido'}
+    </button>
+  )
+}
+
 /**
  * Botón junto al estadio, a la derecha: aparece cuando la persona se acerca al estadio. Inaugurado: «Escuchar el
  * estadio» lo enciende (canción, luces, hinchada y partido). En obra: «Escuchar obras» pone el pitido de las
@@ -775,7 +799,9 @@ function StadiumListenButton() {
     stopStadiumSound()
   }, [phase])
   useEffect(() => () => stopStadiumSound(), [])
-  const label = open ? (on ? 'Apagar el estadio' : 'Escuchar el estadio') : on ? 'Parar las obras' : 'Escuchar obras'
+  const concert = useStadiumEvent((s) => s.kind) === 'concert'
+  const noun = concert ? 'el concierto' : 'el estadio'
+  const label = open ? (on ? `Apagar ${noun}` : `Escuchar ${noun}`) : on ? 'Parar las obras' : 'Escuchar obras'
   const show = near || on
   return (
     <div className={`pointer-events-none absolute top-1/2 right-3 z-20 -translate-y-1/2 transition duration-300 md:right-5 ${show ? 'translate-x-0 opacity-100' : 'translate-x-6 opacity-0'}`} aria-hidden={!show}>

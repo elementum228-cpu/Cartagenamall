@@ -16,4 +16,11 @@ export const PHASES: { id: StadiumPhase; label: string; short: string; progress:
   { id: 'almost', label: 'Casi terminado', short: 'Casi listo', progress: 94, note: 'Césped completo, luces encendidas y los últimos detalles de obra.' },
   { id: 'open', label: 'Inaugurado', short: 'Inaugurado', progress: 100, note: 'Estadio completo con hinchada, y el botón «Escuchar el estadio».' },
 ]
+/** Tipo de evento con el estadio inaugurado y encendido: partido de fútbol o concierto (tarima y pantalla). */
+export type StadiumEventKind = 'match' | 'concert'
+export const EVENT_KINDS: { id: StadiumEventKind; label: string }[] = [
+  { id: 'match', label: 'Partido de fútbol' },
+  { id: 'concert', label: 'Concierto' },
+]
+
 export const phaseInfo = (p: StadiumPhase) => PHASES.find((x) => x.id === p) ?? PHASES[0]
