@@ -424,7 +424,8 @@ function useTourSteps(): Step[] {
         title: 'Zona de deportes',
         body: court ? (
           <>
-            Una cancha de fútbol 5 y una de pádel, con iluminación nocturna, operadas por <b className="font-semibold text-ink">{court.name}</b>. Reserva la que esté libre desde el mall.
+            Una cancha de fútbol 5 y una de pádel, con iluminación nocturna, operadas por <b className="font-semibold text-ink">{court.name}</b>. Reserva la que esté libre desde el
+            mall.
           </>
         ) : (
           <>Una cancha de fútbol 5 y una de pádel, con iluminación nocturna, listas para un negocio que las opere: {formatCOP(spacePrice(pricing, COURT_SPACE))}/mes.</>
