@@ -8,6 +8,7 @@ import { FLOOR_BY_ID, FLOOR_OF_ZONE, GATE, SPACE_BY_ID, ZONE_BY_ID } from '../co
 import { floorOrigin, liveOrigins, overviewCenter } from './floors'
 import { useUI } from '../state/ui'
 import { HARBOR_FOCUS, SHIP_BERTH } from '../tourism/config'
+import { STADIUM } from '../config/stadium'
 import { AIRPORT_FOCUS } from '../airport/config'
 import { useFlight } from '../airport/flight'
 import { ISLAND, ISLAND_RUNWAY } from '../config/mall'
@@ -268,6 +269,11 @@ export function CameraRig() {
       }
       cameraState.viewOffset.set(0, 0, 0)
       goal.current = { target, zoom }
+    } else if (focus.kind === 'stadium') {
+      const zoom = THREE.MathUtils.clamp(camera.zoom * 1.6, fit * 1.3, fit * 2.2)
+      cameraState.groundY = 0
+      cameraState.viewOffset.set(0, 0, 0)
+      goal.current = { target: new THREE.Vector3(STADIUM.center[0], 0, STADIUM.center[1]), zoom }
     } else if (focus.kind === 'harbor' || focus.kind === 'ship') {
       // El muelle al centro de la parte visible (al lado del panel o arriba de la ficha), con un
       // acercamiento leve: se ve el muelle sin perder el mall de vista.

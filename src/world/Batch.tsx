@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  */
 export const PICK_LAYER = 1
 
-const ATTRS = ['position', 'normal', 'uv'] as const
+const ATTRS = ['position', 'normal', 'uv', 'color'] as const
 
 function prepare(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4) {
   const g = (geometry.index ? geometry.toNonIndexed() : geometry.clone()) as THREE.BufferGeometry

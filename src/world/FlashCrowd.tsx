@@ -6,6 +6,7 @@ import { appClock } from '../lib/clock'
 import type { PromotionEvent } from '../promotions/events'
 import { usePromoEvents } from '../promotions/store'
 import { BOATS, BOAT_OF_STORE, HARBOR, PIRATE_BERTH } from '../tourism/config'
+import { HELMETS_ON, helmetColor } from './helmets'
 import { GEO, mat } from './materials'
 
 // Visitantes que acuden a una oferta relámpago donde no hay pasillos con carriles: la terraza de
@@ -54,6 +55,7 @@ const turnTowards = (cur: number, target: number, step: number) => {
 export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: PromotionEvent, now: number) => boolean; resolve: (e: PromotionEvent) => CrowdTarget | null; y: number; count?: number }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
+  const hats = useRef<THREE.InstancedMesh>(null)
   const started = useRef(new Set<string>())
   const simT = useRef(0)
   const walkers = useMemo<Walker[]>(() => Array.from({ length: MAX }, (_, i) => ({ phase: 'idle', x: 0, z: 0, heading: 0, path: [], next: 0, timer: 0, eventId: null, look: [0, 0], seed: i })), [])
@@ -64,7 +66,9 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
     walkers.forEach((_, i) => {
       bodies.current?.setColorAt(i, c.set(COLORS[(i + 3) % COLORS.length]))
       heads.current?.setColorAt(i, c.set(i % 3 === 0 ? '#8d5a3b' : i % 3 === 1 ? '#c58c64' : '#e5b48f'))
+      hats.current?.setColorAt(i, c.set(helmetColor(i + 1)))
     })
+    if (hats.current?.instanceColor) hats.current.instanceColor.needsUpdate = true
     if (bodies.current?.instanceColor) bodies.current.instanceColor.needsUpdate = true
     if (heads.current?.instanceColor) heads.current.instanceColor.needsUpdate = true
   }, [walkers])
@@ -162,9 +166,16 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
       o.scale.setScalar(0.36 * s)
       o.updateMatrix()
       heads.current?.setMatrixAt(i, o.matrix)
+      if (HELMETS_ON) {
+        o.position.y += 0.02
+        o.scale.setScalar(0.4 * s)
+        o.updateMatrix()
+        hats.current?.setMatrixAt(i, o.matrix)
+      }
     })
     if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true
     if (heads.current) heads.current.instanceMatrix.needsUpdate = true
+    if (hats.current) hats.current.instanceMatrix.needsUpdate = true
     if (import.meta.env.DEV) {
       const w = window as unknown as { __cmCrowd?: Walker[][] }
       w.__cmCrowd ??= []
@@ -176,6 +187,7 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
     <group>
       <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), MAX]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), MAX]} frustumCulled={false} raycast={() => null} />
+      {HELMETS_ON && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), MAX]} frustumCulled={false} raycast={() => null} />}
     </group>
   )
 }

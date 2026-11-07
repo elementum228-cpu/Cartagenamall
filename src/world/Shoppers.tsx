@@ -5,6 +5,7 @@ import { LANE_SPREAD, P1, WALK_LANES, toWorld } from '../config/mall'
 import { playingOn } from '../promotions/events'
 import { interiorCapacity, planStoreVisit, planVisit, type Point } from '../promotions/paths'
 import { usePromoEvents } from '../promotions/store'
+import { HELMETS_ON, helmetColor } from './helmets'
 import { GEO, mat } from './materials'
 
 // Visitantes en miniatura que caminan por la plaza y los pasillos (dos InstancedMesh, sin sombras).
@@ -121,6 +122,7 @@ function startReturn(a: Agent) {
 export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
+  const hats = useRef<THREE.InstancedMesh>(null)
   const agents = useMemo<Agent[]>(() => {
     const routes: Route[] = []
     for (let i = 0; i < 5; i++) routes.push({ kind: 'circle', r: 3.6 + (i % 2) * 0.6, speed: (i % 2 ? 1 : -1) * 0.22, phase: i * 1.3 })
@@ -153,7 +155,9 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
     agents.forEach((_, i) => {
       bodies.current?.setColorAt(i, c.set(COLORS[i % COLORS.length]))
       heads.current?.setColorAt(i, c.set(i % 3 === 0 ? '#8d5a3b' : i % 3 === 1 ? '#c58c64' : '#e5b48f'))
+      hats.current?.setColorAt(i, c.set(helmetColor(i)))
     })
+    if (hats.current?.instanceColor) hats.current.instanceColor.needsUpdate = true
     if (bodies.current?.instanceColor) bodies.current.instanceColor.needsUpdate = true
     if (heads.current?.instanceColor) heads.current.instanceColor.needsUpdate = true
   }, [agents])
@@ -352,9 +356,16 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
       o.scale.setScalar(0.36)
       o.updateMatrix()
       heads.current?.setMatrixAt(i, o.matrix)
+      if (HELMETS_ON) {
+        o.position.y += 0.02
+        o.scale.setScalar(0.4)
+        o.updateMatrix()
+        hats.current?.setMatrixAt(i, o.matrix)
+      }
     })
     if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true
     if (heads.current) heads.current.instanceMatrix.needsUpdate = true
+    if (hats.current) hats.current.instanceMatrix.needsUpdate = true
     if (import.meta.env.DEV) (window as unknown as { __cmAgents?: unknown }).__cmAgents = agents
   })
 
@@ -363,6 +374,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
       {/* sin raycast: los visitantes nunca tapan el toque a un local */}
       <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), agents.length]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), agents.length]} frustumCulled={false} raycast={() => null} />
+      {HELMETS_ON && <instancedMesh ref={hats} args={[GEO.helmet, mat('#ffffff'), agents.length]} frustumCulled={false} raycast={() => null} />}
     </group>
   )
 }

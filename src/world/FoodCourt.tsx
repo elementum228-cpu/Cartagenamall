@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
 import { Batch } from './Batch'
+import { HELMETS_ON, helmetColor } from './helmets'
 import { FoodCrowd } from './FlashCrowd'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
@@ -226,6 +227,7 @@ function buildFurniture() {
   const pools: Inst[] = []
   const bodies: Inst[] = []
   const heads: Inst[] = []
+  const hats: Inst[] = []
   const bulbs: Inst[] = []
   /** Lamparitas sobre cada mesa: de noche la mesa se lee y el patio se ve habitado. */
   const candles: Inst[] = []
@@ -244,6 +246,7 @@ function buildFurniture() {
       if ((k + Math.round(x)) % 4 === 0) {
         bodies.push({ p: [sx, 1.05, sz], s: [1, 0.85, 1], r: -a, c: STOOL_COLORS[(k + 2) % STOOL_COLORS.length] })
         heads.push({ p: [sx, 1.55, sz], s: [0.34, 0.34, 0.34], c: k % 2 ? '#c58c64' : '#8d5a3b' })
+        hats.push({ p: [sx, 1.575, sz], s: [0.38, 0.38, 0.38], c: helmetColor(k) })
       }
     }
     if (umbrella) {
@@ -316,7 +319,7 @@ function buildFurniture() {
   strand([8, -6.5], [H - 1, 9], 13)
   strand([-6.5, -6.5], [H - 1, 9], 20, 3.9, 0.5)
 
-  return { tops, legs, stools, poles, canopies, pots, leaves, trunks, fronds, lampPoles, lampHeads, pools, bodies, heads, bulbs, candles, footprints }
+  return { tops, legs, stools, poles, canopies, pots, leaves, trunks, fronds, lampPoles, lampHeads, pools, bodies, heads, hats, bulbs, candles, footprints }
 }
 
 const FURNITURE = buildFurniture()
@@ -345,6 +348,7 @@ function Furniture({ detail }: { detail: 'high' | 'low' }) {
       <Instanced geometry={GEO.cylinderLow} material={glowMat('#ffc983', 2.2, { dayGlow: 0.1 })} items={data.candles} />
       {high && <Instanced geometry={GEO.capsule} material={WHITE} items={data.bodies} />}
       {high && <Instanced geometry={GEO.sphereSmooth} material={WHITE} items={data.heads} />}
+      {high && HELMETS_ON && <Instanced geometry={GEO.helmet} material={WHITE} items={data.hats} />}
     </group>
   )
 }

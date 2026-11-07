@@ -23,6 +23,7 @@ import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { Entertainment } from './Entertainment'
 import { Airport } from './Airport'
+import { Stadium } from './Stadium'
 import { Island } from './Island'
 import { Harbor } from './Harbor'
 import { District } from './District'
@@ -144,6 +145,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         <Harbor reduceMotion={reduceMotion} />
         {entOn && <Entertainment reduceMotion={reduceMotion} />}
         {airportOn && <Airport reduceMotion={reduceMotion} />}
+        <Stadium reduceMotion={reduceMotion} />
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}

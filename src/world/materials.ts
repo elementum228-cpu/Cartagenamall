@@ -1,5 +1,17 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+
+/** Casco de obra: cúpula con ala, de la medida de una cabeza unitaria (diámetro 1). */
+function helmetGeometry() {
+  const dome = new THREE.SphereGeometry(0.46, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2)
+  dome.translate(0, 0.1, 0)
+  const brim = new THREE.CylinderGeometry(0.58, 0.58, 0.05, 14)
+  brim.translate(0, 0.1, 0)
+  const ridge = new THREE.BoxGeometry(0.12, 0.1, 0.74)
+  ridge.translate(0, 0.55, 0)
+  return mergeGeometries([dome.toNonIndexed(), brim.toNonIndexed(), ridge.toNonIndexed()])!
+}
 
 // Geometrías y materiales compartidos por todo el mundo: cada malla escala una geometría unitaria
 // en lugar de crear la suya, y los materiales se reutilizan por color. Esto mantiene la memoria
@@ -19,6 +31,7 @@ export const GEO = {
   ring: new THREE.RingGeometry(0.8, 1, 32),
   capsule: new THREE.CapsuleGeometry(0.22, 0.42, 3, 8),
   torus: new THREE.TorusGeometry(1, 0.08, 6, 32),
+  helmet: helmetGeometry(),
 }
 
 const cache = new Map<string, THREE.Material>()
