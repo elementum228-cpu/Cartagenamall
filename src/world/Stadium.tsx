@@ -1603,6 +1603,8 @@ function MatchPlayers({ reduceMotion }: { reduceMotion: boolean }) {
  * concierto, la imagen del artista o del evento. De día se ve apagado y de noche se enciende con halo. Lo
  * cambia la administración (cartel del evento en escena o, si no tiene, el general).
  */
+/** Posición del cartel a lo largo de la fachada sur (x del estadio). */
+const BOARD_X = 1.5
 function EventBoard() {
   const kind = useStadiumEvent((s) => s.kind)
   const activeId = useStadiumConfig((s) => s.activeEventId)
@@ -1636,14 +1638,11 @@ function EventBoard() {
   const W = 8.4
   const H = (W * BOARD_H) / BOARD_W
   return (
-    <group position={[-1.8, Y + 0.12 + 9.6, -(BOWL_Z + 3.2)]} rotation={[0, 0.42, 0]}>
-      {/* marco y mástiles */}
-      <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, -0.1]} scale={[W + 0.5, H + 0.5, 0.2]} castShadow />
-      <mesh geometry={GEO.box} material={glowMat('#7fe7b0', 1.5, { dayGlow: 0.05 })} position={[0, 0, -0.02]} scale={[W + 0.3, H + 0.3, 0.06]} />
-      <mesh geometry={GEO.plane} material={screen} position={[0, 0, 0.03]} scale={[W, H, 1]} />
-      {[-3.4, 3.4].map((x) => (
-        <mesh key={x} geometry={GEO.box} material={mat('#6c747c')} position={[x, -H / 2 - 2.6, -0.1]} scale={[0.14, 5.4, 0.14]} castShadow />
-      ))}
+    <group position={[BOARD_X, Y + 4.25, BOWL_Z + FACADE_D + 0.1]}>
+      {/* marco; el cartel va pegado a la fachada sur, la que mira a la entrada */}
+      <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, 0]} scale={[W + 0.5, H + 0.5, 0.2]} castShadow />
+      <mesh geometry={GEO.box} material={glowMat('#7fe7b0', 1.5, { dayGlow: 0.05 })} position={[0, 0, 0.06]} scale={[W + 0.3, H + 0.3, 0.06]} />
+      <mesh geometry={GEO.plane} material={screen} position={[0, 0, 0.12]} scale={[W, H, 1]} />
     </group>
   )
 }
