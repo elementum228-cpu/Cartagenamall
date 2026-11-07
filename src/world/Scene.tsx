@@ -145,7 +145,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         <Harbor reduceMotion={reduceMotion} />
         {entOn && <Entertainment reduceMotion={reduceMotion} />}
         {airportOn && <Airport reduceMotion={reduceMotion} />}
-        <Stadium reduceMotion={reduceMotion} />
+        <Stadium reduceMotion={reduceMotion} quality={quality} />
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}

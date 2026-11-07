@@ -1134,7 +1134,7 @@ const SEAT_GLOW = new THREE.Color('#fff1d0')
  * adentro (a la cancha); encendidos lanzan un haz de luz, iluminan el piso y las gradas. Se prenden y apagan
  * con suavidad y solo cuestan materiales básicos (sin luces dinámicas).
  */
-function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
+function Lights({ phase, night, quality }: { phase: StadiumPhase; night: boolean; quality: Quality }) {
   const lit = useLit(phase)
   const lamp = useMemo(() => new THREE.MeshBasicMaterial({ color: LAMP_OFF, toneMapped: false }), [])
   const baseLamp = useMemo(() => new THREE.MeshBasicMaterial({ color: LAMP_BASE_OFF, toneMapped: false }), [])
@@ -1185,7 +1185,7 @@ function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
     else VERTEX_MAT.emissive.copy(SEAT_GLOW)
     VERTEX_MAT.emissiveIntensity = l * (night ? (phase === 'open' ? 0.2 : 0.12) : 0.04)
     if (pools.current) pools.current.visible = l > 0.4
-    if (beams.current) beams.current.visible = l > 0.05
+    if (beams.current) beams.current.visible = quality !== 'low' && l > 0.05
   })
   useLayoutEffect(
     () => () => {
@@ -1210,8 +1210,8 @@ function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
           </group>
         )
       })}
-      {/* haces de luz de cada torre hacia la cancha */}
-      <group ref={beams}>
+      {/* haces de luz de cada torre hacia la cancha (no en calidad baja: son capas translúcidas grandes) */}
+      <group ref={beams} visible={quality !== 'low'}>
         {TOWERS.map(([x, z], i) => {
           const from = new THREE.Vector3(x, Y + 10.9, z)
           const to = new THREE.Vector3(0, Y + 0.6, 0)
@@ -1235,7 +1235,7 @@ function Lights({ phase, night }: { phase: StadiumPhase; night: boolean }) {
           />
         ))}
         <mesh geometry={GEO.plane} material={lightPoolMat('#f0ffd8', night ? 0.22 : 0.1, 0.04)} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.34, 0]} scale={[32, 22, 1]} />
-        <mesh geometry={GEO.plane} material={lightPoolMat('#ffe9b8', night ? 0.2 : 0.06, 0.03)} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.08, 0]} scale={[46, 36, 1]} />
+        {quality !== 'low' && <mesh geometry={GEO.plane} material={lightPoolMat('#ffe9b8', night ? 0.2 : 0.06, 0.03)} rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.08, 0]} scale={[46, 36, 1]} />}
         {basePts.map((b, i) => (
           <mesh
             key={i}
@@ -1305,7 +1305,8 @@ const PISTA_SPOTS: Spot[] = (() => {
  * Gente que alienta: con el estadio encendido salta al ritmo, con los brazos arriba y una ola que recorre el
  * grupo. `hideWhenOff`: el grupo solo está presente mientras el evento está encendido (el público de la pista).
  */
-function Crowd({ spots, reduceMotion, hideWhenOff = false, F = 0.62 }: { spots: Spot[]; reduceMotion: boolean; hideWhenOff?: boolean; F?: number }) {
+function Crowd({ spots: allSpots, reduceMotion, hideWhenOff = false, F = 0.62, density = 1, arms = true }: { spots: Spot[]; reduceMotion: boolean; hideWhenOff?: boolean; F?: number; density?: number; arms?: boolean }) {
+  const spots = useMemo(() => thin(allSpots, density), [allSpots, density])
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const armsL = useRef<THREE.InstancedMesh>(null)
@@ -1356,7 +1357,7 @@ function Crowd({ spots, reduceMotion, hideWhenOff = false, F = 0.62 }: { spots: 
         const ly = Math.cos(th) * (ARM / 2)
         o.position.set(f.x + lx * Math.cos(f.face), sy + ly, f.z - lx * Math.sin(f.face))
         o.rotation.set(0, f.face, -side * th)
-        o.scale.set(0.1 * F * vis, ARM * vis, 0.1 * F * vis)
+        o.scale.set(0.1 * F * vis * (arms ? 1 : 0), ARM * vis, 0.1 * F * vis)
         o.updateMatrix()
         ;(side < 0 ? armsL : armsR).current?.setMatrixAt(k, o.matrix)
       }
@@ -1375,17 +1376,17 @@ function Crowd({ spots, reduceMotion, hideWhenOff = false, F = 0.62 }: { spots: 
 
 /** Confeti verde y amarillo que cae sobre las gradas mientras el estadio está encendido. */
 const CONFETTI = 90
-function Confetti({ reduceMotion }: { reduceMotion: boolean }) {
+function Confetti({ reduceMotion, count = CONFETTI }: { reduceMotion: boolean; count?: number }) {
   const mesh = useRef<THREE.InstancedMesh>(null)
   const o = useMemo(() => new THREE.Object3D(), [])
   const seeds = useMemo(
     () =>
-      Array.from({ length: CONFETTI }, (_, k) => {
+      Array.from({ length: count }, (_, k) => {
         const i = Math.floor((k * 37) % (N - 1))
         const [x, z] = at(i, 1 + ((k * 13) % 50) / 10)
         return { x, z, ph: (k * 0.6180339) % 1, spin: 2 + (k % 5), speed: 0.18 + (k % 4) * 0.04 }
       }),
-    [],
+    [count],
   )
   const level = useRef(0)
   useLayoutEffect(() => {
@@ -1409,7 +1410,7 @@ function Confetti({ reduceMotion }: { reduceMotion: boolean }) {
   })
   return (
     <group userData={{ dynamic: true }}>
-      <instancedMesh ref={mesh} args={[GEO.box, mat('#ffffff'), CONFETTI]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh key={count} ref={mesh} args={[GEO.box, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />
     </group>
   )
 }
@@ -1683,7 +1684,7 @@ function useScreenTexture(reduceMotion: boolean) {
 }
 
 /** Tarima del concierto en el lado oeste de la cancha, mirando al público: pantalla LED, estructura de luces, parlantes y banda. */
-function Stage({ reduceMotion }: { reduceMotion: boolean }) {
+function Stage({ reduceMotion, beamsOn = true }: { reduceMotion: boolean; beamsOn?: boolean }) {
   const { tex, tick } = useScreenTexture(reduceMotion)
   const screenMat = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
   const beams = useRef<(THREE.Mesh | null)[]>([])
@@ -1782,7 +1783,7 @@ function Stage({ reduceMotion }: { reduceMotion: boolean }) {
       ))}
       <mesh geometry={GEO.cylinder} material={mat('#c8553b')} position={[0.4, 0.95, -1.4]} scale={[1.1, 0.7, 1.1]} castShadow />
       {/* haces de luz que barren el público: solo con el concierto encendido */}
-      {beamMats.map((bm, k) => (
+      {beamsOn && beamMats.map((bm, k) => (
         <mesh key={k} ref={(m) => void (beams.current[k] = m)} geometry={GEO.cone} material={bm} />
       ))}
     </group>
@@ -1798,14 +1799,14 @@ const DOORS: [number, number][] = [17, 19, 21, 23, 28, 34].map((i) => at(i, FACA
  * Con el evento encendido, grupos de personas cruzan el puente, pasan la puerta de la isla y se reparten hacia las
  * entradas del estadio, donde desaparecen al entrar. Se repite sin parar mientras dure el evento.
  */
-function Arrivals({ reduceMotion }: { reduceMotion: boolean }) {
+function Arrivals({ reduceMotion, count = ARRIVALS }: { reduceMotion: boolean; count?: number }) {
   const bodies = useRef<THREE.InstancedMesh>(null)
   const heads = useRef<THREE.InstancedMesh>(null)
   const o = useMemo(() => new THREE.Object3D(), [])
   const level = useRef(0)
   const walkers = useMemo(
     () =>
-      Array.from({ length: ARRIVALS }, (_, k) => {
+      Array.from({ length: count }, (_, k) => {
         const door = DOORS[k % DOORS.length]
         const lane = ((k * 37) % 7) / 7 - 0.5
         const pts: [number, number][] = [[GATE_X + lane * 2.2, 31.6], [GATE_X + lane * 2.4, 20.2], [GATE_X + lane * 5, 15.6], [door[0] * 0.55 + GATE_X * 0.45, 16.0], door]
@@ -1813,7 +1814,7 @@ function Arrivals({ reduceMotion }: { reduceMotion: boolean }) {
         const total = lens.reduce((a, b) => a + b, 0)
         return { pts, lens, total, off: k * 1.5, speed: 1.5 + (k % 4) * 0.12, shirt: FAN_SHIRTS[k % FAN_SHIRTS.length], skin: FAN_SKIN[k % FAN_SKIN.length] }
       }),
-    [],
+    [count],
   )
   useLayoutEffect(() => {
     const c = new THREE.Color()
@@ -1867,15 +1868,15 @@ function Arrivals({ reduceMotion }: { reduceMotion: boolean }) {
   })
   return (
     <group userData={{ dynamic: true }}>
-      <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), ARRIVALS]} frustumCulled={false} raycast={() => null} />
-      <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), ARRIVALS]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh key={count} ref={bodies} args={[GEO.capsule, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh key={`h${count}`} ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />
     </group>
   )
 }
 
 // ── luces de color dentro del estadio ───────────────────────────────────────────────────────────────
 /** Cinta de LED en el borde de la cancha que cambia de color en cadena, y focos de color que barren las gradas. */
-function InnerLights({ reduceMotion }: { reduceMotion: boolean }) {
+function InnerLights({ reduceMotion, cones: showCones = true }: { reduceMotion: boolean; cones?: boolean }) {
   const ribbon = useRef<THREE.InstancedMesh>(null)
   const o = useMemo(() => new THREE.Object3D(), [])
   const level = useRef(0)
@@ -1945,7 +1946,7 @@ function InnerLights({ reduceMotion }: { reduceMotion: boolean }) {
     <group userData={{ dynamic: true }} position={[0, Y * 0, 0]}>
       <instancedMesh ref={ribbon} args={[GEO.box, new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false }), segs.length]} frustumCulled={false} raycast={() => null} />
       <group position={[0, Y + 0.12, 0]}>
-        {coneMats.map((m, k) => (
+        {showCones && coneMats.map((m, k) => (
           <mesh key={k} ref={(mm) => void (cones.current[k] = mm)} geometry={GEO.cone} material={m} />
         ))}
       </group>
@@ -1953,7 +1954,12 @@ function InnerLights({ reduceMotion }: { reduceMotion: boolean }) {
   )
 }
 
-export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
+type Quality = 'low' | 'medium' | 'high'
+/** Cuánta gente y cuánta luz se dibuja con el estadio encendido, según la calidad (en celulares es la baja). */
+const DENSITY: Record<Quality, number> = { low: 0.4, medium: 0.7, high: 1 }
+const thin = <T,>(list: T[], density: number) => (density >= 1 ? list : list.filter((_, k) => (k * 37) % 100 < density * 100))
+
+export function Stadium({ reduceMotion, quality = 'high' }: { reduceMotion: boolean; quality?: Quality }) {
   const night = useIsNight()
   const phase = useStadiumPhase((s) => s.phase)
   const bowl = useBowl(phase)
@@ -2034,20 +2040,20 @@ export function Stadium({ reduceMotion }: { reduceMotion: boolean }) {
           </group>
         </Batch>
         <group position={[C.x, 0, C.z]} scale={S}>
-          <Lights phase={phase} night={night} />
+          <Lights phase={phase} night={night} quality={quality} />
           {cranes.map((c, i) => (
             <TowerCrane key={i} cfg={c} reduceMotion={reduceMotion} />
           ))}
           <Trucks reduceMotion={reduceMotion} phase={phase} />
           <Workers reduceMotion={reduceMotion} phase={phase} />
           {phase !== 'construction' && <Pennants phase={phase} />}
-          {open && <Crowd spots={STAND_SPOTS} reduceMotion={reduceMotion} />}
-          {open && <Confetti reduceMotion={reduceMotion} />}
+          {open && <Crowd spots={STAND_SPOTS} reduceMotion={reduceMotion} density={DENSITY[quality]} arms={quality !== 'low'} />}
+          {open && quality !== 'low' && <Confetti reduceMotion={reduceMotion} count={quality === 'high' ? 90 : 40} />}
           {open && !concert && <MatchPlayers reduceMotion={reduceMotion} />}
-          {concert && <Stage reduceMotion={reduceMotion} />}
-          {concert && <Crowd spots={PISTA_SPOTS} reduceMotion={reduceMotion} hideWhenOff />}
-          {open && <Arrivals reduceMotion={reduceMotion} />}
-          {open && <InnerLights reduceMotion={reduceMotion} />}
+          {concert && <Stage reduceMotion={reduceMotion} beamsOn={quality !== 'low'} />}
+          {concert && <Crowd spots={PISTA_SPOTS} reduceMotion={reduceMotion} hideWhenOff density={DENSITY[quality]} arms={quality !== 'low'} />}
+          {open && <Arrivals reduceMotion={reduceMotion} count={quality === 'low' ? 8 : 16} />}
+          {open && <InnerLights reduceMotion={reduceMotion} cones={quality === 'high'} />}
         </group>
       </group>
       <ScreenLabel

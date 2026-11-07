@@ -4,7 +4,48 @@ import { cameraState } from '../world/cameraState'
 import { stopStadiumSound, toggleStadiumSound, toggleWorksSound, useStadiumEvent, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { BOAT_OF_STORE } from '../tourism/config'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { Anchor, Music2, Volume2, VolumeX, HardHat, Gamepad2, Plane, BookOpen, Castle, Sailboat, Ghost, Scissors, ChevronDown, ChevronUp, DoorOpen, Gem, Hand, House, Keyboard, Mouse, Settings2, Shirt, Smartphone, Sparkles, Trophy, Utensils, Layers, Map as MapIcon, Box, Moon, Sun, SunMoon, Zap, ZoomIn, ZoomOut, Route, ChevronRight, X, Store as StoreIcon, type LucideIcon } from 'lucide-react'
+import {
+  Anchor,
+  Music2,
+  Volume2,
+  VolumeX,
+  HardHat,
+  Gamepad2,
+  Plane,
+  BookOpen,
+  Castle,
+  Sailboat,
+  Ghost,
+  Scissors,
+  ChevronDown,
+  ChevronUp,
+  DoorOpen,
+  Gem,
+  Hand,
+  House,
+  Keyboard,
+  Mouse,
+  Settings2,
+  Shirt,
+  Smartphone,
+  Sparkles,
+  Trophy,
+  Utensils,
+  Layers,
+  Map as MapIcon,
+  Box,
+  Moon,
+  Sun,
+  SunMoon,
+  Zap,
+  ZoomIn,
+  ZoomOut,
+  Route,
+  ChevronRight,
+  X,
+  Store as StoreIcon,
+  type LucideIcon,
+} from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -145,197 +186,211 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   return (
     <MotionConfig reducedMotion="user">
       <div className="tour-hide">
-      {use3D && <PinchHint hidden={dimmed || !!peekId} />}
-      {/* las lanchas del muelle, también con teclado (en el mapa se tocan directamente) */}
-      {use3D && (
-        <div className="absolute bottom-[calc(var(--chrome-bottom)+80px)] left-3 z-30 flex flex-col gap-2">
-          {BOAT_IDS.map((id) => (
-            <button
-              key={id}
-              className="glass sr-only rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink focus:not-sr-only focus-visible:ring-2 focus-visible:ring-teal"
-              onClick={() => useUI.getState().openHarbor(id)}
-            >
-              Muelle turístico: {BOATS[id].title}
-            </button>
-          ))}
-        </div>
-      )}
-      {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
-      {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
-          fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
-      <div
-        className={`island-hide scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
-        role="toolbar"
-        aria-label="Categorías del mall"
-      >
-        {/* Isla Tecnología no va en la fila: se llega en avión desde el aeropuerto */}
-        {ZONES.filter((z) => z.id !== 'I' && (z.id !== 'G' || entOn)).map((z) => {
-          const Icon = ZONE_ICON[z.id]
-          return (
-            <button
-              key={z.id}
-              onClick={() => {
-                // Elegir una zona de otro piso (p. ej. Gastronomía) cambia a ese piso.
-                setFloor(FLOOR_OF_ZONE[z.id])
-                selectSpace(null)
-                if (use3D) requestFocus({ kind: 'zone', id: z.id })
-              }}
-              aria-pressed={activeZone === z.id}
-              className={chip(activeZone === z.id)}
-            >
-              <Icon className="size-4" strokeWidth={1.8} />
-              {z.name}
-            </button>
-          )
-        })}
-        <button onClick={() => openCourtOrClaim(use3D)} aria-pressed={courtActive} className={chip(courtActive)}>
-          <Trophy className="size-4" strokeWidth={1.8} />
-          Deportes
-        </button>
-      </div>
-
-      <div className="island-hide">
-        <FloorSelector use3D={use3D} dimmed={dimmed} />
-      </div>
-
-      {/* descubrimientos y oferta relámpago: pills discretas */}
-      <div
-        className={`island-hide pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
-      >
-        <Link to="/ofertas" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
-          <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
-            <Gem className="size-3" strokeWidth={2} />
-          </span>
-          Secretas {Math.min(discovered.length, secretTotal)}/{secretTotal}
-        </Link>
-        <Link to="/pasaporte" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none" aria-label={`Mi pasaporte: ${passportDone} de ${stampList.length} sellos`}>
-          <span className="grid size-5 place-items-center rounded-full bg-teal text-white">
-            <BookOpen className="size-3" strokeWidth={2} />
-          </span>
-          Pasaporte {passportDone}/{stampList.length}
-        </Link>
-        {flash && flashEvent && (
-          <button
-            onClick={() => {
-              // Lo elige la persona: se acerca la cámara y se abre la ficha con la oferta.
-              setFloor(flashEvent.floorId)
-              const boat = BOAT_OF_STORE[flashEvent.storeId]
-              if (boat && flashEvent.spaceId.startsWith('BOAT:')) {
-                useUI.getState().openHarbor(boat)
-                return
-              }
-              selectSpace(flashEvent.spaceId)
-              if (use3D) requestFocus({ kind: 'space', id: flashEvent.spaceId })
-            }}
-            // suelta, sin cápsula: ícono ámbar, descuento, tienda y contador alineados al centro
-            className="chrome-text flex h-8 items-center gap-1.5 rounded-full pr-1 text-[13px] leading-none font-semibold transition active:scale-[0.98]"
-            aria-label={`Oferta relámpago −${flash.discountPercent}% en ${flashStore?.name ?? 'una tienda'}. Ver la tienda`}
-          >
-            <span className={`grid size-6 shrink-0 place-items-center rounded-full bg-amber text-deep shadow-[0_2px_10px_rgb(247_179_75/0.55)] ${flashEvent.spotlight === 'playing' ? 'motion-safe:animate-pulse' : ''}`}>
-              <Zap className="size-3.5" strokeWidth={2.2} fill="currentColor" />
-            </span>
-            <span className="font-bold">−{flash.discountPercent}%</span>
-            {flashStore && <span className="max-w-28 truncate opacity-90">{flashStore.name}</span>}
-            <Countdown endsAt={flash.endsAt} className="!font-sans !text-[12.5px] leading-none !font-semibold opacity-90" />
-          </button>
-        )}
-        <ShipPill />
-        {season === 'halloween' && (
-          <span className="chrome-text flex h-8 items-center gap-1.5 pr-1 text-[12.5px] leading-none font-semibold">
-            <span className="grid size-6 place-items-center rounded-full bg-[#e8761c] text-white shadow-[0_2px_10px_rgb(232_118_28/0.5)]">
-              <Moon className="size-3.5" strokeWidth={2.2} />
-            </span>
-            Temporada de Halloween
-          </span>
-        )}
-        <PromoAnnouncer />
-      </div>
-
-      {use3D && <StadiumListenButton />}
-
-      {/* Parte baja: ficha del local elegido, botón principal y controles. La fila no captura toques
-          (el mapa se puede arrastrar); solo sus botones. */}
-      <div
-        className={`pointer-events-none absolute inset-x-3 bottom-[calc(var(--chrome-bottom)+10px)] z-10 flex flex-col gap-3 transition-opacity duration-200 md:inset-x-5 md:bottom-5 ${dimmed ? 'max-md:opacity-0 max-md:**:pointer-events-none' : ''}`}
-      >
-        <AnimatePresence>
-          {use3D && !hintSeen && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.24 }}
-              className="glass-strong pointer-events-auto max-w-[300px] self-start rounded-[22px] p-3.5 text-[12.5px]"
-            >
-              <p className="flex items-center gap-2 font-semibold">
-                <Hand className="size-4 text-teal" strokeWidth={1.8} /> Cómo explorar
-              </p>
-              <p className="mt-1 text-ink-soft">
-                {desktop
-                  ? 'Arrastra con el mouse (o mantén Espacio y arrastra) para recorrer. Rueda para acercarte. Toca una tienda o un espacio libre.'
-                  : 'Desliza un dedo para recorrer y pellizca con dos para acercarte. Toca una tienda o un espacio libre.'}{' '}
-                Hay ofertas escondidas por todo el mall: acércate a los destellos dorados.
-              </p>
-              <button className="mt-1.5 text-xs font-semibold text-teal" onClick={setHintSeen}>
-                Entendido
+        {use3D && <PinchHint hidden={dimmed || !!peekId} />}
+        {/* las lanchas del muelle, también con teclado (en el mapa se tocan directamente) */}
+        {use3D && (
+          <div className="absolute bottom-[calc(var(--chrome-bottom)+80px)] left-3 z-30 flex flex-col gap-2">
+            {BOAT_IDS.map((id) => (
+              <button
+                key={id}
+                className="glass sr-only rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink focus:not-sr-only focus-visible:ring-2 focus-visible:ring-teal"
+                onClick={() => useUI.getState().openHarbor(id)}
+              >
+                Muelle turístico: {BOATS[id].title}
               </button>
-            </motion.div>
+            ))}
+          </div>
+        )}
+        {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
+        {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
+          fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
+        <div
+          className={`island-hide scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
+          role="toolbar"
+          aria-label="Categorías del mall"
+        >
+          {/* Isla Tecnología no va en la fila: se llega en avión desde el aeropuerto */}
+          {ZONES.filter((z) => z.id !== 'I' && (z.id !== 'G' || entOn)).map((z) => {
+            const Icon = ZONE_ICON[z.id]
+            return (
+              <button
+                key={z.id}
+                onClick={() => {
+                  // Elegir una zona de otro piso (p. ej. Gastronomía) cambia a ese piso.
+                  setFloor(FLOOR_OF_ZONE[z.id])
+                  selectSpace(null)
+                  if (use3D) requestFocus({ kind: 'zone', id: z.id })
+                }}
+                aria-pressed={activeZone === z.id}
+                className={chip(activeZone === z.id)}
+              >
+                <Icon className="size-4" strokeWidth={1.8} />
+                {z.name}
+              </button>
+            )
+          })}
+          <button onClick={() => openCourtOrClaim(use3D)} aria-pressed={courtActive} className={chip(courtActive)}>
+            <Trophy className="size-4" strokeWidth={1.8} />
+            Deportes
+          </button>
+        </div>
+
+        <div className="island-hide">
+          <FloorSelector use3D={use3D} dimmed={dimmed} />
+        </div>
+
+        {/* descubrimientos y oferta relámpago: pills discretas */}
+        <div
+          className={`island-hide pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+        >
+          <Link to="/ofertas" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
+            <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
+              <Gem className="size-3" strokeWidth={2} />
+            </span>
+            Secretas {Math.min(discovered.length, secretTotal)}/{secretTotal}
+          </Link>
+          <Link
+            to="/pasaporte"
+            className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none"
+            aria-label={`Mi pasaporte: ${passportDone} de ${stampList.length} sellos`}
+          >
+            <span className="grid size-5 place-items-center rounded-full bg-teal text-white">
+              <BookOpen className="size-3" strokeWidth={2} />
+            </span>
+            Pasaporte {passportDone}/{stampList.length}
+          </Link>
+          {flash && flashEvent && (
+            <button
+              onClick={() => {
+                // Lo elige la persona: se acerca la cámara y se abre la ficha con la oferta.
+                setFloor(flashEvent.floorId)
+                const boat = BOAT_OF_STORE[flashEvent.storeId]
+                if (boat && flashEvent.spaceId.startsWith('BOAT:')) {
+                  useUI.getState().openHarbor(boat)
+                  return
+                }
+                selectSpace(flashEvent.spaceId)
+                if (use3D) requestFocus({ kind: 'space', id: flashEvent.spaceId })
+              }}
+              // suelta, sin cápsula: ícono ámbar, descuento, tienda y contador alineados al centro
+              className="chrome-text flex h-8 items-center gap-1.5 rounded-full pr-1 text-[13px] leading-none font-semibold transition active:scale-[0.98]"
+              aria-label={`Oferta relámpago −${flash.discountPercent}% en ${flashStore?.name ?? 'una tienda'}. Ver la tienda`}
+            >
+              <span
+                className={`grid size-6 shrink-0 place-items-center rounded-full bg-amber text-deep shadow-[0_2px_10px_rgb(247_179_75/0.55)] ${flashEvent.spotlight === 'playing' ? 'motion-safe:animate-pulse' : ''}`}
+              >
+                <Zap className="size-3.5" strokeWidth={2.2} fill="currentColor" />
+              </span>
+              <span className="font-bold">−{flash.discountPercent}%</span>
+              {flashStore && <span className="max-w-28 truncate opacity-90">{flashStore.name}</span>}
+              <Countdown endsAt={flash.endsAt} className="!font-sans !text-[12.5px] leading-none !font-semibold opacity-90" />
+            </button>
           )}
-        </AnimatePresence>
-        {/* la fila y su centro no capturan toques (el mapa sigue arrastrable y con pellizco debajo).
+          <ShipPill />
+          {season === 'halloween' && (
+            <span className="chrome-text flex h-8 items-center gap-1.5 pr-1 text-[12.5px] leading-none font-semibold">
+              <span className="grid size-6 place-items-center rounded-full bg-[#e8761c] text-white shadow-[0_2px_10px_rgb(232_118_28/0.5)]">
+                <Moon className="size-3.5" strokeWidth={2.2} />
+              </span>
+              Temporada de Halloween
+            </span>
+          )}
+          <PromoAnnouncer />
+        </div>
+
+        {use3D && <StadiumListenButton />}
+
+        {/* Parte baja: ficha del local elegido, botón principal y controles. La fila no captura toques
+          (el mapa se puede arrastrar); solo sus botones. */}
+        <div
+          className={`pointer-events-none absolute inset-x-3 bottom-[calc(var(--chrome-bottom)+10px)] z-10 flex flex-col gap-3 transition-opacity duration-200 md:inset-x-5 md:bottom-5 ${dimmed ? 'max-md:opacity-0 max-md:**:pointer-events-none' : ''}`}
+        >
+          <AnimatePresence>
+            {use3D && !hintSeen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.24 }}
+                className="glass-strong pointer-events-auto max-w-[300px] self-start rounded-[22px] p-3.5 text-[12.5px]"
+              >
+                <p className="flex items-center gap-2 font-semibold">
+                  <Hand className="size-4 text-teal" strokeWidth={1.8} /> Cómo explorar
+                </p>
+                <p className="mt-1 text-ink-soft">
+                  {desktop
+                    ? 'Arrastra con el mouse (o mantén Espacio y arrastra) para recorrer. Rueda para acercarte. Toca una tienda o un espacio libre.'
+                    : 'Desliza un dedo para recorrer y pellizca con dos para acercarte. Toca una tienda o un espacio libre.'}{' '}
+                  Hay ofertas escondidas por todo el mall: acércate a los destellos dorados.
+                </p>
+                <button className="mt-1.5 text-xs font-semibold text-teal" onClick={setHintSeen}>
+                  Entendido
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* la fila y su centro no capturan toques (el mapa sigue arrastrable y con pellizco debajo).
             La ficha del local se posa encima del botón principal, como una tarjeta de mapas; los
             controles suben para dejarle sitio. */}
-        <div className="pointer-events-none relative flex items-end justify-between gap-3">
-          {/* espacio izquierdo (equilibra los controles de la derecha para centrar el botón) */}
-          <div className="w-11 shrink-0 max-md:block md:hidden" aria-hidden />
-          <div className="flex min-w-0 flex-1 justify-center md:justify-start *:pointer-events-auto">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {use3D && !peekId && (
-                <motion.div
-                  className="island-hide"
-                  key={overview ? 'enter' : 'overview'}
-                  initial={{ opacity: 0, scale: 0.9, filter: 'blur(6px)' }}
-                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, scale: 0.92, filter: 'blur(6px)' }}
-                  transition={SPRING}
+          <div className="pointer-events-none relative flex items-end justify-between gap-3">
+            {/* espacio izquierdo (equilibra los controles de la derecha para centrar el botón) */}
+            <div className="w-11 shrink-0 max-md:block md:hidden" aria-hidden />
+            <div className="flex min-w-0 flex-1 justify-center md:justify-start *:pointer-events-auto">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {use3D && !peekId && (
+                  <motion.div
+                    className="island-hide"
+                    key={overview ? 'enter' : 'overview'}
+                    initial={{ opacity: 0, scale: 0.9, filter: 'blur(6px)' }}
+                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, scale: 0.92, filter: 'blur(6px)' }}
+                    transition={SPRING}
+                  >
+                    {overview ? (
+                      <PrimaryCta onClick={() => useUI.getState().enterMall()} icon={<DoorOpen className="size-5" strokeWidth={1.9} />} label="Explorar el mall" />
+                    ) : (
+                      <PrimaryCta onClick={() => useUI.getState().setOverview(true)} icon={<Castle className="size-5" strokeWidth={1.9} />} label="Ver todo el mall" />
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {/* controles de cámara */}
+            <motion.div className="flex shrink-0 flex-col items-end gap-2 *:pointer-events-auto" animate={{ y: peekId ? -(PEEK_HEIGHT + 12) : 0 }} transition={SPRING}>
+              {use3D && !overview && (
+                <button
+                  className="glass grid size-11 place-items-center rounded-full text-ink shadow-none transition active:scale-[0.96]"
+                  onClick={goHome}
+                  aria-label="Volver al centro del piso"
                 >
-                  {overview ? (
-                    <PrimaryCta onClick={() => useUI.getState().enterMall()} icon={<DoorOpen className="size-5" strokeWidth={1.9} />} label="Explorar el mall" />
-                  ) : (
-                    <PrimaryCta onClick={() => useUI.getState().setOverview(true)} icon={<Castle className="size-5" strokeWidth={1.9} />} label="Ver todo el mall" />
-                  )}
-                </motion.div>
+                  <House className="size-5" strokeWidth={1.8} />
+                </button>
               )}
-            </AnimatePresence>
+              {use3D && (
+                <div className="glass flex flex-col overflow-hidden rounded-full shadow-none">
+                  <button
+                    className="grid size-11 place-items-center text-ink transition active:bg-white/50"
+                    onClick={() => requestFocus({ kind: 'zoom', factor: 1.5 })}
+                    aria-label="Acercar"
+                  >
+                    <ZoomIn className="size-5" strokeWidth={1.8} />
+                  </button>
+                  <span className="mx-auto h-px w-5 bg-ink/10" />
+                  <button
+                    className="grid size-11 place-items-center text-ink transition active:bg-white/50"
+                    onClick={() => requestFocus({ kind: 'zoom', factor: 1 / 1.5 })}
+                    aria-label="Alejar"
+                  >
+                    <ZoomOut className="size-5" strokeWidth={1.8} />
+                  </button>
+                </div>
+              )}
+              <ViewOptions use3D={use3D} webgl={webgl} desktop={desktop} />
+            </motion.div>
+            <AnimatePresence>{peekId && <PeekCard spaceId={peekId} />}</AnimatePresence>
           </div>
-          {/* controles de cámara */}
-          <motion.div
-            className="flex shrink-0 flex-col items-end gap-2 *:pointer-events-auto"
-            animate={{ y: peekId ? -(PEEK_HEIGHT + 12) : 0 }}
-            transition={SPRING}
-          >
-            {use3D && !overview && (
-              <button className="glass grid size-11 place-items-center rounded-full text-ink shadow-none transition active:scale-[0.96]" onClick={goHome} aria-label="Volver al centro del piso">
-                <House className="size-5" strokeWidth={1.8} />
-              </button>
-            )}
-            {use3D && (
-              <div className="glass flex flex-col overflow-hidden rounded-full shadow-none">
-                <button className="grid size-11 place-items-center text-ink transition active:bg-white/50" onClick={() => requestFocus({ kind: 'zoom', factor: 1.5 })} aria-label="Acercar">
-                  <ZoomIn className="size-5" strokeWidth={1.8} />
-                </button>
-                <span className="mx-auto h-px w-5 bg-ink/10" />
-                <button className="grid size-11 place-items-center text-ink transition active:bg-white/50" onClick={() => requestFocus({ kind: 'zoom', factor: 1 / 1.5 })} aria-label="Alejar">
-                  <ZoomOut className="size-5" strokeWidth={1.8} />
-                </button>
-              </div>
-            )}
-            <ViewOptions use3D={use3D} webgl={webgl} desktop={desktop} />
-          </motion.div>
-          <AnimatePresence>{peekId && <PeekCard spaceId={peekId} />}</AnimatePresence>
         </div>
-      </div>
-      {use3D && desktop && !dimmed && !overview && <ControlsLegend />}
+        {use3D && desktop && !dimmed && !overview && <ControlsLegend />}
       </div>
     </MotionConfig>
   )
@@ -490,7 +545,8 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
   const [open, setOpen] = useState(false)
   // el cliente ve Plano 2D, día/noche/hora real, instalar, recorrido guiado y calidad; las herramientas de prueba y de guía son del administrador
   const canAdmin = useCanAdmin()
-  const item = 'glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap text-ink shadow-none transition duration-200 active:scale-[0.98]'
+  const item =
+    'glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap text-ink shadow-none transition duration-200 active:scale-[0.98]'
 
   const buttons = (
     <>
@@ -532,24 +588,24 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       )}
       {canAdmin && (
         <>
-      <DemoPromoButton className={item} onDone={() => setOpen(false)} />
-      {use3D && <ShipTestButton className={item} onDone={() => setOpen(false)} />}
-      <button
-        className={item}
-        onClick={() => {
-          setOpen(false)
-          useUI.getState().showDoor()
-        }}
-        aria-label="Ver otra vez el portón de entrada"
-      >
-        <DoorOpen className="size-4" /> Ver la entrada
-      </button>
-      {use3D && <HalloweenToggle className={item} />}
-      {use3D && <PirateToggle className={item} />}
-      {use3D && <AirportToggle className={item} />}
-      {use3D && <EntertainmentToggle className={item} />}
-      {use3D && <StadiumToggle className={item} />}
-      {use3D && <StadiumEventToggle className={item} />}
+          <DemoPromoButton className={item} onDone={() => setOpen(false)} />
+          {use3D && <ShipTestButton className={item} onDone={() => setOpen(false)} />}
+          <button
+            className={item}
+            onClick={() => {
+              setOpen(false)
+              useUI.getState().showDoor()
+            }}
+            aria-label="Ver otra vez el portón de entrada"
+          >
+            <DoorOpen className="size-4" /> Ver la entrada
+          </button>
+          {use3D && <HalloweenToggle className={item} />}
+          {use3D && <PirateToggle className={item} />}
+          {use3D && <AirportToggle className={item} />}
+          {use3D && <EntertainmentToggle className={item} />}
+          {use3D && <StadiumToggle className={item} />}
+          {use3D && <StadiumEventToggle className={item} />}
         </>
       )}
     </>
@@ -666,7 +722,12 @@ function PirateToggle({ className }: { className: string }) {
   const parked = usePirateShip((s) => s.parked)
   const setParked = usePirateShip((s) => s.setParked)
   return (
-    <button className={className} onClick={() => setParked(!parked)} aria-pressed={parked} aria-label={parked ? 'Poner a navegar el barco pirata' : 'Dejar quieto el barco pirata en el muelle'}>
+    <button
+      className={className}
+      onClick={() => setParked(!parked)}
+      aria-pressed={parked}
+      aria-label={parked ? 'Poner a navegar el barco pirata' : 'Dejar quieto el barco pirata en el muelle'}
+    >
       {parked ? <Sailboat className="size-4" /> : <Anchor className="size-4" />} {parked ? 'Barco pirata: navegar' : 'Barco pirata: quieto'}
     </button>
   )
@@ -782,6 +843,7 @@ function StadiumListenButton() {
   const works = useStadiumSound((s) => s.works)
   const toast = useUI((s) => s.toast)
   const [near, setNear] = useState(false)
+  const [closeUp, setCloseUp] = useState(false)
   const open = phase === 'open'
   const on = open ? playing : works
   // el mapa vive fuera de React: se mira la cámara varias veces por segundo
@@ -789,8 +851,10 @@ function StadiumListenButton() {
     const id = window.setInterval(() => {
       const t = cameraState.target
       const d = Math.hypot(t.x - STADIUM.center[0], t.z - STADIUM.center[1])
-      const zoomedIn = cameraState.zoom >= cameraState.fitZoom * 0.95
-      setNear(d < 30 && zoomedIn)
+      const ratio = cameraState.zoom / cameraState.fitZoom
+      setNear(d < 30 && ratio >= 0.95)
+      // con mucho zoom el botón se quita para no tapar la escena (el sonido sigue; se apaga al alejar)
+      setCloseUp(ratio > 2.4)
     }, 250)
     return () => window.clearInterval(id)
   }, [])
@@ -802,9 +866,13 @@ function StadiumListenButton() {
   const concert = useStadiumEvent((s) => s.kind) === 'concert'
   const noun = concert ? 'el concierto' : 'el estadio'
   const label = open ? (on ? `Apagar ${noun}` : `Escuchar ${noun}`) : on ? 'Parar las obras' : 'Escuchar obras'
-  const show = near || on
+  const show = (near || on) && !closeUp
+  // Solo el ícono, en la esquina superior derecha: no tapa el estadio ni la gente.
   return (
-    <div className={`pointer-events-none absolute top-1/2 right-3 z-20 -translate-y-1/2 transition duration-300 md:right-5 ${show ? 'translate-x-0 opacity-100' : 'translate-x-6 opacity-0'}`} aria-hidden={!show}>
+    <div
+      className={`pointer-events-none absolute top-[calc(var(--chrome-top)+104px)] right-3 z-20 transition duration-300 md:top-[calc(var(--chrome-top)+96px)] md:right-5 ${show ? 'opacity-100' : 'scale-90 opacity-0'}`}
+      aria-hidden={!show}
+    >
       <button
         tabIndex={show ? 0 : -1}
         onClick={async () => {
@@ -813,12 +881,18 @@ function StadiumListenButton() {
         }}
         aria-pressed={on}
         aria-label={label}
-        className={`glass pointer-events-auto flex h-12 items-center gap-2.5 rounded-full pr-4 pl-2 text-[13.5px] font-bold text-ink shadow-soft transition active:scale-[0.97] ${show ? '' : 'pointer-events-none'}`}
+        title={label}
+        className={`glass pointer-events-auto relative grid size-11 place-items-center rounded-full text-white shadow-soft transition active:scale-95 ${show ? '' : 'pointer-events-none'}`}
+        style={{ background: on ? '#c8553b' : open ? '#22a05a' : '#e8832a' }}
       >
-        <span className={`grid size-8 shrink-0 place-items-center rounded-full text-white ${on ? 'motion-safe:animate-pulse' : ''}`} style={{ background: on ? '#c8553b' : open ? '#22a05a' : '#e8832a' }}>
-          {on ? <VolumeX className="size-4" strokeWidth={2.2} /> : open ? <Volume2 className="size-4" strokeWidth={2.2} /> : <HardHat className="size-4" strokeWidth={2.2} />}
-        </span>
-        {label}
+        {on && <span className="absolute inset-0 rounded-full ring-2 ring-white/70 motion-safe:animate-ping" aria-hidden />}
+        {on ? (
+          <VolumeX className="relative size-5" strokeWidth={2.2} />
+        ) : open ? (
+          <Volume2 className="relative size-5" strokeWidth={2.2} />
+        ) : (
+          <HardHat className="relative size-5" strokeWidth={2.2} />
+        )}
       </button>
     </div>
   )
