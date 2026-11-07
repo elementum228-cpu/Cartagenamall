@@ -5,6 +5,8 @@ export interface BoardTeam {
   name: string
   /** Escudo: dirección pública (o imagen local en la demostración). */
   crest: string | null
+  /** Posición y tamaño del escudo en el cartel (x, y: fracción del cartel; zoom: tamaño relativo). */
+  fit?: ImageFit
 }
 
 /** Encuadre de la imagen dentro del cartel: `x` e `y` la mueven (fracción del ancho y del alto), `zoom` la acerca o la aleja (0,3 a 4). */
@@ -37,8 +39,8 @@ export interface EventBoard {
 }
 
 export const emptyBoard = (): EventBoard => ({
-  home: { name: '', crest: null },
-  away: { name: '', crest: null },
+  home: { name: '', crest: null, fit: DEFAULT_FIT },
+  away: { name: '', crest: null, fit: DEFAULT_FIT },
   image: null,
   fit: DEFAULT_FIT,
   caption: '',
@@ -75,6 +77,7 @@ export function cleanBoard(raw: unknown): EventBoard {
   const team = (t: Partial<BoardTeam> | undefined): BoardTeam => ({
     name: typeof t?.name === 'string' ? t.name.slice(0, 40) : '',
     crest: typeof t?.crest === 'string' && t.crest ? t.crest : null,
+    fit: cleanFit(t?.fit),
   })
   return {
     home: team(r.home),

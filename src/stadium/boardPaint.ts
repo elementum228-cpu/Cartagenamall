@@ -5,7 +5,7 @@ import { DEFAULT_FIT, MIN_ZOOM, boardHasContent, type BoardTeam, type EventBoard
 // de la administración, así lo que se ve al editar es lo que se verá en el estadio.
 
 export const BOARD_W = 1024
-export const BOARD_H = 448
+export const BOARD_H = 576
 const FONT = '"Plus Jakarta Sans", Manrope, sans-serif'
 
 export interface BoardInput {
@@ -55,6 +55,14 @@ const initials = (name: string) =>
     .join('') || '?'
 
 const hue = (name: string) => [...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 40)
+
+/** Dónde va el escudo de cada equipo (centro y tamaño, en píxeles del cartel), con su posición y tamaño elegidos. */
+export function crestBox(team: BoardTeam, side: 'home' | 'away') {
+  const f = team.fit ?? DEFAULT_FIT
+  const cx = Math.max(0, Math.min(BOARD_W, (side === 'home' ? 200 : 824) + f.x * BOARD_W))
+  const cy = Math.max(0, Math.min(BOARD_H, 300 + f.y * BOARD_H))
+  return { cx, cy, size: 380 * Math.max(MIN_ZOOM, f.zoom) }
+}
 
 function crest(g: CanvasRenderingContext2D, cx: number, cy: number, size: number, team: BoardTeam, img: HTMLImageElement | null) {
   // halo suave detrás del escudo
@@ -147,16 +155,16 @@ export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): 
       g.fillStyle = bg
       g.fillRect(0, 0, BOARD_W, BOARD_H)
       g.fillStyle = 'rgba(255,255,255,0.1)'
-      for (let i = 0; i < 9; i++) g.fillRect(70 + i * 105, 40, 48, 368)
+      for (let i = 0; i < 9; i++) g.fillRect(70 + i * 105, 50, 48, BOARD_H - 100)
     }
     g.fillStyle = '#ffffff'
     fit(g, heading, '900', 62, BOARD_W - 100, 30)
-    g.fillText(heading, BOARD_W / 2, board.caption || when ? 352 : 400)
+    g.fillText(heading, BOARD_W / 2, board.caption || when ? BOARD_H - 106 : BOARD_H - 56)
     const line = [when, board.caption.toUpperCase()].filter(Boolean).join('   ·   ')
     if (line) {
       g.fillStyle = '#f6c619'
       fit(g, line, '800', 30, BOARD_W - 100, 18)
-      g.fillText(line, BOARD_W / 2, 408)
+      g.fillText(line, BOARD_W / 2, BOARD_H - 48)
     }
     return
   }
@@ -179,32 +187,34 @@ export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): 
   if (!hasTeams) {
     g.fillStyle = '#ffffff'
     g.font = `900 92px ${FONT}`
-    g.fillText('¡HOY HAY FÚTBOL!', BOARD_W / 2, 230)
+    g.fillText('¡HOY HAY FÚTBOL!', BOARD_W / 2, 300)
     g.fillStyle = 'rgba(255,255,255,0.85)'
     g.font = `700 34px ${FONT}`
-    g.fillText(when || 'Fútbol · Conciertos · Eventos', BOARD_W / 2, 310)
+    g.fillText(when || 'Fútbol · Conciertos · Eventos', BOARD_W / 2, 390)
   } else {
-    // solo los escudos, grandes, uno a cada lado
-    crest(g, 200, 240, 320, board.home, home)
-    crest(g, 824, 240, 320, board.away, away)
+    // solo los escudos, grandes; cada uno se puede mover y cambiar de tamaño desde la administración
+    const h = crestBox(board.home, 'home')
+    const a = crestBox(board.away, 'away')
+    crest(g, h.cx, h.cy, h.size, board.home, home)
+    crest(g, a.cx, a.cy, a.size, board.away, away)
     g.fillStyle = '#f6c619'
-    g.font = `900 120px ${FONT}`
-    g.fillText('VS', BOARD_W / 2, 252)
+    g.font = `900 150px ${FONT}`
+    g.fillText('VS', BOARD_W / 2, 330)
     if (when) {
       const [day, time] = when.split(' · ')
       g.fillStyle = '#ffffff'
       g.font = `900 40px ${FONT}`
-      g.fillText(day, BOARD_W / 2, 324)
+      g.fillText(day, BOARD_W / 2, 406)
       if (time) {
         g.fillStyle = 'rgba(255,255,255,0.85)'
         g.font = `800 36px ${FONT}`
-        g.fillText(time, BOARD_W / 2, 368)
+        g.fillText(time, BOARD_W / 2, 452)
       }
     }
   }
   if (board.caption) {
     g.fillStyle = 'rgba(255,255,255,0.78)'
     fit(g, board.caption, '800', 34, BOARD_W - 120, 18)
-    g.fillText(board.caption, BOARD_W / 2, 430)
+    g.fillText(board.caption, BOARD_W / 2, BOARD_H - 28)
   }
 }

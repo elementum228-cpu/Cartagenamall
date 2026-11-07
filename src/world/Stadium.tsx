@@ -1641,10 +1641,10 @@ function EventBoard() {
   }, [canvas, tex, kind, board, title, when])
   const screen = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
   useFrame(() => screen.color.setScalar(0.42 + 0.58 * nightState.t))
-  const W = 9.8
+  const W = 9.2
   const H = (W * BOARD_H) / BOARD_W
   return (
-    <group position={[BOARD_X, Y + 4.3, BOWL_Z + FACADE_D + 0.1]}>
+    <group position={[BOARD_X, Y + 4.45, BOWL_Z + FACADE_D + 0.1]}>
       {/* marco; el cartel va pegado a la fachada sur, la que mira a la entrada */}
       <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, 0]} scale={[W + 0.5, H + 0.5, 0.2]} castShadow />
       <mesh geometry={GEO.box} material={glowMat('#7fe7b0', 1.5, { dayGlow: 0.05 })} position={[0, 0, 0.06]} scale={[W + 0.3, H + 0.3, 0.06]} />

@@ -20,7 +20,7 @@ describe('cartel del estadio', () => {
   })
   it('limpia datos incompletos de la base de datos', () => {
     expect(cleanBoard(undefined)).toEqual(emptyBoard())
-    expect(cleanBoard({ home: { name: 'A' }, image: 5 }).home).toEqual({
+    expect(cleanBoard({ home: { name: 'A' }, image: 5 }).home).toMatchObject({
       name: 'A',
       crest: null,
     })
@@ -77,5 +77,31 @@ describe('encuadre de la imagen del cartel', () => {
   })
   it('acercar agranda la imagen', () => {
     expect(draw({ x: 0, y: 0, zoom: 2 })[2]).toBeCloseTo(draw({ x: 0, y: 0, zoom: 1 })[2] * 2)
+  })
+})
+
+import { BOARD_H, BOARD_W, crestBox } from '../src/stadium/boardPaint'
+
+describe('escudos del cartel', () => {
+  it('sin ajuste, uno a cada lado y del mismo tamaño', () => {
+    const h = crestBox({ name: '', crest: null }, 'home')
+    const a = crestBox({ name: '', crest: null }, 'away')
+    expect(h.cx).toBeLessThan(BOARD_W / 2)
+    expect(a.cx).toBeGreaterThan(BOARD_W / 2)
+    expect(h.cy).toBe(a.cy)
+    expect(h.size).toBe(a.size)
+  })
+  it('se pueden mover y agrandar, sin salirse del cartel', () => {
+    const t = { name: '', crest: null, fit: { x: 0.1, y: -0.2, zoom: 0.5 } }
+    const b = crestBox(t, 'home')
+    expect(b.cx).toBeCloseTo(200 + 0.1 * BOARD_W)
+    expect(b.cy).toBeCloseTo(300 - 0.2 * BOARD_H)
+    expect(b.size).toBeCloseTo(190)
+    const far = crestBox({ ...t, fit: { x: 2, y: 2, zoom: 1 } }, 'away')
+    expect(far.cx).toBeLessThanOrEqual(BOARD_W)
+    expect(far.cy).toBeLessThanOrEqual(BOARD_H)
+  })
+  it('limpia el ajuste de cada equipo', () => {
+    expect(cleanBoard({ home: { name: 'A', fit: { x: 9, zoom: 99 } } }).home.fit).toEqual({ x: 2, y: 0, zoom: 4 })
   })
 })

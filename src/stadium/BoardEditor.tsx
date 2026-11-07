@@ -7,7 +7,7 @@ import { uploadStadiumImage } from '../remote/photos'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
 import { DEFAULT_FIT, MAX_ZOOM, MIN_ZOOM, boardWhen, type BoardTeam, type EventBoard, type ImageFit } from './board'
-import { BOARD_H, BOARD_W, paintBoard } from './boardPaint'
+import { BOARD_H, BOARD_W, crestBox, paintBoard } from './boardPaint'
 
 // Editor del cartel del estadio. En un partido se cargan los dos escudos y los nombres de los equipos; en un
 // concierto, la imagen del artista o del evento. Abajo se ve cómo quedará el cartel (el mismo dibujo del estadio).
@@ -77,6 +77,23 @@ function TeamFields({ title, team, onChange }: { title: string; team: BoardTeam;
         onChange={(e) => onChange({ ...team, name: e.target.value })}
       />
       <ImagePick label="Escudo (PNG con fondo transparente se ve mejor)" value={team.crest} kind="crest" aspect="0.9" onChange={(crest) => onChange({ ...team, crest })} />
+      <label className="block text-xs font-bold text-ink-soft">
+        Tamaño del escudo · {Math.round((team.fit?.zoom ?? 1) * 100)} %
+        <input
+          type="range"
+          className="mt-1 w-full accent-brand"
+          min={40}
+          max={200}
+          value={Math.round((team.fit?.zoom ?? 1) * 100)}
+          aria-label={`Tamaño del escudo ${title.toLowerCase()}`}
+          onChange={(e) => onChange({ ...team, fit: { ...(team.fit ?? DEFAULT_FIT), zoom: Number(e.target.value) / 100 } })}
+        />
+      </label>
+      {team.fit && (team.fit.x !== 0 || team.fit.y !== 0 || team.fit.zoom !== 1) && (
+        <button className={btn.ghost} onClick={() => onChange({ ...team, fit: DEFAULT_FIT })}>
+          Restablecer escudo
+        </button>
+      )}
     </div>
   )
 }
@@ -86,9 +103,9 @@ function TeamFields({ title, team, onChange }: { title: string; team: BoardTeam;
  * Vista previa en vivo: dibuja el cartel tal como saldrá en el estadio. En un concierto con imagen, se puede
  * arrastrar para moverla (con el dedo o el mouse).
  */
-function Preview({ kind, board, title, startsAt, onFit }: { kind: StadiumEventKind; board: EventBoard; title: string; startsAt?: string; onFit?: (f: ImageFit) => void }) {
+function Preview({ kind, board, title, startsAt, onFit }: { kind: StadiumEventKind; board: EventBoard; title: string; startsAt?: string; onFit?: (f: ImageFit, side: 'image' | 'home' | 'away') => void }) {
   const ref = useRef<HTMLCanvasElement>(null)
-  const drag = useRef<{ px: number; py: number; fit: ImageFit } | null>(null)
+  const drag = useRef<{ px: number; py: number; fit: ImageFit; side: 'image' | 'home' | 'away' } | null>(null)
   useEffect(() => {
     if (ref.current)
       void paintBoard(ref.current, {
@@ -98,7 +115,7 @@ function Preview({ kind, board, title, startsAt, onFit }: { kind: StadiumEventKi
         when: boardWhen(startsAt),
       })
   }, [kind, board, title, startsAt])
-  const movable = !!onFit && kind === 'concert' && !!board.image
+  const movable = !!onFit && (kind === 'match' || !!board.image)
   return (
     <canvas
       ref={ref}
@@ -109,14 +126,25 @@ function Preview({ kind, board, title, startsAt, onFit }: { kind: StadiumEventKi
       onPointerDown={(e) => {
         if (!movable) return
         e.currentTarget.setPointerCapture(e.pointerId)
-        drag.current = { px: e.clientX, py: e.clientY, fit: board.fit ?? DEFAULT_FIT }
+        let side: 'image' | 'home' | 'away' = 'image'
+        if (kind === 'match') {
+          // se mueve el escudo que esté más cerca del dedo
+          const r = e.currentTarget.getBoundingClientRect()
+          const x = ((e.clientX - r.left) / r.width) * BOARD_W
+          const y = ((e.clientY - r.top) / r.height) * BOARD_H
+          const h = crestBox(board.home, 'home')
+          const a = crestBox(board.away, 'away')
+          side = Math.hypot(x - h.cx, y - h.cy) <= Math.hypot(x - a.cx, y - a.cy) ? 'home' : 'away'
+        }
+        const base = side === 'image' ? board.fit : board[side].fit
+        drag.current = { px: e.clientX, py: e.clientY, fit: base ?? DEFAULT_FIT, side }
       }}
       onPointerMove={(e) => {
         const d = drag.current
         if (!d || !onFit) return
         const r = e.currentTarget.getBoundingClientRect()
         // arrastrar a la derecha mueve la imagen a la derecha (en fracción del cartel)
-        onFit({ ...d.fit, x: d.fit.x + (e.clientX - d.px) / r.width, y: d.fit.y + (e.clientY - d.py) / r.height })
+        onFit({ ...d.fit, x: d.fit.x + (e.clientX - d.px) / r.width, y: d.fit.y + (e.clientY - d.py) / r.height }, d.side)
       }}
       onPointerUp={() => (drag.current = null)}
       onPointerCancel={() => (drag.current = null)}
@@ -165,7 +193,8 @@ export function BoardEditor({
       </label>
       <div>
         <p className="mb-1 text-xs font-bold text-ink-soft">Así se verá en el estadio</p>
-        <Preview kind={kind} board={value} title={title} startsAt={startsAt} onFit={(fit) => onChange({ ...value, fit })} />
+        <Preview kind={kind} board={value} title={title} startsAt={startsAt} onFit={(fit, side) => onChange(side === 'image' ? { ...value, fit } : { ...value, [side]: { ...value[side], fit } })} />
+        {kind === 'match' && <p className="mt-2 text-[11px] text-ink-soft">Arrastra cada escudo sobre la vista previa para acomodarlo y usa el control de tamaño de cada equipo.</p>}
         {kind === 'concert' && value.image && (
           <div className="mt-2 space-y-2 rounded-2xl bg-sand p-3">
             <p className="text-[11px] text-ink-soft">Arrastra la imagen sobre la vista previa para moverla. Con el control puedes hacerla más pequeña (se rellena con la misma imagen desenfocada) o acercarla.</p>
