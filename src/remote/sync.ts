@@ -12,7 +12,7 @@ import { useSeasonSettings, type SeasonMode } from '../state/season'
 import { useOrders } from '../state/orders'
 import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
-import { useStadiumEvent, useStadiumPhase } from '../state/stadium'
+import { useStadiumEvent, useStadiumPhase, useStadiumSong } from '../state/stadium'
 import type { StadiumPhase } from '../config/stadium'
 import { usePirateShip } from '../state/pirate'
 import { useReservations, type CourtReservation } from '../state/reservations'
@@ -420,19 +420,20 @@ export async function loadFeatures() {
   if (!supabase) return
   const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'features').maybeSingle()
   if (error) return
-  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert' }> | null)?.doc
+  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert'; stadiumSong?: { url: string | null; title: string; crowd: number } }> | null)?.doc
   if (!doc) return
   applyRemote(() => {
     useAirportFeature.setState({ enabled: !!doc.airport })
     useEntertainmentFeature.setState({ enabled: !!doc.entertainment })
     useStadiumPhase.setState({ phase: doc.stadium === 'almost' || doc.stadium === 'open' ? doc.stadium : 'construction' })
     useStadiumEvent.setState({ kind: doc.stadiumEvent === 'concert' ? 'concert' : 'match' })
+    useStadiumSong.setState({ url: doc.stadiumSong?.url ?? null, title: doc.stadiumSong?.title ?? '', crowd: typeof doc.stadiumSong?.crowd === 'number' ? doc.stadiumSong.crowd : 0.8 })
     usePirateShip.setState({ parked: !!doc.pirateParked })
   })
 }
 
 function pushFeatures() {
-  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind }
+  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd } }
   enqueue(async () => {
     const { error } = await supabase!.from('mall_settings').upsert({ key: 'features', doc })
     if (error) throw new Error(error.message)
@@ -487,6 +488,13 @@ export function startRemoteSync() {
   useEntertainmentFeature.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
     pushFeatures()
+  })
+  // el volumen del público se mueve con un deslizador: se espera a que pare para guardarlo
+  let songTimer: ReturnType<typeof setTimeout> | undefined
+  useStadiumSong.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || (next.url === prev.url && next.title === prev.title && next.crowd === prev.crowd)) return
+    clearTimeout(songTimer)
+    songTimer = setTimeout(pushFeatures, 700)
   })
   useStadiumEvent.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.kind === prev.kind) return

@@ -14,6 +14,7 @@ import { useCart } from '../state/cart'
 import { remoteEnabled, supabase } from '../remote/client'
 import { useReservations } from '../state/reservations'
 import { StoreColors } from '../ui/StoreColors'
+import { StadiumAdmin } from './StadiumAdmin'
 import { PhotoBackgroundEditor } from '../ui/PhotoBackground'
 import { seedRemoteCatalog } from '../remote/sync'
 import { AccountBar, AccountGate } from '../remote/AccountGate'
@@ -31,7 +32,7 @@ import { OwnerDashboard, PriceInput } from './OwnerDashboard'
 import { DemoInvites } from './DemoInvites'
 import { useSpacePrice, useSpacePricing } from '../state/spacePricing'
 
-type Tab = 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'invitaciones' | 'integraciones'
+type Tab = 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'estadio' | 'invitaciones' | 'integraciones'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'gestion', label: 'Gestión y precios' },
@@ -42,6 +43,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'promociones', label: 'Promociones' },
   { id: 'pedidos', label: 'Pedidos' },
   { id: 'cancha', label: 'Deportes' },
+  { id: 'estadio', label: 'Estadio' },
   { id: 'invitaciones', label: 'Invitaciones' },
   { id: 'integraciones', label: 'Integraciones' },
 ]
@@ -106,6 +108,7 @@ function AdminContent() {
         {tab === 'promociones' && <PromotionsAdmin />}
         {tab === 'pedidos' && <OrdersAdmin />}
         {tab === 'cancha' && <CourtAdmin />}
+        {tab === 'estadio' && <StadiumAdmin />}
         {tab === 'invitaciones' && <DemoInvites />}
         {tab === 'integraciones' && <IntegrationsAdmin />}
       </main>

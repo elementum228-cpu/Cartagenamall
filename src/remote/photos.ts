@@ -16,3 +16,16 @@ export async function uploadStorePhoto(storeId: string, dataUrl: string): Promis
   if (error) throw new Error(error.message)
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
+
+const AUDIO_BUCKET = 'stadium-audio'
+export const MAX_SONG_BYTES = 10 * 1024 * 1024
+
+/** Sube la canción del concierto (solo la administración puede) y devuelve su dirección pública. */
+export async function uploadStadiumSong(file: File): Promise<string> {
+  if (!supabase) throw new Error('Sin conexión a la base de datos.')
+  const ext = (file.name.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `songs/${uniqueId('s')}.${ext}`
+  const { error } = await supabase.storage.from(AUDIO_BUCKET).upload(path, file, { contentType: file.type || 'audio/mpeg', cacheControl: '31536000', upsert: false })
+  if (error) throw new Error(error.message)
+  return supabase.storage.from(AUDIO_BUCKET).getPublicUrl(path).data.publicUrl
+}

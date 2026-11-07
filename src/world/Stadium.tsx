@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { STADIUM, phaseInfo, type StadiumPhase } from '../config/stadium'
 import { BASE, BOWL_Z, N, PX, PZ, at, ring, segBuilt } from './stadiumGeometry'
-import { toggleStadiumSound, toggleWorksSound, useStadiumEvent, useStadiumPhase, useStadiumSound } from '../state/stadium'
+import { toggleStadiumSound, toggleWorksSound, useStadiumEvent, useStadiumPhase, useStadiumSong, useStadiumSound } from '../state/stadium'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -1663,7 +1663,9 @@ function useScreenTexture(reduceMotion: boolean) {
       g.font = '900 54px "Plus Jakarta Sans", Manrope, sans-serif'
       g.fillText('EN VIVO', 256, 84)
       g.font = '700 26px Manrope, sans-serif'
-      g.fillText('ESTADIO DE CARTAGENA', 256, 120)
+      // el nombre del concierto que puso el administrador (o el del estadio)
+      const title = useStadiumSong.getState().title.trim()
+      g.fillText((title || 'ESTADIO DE CARTAGENA').toUpperCase().slice(0, 30), 256, 120)
     } else {
       g.textAlign = 'center'
       g.fillStyle = 'rgba(255,255,255,0.55)'
