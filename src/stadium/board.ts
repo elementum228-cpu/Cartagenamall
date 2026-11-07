@@ -7,7 +7,7 @@ export interface BoardTeam {
   crest: string | null
 }
 
-/** Encuadre de la imagen dentro del cartel: `x` e `y` la mueven (fracción del ancho y del alto), `zoom` la acerca. */
+/** Encuadre de la imagen dentro del cartel: `x` e `y` la mueven (fracción del ancho y del alto), `zoom` la acerca o la aleja (0,3 a 4). */
 export interface ImageFit {
   x: number
   y: number
@@ -16,11 +16,13 @@ export interface ImageFit {
 
 export const DEFAULT_FIT: ImageFit = { x: 0, y: 0, zoom: 1 }
 export const MAX_ZOOM = 4
+/** Por debajo de 1 la imagen queda más pequeña que el cartel (con fondo desenfocado alrededor). */
+export const MIN_ZOOM = 0.3
 
 export function cleanFit(raw: unknown): ImageFit {
   const r = (raw ?? {}) as Partial<ImageFit>
   const n = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
-  return { x: Math.max(-2, Math.min(2, n(r.x, 0))), y: Math.max(-2, Math.min(2, n(r.y, 0))), zoom: Math.max(1, Math.min(MAX_ZOOM, n(r.zoom, 1))) }
+  return { x: Math.max(-2, Math.min(2, n(r.x, 0))), y: Math.max(-2, Math.min(2, n(r.y, 0))), zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, n(r.zoom, 1))) }
 }
 
 export interface EventBoard {
@@ -28,7 +30,7 @@ export interface EventBoard {
   away: BoardTeam
   /** Imagen del concierto o evento. */
   image: string | null
-  /** Encuadre de la imagen: desplazamiento (fracción del cartel) y acercamiento (1 a 4). */
+  /** Encuadre de la imagen: desplazamiento (fracción del cartel) y zoom (0,3 a 4). */
   fit?: ImageFit
   /** Línea corta bajo la imagen o los escudos (p. ej. «Liga BetPlay · Fecha 12»). */
   caption: string

@@ -6,7 +6,7 @@ import { remoteEnabled } from '../remote/client'
 import { uploadStadiumImage } from '../remote/photos'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
-import { DEFAULT_FIT, MAX_ZOOM, boardWhen, type BoardTeam, type EventBoard, type ImageFit } from './board'
+import { DEFAULT_FIT, MAX_ZOOM, MIN_ZOOM, boardWhen, type BoardTeam, type EventBoard, type ImageFit } from './board'
 import { BOARD_H, BOARD_W, paintBoard } from './boardPaint'
 
 // Editor del cartel del estadio. En un partido se cargan los dos escudos y los nombres de los equipos; en un
@@ -168,16 +168,16 @@ export function BoardEditor({
         <Preview kind={kind} board={value} title={title} startsAt={startsAt} onFit={(fit) => onChange({ ...value, fit })} />
         {kind === 'concert' && value.image && (
           <div className="mt-2 space-y-2 rounded-2xl bg-sand p-3">
-            <p className="text-[11px] text-ink-soft">Arrastra la imagen sobre la vista previa para moverla.</p>
+            <p className="text-[11px] text-ink-soft">Arrastra la imagen sobre la vista previa para moverla. Con el control puedes hacerla más pequeña (se rellena con la misma imagen desenfocada) o acercarla.</p>
             <label className="block text-xs font-bold text-ink-soft">
-              Acercar · {Math.round((value.fit?.zoom ?? 1) * 100)} %
+              Tamaño · {Math.round((value.fit?.zoom ?? 1) * 100)} %
               <input
                 type="range"
                 className="mt-1 w-full accent-brand"
-                min={100}
+                min={Math.round(MIN_ZOOM * 100)}
                 max={MAX_ZOOM * 100}
                 value={Math.round((value.fit?.zoom ?? 1) * 100)}
-                aria-label="Acercar la imagen"
+                aria-label="Tamaño de la imagen"
                 onChange={(e) => onChange({ ...value, fit: { ...(value.fit ?? DEFAULT_FIT), zoom: Number(e.target.value) / 100 } })}
               />
             </label>

@@ -39,14 +39,14 @@ import { drawCover } from '../src/stadium/boardPaint'
 describe('encuadre de la imagen del cartel', () => {
   const draw = (fit: { x: number; y: number; zoom: number }) => {
     let args: number[] = []
-    const g = { drawImage: (_i: unknown, l: number, t: number, w: number, h: number) => (args = [l, t, w, h]) }
+    const g = { save: () => {}, restore: () => {}, fillRect: () => {}, set fillStyle(_v: string) {}, drawImage: (_i: unknown, l: number, t: number, w: number, h: number) => (args = [l, t, w, h]) }
     drawCover(g as unknown as CanvasRenderingContext2D, { naturalWidth: 2000, naturalHeight: 1000 } as HTMLImageElement, 1000, 400, fit)
     return args
   }
   it('limpia valores raros', () => {
     expect(cleanFit(undefined)).toEqual({ x: 0, y: 0, zoom: 1 })
     expect(cleanFit({ x: 9, y: -9, zoom: 99 })).toEqual({ x: 2, y: -2, zoom: 4 })
-    expect(cleanFit({ x: 'a', zoom: 0.2 })).toEqual({ x: 0, y: 0, zoom: 1 })
+    expect(cleanFit({ x: 'a', zoom: 0.01 })).toEqual({ x: 0, y: 0, zoom: 0.3 })
   })
   it('sin ajuste, la imagen cubre el cartel centrada', () => {
     const [l, t, w, h] = draw({ x: 0, y: 0, zoom: 1 })
@@ -63,6 +63,17 @@ describe('encuadre de la imagen del cartel', () => {
       expect(l + w).toBeGreaterThanOrEqual(999.999)
       expect(t + h).toBeGreaterThanOrEqual(399.999)
     }
+  })
+  it('más pequeña que el cartel queda entera y se puede mover dentro de él', () => {
+    for (const fit of [{ x: 0, y: 0, zoom: 0.5 }, { x: 5, y: 5, zoom: 0.4 }, { x: -5, y: -5, zoom: 0.3 }, { x: 0.2, y: 0, zoom: 0.8 }]) {
+      const [l, t, w, h] = draw(fit)
+      expect(l).toBeGreaterThanOrEqual(-0.0001)
+      expect(t).toBeGreaterThanOrEqual(-0.0001)
+      expect(l + w).toBeLessThanOrEqual(1000.0001)
+      expect(t + h).toBeLessThanOrEqual(400.0001)
+    }
+    // y se puede llevar a las esquinas
+    expect(draw({ x: -5, y: -5, zoom: 0.4 }).slice(0, 2)).toEqual([0, 0])
   })
   it('acercar agranda la imagen', () => {
     expect(draw({ x: 0, y: 0, zoom: 2 })[2]).toBeCloseTo(draw({ x: 0, y: 0, zoom: 1 })[2] * 2)

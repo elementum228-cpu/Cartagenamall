@@ -1,5 +1,5 @@
 import type { StadiumEventKind } from '../config/stadium'
-import { DEFAULT_FIT, boardHasContent, type BoardTeam, type EventBoard, type ImageFit } from './board'
+import { DEFAULT_FIT, MIN_ZOOM, boardHasContent, type BoardTeam, type EventBoard, type ImageFit } from './board'
 
 // Dibuja el cartel del estadio en un lienzo 2D. Lo usan el estadio en 3D (como textura) y la vista previa
 // de la administración, así lo que se ve al editar es lo que se verá en el estadio.
@@ -94,16 +94,31 @@ function crest(g: CanvasRenderingContext2D, cx: number, cy: number, size: number
 }
 
 /**
- * Dibuja la imagen cubriendo todo el lienzo `W`×`H`, con el encuadre elegido: `zoom` la acerca y `x`/`y` la
- * mueven. Nunca deja bordes vacíos (el desplazamiento se limita a lo que la imagen cubre).
+ * Dibuja la imagen en el lienzo `W`×`H` con el encuadre elegido: `zoom` 1 la deja cubriendo todo el cartel; más
+ * la acerca; menos la hace más pequeña (el resto se rellena con la misma imagen desenfocada). `x`/`y` la mueven.
+ * La imagen no se sale del cartel: si es más grande no deja bordes vacíos y si es más pequeña queda entera.
  */
 export function drawCover(g: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number, fit: ImageFit = DEFAULT_FIT) {
-  const k = Math.max(W / img.naturalWidth, H / img.naturalHeight) * Math.max(1, fit.zoom)
+  const base = Math.max(W / img.naturalWidth, H / img.naturalHeight)
+  const k = base * Math.max(MIN_ZOOM, fit.zoom)
   const w = img.naturalWidth * k
   const h = img.naturalHeight * k
-  const left = Math.max(W - w, Math.min(0, (W - w) / 2 + fit.x * W))
-  const top = Math.max(H - h, Math.min(0, (H - h) / 2 + fit.y * H))
-  g.drawImage(img, left, top, w, h)
+  const place = (size: number, box: number, off: number) => {
+    const c = (box - size) / 2 + off * box
+    return size >= box ? Math.max(box - size, Math.min(0, c)) : Math.max(0, Math.min(box - size, c))
+  }
+  if (w < W - 0.5 || h < H - 0.5) {
+    // fondo: la misma imagen, grande y desenfocada, oscurecida
+    g.save()
+    if ('filter' in g) g.filter = `blur(${Math.round(W / 50)}px)`
+    const bw = img.naturalWidth * base * 1.15
+    const bh = img.naturalHeight * base * 1.15
+    g.drawImage(img, (W - bw) / 2, (H - bh) / 2, bw, bh)
+    g.restore()
+    g.fillStyle = 'rgba(0,0,0,0.5)'
+    g.fillRect(0, 0, W, H)
+  }
+  g.drawImage(img, place(w, W, fit.x), place(h, H, fit.y), w, h)
 }
 
 /** Dibuja el cartel completo. Espera a que carguen las imágenes. */
