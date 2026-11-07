@@ -37,6 +37,7 @@ import { Travelers } from './Travelers'
 import { TechDistrictDecor } from './TechDistrict'
 import { FootballCourt } from './football/FootballCourt'
 import { FootballMatchController } from './football/FootballMatchController'
+import { PadelMatchController } from './football/PadelMatchController'
 import { PromoSpotlights } from './PromoSpotlight'
 import { MallPathLighting } from './MallPathLighting'
 import { PATH_LIGHTS } from './pathLights'
@@ -193,7 +194,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                       />
                       {/* partido solo con un negocio operando la cancha; libre, se ve vacía */}
                       {courtOperator && <FootballMatchController quality={quality} reduceMotion={reduceMotion} court={0} />}
-                      {courtOperator && <FootballMatchController quality={quality} reduceMotion={reduceMotion} court={1} />}
+                      {courtOperator && <PadelMatchController quality={quality} reduceMotion={reduceMotion} court={1} />}
                       <TechDistrictDecor zoneId="B" angle={ZONE_BY_ID.B.angle} offers={techOffers} />
                     </>
                   ) : (

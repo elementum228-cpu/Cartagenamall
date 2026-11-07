@@ -152,7 +152,7 @@ function SpacesAdmin() {
       ))}
       <section>
         <h2 className="mb-2 flex items-center gap-2 text-sm font-extrabold">
-          <span className="size-3 rounded-full" style={{ background: COURT_COLOR }} /> {FLOOR_BY_ID.P1.name} · Zona de deportes (canchas A y B)
+          <span className="size-3 rounded-full" style={{ background: COURT_COLOR }} /> {FLOOR_BY_ID.P1.name} · Zona de deportes (fútbol 5 y pádel)
         </h2>
         <p className="mb-2 text-xs text-ink-soft">Libre, se muestra vacía con «TU NEGOCIO AQUÍ». Al asignarle un negocio se activa: partido, reservas por hora y su nombre en el cartel.</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

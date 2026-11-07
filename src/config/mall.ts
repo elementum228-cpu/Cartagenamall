@@ -40,7 +40,7 @@ export const SPACE_TYPES: Record<SpaceType, SpaceTypeInfo> = {
     name: 'Zona de deportes',
     monthlyPriceCOP: 450_000,
     size: [2 * SPORTS_HALF[0], 2 * SPORTS_HALF[1]],
-    features: ['Dos canchas de fútbol 5 (A y B) con césped, arcos y malla', 'Iluminación nocturna y bancas', 'Reservas por hora desde el mall', 'Cartel con tu marca sobre la malla', 'Precio por hora definido por ti'],
+    features: ['Una cancha de fútbol 5 y una de pádel con paredes de vidrio', 'Iluminación nocturna y bancas', 'Reservas por hora desde el mall', 'Cartel con tu marca sobre la malla', 'Precio por hora definido por ti'],
   },
   booth: {
     type: 'booth',
