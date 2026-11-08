@@ -3,6 +3,8 @@ import { absoluteUrl, localPath } from '../lib/links'
 import { copyText } from '../lib/clipboard'
 import { MessagesEditor } from './MerchantMessages'
 import { MusicEditor } from './MerchantMusic'
+import { AddressEditor } from './MerchantAddress'
+import { cleanAddress } from '../lib/maps'
 import { EventsManager } from '../stadium/EventsManager'
 import { useStadiumConfig } from '../state/stadiumEvents'
 import {
@@ -524,6 +526,7 @@ function ProfileEditor({ store }: { store: Store }) {
           <input className={input} inputMode="tel" value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
         </Field>
         <MessagesEditor store={f} onChange={(m) => setF((x) => ({ ...x, messages: m }))} />
+        <AddressEditor store={f} onChange={(address) => setF((x) => ({ ...x, address }))} />
         <MusicEditor store={f} onChange={(music) => setF((x) => ({ ...x, music }))} />
         <Field label="Estado" wide>
           <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>
@@ -547,6 +550,7 @@ function ProfileEditor({ store }: { store: Store }) {
               ...f,
               name: f.name.trim(),
               logoText: f.logoText.trim(),
+              address: cleanAddress(f.address),
             }
             upsert(next)
             setF(next)

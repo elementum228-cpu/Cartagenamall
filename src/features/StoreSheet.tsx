@@ -1,6 +1,6 @@
 import { messageFor } from '../lib/messages'
 import { absoluteUrl, localPath } from '../lib/links'
-import { ArrowLeft, ArrowUpDown, BookOpen, Check, ChevronDown, DoorOpen, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ArrowUpDown, BookOpen, Check, ChevronDown, DoorOpen, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FLOOR_BY_ID, FLOOR_OF_ZONE, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
@@ -26,6 +26,7 @@ import { remoteEnabled } from '../remote/client'
 import { Sheet } from '../ui/Sheet'
 import { useBeta } from '../state/beta'
 import { canEnter } from '../immersive/logic'
+import { directionsUrl, hasAddress } from '../lib/maps'
 import { loyaltyOf, usePassport } from '../state/passport'
 
 /** Ficha comercial de una tienda: se abre al tocarla en el mapa o desde el modo Comprar. */
@@ -48,6 +49,60 @@ export function StoreSheet() {
 }
 
 function StoreHeader({ store }: { store: Store }) {
+  if (isRestaurant(store)) return <RestaurantCover store={store} />
+  return <PlainHeader store={store} />
+}
+
+/**
+ * Portada del restaurante: el local es lo primero que se ve (fondo de la tienda o su color), con logo, nombre y estado.
+ * Si el local tiene «Entrar al local», el botón de vidrio va sobre la portada: la portada es la entrada.
+ */
+function RestaurantCover({ store }: { store: Store }) {
+  const betaOn = useBeta((s) => s.interior)
+  const hasMenu = useCatalog((s) => s.products.some((p) => p.storeId === store.id && p.active))
+  const enter = canEnter(betaOn, store) && hasMenu
+  const bg = store.photoBg?.url
+  const open = store.status === 'open'
+  return (
+    <div className={`relative overflow-hidden ${enter ? 'h-[236px]' : 'h-[176px]'}`} style={{ background: `radial-gradient(ellipse at 72% 24%, color-mix(in srgb, ${store.brandColor} 52%, #2a1a10) 0%, #2a1a10 62%, #170e09 100%)` }}>
+      {bg && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bg})` }} />}
+      <div className="absolute inset-0 opacity-60" style={{ background: 'repeating-linear-gradient(100deg, rgba(255,255,255,0.035) 0 2px, rgba(0,0,0,0) 2px 26px)' }} />
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,12,8,0.5) 0%, rgba(20,12,8,0.05) 40%, rgba(20,12,8,0.78) 100%)' }} />
+      <div className={`absolute inset-x-5 flex items-center gap-3 text-white ${enter ? 'bottom-[76px]' : 'bottom-4'}`}>
+        <span className="grid shrink-0 place-items-center rounded-full bg-white p-[3px] shadow-[0_4px_14px_rgba(0,0,0,0.4)]">
+          <StoreLogo store={store} size={52} round />
+        </span>
+        <div className="min-w-0 leading-tight">
+          <h2 className="truncate text-[23px] font-extrabold tracking-tight">{store.name}</h2>
+          <p className="mt-1 flex items-center gap-2 text-[12.5px] font-semibold text-white/90">
+            <span className={`size-2 shrink-0 rounded-full ${open ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            <span className="truncate">
+              {open ? 'Abierto' : 'Cerrado'} · {store.tagline || 'Restaurante'}
+            </span>
+          </p>
+        </div>
+      </div>
+      {enter && (
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => useUI.getState().openInterior(store.id)}
+          className="absolute inset-x-5 bottom-4 flex h-[52px] items-center justify-between rounded-full bg-white/92 pr-2 pl-5 text-ink shadow-[0_12px_26px_-10px_rgba(0,0,0,0.6)] backdrop-blur transition active:scale-[0.99]"
+        >
+          <span className="flex items-center gap-2.5">
+            <DoorOpen className="size-5" />
+            <span className="text-[15px] font-extrabold">Entrar al local</span>
+            <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-extrabold tracking-widest text-white">BETA</span>
+          </span>
+          <span className="grid size-[38px] place-items-center rounded-full bg-brand text-white">
+            <ArrowRight className="size-[18px]" />
+          </span>
+        </button>
+      )}
+    </div>
+  )
+}
+
+function PlainHeader({ store }: { store: Store }) {
   const { spaceByStore } = useCatalogMaps()
   const space = SPACE_BY_ID[spaceByStore[store.id]]
   const zone = ZONE_BY_ID[store.zoneId]
@@ -105,6 +160,8 @@ function StoreBody({ store }: { store: Store }) {
   const promos = promotions.filter((p) => p.storeId === store.id && isPromotionLive(p, now) && (p.type !== 'secret' || discovered.includes(p.id)))
   const food = isRestaurant(store)
   const betaOn = useBeta((s) => s.interior)
+  // restaurantes: acciones como pastillas finas en una sola fila (la jerarquía la llevan la portada, el menú y el pedido)
+  const act = food ? 'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12.5px] font-bold text-ink transition active:scale-[0.97]' : btn.secondary
   const onMap = location.pathname === '/'
   // La oferta relámpago más reciente va arriba, con precio, vigencia y botón de carrito.
   const flashNow = promos.filter((p) => p.type === 'flash').sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))[0]
@@ -117,7 +174,7 @@ function StoreBody({ store }: { store: Store }) {
       <p className="text-[14px] leading-relaxed text-ink-soft">{store.description}</p>
       <LoyaltyStrip store={store} />
 
-      <div className="flex flex-wrap gap-2">
+      <div className={food ? 'scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5' : 'flex flex-wrap gap-2'}>
         <button
           onClick={async () => {
             const url = absoluteUrl(localPath(store, SPACE_BY_ID[spaceByStore[store.id]]))
@@ -132,12 +189,12 @@ function StoreBody({ store }: { store: Store }) {
             }
             toast((await copyText(url)) ? 'Enlace copiado. Quien lo abra llega directo a este local.' : url)
           }}
-          className={btn.secondary}
+          className={act}
           aria-label={`Compartir el enlace de ${store.name}`}
         >
           <Share2 className="size-4" /> Compartir
         </button>
-        <button onClick={() => toggleFav(store.id)} className={btn.secondary} aria-pressed={fav}>
+        <button onClick={() => toggleFav(store.id)} className={act} aria-pressed={fav}>
           <Heart className={`size-4 ${fav ? 'text-coral' : ''}`} fill={fav ? 'currentColor' : 'none'} />
           {fav ? 'Guardada' : 'Guardar tienda'}
         </button>
@@ -147,13 +204,13 @@ function StoreBody({ store }: { store: Store }) {
             const ok = await copyText(`${store.whatsapp} — Hola ${store.name}, te escribo desde MallPlay.`)
             toast(ok ? `Número de demostración copiado: ${store.whatsapp}` : `WhatsApp de demostración: ${store.whatsapp}`)
           }}
-          className={btn.secondary}
+          className={act}
         >
           <MessageCircle className="size-4 text-emerald-600" />
           WhatsApp
         </button>
         {instagram && (
-          <a href={instagram} target="_blank" rel="noopener noreferrer" className={btn.secondary} aria-label={`Instagram de ${store.name}`}>
+          <a href={instagram} target="_blank" rel="noopener noreferrer" className={act} aria-label={`Instagram de ${store.name}`}>
             <InstagramIcon className="size-4" />
             Instagram
           </a>
@@ -167,14 +224,15 @@ function StoreBody({ store }: { store: Store }) {
               useUI.getState().selectSpace(sp)
               useUI.getState().requestFocus({ kind: 'space', id: sp })
             }}
-            className={btn.secondary}
+            className={act}
           >
             <MapPin className="size-4 text-brand" />
             Ver en el mapa
           </button>
         )}
       </div>
-      {canEnter(betaOn, store) && mine.length > 0 && (
+      <AddressRow store={store} />
+      {!food && canEnter(betaOn, store) && mine.length > 0 && (
         <button
           onClick={() => useUI.getState().openInterior(store.id)}
           className="flex w-full items-center gap-3 rounded-[22px] bg-ink p-3.5 text-left text-white shadow-soft transition active:scale-[0.99]"
@@ -189,7 +247,7 @@ function StoreBody({ store }: { store: Store }) {
           <span className="text-xl font-bold">›</span>
         </button>
       )}
-      {!isService(store) && mine.length > 0 && (
+      {!food && !isService(store) && mine.length > 0 && (
         <button
           onClick={() => setView('catalogo')}
           className="group flex w-full items-center gap-3 rounded-[22px] p-3.5 text-left text-white shadow-soft transition active:scale-[0.99]"
@@ -236,8 +294,8 @@ function StoreBody({ store }: { store: Store }) {
 
       {food ? (
         <div className="space-y-3">
-          <CategoryChips groups={groups} cat={cat} onPick={setCat} products={mine} store={store} />
-          <RestaurantMenu store={store} products={shown} />
+          <CategoryChips groups={groups} cat={cat} onPick={setCat} products={mine} store={store} variant="tabs" />
+          <RestaurantMenu store={store} products={shown} hideTitle />
         </div>
       ) : (
         <section>
@@ -262,6 +320,28 @@ function StoreBody({ store }: { store: Store }) {
   )
 }
 
+/** Dirección del local con «Cómo llegar» (abre Google Maps). Solo aparece si el dueño la puso. */
+function AddressRow({ store }: { store: Store }) {
+  if (!hasAddress(store.address)) return null
+  const href = directionsUrl(store.address)
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3">
+      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
+        <MapPin className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1 leading-tight">
+        <p className="text-[11px] font-extrabold tracking-wider text-ink-soft uppercase">Dirección</p>
+        <p className="mt-0.5 text-[13.5px] font-bold">{store.address?.text || 'Ubicación en Google Maps'}</p>
+      </div>
+      {href && (
+        <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-brand px-4 text-[13px] font-extrabold text-white transition active:scale-[0.97]" aria-label={`Cómo llegar a ${store.name} en Google Maps`}>
+          Cómo llegar
+        </a>
+      )}
+    </div>
+  )
+}
+
 /** Filtro por categorías propias de la tienda (solo si hay más de una). */
 function CategoryChips({
   groups,
@@ -270,7 +350,9 @@ function CategoryChips({
   products,
   store,
   className = '',
+  variant = 'chips',
 }: {
+  variant?: 'chips' | 'tabs'
   groups: { id: string; name: string }[]
   cat: string | null
   onPick: (id: string | null) => void
@@ -280,6 +362,20 @@ function CategoryChips({
 }) {
   if (groups.length < 2) return null
   const count = (id: string) => products.filter((p) => groupOf(store, p).id === id).length
+  if (variant === 'tabs')
+    return (
+      <div className={`scrollbar-none -mx-5 flex gap-6 overflow-x-auto border-b border-line px-5 ${className}`} role="tablist" aria-label="Categorías del menú">
+        {[{ id: null as string | null, name: 'Todo', n: products.length }, ...groups.map((g) => ({ id: g.id as string | null, name: g.name, n: count(g.id) }))].map((t) => {
+          const on = cat === t.id
+          return (
+            <button key={t.id ?? 'all'} role="tab" aria-selected={on} onClick={() => onPick(t.id)} className={`-mb-px flex h-12 shrink-0 items-center gap-1.5 border-b-[3px] text-[14px] transition ${on ? 'border-brand font-extrabold text-brand' : 'border-transparent font-bold text-ink-soft'}`}>
+              {t.name}
+              <span className={`text-[12px] font-bold ${on ? 'text-ink-soft' : 'text-ink-soft/70'}`}>{t.n}</span>
+            </button>
+          )
+        })}
+      </div>
+    )
   return (
     <div className={`scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5 ${className}`} role="group" aria-label="Filtrar por categoría">
       <Chip active={!cat} onClick={() => onPick(null)}>
