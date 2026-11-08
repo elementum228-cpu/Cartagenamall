@@ -51,7 +51,7 @@ import { useUI } from '../state/ui'
 import { ProductImage } from '../ui/ProductImage'
 import { EmptyState, StoreLogo, btn, input } from '../ui/bits'
 import { MerchantPromotions } from './MerchantPromotions'
-import { CategoriesManager, CategoryPicker } from './MerchantCategories'
+import { CategoriesManager, CategoryPicker, QuickCategories } from './MerchantCategories'
 import { MerchantDashboard } from './MerchantDashboard'
 import { StoreColors } from '../ui/StoreColors'
 import { PhotoBackgroundEditor } from '../ui/PhotoBackground'
@@ -504,6 +504,7 @@ function ProfileEditor({ store }: { store: Store }) {
             ))}
           </select>
         </Field>
+        <QuickCategories store={f} onChange={(categories) => setF((x) => ({ ...x, categories }))} />
         <Field label="Fachada del local">
           <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
             <option value="awning">Toldo a rayas</option>

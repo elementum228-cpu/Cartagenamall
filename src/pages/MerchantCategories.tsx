@@ -231,3 +231,56 @@ export function CategoryPicker({ store, value, onChange }: { store: Store; value
     </div>
   )
 }
+
+/** Crear categorías propias sin salir del perfil: escribes el nombre, tocas «Agregar» y listo. */
+export function QuickCategories({ store, onChange }: { store: Store; onChange: (c: { id: string; name: string }[]) => void }) {
+  const toast = useUI((s) => s.toast)
+  const words = categoryWords(store)
+  const cats = storeCategories(store)
+  const [name, setName] = useState('')
+  const add = () => {
+    const n = name.trim().slice(0, 30)
+    if (n.length < 2) return
+    if (cats.some((c) => c.name.toLowerCase() === n.toLowerCase())) return toast('Ya tienes una categoría con ese nombre.', 'error')
+    onChange([...cats, { id: newCategoryId(n, cats.map((c) => c.id)), name: n }])
+    setName('')
+    toast(`«${n}» creada. Ya puedes usarla en tus artículos.`, 'success')
+  }
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <p className="text-sm font-bold">¿No encuentras tu categoría? Crea una nueva</p>
+      <div className="flex gap-2">
+        <input
+          className={`${input} min-w-0 flex-1`}
+          value={name}
+          maxLength={30}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              add()
+            }
+          }}
+          placeholder={words.placeholder}
+          aria-label="Nombre de la nueva categoría"
+        />
+        <button type="button" className={`${btn.primary} shrink-0`} disabled={name.trim().length < 2} onClick={add}>
+          <Plus className="size-4" /> Agregar
+        </button>
+      </div>
+      {cats.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {cats.map((c) => (
+            <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-sand px-3 py-1.5 text-xs font-bold">
+              {c.name}
+              <button type="button" aria-label={`Quitar ${c.name}`} className="grid size-4 place-items-center rounded-full text-ink-soft hover:bg-ink/10" onClick={() => onChange(cats.filter((x) => x.id !== c.id))}>
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="text-[11px] text-ink-soft">Se guardan al tocar «Guardar» y las puedes asignar a cada artículo. Para ordenarlas o ver cuántos artículos tiene cada una, ve a la pestaña de tu catálogo.</p>
+    </div>
+  )
+}
