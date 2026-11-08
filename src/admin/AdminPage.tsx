@@ -603,7 +603,7 @@ function NewProduct({ storeId, onDone }: { storeId: string; onDone: () => void }
       id: remoteEnabled() ? uniqueId('P') : `P-${max + 1}`,
       storeId,
       name: name.trim(),
-      description: description.trim() || 'Sin descripción.',
+      description: description.trim(),
       price: Math.round(Number(price)),
       image: null,
       icon,

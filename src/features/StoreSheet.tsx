@@ -1,4 +1,5 @@
 import { messageFor } from '../lib/messages'
+import { productDesc } from '../lib/desc'
 import { absoluteUrl, localPath } from '../lib/links'
 import { ArrowLeft, ArrowRight, ArrowUpDown, Check, ChevronDown, DoorOpen, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -459,7 +460,7 @@ function FullCatalog({ store, products, onBack }: { store: Store; products: Prod
   const groups = useMemo(() => groupsWithProducts(store, products), [store, products])
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase()
-    let list = products.filter((p) => (!cat || groupOf(store, p).id === cat) && (!needle || `${p.name} ${p.description}`.toLowerCase().includes(needle)))
+    let list = products.filter((p) => (!cat || groupOf(store, p).id === cat) && (!needle || `${p.name} ${productDesc(p)}`.toLowerCase().includes(needle)))
     if (sort === 'menor') list = [...list].sort((a, b) => priceOf(a).final - priceOf(b).final)
     else if (sort === 'mayor') list = [...list].sort((a, b) => priceOf(b).final - priceOf(a).final)
     else if (sort === 'nombre') list = [...list].sort((a, b) => a.name.localeCompare(b.name, 'es'))

@@ -1,4 +1,5 @@
 import { Plus, ShoppingBag } from 'lucide-react'
+import { productDesc } from '../lib/desc'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Product, Store } from '../domain/types'
@@ -85,7 +86,7 @@ function Dish({ product, store, open }: { product: Product; store: Store; open: 
           </button>
           <PromoBadge info={info} />
         </div>
-        {product.description && <p className="mt-0.5 line-clamp-1 text-[12.5px] text-ink-soft">{product.description}</p>}
+        {productDesc(product) && <p className="mt-0.5 line-clamp-1 text-[12.5px] text-ink-soft">{productDesc(product)}</p>}
         <div className="mt-1.5">
           {soldOut ? (
             <span className="text-[12.5px] font-bold text-ink-soft">Agotado hoy</span>

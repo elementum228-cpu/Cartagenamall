@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, MessageCircle, Minus, Plus, ShoppingBag, Volume2, VolumeX } from 'lucide-react'
+import { productDesc } from '../lib/desc'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Product, Store } from '../domain/types'
@@ -439,12 +440,12 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
     >
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-[17px] leading-tight font-extrabold">{product.name}</h2>
-        <div className="text-right">
+        <div className="shrink-0 text-right whitespace-nowrap">
           {info.final < info.original && <span className="mr-1.5 text-xs font-semibold line-through opacity-60">{formatCOP(info.original)}</span>}
           <span className="text-[17px] font-extrabold">{formatCOP(unit)}</span>
         </div>
       </div>
-      <p className="mt-0.5 line-clamp-2 text-[12.5px] font-medium opacity-70">{product.description}</p>
+      {productDesc(product) && <p className="mt-0.5 line-clamp-2 text-[12.5px] font-medium opacity-70">{productDesc(product)}</p>}
       {product.variants.length > 0 && (
         <div className="mt-2.5 flex flex-wrap gap-1.5" role="group" aria-label="Opción">
           {product.variants.map((v) => (
@@ -534,7 +535,7 @@ function ServiceScene({ store, items, cur, onPick, index, top }: { store: Store;
               >
                 <span className="min-w-0">
                   <span className="block text-[14px] font-extrabold">{p.name}</span>
-                  {p.description && <span className="block truncate text-[12px] font-medium text-[#b7cfd0]">{p.description}</span>}
+                  {productDesc(p) && <span className="block truncate text-[12px] font-medium text-[#b7cfd0]">{productDesc(p)}</span>}
                 </span>
                 <span className="shrink-0 text-[14px] font-extrabold">{formatCOP(price)}</span>
               </button>

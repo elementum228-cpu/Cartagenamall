@@ -1,4 +1,5 @@
 import { Heart, MessageCircle, Minus, Plus, Scale, ShoppingBag, Zap } from 'lucide-react'
+import { productDesc } from '../lib/desc'
 import { useMemo, useState } from 'react'
 import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product } from '../domain/types'
@@ -88,7 +89,7 @@ function Body({ product }: { product: Product }) {
           </div>
           {info.promotion?.code && <p className="mt-1 text-xs font-semibold text-ink-soft">Código guardado: {info.promotion.code}</p>}
         </div>
-        <p className="text-sm leading-relaxed text-ink-soft">{product.description}</p>
+        {productDesc(product) && <p className="text-sm leading-relaxed text-ink-soft">{productDesc(product)}</p>}
 
         {product.variants.length > 0 && (
           <fieldset>

@@ -824,7 +824,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
       id: product?.id ?? (remoteEnabled() ? uniqueId('P') : `P-${max + 1}`),
       storeId: store.id,
       name: name.trim(),
-      description: description.trim() || 'Sin descripción.',
+      description: description.trim(),
       price: Math.round(Number(price)),
       image: photos.image,
       photoOriginal: photos.original,

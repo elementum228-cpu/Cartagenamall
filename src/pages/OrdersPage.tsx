@@ -88,22 +88,17 @@ export function OrderDetailPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 pt-5 pb-28 md:pb-10">
       {params.get('nuevo') && (
-        <div className="flex gap-3 rounded-3xl bg-brand p-4 text-white shadow-soft">
-          <CheckCircle2 className="size-7 shrink-0" />
+        <div className="flex items-start gap-3 rounded-3xl border border-brand/20 bg-brand/8 p-4">
+          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-brand" />
           <div>
             <p className="font-extrabold">¡Pedido enviado!</p>
-            <p className="text-sm opacity-90">
+            <p className="text-sm text-ink-soft">
               {waSent.length === order.subOrders.length
                 ? 'Le escribimos por WhatsApp a la tienda. Aquí abajo sigues el estado de tu pedido.'
                 : 'Si WhatsApp no se abrió, toca «Enviar por WhatsApp» en cada tienda para que le llegue su pedido. Aquí abajo sigues el estado.'}
             </p>
           </div>
         </div>
-      )}
-      {params.get('nuevo') && (
-        <Link to="/" className={`${btn.primary} w-full`}>
-          <Store className="size-4" /> Seguir en el mall
-        </Link>
       )}
       <header>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -127,6 +122,11 @@ export function OrderDetailPage() {
         <span className="font-bold">Total estimado</span>
         <span className="text-2xl font-extrabold">{formatCOP(order.estimatedTotal)}</span>
       </div>
+      {params.get('nuevo') && (
+        <Link to="/" className={`${btn.secondary} w-full`}>
+          <Store className="size-4" /> Seguir en el mall
+        </Link>
+      )}
     </div>
   )
 }
