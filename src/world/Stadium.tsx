@@ -1255,7 +1255,9 @@ function Lights({ phase, night, quality }: { phase: StadiumPhase; night: boolean
   }, [phase])
   const glow = night ? 1 : 0.45
   useFrame(({ clock }, dt) => {
-    level.current += ((lit ? 1 : 0) - level.current) * Math.min(1, dt * 3)
+    // inaugurado: de noche el estadio se enciende solo, aunque no suene nada
+    const target = lit ? 1 : phase === 'open' ? nightState.t : 0
+    level.current += (target - level.current) * Math.min(1, dt * 3)
     const l = level.current
     lamp.color.copy(LAMP_OFF).lerp(LAMP_ON, l)
     baseLamp.color.copy(LAMP_BASE_OFF).lerp(LAMP_BASE_ON, l)
@@ -1855,7 +1857,8 @@ function Stage({ reduceMotion, beamsOn = true }: { reduceMotion: boolean; beamsO
   const from = useMemo(() => LX.map((x) => new THREE.Vector3(x, 5.15, 0.6)), [])
   const up = useMemo(() => new THREE.Vector3(0, 1, 0), [])
   useFrame(({ clock }, dt) => {
-    const on = useStadiumSound.getState().playing
+    // la tarima y su pantalla también se encienden de noche, aunque no suene nada
+    const on = useStadiumSound.getState().playing || nightState.t > 0.5
     level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 3)
     const l = level.current
     const t = clock.elapsedTime
@@ -2067,8 +2070,9 @@ function InnerLights({ reduceMotion, cones: showCones = true }: { reduceMotion: 
   const corners = useMemo(() => [at(12, 2.6), at(28, 2.6), at(44, 2.6), at(60, 2.6)].map(([x, z]) => new THREE.Vector3(x, ROOF_IN_H - 0.4, z)), [])
   const c = useMemo(() => new THREE.Color(), [])
   useFrame(({ clock }, dt) => {
-    const on = useStadiumSound.getState().playing
-    level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 3)
+    // luces de colores: con el sonido, o de noche aunque no suene nada
+    const target = Math.max(useStadiumSound.getState().playing ? 1 : 0, nightState.t)
+    level.current += (target - level.current) * Math.min(1, dt * 3)
     const l = level.current
     const t = reduceMotion ? 0 : clock.elapsedTime
     segs.forEach((sg, k) => {
