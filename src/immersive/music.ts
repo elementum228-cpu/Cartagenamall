@@ -13,7 +13,8 @@ export const useInteriorSound = create<{ muted: boolean; setMuted: (m: boolean) 
 export const MUSIC_VOLUME = 0.32
 
 let audio: HTMLAudioElement | null = null
-let fade: number | undefined
+/** Cada pista lleva su propia rampa de volumen: una pista vieja no puede pisar la de la nueva. */
+const fades = new WeakMap<HTMLAudioElement, number>()
 
 // ---- YouTube: reproductor oficial incrustado, sin imagen, solo suena la pista ----
 interface YTPlayer {
@@ -127,17 +128,19 @@ function stopYouTube(now: boolean) {
 }
 
 function ramp(el: HTMLAudioElement, to: number, ms: number, done?: () => void) {
-  window.clearInterval(fade)
+  window.clearInterval(fades.get(el))
   const from = el.volume
   const t0 = performance.now()
-  fade = window.setInterval(() => {
+  const id = window.setInterval(() => {
     const u = Math.min(1, (performance.now() - t0) / ms)
     el.volume = Math.max(0, Math.min(1, from + (to - from) * u))
     if (u >= 1) {
-      window.clearInterval(fade)
+      window.clearInterval(id)
+      fades.delete(el)
       done?.()
     }
   }, 40)
+  fades.set(el, id)
 }
 
 /** Empieza (o cambia) la música con entrada gradual. Si el navegador no deja reproducir, no pasa nada. */
@@ -150,9 +153,27 @@ export function startMusic(url: string | null, fallback: string | null = null, f
     el.loop = true
     el.volume = 0
     audio = el
-    void el.play().then(() => ramp(el, MUSIC_VOLUME, 2600)).catch(() => {
-      if (audio === el) audio = null
-    })
+    void el
+      .play()
+      .then(() => {
+        // si mientras tanto cambió o se apagó la pista, no la subimos
+        if (audio === el) ramp(el, MUSIC_VOLUME, 2600)
+      })
+      .catch(() => {
+        // el navegador pidió un toque antes de dejar sonar: con el primero que haga, empieza
+        if (audio !== el) return
+        const retry = () => {
+          off()
+          if (audio !== el) return
+          void el.play().then(() => audio === el && ramp(el, MUSIC_VOLUME, 2600)).catch(() => undefined)
+        }
+        const off = () => {
+          window.removeEventListener('pointerdown', retry)
+          window.removeEventListener('keydown', retry)
+        }
+        window.addEventListener('pointerdown', retry, { once: true })
+        window.addEventListener('keydown', retry, { once: true })
+      })
   } catch {
     audio = null
   }
@@ -165,7 +186,7 @@ export function stopMusic(now = false) {
   audio = null
   if (!el) return
   if (now) {
-    window.clearInterval(fade)
+    window.clearInterval(fades.get(el))
     el.pause()
     return
   }
