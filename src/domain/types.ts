@@ -130,6 +130,8 @@ export interface Store {
   setup?: 'pending' | 'done'
   /** Categorías propias del catálogo, menú o servicios, en el orden que las acomodó el dueño. */
   categories?: StoreCategory[]
+  /** Beta «Entrar al local»: la administración habilita este local para la experiencia inmersiva. */
+  interior?: boolean
   /** Tarjeta de sellos: cada compra da un sello; al llenarla se canjea este premio. */
   loyalty?: { stamps: number; reward: string; active: boolean }
 }

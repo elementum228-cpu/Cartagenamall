@@ -16,6 +16,7 @@ import { useStadiumEvent, useStadiumPhase, useStadiumSong } from '../state/stadi
 import type { StadiumPhase } from '../config/stadium'
 import { useRemoteSold, useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch, useTickets } from '../state/stadiumEvents'
 import { cleanMatch } from '../stadium/match'
+import { useBeta } from '../state/beta'
 import { cleanBoard } from '../stadium/board'
 import type { StadiumEvent, Ticket } from '../stadium/types'
 import { usePirateShip } from '../state/pirate'
@@ -424,7 +425,7 @@ export async function loadFeatures() {
   if (!supabase) return
   const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'features').maybeSingle()
   if (error) return
-  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert'; stadiumSong?: { url: string | null; title: string; crowd: number }; stadiumOperator?: string | null; stadiumActive?: string | null; stadiumBoard?: unknown }> | null)?.doc
+  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert'; stadiumSong?: { url: string | null; title: string; crowd: number }; stadiumOperator?: string | null; stadiumActive?: string | null; stadiumBoard?: unknown; interiorBeta?: boolean }> | null)?.doc
   if (!doc) return
   applyRemote(() => {
     useAirportFeature.setState({ enabled: !!doc.airport })
@@ -434,6 +435,7 @@ export async function loadFeatures() {
     useStadiumConfig.setState({ operatorStoreId: doc.stadiumOperator ?? null, activeEventId: doc.stadiumActive ?? null })
     useStadiumSong.setState({ url: doc.stadiumSong?.url ?? null, title: doc.stadiumSong?.title ?? '', crowd: typeof doc.stadiumSong?.crowd === 'number' ? doc.stadiumSong.crowd : 0.8 })
     useStadiumBoard.setState({ board: cleanBoard(doc.stadiumBoard) })
+    useBeta.setState({ interior: !!doc.interiorBeta })
     usePirateShip.setState({ parked: !!doc.pirateParked })
   })
 }
@@ -454,7 +456,7 @@ function pushMatch(doc: unknown) {
 }
 
 function pushFeatures() {
-  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd }, stadiumOperator: useStadiumConfig.getState().operatorStoreId, stadiumActive: useStadiumConfig.getState().activeEventId, stadiumBoard: useStadiumBoard.getState().board }
+  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd }, stadiumOperator: useStadiumConfig.getState().operatorStoreId, stadiumActive: useStadiumConfig.getState().activeEventId, stadiumBoard: useStadiumBoard.getState().board, interiorBeta: useBeta.getState().interior }
   enqueue(async () => {
     const { error } = await supabase!.from('mall_settings').upsert({ key: 'features', doc })
     if (error) throw new Error(error.message)
@@ -622,6 +624,10 @@ export function startRemoteSync() {
     if (applying || !useSession.getState().isAdmin || (next.url === prev.url && next.title === prev.title && next.crowd === prev.crowd)) return
     clearTimeout(songTimer)
     songTimer = setTimeout(pushFeatures, 700)
+  })
+  useBeta.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.interior === prev.interior) return
+    pushFeatures()
   })
   useStadiumMatch.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.match === prev.match) return

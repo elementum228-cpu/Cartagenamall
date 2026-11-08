@@ -31,6 +31,7 @@ import { SpaceSheet } from "./features/SpaceSheet";
 import { FootballCourtInfoPanel } from "./features/FootballCourtInfoPanel";
 import { KartTrackPanel } from "./features/KartTrackPanel";
 import { StadiumPanel } from "./stadium/StadiumPanel";
+import { StoreInterior } from "./immersive/StoreInterior";
 import { RouteGuard, lazyPage } from "./ui/RouteGuard";
 import { StoreSheet } from "./features/StoreSheet";
 import { HarborSheet } from "./features/HarborSheet";
@@ -260,6 +261,7 @@ function Shell() {
       <FootballCourtInfoPanel />
       <KartTrackPanel />
       <StadiumPanel />
+      <StoreInterior />
       <HarborSheet />
       <ShowroomSheet />
       <ShipLayer />

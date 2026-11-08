@@ -84,6 +84,9 @@ interface UIState {
   trackOpen: boolean
   /** Ventana del estadio: eventos y boletas. */
   stadiumOpen: boolean
+  /** «Entrar al local» (beta): el local en el que se está adentro. */
+  interiorStoreId: string | null
+  openInterior: (id: string | null) => void
   openStadium: (open: boolean) => void
   openTrack: (open: boolean) => void
   focus: FocusRequest | null
@@ -145,6 +148,8 @@ export const useUI = create<UIState>()((set, get) => ({
   openPeek: () => set({ peek: false }),
   openStore: (id) => set(id ? { openStoreId: id, selectedSpaceId: null, courtOpen: false, trackOpen: false, harbor: null, showroom: null, shipOpen: false } : { openStoreId: null, selectedSpaceId: null }),
   courtOpen: false,
+  interiorStoreId: null,
+  openInterior: (id) => set(id ? { interiorStoreId: id, openStoreId: null, selectedSpaceId: null, stadiumOpen: false, courtOpen: false, trackOpen: false } : { interiorStoreId: null }),
   stadiumOpen: false,
   openStadium: (open) => set(open ? { stadiumOpen: true, trackOpen: false, courtOpen: false, selectedSpaceId: null, openStoreId: null, harbor: null, showroom: null, shipOpen: false } : { stadiumOpen: false }),
   trackOpen: false,

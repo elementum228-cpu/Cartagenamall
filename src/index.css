@@ -400,3 +400,14 @@ select:not([multiple]):disabled {
 
 /* En Isla Descuento: se esconden los controles propios del mall (categorías, pisos, botón principal). */
 .island-on .island-hide { display: none !important; }
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 14px)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

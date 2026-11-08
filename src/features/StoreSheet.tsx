@@ -1,6 +1,6 @@
 import { messageFor } from '../lib/messages'
 import { absoluteUrl, localPath } from '../lib/links'
-import { ArrowLeft, ArrowUpDown, BookOpen, Check, ChevronDown, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowUpDown, BookOpen, Check, ChevronDown, DoorOpen, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FLOOR_BY_ID, FLOOR_OF_ZONE, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
@@ -24,6 +24,8 @@ import { groupOf, groupsWithProducts } from '../lib/storeCategories'
 import { InstagramIcon } from '../ui/InstagramIcon'
 import { remoteEnabled } from '../remote/client'
 import { Sheet } from '../ui/Sheet'
+import { useBeta } from '../state/beta'
+import { canEnter } from '../immersive/logic'
 import { loyaltyOf, usePassport } from '../state/passport'
 
 /** Ficha comercial de una tienda: se abre al tocarla en el mapa o desde el modo Comprar. */
@@ -102,6 +104,7 @@ function StoreBody({ store }: { store: Store }) {
   const instagram = instagramUrl(store.instagram)
   const promos = promotions.filter((p) => p.storeId === store.id && isPromotionLive(p, now) && (p.type !== 'secret' || discovered.includes(p.id)))
   const food = isRestaurant(store)
+  const betaOn = useBeta((s) => s.interior)
   const onMap = location.pathname === '/'
   // La oferta relámpago más reciente va arriba, con precio, vigencia y botón de carrito.
   const flashNow = promos.filter((p) => p.type === 'flash').sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))[0]
@@ -171,6 +174,21 @@ function StoreBody({ store }: { store: Store }) {
           </button>
         )}
       </div>
+      {canEnter(betaOn, store) && mine.length > 0 && (
+        <button
+          onClick={() => useUI.getState().openInterior(store.id)}
+          className="flex w-full items-center gap-3 rounded-[22px] bg-ink p-3.5 text-left text-white shadow-soft transition active:scale-[0.99]"
+        >
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/15">
+            <DoorOpen className="size-[22px]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-extrabold">Entrar al local</span>
+            <span className="block text-[12px] opacity-80">Recórrelo como si estuvieras adentro · beta</span>
+          </span>
+          <span className="text-xl font-bold">›</span>
+        </button>
+      )}
       {!isService(store) && mine.length > 0 && (
         <button
           onClick={() => setView('catalogo')}
