@@ -350,7 +350,7 @@ function Stage({
         key={p.id}
         onClick={side ? () => onGo(rel) : undefined}
         aria-hidden={d !== 0}
-        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full' : 'rounded-[34px] border-[3px] border-white/90 bg-gradient-to-b from-white/85 to-white/45 p-3.5 backdrop-blur-xl'}`}
+        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
         style={{
           width: 'var(--w)',
           aspectRatio: plate ? '1 / 1' : '0.72',
@@ -364,7 +364,7 @@ function Stage({
               ? '0 40px 60px -22px rgba(0,0,0,0.75), 0 14px 22px -10px rgba(0,0,0,0.5)'
               : 'none'
             : d === 0
-              ? '0 46px 70px -24px rgba(50,40,80,0.55), 0 18px 28px -12px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -10px 18px rgba(120,130,170,0.18)'
+              ? '0 46px 70px -24px rgba(50,40,80,0.55), 0 18px 28px -12px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.9)'
               : '0 24px 40px -22px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.7)',
           cursor: side ? 'pointer' : 'default',
           pointerEvents: d === 2 ? 'none' : 'auto',
@@ -375,7 +375,7 @@ function Stage({
         {!plate && (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-[31px]"
+            className="pointer-events-none absolute inset-0 rounded-[27px]"
             style={{ background: 'linear-gradient(120deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 38%, rgba(255,255,255,0) 70%, rgba(255,255,255,0.18) 100%)' }}
           />
         )}
