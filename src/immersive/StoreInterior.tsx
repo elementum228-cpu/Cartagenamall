@@ -15,7 +15,7 @@ import { useUI } from '../state/ui'
 import { ProductImage } from '../ui/ProductImage'
 import { StoreLogo } from '../ui/bits'
 import { useBeta } from '../state/beta'
-import { firstTab, interiorProducts, interiorTabs, itemsFor, musicUrlFor, relPos, sceneOf, wrapIndex, type Scene } from './logic'
+import { DEFAULT_MUSIC, firstTab, interiorProducts, interiorTabs, itemsFor, musicUrlFor, relPos, sceneOf, wrapIndex, type Scene } from './logic'
 import { setMusicMuted, startMusic, stopMusic, useInteriorSound } from './music'
 
 // «Entrar al local» (beta): en vez de abrir una ficha, se entra al negocio. El fondo es el del local (el que
@@ -85,7 +85,7 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
   const musicUrl = musicUrlFor(store, import.meta.env.BASE_URL)
   const muted = useInteriorSound((s) => s.muted)
   useEffect(() => {
-    startMusic(musicUrl)
+    startMusic(musicUrl, `${import.meta.env.BASE_URL}${DEFAULT_MUSIC}`)
     return () => stopMusic()
   }, [musicUrl])
 
@@ -103,6 +103,8 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
 
   // deslizar con el dedo o el mouse: la tarjeta sigue al dedo y, al soltar, se acomoda sola
   const drag = useRef<{ x0: number; id: number } | null>(null)
+  // un arrastre no cuenta como toque: no abre el detalle ni cambia de producto
+  const dragged = useRef(false)
   const [dragX, setDragX] = useState(0)
   const [dragging, setDragging] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
@@ -168,7 +170,7 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
 
         {musicUrl !== null && (
           <button
-            onClick={() => setMusicMuted(!muted, musicUrl)}
+            onClick={() => setMusicMuted(!muted, musicUrl, `${import.meta.env.BASE_URL}${DEFAULT_MUSIC}`)}
             aria-label={muted ? 'Activar la música del local' : 'Silenciar la música del local'}
             aria-pressed={!muted}
             className={`absolute left-4 z-10 grid size-11 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/35 text-white' : 'border-white/70 bg-white/60 text-[#1d1a16]'}`}
@@ -201,6 +203,7 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
               onPointerUp={(e) => {
                 if (!drag.current) return
                 const dx = e.clientX - drag.current.x0
+                dragged.current = Math.abs(dx) > 8
                 drag.current = null
                 setDragging(false)
                 setDragX(0)
@@ -212,7 +215,7 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
                 setDragX(0)
               }}
             >
-              <Stage scene={scene} store={store} items={items} index={wrapIndex(index, n)} onGo={go} dragX={dragX} dragging={dragging} />
+              <Stage scene={scene} store={store} items={items} index={wrapIndex(index, n)} onGo={go} onOpen={(id) => useUI.getState().openProduct(id)} dragged={dragged} dragX={dragX} dragging={dragging} />
               {n > 1 && (
                 <>
                   <Arrow side="left" dark={dark} onClick={() => go(-1)} />
@@ -334,6 +337,8 @@ function Stage({
   items,
   index,
   onGo,
+  onOpen,
+  dragged,
   dragX,
   dragging,
 }: {
@@ -342,6 +347,8 @@ function Stage({
   items: Product[]
   index: number
   onGo: (d: number) => void
+  onOpen: (id: string) => void
+  dragged: { current: boolean }
   dragX: number
   dragging: boolean
 }) {
@@ -364,7 +371,14 @@ function Stage({
     return (
       <div
         key={p.id}
-        onClick={side ? () => onGo(rel) : undefined}
+        onClick={() => {
+          if (dragged.current) {
+            dragged.current = false
+            return
+          }
+          if (d === 0) onOpen(p.id)
+          else if (side) onGo(rel)
+        }}
         aria-hidden={d !== 0}
         className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full p-[1.8%]' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
         style={{
@@ -382,7 +396,7 @@ function Stage({
             : d === 0
               ? '0 46px 70px -24px rgba(50,40,80,0.55), 0 18px 28px -12px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.9)'
               : '0 24px 40px -22px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.7)',
-          cursor: side ? 'pointer' : 'default',
+          cursor: d <= 1 || side ? 'pointer' : 'default',
           pointerEvents: d > (wide ? 2 : 1) ? 'none' : 'auto',
         }}
       >

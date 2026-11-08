@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Product, Store } from '../src/domain/types'
-import { DEFAULT_MUSIC, canEnter, musicUrlFor, firstTab, interiorProducts, interiorTabs, itemsFor, relPos, sceneOf, wrapIndex } from '../src/immersive/logic'
+import { DEFAULT_MUSIC, canEnter, musicUrlFor, youtubeId, firstTab, interiorProducts, interiorTabs, itemsFor, relPos, sceneOf, wrapIndex } from '../src/immersive/logic'
 
 const store = (p: Partial<Store> = {}) => ({ id: 's1', categoryId: 'moda', zoneId: 'A', ...p }) as Store
 const prod = (id: string, p: Partial<Product> = {}) => ({ id, storeId: 's1', active: true, featured: false, ...p }) as Product
@@ -58,5 +58,26 @@ describe('entrar al local (beta)', () => {
     // «Mi música» sin pista cargada vuelve a la clásica
     expect(musicUrlFor({ music: { mode: 'custom', url: null } }, '/')).toBe(`/${DEFAULT_MUSIC}`)
     expect(musicUrlFor({ music: { mode: 'off', url: 'https://x/y.mp3' } })).toBeNull()
+  })
+})
+
+describe('música de YouTube', () => {
+  it('reconoce los enlaces habituales', () => {
+    const id = 'dQw4w9WgXcQ'
+    expect(youtubeId(`https://www.youtube.com/watch?v=${id}&t=3`)).toBe(id)
+    expect(youtubeId(`https://youtu.be/${id}?si=abc`)).toBe(id)
+    expect(youtubeId(`youtube.com/shorts/${id}`)).toBe(id)
+    expect(youtubeId(`https://music.youtube.com/watch?v=${id}`)).toBe(id)
+    expect(youtubeId(`https://www.youtube.com/embed/${id}`)).toBe(id)
+  })
+  it('rechaza lo que no es un video', () => {
+    expect(youtubeId('')).toBeNull()
+    expect(youtubeId('https://example.com/watch?v=dQw4w9WgXcQ')).toBeNull()
+    expect(youtubeId('https://www.youtube.com/watch?v=corto')).toBeNull()
+    expect(youtubeId('hola')).toBeNull()
+  })
+  it('el local con YouTube suena con yt:ID y, sin enlace válido, la clásica', () => {
+    expect(musicUrlFor({ music: { mode: 'youtube', ytUrl: 'https://youtu.be/dQw4w9WgXcQ' } })).toBe('yt:dQw4w9WgXcQ')
+    expect(musicUrlFor({ music: { mode: 'youtube', ytUrl: 'x' } }, '/')).toBe(`/${DEFAULT_MUSIC}`)
   })
 })

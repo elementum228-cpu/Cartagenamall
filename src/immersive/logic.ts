@@ -16,10 +16,38 @@ export const canEnter = (betaOn: boolean, store: Pick<Store, 'interior'> | undef
 export const DEFAULT_MUSIC = 'audio/clasica.mp3'
 
 /** Música del local: null si está apagada; la propia si la subió y la eligió; si no, la clásica de siempre. */
+/** Id del video de un enlace de YouTube (watch, youtu.be, shorts, embed, music.youtube.com); null si no lo es. */
+export function youtubeId(raw: string | null | undefined): string | null {
+  const s = (raw ?? '').trim()
+  if (!s) return null
+  let u: URL
+  try {
+    u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`)
+  } catch {
+    return null
+  }
+  const host = u.hostname.replace(/^(www|m|music)\./, '')
+  let id: string | null = null
+  if (host === 'youtu.be') id = u.pathname.split('/')[1] ?? null
+  else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    if (u.pathname === '/watch') id = u.searchParams.get('v')
+    else {
+      const m = u.pathname.match(/^\/(?:embed|shorts|live|v)\/([^/?]+)/)
+      id = m ? m[1] : null
+    }
+  }
+  return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null
+}
+
 export function musicUrlFor(store: Pick<Store, 'music'>, base = '/'): string | null {
   const m = store.music
   if (m?.mode === 'off') return null
   if (m?.mode === 'custom' && m.url) return m.url
+  // YouTube se identifica con «yt:ID» (lo reproduce music.ts con el reproductor oficial)
+  if (m?.mode === 'youtube') {
+    const id = youtubeId(m.ytUrl)
+    if (id) return `yt:${id}`
+  }
   return `${base}${DEFAULT_MUSIC}`
 }
 

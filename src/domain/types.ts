@@ -139,7 +139,7 @@ export interface Store {
   categoryLabel?: string
   /** Color de fondo al «Entrar al local» (si no hay foto de fondo). */
   interiorBg?: string
-  music?: { mode: 'classic' | 'custom' | 'off'; url?: string | null }
+  music?: { mode: 'classic' | 'custom' | 'youtube' | 'off'; url?: string | null; ytUrl?: string | null }
   /** Beta «Entrar al local»: la administración habilita este local para la experiencia inmersiva. */
   interior?: boolean
   /** Tarjeta de sellos: cada compra da un sello; al llenarla se canjea este premio. */
