@@ -137,6 +137,8 @@ export interface Store {
   deliveryOnly?: boolean
   /** Nombre de categoría propio que se muestra en lugar del rubro del mall (ej. «Gorras urbanas»). */
   categoryLabel?: string
+  /** Tono de los controles al entrar al local: automático según el fondo, o forzado a claro u oscuro. */
+  interiorTone?: 'light' | 'dark'
   /** Color de fondo al «Entrar al local» (si no hay foto de fondo). */
   interiorBg?: string
   music?: { mode: 'classic' | 'custom' | 'youtube' | 'off'; url?: string | null; ytUrl?: string | null }

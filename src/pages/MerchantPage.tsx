@@ -537,7 +537,7 @@ function ProfileEditor({ store }: { store: Store }) {
           </span>
         </label>
         <AddressEditor store={f} onChange={(address) => setF((x) => ({ ...x, address }))} />
-        <InteriorBgEditor value={f.interiorBg} onChange={(interiorBg) => setF((x) => ({ ...x, interiorBg }))} />
+        <InteriorBgEditor value={f.interiorBg} tone={f.interiorTone} onChange={(interiorBg) => setF((x) => ({ ...x, interiorBg }))} onTone={(interiorTone) => setF((x) => ({ ...x, interiorTone }))} />
         <MusicEditor store={f} onChange={(music) => setF((x) => ({ ...x, music }))} />
         <Field label="Estado" wide>
           <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>

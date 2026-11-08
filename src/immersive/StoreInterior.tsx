@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, MessageCircle, Minus, Plus, ShoppingBag, Volume2, VolumeX } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Info, MessageCircle, Minus, Plus, ShoppingBag, Volume2, VolumeX } from 'lucide-react'
 import { productDesc } from '../lib/desc'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -45,6 +45,48 @@ function useWide() {
   return w
 }
 
+/** ¿El fondo del local es oscuro? Sirve para que los controles (flechas, puntos, botones) se lean sobre cualquier fondo. */
+function useDarkBackdrop(store: Store, sceneDark: boolean): boolean {
+  const pref = store.interiorTone
+  const photo = store.photoBg?.url
+  const color = store.interiorBg
+  const [photoDark, setPhotoDark] = useState<boolean | null>(null)
+  useEffect(() => {
+    setPhotoDark(null)
+    if (pref === 'light' || pref === 'dark' || !photo) return
+    let live = true
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas')
+        c.width = c.height = 24
+        const g = c.getContext('2d')
+        if (!g) return
+        g.drawImage(img, 0, 0, 24, 24)
+        const d = g.getImageData(0, 0, 24, 24).data
+        let sum = 0
+        for (let i = 0; i < d.length; i += 4) sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]
+        if (live) setPhotoDark(sum / (d.length / 4) / 255 < 0.5)
+      } catch {
+        /* imagen de otro origen sin permiso: se usa el tono del escenario */
+      }
+    }
+    img.src = photo
+    return () => {
+      live = false
+    }
+  }, [photo, pref])
+  if (pref === 'light') return false
+  if (pref === 'dark') return true
+  if (photo && photoDark !== null) return photoDark
+  if (!photo && color && /^#[0-9a-f]{6}$/i.test(color)) {
+    const n = parseInt(color.slice(1), 16)
+    return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255 < 0.5
+  }
+  return sceneDark
+}
+
 const SCENE_BG: Record<Scene, string> = {
   shop: 'linear-gradient(180deg, #e9d9c3 0%, #ddc7ab 58%, #cbb192 100%)',
   restaurant: 'radial-gradient(ellipse at 50% 34%, #5a3b27 0%, #36231a 55%, #1f140f 100%)',
@@ -58,7 +100,8 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
   const scene = sceneOf(store)
   const close = () => useUI.getState().openInterior(null)
   const night = useIsNight()
-  const dark = scene !== 'shop'
+  const dark = useDarkBackdrop(store, scene !== 'shop')
+  const [dockH, setDockH] = useState(200)
   const tabs = useMemo(() => interiorTabs(store, products), [store, products])
   const [tab, setTab] = useState(() => firstTab(interiorTabs(store, products)))
   const items = useMemo(() => itemsFor(store, products, tab), [store, products, tab])
@@ -190,8 +233,8 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
           <>
             <div
               ref={stageRef}
-              className="absolute inset-x-0 bottom-[292px] touch-pan-y select-none"
-              style={{ top: `calc(max(14px, env(safe-area-inset-top)) + ${TOP_BAR}px)` }}
+              className="absolute inset-x-0 touch-pan-y select-none [container-type:size]"
+              style={{ top: `calc(max(14px, env(safe-area-inset-top)) + ${TOP_BAR}px)`, bottom: `calc(max(14px, env(safe-area-inset-bottom)) + ${dockH + 54}px)` }}
               onPointerDown={(e) => {
                 if ((e.target as HTMLElement).closest('button')) return
                 drag.current = { x0: e.clientX, id: e.pointerId }
@@ -223,8 +266,8 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
                 </>
               )}
             </div>
-            <Dots n={n} i={wrapIndex(index, n)} dark={dark} />
-            <Dock key={cur.id} store={store} product={cur} scene={scene} />
+            <Dots n={n} i={wrapIndex(index, n)} dark={dark} warm={scene === 'restaurant'} bottom={`calc(max(14px, env(safe-area-inset-bottom)) + ${dockH + 20}px)`} />
+            <Dock key={cur.id} store={store} product={cur} scene={scene} onHeight={setDockH} />
           </>
         )}
       </div>
@@ -311,17 +354,19 @@ function Arrow({ side, dark, onClick }: { side: 'left' | 'right'; dark: boolean;
   )
 }
 
-function Dots({ n, i, dark }: { n: number; i: number; dark: boolean }) {
+function Dots({ n, i, dark, warm, bottom }: { n: number; i: number; dark: boolean; warm: boolean; bottom: string }) {
   if (n < 2 || n > 12) return null
   return (
-    <div className="absolute inset-x-0 bottom-[276px] z-10 flex justify-center gap-1.5" aria-hidden>
-      {Array.from({ length: n }, (_, k) => (
-        <span
-          key={k}
-          className="h-1.5 rounded-full transition-all"
-          style={{ width: k === i ? 18 : 6, background: dark ? (k === i ? '#f2a33a' : 'rgba(255,255,255,0.3)') : k === i ? '#1d1a16' : 'rgba(29,26,22,0.25)' }}
-        />
-      ))}
+    <div className="absolute inset-x-0 z-10 flex justify-center" style={{ bottom }} aria-hidden>
+      <div className={`flex items-center gap-1.5 rounded-full px-3 py-2 backdrop-blur-md ${dark ? 'bg-black/30' : 'bg-white/45'}`}>
+        {Array.from({ length: n }, (_, k) => (
+          <span
+            key={k}
+            className="h-1.5 rounded-full transition-all duration-300"
+            style={{ width: k === i ? 18 : 6, background: dark ? (k === i ? (warm ? '#f2a33a' : '#ffffff') : 'rgba(255,255,255,0.4)') : k === i ? '#1d1a16' : 'rgba(29,26,22,0.28)' }}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -430,7 +475,7 @@ function Stage({
   return (
     <div
       className="relative mx-auto h-full w-full"
-      style={{ ['--w' as string]: plate ? 'min(78vw, calc((100dvh - 440px) * 0.96), 520px)' : 'min(66vw, calc((100dvh - 440px) * 0.7), 470px)' }}
+      style={{ ['--w' as string]: plate ? 'min(78vw, 88cqh, 520px)' : 'min(66vw, 64cqh, 470px)' }}
     >
       {nodes}
     </div>
@@ -438,7 +483,17 @@ function Stage({
 }
 
 /** Barra inferior: nombre, precio, opción y talla, y el botón para agregar. */
-function Dock({ store, product, scene }: { store: Store; product: Product; scene: Scene }) {
+function Dock({ store, product, scene, onHeight }: { store: Store; product: Product; scene: Scene; onHeight: (h: number) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(() => onHeight(Math.round(el.getBoundingClientRect().height)))
+    ro.observe(el)
+    onHeight(Math.round(el.getBoundingClientRect().height))
+    return () => ro.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const { priceOf } = usePricing()
   const info = priceOf(product)
   const dark = scene === 'restaurant'
@@ -449,6 +504,7 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
   const unit = info.final
   return (
     <div
+      ref={ref}
       className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl animate-[dockIn_.3s_ease-out] rounded-[30px] border p-4 backdrop-blur-xl border-white/90 bg-white/90 text-[#1d1a16]`}
       style={{ boxShadow: '0 20px 44px -14px rgba(0,0,0,0.5)' }}
     >
@@ -494,14 +550,14 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
           })}
         </div>
       )}
-      <div className="mt-3 flex items-center gap-2.5">
+      <div className="mt-3 flex items-center gap-2">
         {scene === 'restaurant' && (
-          <div className="flex h-[52px] items-center rounded-full bg-black/[0.07] px-1">
-            <button aria-label="Menos" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid size-11 place-items-center rounded-full">
+          <div className="flex h-[52px] shrink-0 items-center rounded-full bg-black/[0.07] px-0.5">
+            <button aria-label="Menos" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid size-10 place-items-center rounded-full">
               <Minus className="size-4" />
             </button>
-            <span className="w-6 text-center text-base font-extrabold">{qty}</span>
-            <button aria-label="Más" onClick={() => setQty((q) => Math.min(20, q + 1))} className="grid size-11 place-items-center rounded-full">
+            <span className="w-5 text-center text-base font-extrabold">{qty}</span>
+            <button aria-label="Más" onClick={() => setQty((q) => Math.min(20, q + 1))} className="grid size-10 place-items-center rounded-full">
               <Plus className="size-4" />
             </button>
           </div>
@@ -510,16 +566,16 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
           onClick={() => {
             if (addToCart(product, variantId, size, qty)) useUI.getState().toast(`${product.name} agregado al carrito.`, 'success')
           }}
-          className="h-[52px] flex-1 rounded-full bg-[#0f766e] text-[15px] font-extrabold text-white active:scale-[0.99]"
+          className="h-[52px] min-w-0 flex-1 rounded-full bg-[#0f766e] px-2 text-[14px] font-extrabold whitespace-nowrap text-white active:scale-[0.99]"
         >
           Agregar · {formatCOP(unit * qty)}
         </button>
         <button
           onClick={() => useUI.getState().openProduct(product.id)}
           aria-label="Ver detalles"
-          className={`h-[52px] shrink-0 rounded-full border px-4 text-[13px] font-bold ${dark ? 'border-black/20' : 'border-black/15 bg-white/70'}`}
+          className={`h-[52px] shrink-0 rounded-full border text-[13px] font-bold ${scene === 'restaurant' ? 'grid w-[52px] place-items-center' : 'px-4'} ${dark ? 'border-black/20' : 'border-black/15 bg-white/70'}`}
         >
-          Detalles
+          {scene === 'restaurant' ? <Info className="size-5" /> : 'Detalles'}
         </button>
       </div>
       <span className="sr-only">{store.name}</span>
