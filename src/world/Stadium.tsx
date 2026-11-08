@@ -13,7 +13,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
-import { useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch } from '../state/stadiumEvents'
+import { useStadiumBoard, useStadiumConfig, useStadiumEvents } from '../state/stadiumEvents'
 import { Fireworks, IndoorScoreboard } from './MatchEffects'
 import { boardWhen, resolveBoard } from '../stadium/board'
 import { BOARD_H, BOARD_W, drawCover, loadImage, paintBoard } from '../stadium/boardPaint'
@@ -1199,14 +1199,11 @@ const LAMP_ON = new THREE.Color('#fffbe0')
 /** ¿Están encendidas las luces? Casi terminado: sí. Inaugurado: mientras el estadio está «encendido» (suena). */
 /**
  * ¿Hay acción en el estadio? Con el evento de hoy en «Partido de fútbol» el partido se está jugando: los jugadores
- * corren y la grada salta, suene o no el audio (solo se apaga en el medio tiempo y al terminar). En un concierto,
- * cuando suena la música. El botón de sonido solo pone el cántico o la música.
+ * corren y la grada salta siempre, suene o no el audio y en cualquier estado del marcador. En un concierto, cuando
+ * suena la música. El botón de sonido solo pone el cántico o la música.
  */
 function actionOn() {
-  if (useStadiumEvent.getState().kind === 'match') {
-    const st = useStadiumMatch.getState().match.status
-    return st === 'pre' || st === 'live'
-  }
+  if (useStadiumEvent.getState().kind === 'match') return true
   return useStadiumSound.getState().playing
 }
 
