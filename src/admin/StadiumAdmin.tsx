@@ -10,6 +10,7 @@ import { EventsManager } from '../stadium/EventsManager'
 import { useCatalog } from '../state/catalog'
 import { useStadiumBoard, useStadiumConfig } from '../state/stadiumEvents'
 import { BoardEditor } from '../stadium/BoardEditor'
+import { MatchControl } from './MatchControl'
 
 /** Administración del estadio: estado, tipo de evento y la canción del concierto con el ambiente del público. */
 export function StadiumAdmin() {
@@ -99,6 +100,8 @@ export function StadiumAdmin() {
           ))}
         </div>
       </div>
+
+      <MatchControl />
 
       <div className="rounded-3xl border border-line bg-card p-4">
         <p className="font-bold">Negocio que opera el estadio</p>

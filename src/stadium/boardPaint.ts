@@ -1,5 +1,6 @@
 import type { StadiumEventKind } from '../config/stadium'
 import { clearBorderWhite, hasTransparentCorners } from '../lib/whiteCutout'
+import { goalActive, matchLabel, type MatchState } from './match'
 import { DEFAULT_FIT, MIN_ZOOM, TEXT_IDS, TEXT_MAX, TEXT_MIN, boardHasContent, type BoardTeam, type EventBoard, type ImageFit, type TextId } from './board'
 
 // Dibuja el cartel del estadio en un lienzo 2D. Lo usan el estadio en 3D (como textura) y la vista previa
@@ -16,6 +17,8 @@ export interface BoardInput {
   title: string
   /** Fecha ya formateada, p. ej. «SÁB 14 NOV · 8:00 P. M.». */
   when: string
+  /** Partido en juego: el «VS» pasa a ser el marcador y la fecha, el reloj en vivo. */
+  live?: { match: MatchState; now: number }
 }
 
 const images = new Map<string, Promise<HTMLImageElement | null>>()
@@ -191,11 +194,13 @@ const TEXT_DEFAULTS: Record<StadiumEventKind, Partial<Record<TextId, TextDefault
 function defaultContent(id: TextId, input: BoardInput): string {
   switch (id) {
     case 'title':
+      // al meter gol, el título se vuelve el grito de gol (parpadea)
+      if (input.live && goalActive(input.live.match, input.live.now) && Math.floor(input.live.now / 400) % 2 === 0) return input.live.match.goal?.side === 'home' ? '¡GOOOL!' : '¡GOL!'
       return (input.title || 'ESTADIO DE CARTAGENA').toUpperCase()
     case 'vs':
-      return 'VS'
+      return input.live ? `${input.live.match.home} : ${input.live.match.away}` : 'VS'
     case 'when':
-      return input.when
+      return input.live ? matchLabel(input.live.match, input.live.now) : input.when
     case 'caption':
       return input.board.caption
   }

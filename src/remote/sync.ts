@@ -14,7 +14,8 @@ import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useStadiumEvent, useStadiumPhase, useStadiumSong } from '../state/stadium'
 import type { StadiumPhase } from '../config/stadium'
-import { useRemoteSold, useStadiumBoard, useStadiumConfig, useStadiumEvents, useTickets } from '../state/stadiumEvents'
+import { useRemoteSold, useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch, useTickets } from '../state/stadiumEvents'
+import { cleanMatch } from '../stadium/match'
 import { cleanBoard } from '../stadium/board'
 import type { StadiumEvent, Ticket } from '../stadium/types'
 import { usePirateShip } from '../state/pirate'
@@ -437,6 +438,21 @@ export async function loadFeatures() {
   })
 }
 
+/** Marcador en vivo del partido, en mall_settings «match». */
+export async function loadMatch() {
+  if (!supabase) return
+  const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'match').maybeSingle()
+  if (error || !data) return
+  applyRemote(() => useStadiumMatch.setState({ match: cleanMatch((data as Doc<unknown>).doc) }))
+}
+
+function pushMatch(doc: unknown) {
+  enqueue(async () => {
+    const { error } = await supabase!.from('mall_settings').upsert({ key: 'match', doc })
+    if (error) throw new Error(error.message)
+  })
+}
+
 function pushFeatures() {
   const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd }, stadiumOperator: useStadiumConfig.getState().operatorStoreId, stadiumActive: useStadiumConfig.getState().activeEventId, stadiumBoard: useStadiumBoard.getState().board }
   enqueue(async () => {
@@ -559,11 +575,13 @@ export function startRemoteSync() {
   void loadPricing()
   void loadSeason()
   void loadFeatures()
+  void loadMatch()
   void loadShip()
   void loadStadium()
   setInterval(() => void refreshPromotions(), 10_000)
   // las boletas vendidas cambian seguido: se refrescan para que el cupo sea real
   setInterval(() => !document.hidden && void loadStadium(), 15_000)
+  setInterval(() => !document.hidden && void loadMatch(), 12_000)
   setInterval(() => !document.hidden && void loadShip(), 8_000)
 
   useCatalog.subscribe((next, prev) => {
@@ -604,6 +622,10 @@ export function startRemoteSync() {
     if (applying || !useSession.getState().isAdmin || (next.url === prev.url && next.title === prev.title && next.crowd === prev.crowd)) return
     clearTimeout(songTimer)
     songTimer = setTimeout(pushFeatures, 700)
+  })
+  useStadiumMatch.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.match === prev.match) return
+    pushMatch(next.match)
   })
   useStadiumBoard.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.board === prev.board) return
@@ -662,6 +684,7 @@ export function startRemoteSync() {
       void loadPricing()
       void loadSeason()
       void loadFeatures()
+      void loadMatch()
       void loadShip()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ship_offers' }, () => void loadShip())

@@ -13,8 +13,10 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
-import { useStadiumBoard, useStadiumConfig, useStadiumEvents } from '../state/stadiumEvents'
+import { useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch } from '../state/stadiumEvents'
+import { Fireworks } from './MatchEffects'
 import { boardWhen, resolveBoard } from '../stadium/board'
+import { goalActive, matchLabel } from '../stadium/match'
 import { BOARD_H, BOARD_W, drawCover, loadImage, paintBoard } from '../stadium/boardPaint'
 
 // Estadio en construcción (inspirado en el Jaime Morón de Cartagena): una isla de piedra al norte de la
@@ -1632,17 +1634,39 @@ function EventBoard() {
     t.anisotropy = 4
     return { canvas: c, tex: t }
   }, [])
+  // en un partido en juego, la pantalla muestra el marcador y el reloj en vivo (se redibuja cada segundo)
+  const match = useStadiumMatch((m) => m.match)
+  const isLive = kind === 'match' && match.status !== 'pre'
+  const paintKey = useRef('')
+  const painting = useRef(false)
+  const acc = useRef(1)
   useLayoutEffect(() => {
+    paintKey.current = ''
     let live = true
-    void paintBoard(canvas, { kind, board, title, when }).then(() => {
+    void paintBoard(canvas, { kind, board, title, when, live: isLive ? { match, now: Date.now() } : undefined }).then(() => {
       if (live) tex.needsUpdate = true
     })
     return () => {
       live = false
     }
-  }, [canvas, tex, kind, board, title, when])
+  }, [canvas, tex, kind, board, title, when, isLive, match])
   const screen = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
-  useFrame(() => screen.color.setScalar(0.42 + 0.58 * nightState.t))
+  useFrame((_, dt) => {
+    screen.color.setScalar(0.42 + 0.58 * nightState.t)
+    acc.current += dt
+    if (!isLive || acc.current < 0.2 || painting.current) return
+    acc.current = 0
+    const now = Date.now()
+    const goal = goalActive(match, now) ? Math.floor(now / 400) % 2 : -1
+    const key = `${match.home}|${match.away}|${matchLabel(match, now)}|${goal}`
+    if (key === paintKey.current) return
+    paintKey.current = key
+    painting.current = true
+    void paintBoard(canvas, { kind, board, title, when, live: { match, now } }).then(() => {
+      tex.needsUpdate = true
+      painting.current = false
+    })
+  })
   const W = 13.6
   const H = (W * BOARD_H) / BOARD_W
   return (
@@ -2197,6 +2221,7 @@ export function Stadium({ reduceMotion, quality = 'high' }: { reduceMotion: bool
             )}
             {open && <OpenDecor />}
             {open && <EventBoard />}
+            {open && <Fireworks baseY={Y} quality={quality} reduceMotion={reduceMotion} />}
           </group>
         </Batch>
         <group position={[C.x, 0, C.z]} scale={S}>

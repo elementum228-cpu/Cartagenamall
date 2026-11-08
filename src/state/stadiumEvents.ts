@@ -8,6 +8,7 @@ import { ticketCode, soldFromTickets, type Sold } from '../stadium/logic'
 import type { StadiumEvent, Ticket, TicketStatus } from '../stadium/types'
 import { safeStorage } from './storage'
 import { emptyBoard, type EventBoard } from '../stadium/board'
+import { emptyMatch, type MatchState } from '../stadium/match'
 
 /** Quién opera el estadio (un negocio que vende las boletas) y qué evento está «en escena» ahora. Se sincroniza con todos. */
 export const useStadiumConfig = create<{
@@ -35,6 +36,11 @@ export const useStadiumBoard = create<{
   board: EventBoard
   setBoard: (b: EventBoard) => void
 }>()(persist((set) => ({ board: emptyBoard(), setBoard: (board) => set({ board }) }), { name: 'cm:stadium-board:v1', storage: safeStorage }))
+
+/** Marcador en vivo del partido (lo maneja la administración; lo ven todos en la pantalla del estadio). */
+export const useStadiumMatch = create<{ match: MatchState; setMatch: (m: MatchState) => void }>()(
+  persist((set) => ({ match: emptyMatch(), setMatch: (match) => set({ match }) }), { name: 'cm:stadium-match:v1', storage: safeStorage }),
+)
 
 /** Eventos del estadio. Con base de datos, los publicados los ve todo el mundo; los borradores, solo quien administra. */
 export const useStadiumEvents = create<{
