@@ -1,9 +1,9 @@
 import { messageFor } from '../lib/messages'
 import { absoluteUrl, localPath } from '../lib/links'
-import { ArrowLeft, ArrowRight, ArrowUpDown, BookOpen, Check, ChevronDown, DoorOpen, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ArrowUpDown, Check, ChevronDown, DoorOpen, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { FLOOR_BY_ID, FLOOR_OF_ZONE, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
+import { FLOOR_BY_ID, FLOOR_OF_ZONE, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import type { Product, Promotion, Store } from '../domain/types'
 import { copyText } from '../lib/clipboard'
 import { formatCOP } from '../lib/format'
@@ -106,32 +106,26 @@ function PlainHeader({ store }: { store: Store }) {
   const { spaceByStore } = useCatalogMaps()
   const space = SPACE_BY_ID[spaceByStore[store.id]]
   const zone = ZONE_BY_ID[store.zoneId]
+  const open = store.status === 'open'
   return (
-    <div
-      className="px-5 pt-3 pb-4"
-      style={{
-        background: `linear-gradient(180deg, color-mix(in srgb, ${store.brandColor} 9%, transparent), transparent)`,
-      }}
-    >
+    <div className="px-5 pt-3 pb-3" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${store.brandColor} 9%, transparent), transparent)` }}>
       <div className="flex items-center gap-3.5 pr-12">
-        <StoreLogo store={store} size={56} />
-        <div className="min-w-0">
+        <span className="grid shrink-0 place-items-center rounded-full bg-white p-[3px] shadow-[0_4px_12px_rgba(0,0,0,0.16)]">
+          <StoreLogo store={store} size={52} round />
+        </span>
+        <div className="min-w-0 leading-tight">
           <h2 className="truncate text-xl font-extrabold tracking-tight">{store.name}</h2>
-          <p className="truncate text-[13px] text-ink-soft">{store.tagline}</p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
-            <span className="rounded-full bg-ink px-2 py-0.5 text-white">{FLOOR_BY_ID[FLOOR_OF_ZONE[zone.id]].name}</span>
-            <span className="rounded-full px-2 py-0.5 text-white" style={{ background: zone.color }}>
-              {zone.id === 'E' ? zone.name : `Pasillo ${zone.id} · ${zone.name}`}
+          <p className="mt-1 flex items-center gap-2 text-[12.5px] font-semibold text-ink-soft">
+            <span className={`flex shrink-0 items-center gap-1.5 ${open ? 'text-emerald-700' : 'text-amber-700'}`}>
+              <span className={`size-2 rounded-full ${open ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              {open ? 'Abierto' : 'Cerrado'}
             </span>
-            {space && (
-              <span className="rounded-full bg-white/80 px-2 py-0.5 text-ink-soft">
-                {SPACE_TYPES[space.type].name} {space.label}
-              </span>
-            )}
-            <span className={`rounded-full px-2 py-0.5 ${store.status === 'open' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-              {store.status === 'open' ? 'Abierto' : 'Cerrado'}
+            <span className="text-ink-soft/50">·</span>
+            <span className="truncate">
+              {zone.id === 'E' ? zone.name : `Pasillo ${zone.id} · ${zone.name}`} · {FLOOR_BY_ID[FLOOR_OF_ZONE[zone.id]].name}
+              {space ? ` · ${space.label}` : ''}
             </span>
-          </div>
+          </p>
         </div>
       </div>
     </div>
@@ -161,8 +155,12 @@ function StoreBody({ store }: { store: Store }) {
   const food = isRestaurant(store)
   const betaOn = useBeta((s) => s.interior)
   // restaurantes: acciones como pastillas finas en una sola fila (la jerarquía la llevan la portada, el menú y el pedido)
-  const act = food ? 'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12.5px] font-bold text-ink transition active:scale-[0.97]' : btn.secondary
+  const act = food
+    ? 'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-[12.5px] font-bold text-ink transition active:scale-[0.97]'
+    : 'flex h-[56px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[18px] border border-line bg-white text-[11px] font-bold text-ink-soft transition active:scale-[0.97]'
   const onMap = location.pathname === '/'
+  // cuántos botones hay en la fila de iconos (para repartir el ancho)
+  const tiles = 3 + (instagram ? 1 : 0) + (!onMap && spaceByStore[store.id] ? 1 : 0)
   // La oferta relámpago más reciente va arriba, con precio, vigencia y botón de carrito.
   const flashNow = promos.filter((p) => p.type === 'flash').sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))[0]
 
@@ -174,7 +172,33 @@ function StoreBody({ store }: { store: Store }) {
       <p className="text-[14px] leading-relaxed text-ink-soft">{store.description}</p>
       <LoyaltyStrip store={store} />
 
-      <div className={food ? 'scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5' : 'flex flex-wrap gap-2'}>
+      {!food && canEnter(betaOn, store) && mine.length > 0 && (
+        <button
+          onClick={() => useUI.getState().openInterior(store.id)}
+          className="group relative flex h-[128px] w-full items-end justify-between overflow-hidden rounded-[28px] p-5 text-left text-white shadow-[0_22px_36px_-18px_rgba(15,118,110,0.7)] transition active:scale-[0.99]"
+          style={{ background: 'linear-gradient(120deg, #0f766e 0%, #0b5e57 100%)' }}
+        >
+          <span aria-hidden className="absolute -top-9 -right-9 size-[150px] rounded-full bg-white/10" />
+          <span className="absolute top-[18px] left-5 rounded-full bg-white/20 px-2.5 py-1 text-[10.5px] font-extrabold tracking-widest">BETA</span>
+          <span className="relative leading-tight">
+            <span className="block text-[22px] font-extrabold">Entrar al local</span>
+            <span className="mt-0.5 block text-[12.5px] opacity-85">Recórrelo como si estuvieras adentro</span>
+          </span>
+          {/* productos que asoman */}
+          <span aria-hidden className="absolute top-[26px] right-[72px] flex">
+            {mine.slice(0, 2).map((p, i) => (
+              <span key={p.id} className="overflow-hidden rounded-full border-[3px] border-white bg-white" style={{ marginLeft: i ? -16 : 0 }}>
+                <ProductImage product={p} brandColor={store.brandColor} className="size-[50px]" />
+              </span>
+            ))}
+          </span>
+          <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-brand transition group-hover:translate-x-0.5">
+            <ArrowRight className="size-5" strokeWidth={2.6} />
+          </span>
+        </button>
+      )}
+
+      <div className={food ? 'scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5' : `grid gap-2 ${tiles === 5 ? 'grid-cols-5' : tiles === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
         <button
           onClick={async () => {
             const url = absoluteUrl(localPath(store, SPACE_BY_ID[spaceByStore[store.id]]))
@@ -192,11 +216,11 @@ function StoreBody({ store }: { store: Store }) {
           className={act}
           aria-label={`Compartir el enlace de ${store.name}`}
         >
-          <Share2 className="size-4" /> Compartir
+          <Share2 className="size-[18px]" /> Compartir
         </button>
         <button onClick={() => toggleFav(store.id)} className={act} aria-pressed={fav}>
-          <Heart className={`size-4 ${fav ? 'text-coral' : ''}`} fill={fav ? 'currentColor' : 'none'} />
-          {fav ? 'Guardada' : 'Guardar tienda'}
+          <Heart className={`size-[18px] ${fav ? 'text-coral' : ''}`} fill={fav ? 'currentColor' : 'none'} />
+          {fav ? 'Guardada' : food ? 'Guardar tienda' : 'Guardar'}
         </button>
         <button
           onClick={async () => {
@@ -206,12 +230,12 @@ function StoreBody({ store }: { store: Store }) {
           }}
           className={act}
         >
-          <MessageCircle className="size-4 text-emerald-600" />
+          <MessageCircle className="size-[18px] text-emerald-600" />
           WhatsApp
         </button>
         {instagram && (
           <a href={instagram} target="_blank" rel="noopener noreferrer" className={act} aria-label={`Instagram de ${store.name}`}>
-            <InstagramIcon className="size-4" />
+            <InstagramIcon className="size-[18px]" />
             Instagram
           </a>
         )}
@@ -226,49 +250,12 @@ function StoreBody({ store }: { store: Store }) {
             }}
             className={act}
           >
-            <MapPin className="size-4 text-brand" />
-            Ver en el mapa
+            <MapPin className="size-[18px] text-brand" />
+            {food ? 'Ver en el mapa' : 'Mapa'}
           </button>
         )}
       </div>
       <AddressRow store={store} />
-      {!food && canEnter(betaOn, store) && mine.length > 0 && (
-        <button
-          onClick={() => useUI.getState().openInterior(store.id)}
-          className="flex w-full items-center gap-3 rounded-[22px] bg-ink p-3.5 text-left text-white shadow-soft transition active:scale-[0.99]"
-        >
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/15">
-            <DoorOpen className="size-[22px]" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-extrabold">Entrar al local</span>
-            <span className="block text-[12px] opacity-80">Recórrelo como si estuvieras adentro · beta</span>
-          </span>
-          <span className="text-xl font-bold">›</span>
-        </button>
-      )}
-      {!food && !isService(store) && mine.length > 0 && (
-        <button
-          onClick={() => setView('catalogo')}
-          className="group flex w-full items-center gap-3 rounded-[22px] p-3.5 text-left text-white shadow-soft transition active:scale-[0.99]"
-          style={{
-            background: `linear-gradient(135deg, ${store.brandColor}, color-mix(in srgb, ${store.brandColor} 70%, #000))`,
-          }}
-        >
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/20">
-            <BookOpen className="size-[22px]" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-extrabold">{food ? 'Ver menú completo' : 'Ver catálogo completo'}</span>
-            <span className="block text-[12px] opacity-85">
-              {mine.length} {catalogWords(store).plural}
-              {groups.length > 1 ? ` · ${groups.length} categorías` : ''} · busca y filtra
-            </span>
-          </span>
-          <span className="text-xl font-bold transition group-hover:translate-x-0.5">›</span>
-        </button>
-      )}
-
       {promos.length > 0 && (
         <section>
           <SectionTitle>Promociones</SectionTitle>
@@ -301,14 +288,20 @@ function StoreBody({ store }: { store: Store }) {
         <section>
           <SectionTitle
             aside={
-              <span className="text-xs text-ink-soft">
-                {shown.length} {catalogWords(store).plural}
-              </span>
+              !isService(store) && mine.length > 0 ? (
+                <button onClick={() => setView('catalogo')} className="inline-flex items-center gap-1 text-[13px] font-bold text-brand">
+                  Ver todo y filtrar <ArrowRight className="size-3.5" strokeWidth={2.6} />
+                </button>
+              ) : (
+                <span className="text-xs text-ink-soft">
+                  {shown.length} {catalogWords(store).plural}
+                </span>
+              )
             }
           >
             {catalogWords(store).title}
           </SectionTitle>
-          <CategoryChips groups={groups} cat={cat} onPick={setCat} products={mine} store={store} className="mb-3" />
+          <CategoryChips groups={groups} cat={cat} onPick={setCat} products={mine} store={store} className="mb-3" variant="soft" />
           <div className="grid grid-cols-2 gap-3">
             {shown.map((p) => (
               <ProductCard key={p.id} product={p} store={store} />
@@ -352,7 +345,7 @@ function CategoryChips({
   className = '',
   variant = 'chips',
 }: {
-  variant?: 'chips' | 'tabs'
+  variant?: 'chips' | 'tabs' | 'soft'
   groups: { id: string; name: string }[]
   cat: string | null
   onPick: (id: string | null) => void
@@ -371,6 +364,19 @@ function CategoryChips({
             <button key={t.id ?? 'all'} role="tab" aria-selected={on} onClick={() => onPick(t.id)} className={`-mb-px flex h-12 shrink-0 items-center gap-1.5 border-b-[3px] text-[14px] transition ${on ? 'border-brand font-extrabold text-brand' : 'border-transparent font-bold text-ink-soft'}`}>
               {t.name}
               <span className={`text-[12px] font-bold ${on ? 'text-ink-soft' : 'text-ink-soft/70'}`}>{t.n}</span>
+            </button>
+          )
+        })}
+      </div>
+    )
+  if (variant === 'soft')
+    return (
+      <div className={`scrollbar-none -mx-5 flex gap-2 overflow-x-auto px-5 ${className}`} role="group" aria-label="Filtrar por categoría">
+        {[{ id: null as string | null, name: 'Todo' }, ...groups.map((g) => ({ id: g.id as string | null, name: g.name }))].map((t) => {
+          const on = cat === t.id
+          return (
+            <button key={t.id ?? 'all'} aria-pressed={on} onClick={() => onPick(t.id)} className={`h-9 shrink-0 rounded-full px-4 text-[13px] transition ${on ? 'bg-brand/15 font-extrabold text-brand' : 'border border-line font-bold text-ink-soft'}`}>
+              {t.name}
             </button>
           )
         })}

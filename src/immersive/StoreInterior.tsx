@@ -350,7 +350,7 @@ function Stage({
         key={p.id}
         onClick={side ? () => onGo(rel) : undefined}
         aria-hidden={d !== 0}
-        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full p-[7%]' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
+        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full p-[1.8%]' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
         style={{
           width: 'var(--w)',
           // el plato es siempre un círculo (alto = ancho), aunque la foto sea vertical; la tarjeta, un rectángulo
@@ -374,8 +374,8 @@ function Stage({
           <>
             {/* plato: borde de loza, surco y la comida adentro */}
             <span aria-hidden className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 34% 28%, #ffffff 0%, #f6f0e6 45%, #ddd2bf 100%)' }} />
-            <span aria-hidden className="absolute inset-[3.5%] rounded-full border border-black/[0.07]" style={{ boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.9)' }} />
-            <span className="relative block size-full overflow-hidden rounded-full" style={{ boxShadow: 'inset 0 0 0 2px rgba(0,0,0,0.08), inset 0 6px 14px rgba(0,0,0,0.22)' }}>
+            <span aria-hidden className="absolute inset-[0.8%] rounded-full border border-black/[0.06]" />
+            <span className="relative block size-full overflow-hidden rounded-full" style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }}>
               <ProductImage product={p} brandColor={store.brandColor} className="absolute inset-0 size-full object-cover" />
               <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 30% 24%, rgba(255,255,255,0.28), rgba(255,255,255,0) 46%)' }} />
             </span>
@@ -419,7 +419,7 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
   const unit = info.final
   return (
     <div
-      className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl animate-[dockIn_.3s_ease-out] rounded-[30px] border p-4 backdrop-blur-xl ${dark ? 'border-white/10 bg-[#f7efe4]/95 text-[#2a1a0c]' : 'border-white/90 bg-white/75 text-[#1d1a16]'}`}
+      className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl animate-[dockIn_.3s_ease-out] rounded-[30px] border p-4 backdrop-blur-xl border-white/90 bg-white/90 text-[#1d1a16]`}
       style={{ boxShadow: '0 20px 44px -14px rgba(0,0,0,0.5)' }}
     >
       <div className="flex items-baseline justify-between gap-3">
