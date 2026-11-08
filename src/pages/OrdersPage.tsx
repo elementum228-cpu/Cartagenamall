@@ -1,4 +1,5 @@
-import { CheckCircle2, ClipboardList, Copy, MessageCircle, Store } from 'lucide-react'
+import { ClipboardList, Copy, MessageCircle, Store, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import type { Order, OrderStatus, SubOrder } from '../domain/types'
@@ -74,6 +75,7 @@ function SubLogo({ storeId }: { storeId: string }) {
 export function OrderDetailPage() {
   const { id } = useParams()
   const [params] = useSearchParams()
+  const [noticeClosed, setNoticeClosed] = useState(false)
   const order = useOrders((s) => s.orders.find((o) => o.id === id))
   const waSent = ((useLocation().state as { waSent?: string[] } | null)?.waSent ?? []) as string[]
   const finished = !!order && order.subOrders.every((x) => x.status === 'delivered' || x.status === 'cancelled')
@@ -87,17 +89,19 @@ export function OrderDetailPage() {
     )
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 pt-5 pb-28 md:pb-10">
-      {params.get('nuevo') && (
-        <div className="flex items-start gap-3 rounded-3xl border border-brand/20 bg-brand/8 p-4">
-          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-brand" />
-          <div>
+      {params.get('nuevo') && !noticeClosed && (
+        <div className="flex items-start gap-3 rounded-3xl border border-brand/20 bg-brand/8 py-4 pr-3 pl-5">
+          <div className="min-w-0 flex-1">
             <p className="font-extrabold">¡Pedido enviado!</p>
-            <p className="text-sm text-ink-soft">
+            <p className="mt-0.5 text-sm text-ink-soft">
               {waSent.length === order.subOrders.length
                 ? 'Le escribimos por WhatsApp a la tienda. Aquí abajo sigues el estado de tu pedido.'
                 : 'Si WhatsApp no se abrió, toca «Enviar por WhatsApp» en cada tienda para que le llegue su pedido. Aquí abajo sigues el estado.'}
             </p>
           </div>
+          <button type="button" onClick={() => setNoticeClosed(true)} aria-label="Cerrar aviso" className="grid size-8 shrink-0 place-items-center rounded-full text-ink-soft transition hover:bg-ink/5 active:scale-95">
+            <X className="size-[18px]" />
+          </button>
         </div>
       )}
       <header>
