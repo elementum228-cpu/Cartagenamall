@@ -189,7 +189,7 @@ export const useUI = create<UIState>()((set, get) => ({
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }))
 
-export type TimeMode = 'auto' | 'day' | 'night'
+export type TimeMode = 'auto' | 'day' | 'dusk' | 'night'
 
 export type Quality = 'high' | 'medium' | 'low'
 

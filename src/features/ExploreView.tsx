@@ -42,6 +42,7 @@ import {
   Moon,
   Sun,
   SunMoon,
+  Sunset,
   Zap,
   ZoomIn,
   ZoomOut,
@@ -495,15 +496,15 @@ function PrimaryCta({ onClick, icon, label }: { onClick: () => void; icon: React
 const QUALITY_LABEL = { high: 'alta', medium: 'media', low: 'baja' } as const
 const NEXT_QUALITY = { high: 'medium', medium: 'low', low: 'high' } as const
 
-const TIME_LABEL = { auto: 'Hora real', day: 'Día', night: 'Noche' } as const
-const NEXT_MODE = { auto: 'day', day: 'night', night: 'auto' } as const
+const TIME_LABEL = { auto: 'Hora real', day: 'Día', dusk: 'Atardecer', night: 'Noche' } as const
+const NEXT_MODE = { auto: 'day', day: 'dusk', dusk: 'night', night: 'auto' } as const
 
-/** Alterna Hora real (según el reloj del dispositivo) → Día → Noche. */
+/** Alterna Hora real (según el reloj: atardecer y amanecer graduales) → Día → Atardecer → Noche. */
 function TimeToggle() {
   const mode = usePrefs((s) => s.timeMode)
   const setMode = usePrefs((s) => s.setTimeMode)
   const night = useIsNight()
-  const Icon = mode === 'auto' ? SunMoon : mode === 'day' ? Sun : Moon
+  const Icon = mode === 'auto' ? SunMoon : mode === 'day' ? Sun : mode === 'dusk' ? Sunset : Moon
   return (
     <button
       className={`glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap shadow-none transition active:scale-[0.98] ${night ? '!bg-deep/85 !text-white' : 'text-ink'}`}

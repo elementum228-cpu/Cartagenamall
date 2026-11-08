@@ -30,6 +30,18 @@ export const DAY_LIGHTING: LightingPreset = {
   amb: 0.25,
 }
 
+/** Atardecer: sol bajo y anaranjado, sombras largas, cielo y suelo cálidos. */
+export const SUNSET_LIGHTING: LightingPreset = {
+  hemiSky: '#ffb88a',
+  hemiGround: '#c98b62',
+  hemi: 1.0,
+  sun: '#ff9248',
+  sunI: 1.75,
+  sunPos: [44, 17, 8],
+  ambient: '#ffb497',
+  amb: 0.3,
+}
+
 export const NIGHT_LIGHTING: LightingPreset = {
   hemiSky: '#7d93c4', // cielo azul nocturno
   hemiGround: '#b59a74', // suelo beige cálido (rebote de faroles y piedra)

@@ -6,7 +6,7 @@ import { useMinute } from './useMinute'
 export function useIsNight() {
   const mode = usePrefs((s) => s.timeMode)
   const minute = useMinute()
-  if (mode === 'day') return false
+  if (mode === 'day' || mode === 'dusk') return false
   if (mode === 'night') return true
   return isNightHour(new Date(minute))
 }

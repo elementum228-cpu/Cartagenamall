@@ -5,7 +5,7 @@ import * as THREE from 'three'
  * materiales "luminosos" registrados aquí suben su emisión. `t` va de 0 (día) a 1 (noche) y se
  * anima en `Lighting`.
  */
-export const nightState = { t: 0, target: 0 }
+export const nightState = { t: 0, target: 0, /** tono naranja del atardecer/amanecer (0 a 1) */ warm: 0, warmTarget: 0 }
 
 interface Glow {
   material: THREE.MeshStandardMaterial | THREE.MeshBasicMaterial
