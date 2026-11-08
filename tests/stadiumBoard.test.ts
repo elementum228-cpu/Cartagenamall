@@ -94,14 +94,56 @@ describe('escudos del cartel', () => {
   it('se pueden mover y agrandar, sin salirse del cartel', () => {
     const t = { name: '', crest: null, fit: { x: 0.1, y: -0.2, zoom: 0.5 } }
     const b = crestBox(t, 'home')
-    expect(b.cx).toBeCloseTo(200 + 0.1 * BOARD_W)
-    expect(b.cy).toBeCloseTo(300 - 0.2 * BOARD_H)
-    expect(b.size).toBeCloseTo(190)
+    expect(b.cx).toBeCloseTo(BOARD_W * 0.2 + 0.1 * BOARD_W)
+    expect(b.cy).toBeCloseTo(BOARD_H * 0.54 - 0.2 * BOARD_H)
+    expect(b.size).toBeCloseTo(BOARD_H * 0.74 * 0.5)
     const far = crestBox({ ...t, fit: { x: 2, y: 2, zoom: 1 } }, 'away')
     expect(far.cx).toBeLessThanOrEqual(BOARD_W)
     expect(far.cy).toBeLessThanOrEqual(BOARD_H)
   })
   it('limpia el ajuste de cada equipo', () => {
     expect(cleanBoard({ home: { name: 'A', fit: { x: 9, zoom: 99 } } }).home.fit).toEqual({ x: 2, y: 0, zoom: 4 })
+  })
+})
+
+import { cleanTexts } from '../src/stadium/board'
+import { boardElements, textBox, textContent } from '../src/stadium/boardPaint'
+
+describe('textos independientes del cartel', () => {
+  const base = { kind: 'match' as const, board: emptyBoard(), title: 'Real vs. Cundinamarca', when: 'SÁB 14 NOV · 8:00 P. M.' }
+  it('sin cambios, cada texto dice lo de siempre', () => {
+    expect(textContent('title', base)).toBe('REAL VS. CUNDINAMARCA')
+    expect(textContent('vs', base)).toBe('VS')
+    expect(textContent('when', base)).toBe('SÁB 14 NOV · 8:00 P. M.')
+    expect(textContent('caption', base)).toBe('')
+  })
+  it('cada texto se puede cambiar u ocultar sin afectar a los demás', () => {
+    const board = { ...emptyBoard(), caption: 'Fecha 12', texts: { title: { text: 'PARTIDO DE HOY' }, vs: { hidden: true } } }
+    const inp = { ...base, board }
+    expect(textContent('title', inp)).toBe('PARTIDO DE HOY')
+    expect(textContent('vs', inp)).toBe('')
+    expect(textContent('when', inp)).toBe('SÁB 14 NOV · 8:00 P. M.')
+    expect(textContent('caption', inp)).toBe('Fecha 12')
+  })
+  it('se pueden mover y cambiar de tamaño por separado, dentro del cartel', () => {
+    const board = { ...emptyBoard(), texts: { title: { x: 0.1, y: 0.1, zoom: 2 }, vs: { x: 9, y: -9 } } }
+    const t = textBox('match', 'title', board)!
+    const t0 = textBox('match', 'title', emptyBoard())!
+    expect(t.cx).toBeCloseTo(t0.cx + 0.1 * BOARD_W)
+    expect(t.size).toBeCloseTo(t0.size * 2)
+    const v = textBox('match', 'vs', board)!
+    expect(v.cx).toBeLessThanOrEqual(BOARD_W)
+    expect(v.cy).toBeGreaterThanOrEqual(0)
+    expect(textBox('concert', 'vs', board)).toBeNull()
+  })
+  it('las piezas que se pueden arrastrar: escudos y textos visibles', () => {
+    const ids = boardElements({ ...base, board: { ...emptyBoard(), texts: { when: { hidden: true } } } }).map((e) => e.id)
+    expect(ids).toEqual(expect.arrayContaining(['home', 'away', 'title', 'vs']))
+    expect(ids).not.toContain('when')
+    expect(boardElements({ ...base, kind: 'concert' }).map((e) => e.id)).not.toContain('home')
+  })
+  it('limpia los textos que vienen de la base de datos', () => {
+    expect(cleanTexts(undefined)).toEqual({})
+    expect(cleanTexts({ title: { text: 'A', zoom: 99, x: 'z' }, otro: { text: 'x' }, vs: { hidden: true } })).toEqual({ title: { text: 'A', zoom: 3 }, vs: { hidden: true } })
   })
 })

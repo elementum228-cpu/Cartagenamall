@@ -255,7 +255,7 @@ function ScaffoldBay({ i }: { i: number }) {
 
 /** Mástiles de acero de la cubierta terminada. */
 /** Zona de la fachada sur ocupada por el cartel: sin mástiles, banderas ni palmeras delante. */
-const inBoardZone = (x: number, z: number) => z > 5 && Math.abs(x - BOARD_X) < 5.6
+const inBoardZone = (x: number, z: number) => z > 5 && Math.abs(x - BOARD_X) < 7.6
 
 function RoofMasts({ phase }: { phase: StadiumPhase }) {
   const masts = useMemo(() => {
@@ -1612,7 +1612,7 @@ function MatchPlayers({ reduceMotion }: { reduceMotion: boolean }) {
  * cambia la administración (cartel del evento en escena o, si no tiene, el general).
  */
 /** Posición del cartel a lo largo de la fachada sur (x del estadio). */
-const BOARD_X = 1.5
+const BOARD_X = 0
 function EventBoard() {
   const kind = useStadiumEvent((s) => s.kind)
   const activeId = useStadiumConfig((s) => s.activeEventId)
@@ -1643,10 +1643,10 @@ function EventBoard() {
   }, [canvas, tex, kind, board, title, when])
   const screen = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
   useFrame(() => screen.color.setScalar(0.42 + 0.58 * nightState.t))
-  const W = 9.2
+  const W = 13.6
   const H = (W * BOARD_H) / BOARD_W
   return (
-    <group position={[BOARD_X, Y + 4.45, BOWL_Z + FACADE_D + 0.1]}>
+    <group position={[BOARD_X, Y + 4.05, BOWL_Z + FACADE_D + 0.1]}>
       {/* marco; el cartel va pegado a la fachada sur, la que mira a la entrada */}
       <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, 0]} scale={[W + 0.5, H + 0.5, 0.2]} castShadow />
       <mesh geometry={GEO.box} material={glowMat('#7fe7b0', 1.5, { dayGlow: 0.05 })} position={[0, 0, 0.06]} scale={[W + 0.3, H + 0.3, 0.06]} />
@@ -1726,7 +1726,8 @@ function OpenDecor() {
         </group>
       ))}
       {/* taquillas */}
-      {[-17.5, -2.5].map((x) => (
+      {/* taquilla: la de la derecha se quitó para dejar la fachada limpia detrás del cartel */}
+      {[-17.5].map((x) => (
         <group key={x} position={[x, Y, 14]}>
           <mesh geometry={GEO.box} material={mat('#f4f1e8')} position={[0, 0.9, 0]} scale={[2.2, 1.8, 1.6]} castShadow />
           <mesh geometry={GEO.box} material={mat('#22a05a')} position={[0, 1.95, 0]} scale={[2.5, 0.22, 1.9]} />

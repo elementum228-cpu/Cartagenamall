@@ -27,6 +27,46 @@ export function cleanFit(raw: unknown): ImageFit {
   return { x: Math.max(-2, Math.min(2, n(r.x, 0))), y: Math.max(-2, Math.min(2, n(r.y, 0))), zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, n(r.zoom, 1))) }
 }
 
+/** Los textos del cartel, cada uno independiente: se puede cambiar, mover, agrandar y ocultar. */
+export type TextId = 'title' | 'vs' | 'when' | 'caption'
+export const TEXT_IDS: TextId[] = ['title', 'vs', 'when', 'caption']
+export const TEXT_LABELS: Record<TextId, string> = { title: 'Título', vs: '«VS»', when: 'Fecha y hora', caption: 'Texto de abajo' }
+
+export interface BoardText {
+  /** Texto propio; vacío = el de siempre (nombre del evento, «VS», fecha del evento). */
+  text?: string
+  x?: number
+  y?: number
+  /** Tamaño relativo (0,4 a 3). */
+  zoom?: number
+  hidden?: boolean
+}
+export type BoardTexts = Partial<Record<TextId, BoardText>>
+
+export const TEXT_MIN = 0.4
+export const TEXT_MAX = 3
+
+export function cleanTexts(raw: unknown): BoardTexts {
+  const out: BoardTexts = {}
+  const r = (raw ?? {}) as Record<string, unknown>
+  const n = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : undefined)
+  for (const id of TEXT_IDS) {
+    const t = r[id] as Partial<BoardText> | undefined
+    if (!t || typeof t !== 'object') continue
+    const c: BoardText = {}
+    if (typeof t.text === 'string' && t.text) c.text = t.text.slice(0, 80)
+    const x = n(t.x, -1.5, 1.5)
+    const y = n(t.y, -1.5, 1.5)
+    const zoom = n(t.zoom, TEXT_MIN, TEXT_MAX)
+    if (x !== undefined) c.x = x
+    if (y !== undefined) c.y = y
+    if (zoom !== undefined) c.zoom = zoom
+    if (t.hidden === true) c.hidden = true
+    if (Object.keys(c).length) out[id] = c
+  }
+  return out
+}
+
 export interface EventBoard {
   home: BoardTeam
   away: BoardTeam
@@ -34,6 +74,8 @@ export interface EventBoard {
   image: string | null
   /** Encuadre de la imagen: desplazamiento (fracción del cartel) y zoom (0,3 a 4). */
   fit?: ImageFit
+  /** Textos del cartel, cada uno con su posición, tamaño y visibilidad. */
+  texts?: BoardTexts
   /** Línea corta bajo la imagen o los escudos (p. ej. «Liga BetPlay · Fecha 12»). */
   caption: string
 }
@@ -43,6 +85,7 @@ export const emptyBoard = (): EventBoard => ({
   away: { name: '', crest: null, fit: DEFAULT_FIT },
   image: null,
   fit: DEFAULT_FIT,
+  texts: {},
   caption: '',
 })
 
@@ -84,6 +127,7 @@ export function cleanBoard(raw: unknown): EventBoard {
     away: team(r.away),
     image: typeof r.image === 'string' && r.image ? r.image : null,
     fit: cleanFit(r.fit),
+    texts: cleanTexts(r.texts),
     caption: typeof r.caption === 'string' ? r.caption.slice(0, 80) : '',
   }
 }

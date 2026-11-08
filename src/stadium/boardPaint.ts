@@ -1,11 +1,11 @@
 import type { StadiumEventKind } from '../config/stadium'
-import { DEFAULT_FIT, MIN_ZOOM, boardHasContent, type BoardTeam, type EventBoard, type ImageFit } from './board'
+import { DEFAULT_FIT, MIN_ZOOM, TEXT_IDS, TEXT_MAX, TEXT_MIN, boardHasContent, type BoardTeam, type EventBoard, type ImageFit, type TextId } from './board'
 
 // Dibuja el cartel del estadio en un lienzo 2D. Lo usan el estadio en 3D (como textura) y la vista previa
 // de la administración, así lo que se ve al editar es lo que se verá en el estadio.
 
-export const BOARD_W = 1024
-export const BOARD_H = 576
+export const BOARD_W = 1280
+export const BOARD_H = 544
 const FONT = '"Plus Jakarta Sans", Manrope, sans-serif'
 
 export interface BoardInput {
@@ -59,9 +59,9 @@ const hue = (name: string) => [...name].reduce((a, c) => (a * 31 + c.charCodeAt(
 /** Dónde va el escudo de cada equipo (centro y tamaño, en píxeles del cartel), con su posición y tamaño elegidos. */
 export function crestBox(team: BoardTeam, side: 'home' | 'away') {
   const f = team.fit ?? DEFAULT_FIT
-  const cx = Math.max(0, Math.min(BOARD_W, (side === 'home' ? 200 : 824) + f.x * BOARD_W))
-  const cy = Math.max(0, Math.min(BOARD_H, 300 + f.y * BOARD_H))
-  return { cx, cy, size: 380 * Math.max(MIN_ZOOM, f.zoom) }
+  const cx = Math.max(0, Math.min(BOARD_W, BOARD_W * (side === 'home' ? 0.2 : 0.8) + f.x * BOARD_W))
+  const cy = Math.max(0, Math.min(BOARD_H, BOARD_H * 0.54 + f.y * BOARD_H))
+  return { cx, cy, size: BOARD_H * 0.74 * Math.max(MIN_ZOOM, f.zoom) }
 }
 
 function crest(g: CanvasRenderingContext2D, cx: number, cy: number, size: number, team: BoardTeam, img: HTMLImageElement | null) {
@@ -129,16 +129,107 @@ export function drawCover(g: CanvasRenderingContext2D, img: HTMLImageElement, W:
   g.drawImage(img, place(w, W, fit.x), place(h, H, fit.y), w, h)
 }
 
+// ── textos independientes ───────────────────────────────────────────────────────────────────────────────
+interface TextDefault {
+  cx: number
+  cy: number
+  size: number
+  weight: string
+  color: string
+}
+const TEXT_DEFAULTS: Record<StadiumEventKind, Partial<Record<TextId, TextDefault>>> = {
+  match: {
+    title: { cx: BOARD_W / 2, cy: 80, size: 44, weight: '900', color: '#f6c619' },
+    vs: { cx: BOARD_W / 2, cy: BOARD_H * 0.5, size: 170, weight: '900', color: '#f6c619' },
+    when: { cx: BOARD_W / 2, cy: BOARD_H * 0.79, size: 44, weight: '900', color: '#ffffff' },
+    caption: { cx: BOARD_W / 2, cy: BOARD_H - 28, size: 34, weight: '800', color: 'rgba(255,255,255,0.78)' },
+  },
+  concert: {
+    title: { cx: BOARD_W / 2, cy: BOARD_H - 130, size: 62, weight: '900', color: '#ffffff' },
+    when: { cx: BOARD_W / 2, cy: BOARD_H - 82, size: 34, weight: '800', color: '#f6c619' },
+    caption: { cx: BOARD_W / 2, cy: BOARD_H - 34, size: 30, weight: '800', color: '#f6c619' },
+  },
+}
+
+/** Lo que dice cada texto cuando no se le puso uno propio. */
+function defaultContent(id: TextId, input: BoardInput): string {
+  switch (id) {
+    case 'title':
+      return (input.title || 'ESTADIO DE CARTAGENA').toUpperCase()
+    case 'vs':
+      return 'VS'
+    case 'when':
+      return input.when
+    case 'caption':
+      return input.board.caption
+  }
+}
+
+/** Texto que se muestra (el propio o el de siempre) y si está oculto. */
+export function textContent(id: TextId, input: BoardInput): string {
+  const cfg = input.board.texts?.[id]
+  if (cfg?.hidden) return ''
+  return cfg?.text?.trim() || defaultContent(id, input)
+}
+
+/** Centro de un texto en el cartel (píxeles), con su posición elegida. */
+export function textBox(kind: StadiumEventKind, id: TextId, board: EventBoard) {
+  const d = TEXT_DEFAULTS[kind][id]
+  if (!d) return null
+  const cfg = board.texts?.[id]
+  return {
+    cx: Math.max(0, Math.min(BOARD_W, d.cx + (cfg?.x ?? 0) * BOARD_W)),
+    cy: Math.max(0, Math.min(BOARD_H, d.cy + (cfg?.y ?? 0) * BOARD_H)),
+    size: d.size * Math.max(TEXT_MIN, Math.min(TEXT_MAX, cfg?.zoom ?? 1)),
+    d,
+  }
+}
+
+/** Piezas del cartel que se pueden mover con el dedo: escudos (partido) y textos visibles, con su centro. */
+export function boardElements(input: BoardInput): { id: 'home' | 'away' | TextId; cx: number; cy: number }[] {
+  const out: { id: 'home' | 'away' | TextId; cx: number; cy: number }[] = []
+  if (input.kind === 'match') {
+    const h = crestBox(input.board.home, 'home')
+    const a = crestBox(input.board.away, 'away')
+    out.push({ id: 'home', cx: h.cx, cy: h.cy }, { id: 'away', cx: a.cx, cy: a.cy })
+  }
+  for (const id of TEXT_IDS) {
+    const b = textBox(input.kind, id, input.board)
+    if (b && textContent(id, input)) out.push({ id, cx: b.cx, cy: b.cy })
+  }
+  return out
+}
+
+function drawText(g: CanvasRenderingContext2D, id: TextId, input: BoardInput) {
+  const b = textBox(input.kind, id, input.board)
+  const text = textContent(id, input)
+  if (!b || !text) return
+  g.textAlign = 'center'
+  g.fillStyle = b.d.color
+  const own = !!input.board.texts?.[id]?.text?.trim()
+  // la fecha del partido va en dos renglones (día y hora) cuando no se escribió otra cosa
+  if (id === 'when' && input.kind === 'match' && !own && text.includes(' · ')) {
+    const [day, time] = text.split(' · ')
+    fit(g, day, b.d.weight, b.size, BOARD_W - 40, 12)
+    g.fillText(day, b.cx, b.cy - b.size * 0.55)
+    g.fillStyle = 'rgba(255,255,255,0.85)'
+    fit(g, time, '800', b.size * 0.9, BOARD_W - 40, 12)
+    g.fillText(time, b.cx, b.cy + b.size * 0.5)
+    return
+  }
+  fit(g, text, b.d.weight, b.size, BOARD_W - 40, 12)
+  g.fillText(text, b.cx, b.cy)
+}
+
 /** Dibuja el cartel completo. Espera a que carguen las imágenes. */
 export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): Promise<void> {
-  const { kind, board, title, when } = input
+  const { kind, board } = input
   const [home, away, poster] = await Promise.all([loadImage(board.home.crest), loadImage(board.away.crest), loadImage(board.image)])
   const g = canvas.getContext('2d')
   if (!g) return
   canvas.width = BOARD_W
   canvas.height = BOARD_H
   g.textAlign = 'center'
-  const heading = (title || 'ESTADIO DE CARTAGENA').toUpperCase()
 
   if (kind === 'concert') {
     if (poster) {
@@ -157,15 +248,7 @@ export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): 
       g.fillStyle = 'rgba(255,255,255,0.1)'
       for (let i = 0; i < 9; i++) g.fillRect(70 + i * 105, 50, 48, BOARD_H - 100)
     }
-    g.fillStyle = '#ffffff'
-    fit(g, heading, '900', 62, BOARD_W - 100, 30)
-    g.fillText(heading, BOARD_W / 2, board.caption || when ? BOARD_H - 106 : BOARD_H - 56)
-    const line = [when, board.caption.toUpperCase()].filter(Boolean).join('   ·   ')
-    if (line) {
-      g.fillStyle = '#f6c619'
-      fit(g, line, '800', 30, BOARD_W - 100, 18)
-      g.fillText(line, BOARD_W / 2, BOARD_H - 48)
-    }
+    for (const id of TEXT_IDS) drawText(g, id, input)
     return
   }
 
@@ -179,42 +262,19 @@ export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): 
   g.fillRect(0, 0, BOARD_W, 16)
   g.fillStyle = '#f6c619'
   g.fillRect(0, 16, BOARD_W, 8)
-  g.fillStyle = '#f6c619'
-  fit(g, heading, '900', 44, BOARD_W - 120, 22)
-  g.fillText(heading, BOARD_W / 2, 80)
 
   const hasTeams = boardHasContent(board) && !!(board.home.name || board.home.crest || board.away.name || board.away.crest)
   if (!hasTeams) {
     g.fillStyle = '#ffffff'
+    g.textAlign = 'center'
     g.font = `900 92px ${FONT}`
-    g.fillText('¡HOY HAY FÚTBOL!', BOARD_W / 2, 300)
-    g.fillStyle = 'rgba(255,255,255,0.85)'
-    g.font = `700 34px ${FONT}`
-    g.fillText(when || 'Fútbol · Conciertos · Eventos', BOARD_W / 2, 390)
+    g.fillText('¡HOY HAY FÚTBOL!', BOARD_W / 2, BOARD_H * 0.55)
   } else {
-    // solo los escudos, grandes; cada uno se puede mover y cambiar de tamaño desde la administración
+    // los escudos van sin recuadro, grandes; cada uno se mueve y cambia de tamaño desde la administración
     const h = crestBox(board.home, 'home')
     const a = crestBox(board.away, 'away')
     crest(g, h.cx, h.cy, h.size, board.home, home)
     crest(g, a.cx, a.cy, a.size, board.away, away)
-    g.fillStyle = '#f6c619'
-    g.font = `900 150px ${FONT}`
-    g.fillText('VS', BOARD_W / 2, 330)
-    if (when) {
-      const [day, time] = when.split(' · ')
-      g.fillStyle = '#ffffff'
-      g.font = `900 40px ${FONT}`
-      g.fillText(day, BOARD_W / 2, 406)
-      if (time) {
-        g.fillStyle = 'rgba(255,255,255,0.85)'
-        g.font = `800 36px ${FONT}`
-        g.fillText(time, BOARD_W / 2, 452)
-      }
-    }
   }
-  if (board.caption) {
-    g.fillStyle = 'rgba(255,255,255,0.78)'
-    fit(g, board.caption, '800', 34, BOARD_W - 120, 18)
-    g.fillText(board.caption, BOARD_W / 2, BOARD_H - 28)
-  }
+  for (const id of TEXT_IDS) if (id !== 'vs' || hasTeams) drawText(g, id, input)
 }
