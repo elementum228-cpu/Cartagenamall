@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
+import { storeCategoryName } from '../lib/storeCategories'
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { CATEGORY_BY_ID } from '../config/mall'
 import type { Product, SpaceSlot, Store, ZoneId } from '../domain/types'
 import { formatCOP } from '../lib/format'
 import { getGlassPill, getLabel, getStoreSign } from './labelTexture'
@@ -141,7 +141,7 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
       {store && kindOf(store) === 'tech' && <TechStoreScreen space={space} store={store} products={products} flashPercent={flashPercent} />}
       {store && (
         <ScreenLabel
-          label={getGlassPill(store.name, { dot: store.brandColor, sub: CATEGORY_BY_ID[store.categoryId]?.name, logo: store.logo, dark: night })}
+          label={getGlassPill(store.name, { dot: store.brandColor, sub: storeCategoryName(store), logo: store.logo, dark: night })}
           position={[0, labelY, 0]}
           pixelHeight={isHighlighted(store) ? 44 : 38}
           minZoomRatio={isHighlighted(store) || space.type === 'premium' ? 0 : 1.15}

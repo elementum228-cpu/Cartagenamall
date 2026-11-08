@@ -10,6 +10,9 @@ export interface ProductGroup {
   name: string
 }
 
+/** Categoría que se muestra del local: la propia que eligió el dueño, o el rubro del mall. */
+export const storeCategoryName = (store: Pick<Store, 'categoryId' | 'categoryLabel'>): string | undefined => store.categoryLabel?.trim() || CATEGORY_BY_ID[store.categoryId]?.name
+
 export const storeCategories = (store: Pick<Store, 'categories'>): StoreCategory[] => store.categories ?? []
 
 /** Grupo al que pertenece un producto: su categoría propia, o su rubro general si no tiene. */

@@ -1,4 +1,5 @@
 import { openCourtOrClaim } from '../football/open'
+import { storeCategoryName } from '../lib/storeCategories'
 import { EVENT_KINDS, PHASES, STADIUM, phaseInfo } from '../config/stadium'
 import { cameraState } from '../world/cameraState'
 import { previewGoal } from '../state/goalSound'
@@ -54,7 +55,7 @@ import {
 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router-dom'
-import { CATEGORY_BY_ID, COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
+import { COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import { formatCOP } from '../lib/format'
 import { useSpacePrice } from '../state/spacePricing'
 import type { ZoneId } from '../domain/types'
@@ -446,7 +447,7 @@ function PeekContent({ spaceId, ref }: { spaceId: string; ref?: Ref<HTMLButtonEl
   if (!space) return null
   const zone = ZONE_BY_ID[space.zoneId]
   const title = store ? store.name : `Espacio ${space.label}`
-  const sub = store ? (CATEGORY_BY_ID[store.categoryId]?.name ?? zone.name) : `Disponible · ${formatCOP(price)}/mes`
+  const sub = store ? (storeCategoryName(store) ?? zone.name) : `Disponible · ${formatCOP(price)}/mes`
   return (
     <motion.button
       ref={ref}

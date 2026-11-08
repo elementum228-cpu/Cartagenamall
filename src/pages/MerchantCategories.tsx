@@ -1,7 +1,7 @@
 import { Check, ChevronLeft, ChevronRight, Pencil, Plus, Tags, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import type { Store } from '../domain/types'
-import { categoryWords, newCategoryId, storeCategories, suggestedCategories } from '../lib/storeCategories'
+import { categoryWords, newCategoryId, storeCategories, storeCategoryName, suggestedCategories } from '../lib/storeCategories'
 import { useCatalog } from '../state/catalog'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
@@ -232,19 +232,21 @@ export function CategoryPicker({ store, value, onChange }: { store: Store; value
   )
 }
 
-/** Crear categorías propias sin salir del perfil: escribes el nombre, tocas «Agregar» y listo. */
-export function QuickCategories({ store, onChange }: { store: Store; onChange: (c: { id: string; name: string }[]) => void }) {
+/** Crear categorías propias sin salir del perfil y elegir cuál se muestra como la categoría del local. */
+export function QuickCategories({ store, onChange }: { store: Store; onChange: (patch: Partial<Store>) => void }) {
   const toast = useUI((s) => s.toast)
   const words = categoryWords(store)
   const cats = storeCategories(store)
   const [name, setName] = useState('')
+  const shown = store.categoryLabel?.trim()
   const add = () => {
     const n = name.trim().slice(0, 30)
     if (n.length < 2) return
     if (cats.some((c) => c.name.toLowerCase() === n.toLowerCase())) return toast('Ya tienes una categoría con ese nombre.', 'error')
-    onChange([...cats, { id: newCategoryId(n, cats.map((c) => c.id)), name: n }])
+    // la primera que creas pasa a ser la categoría que se muestra de tu local
+    onChange({ categories: [...cats, { id: newCategoryId(n, cats.map((c) => c.id)), name: n }], ...(shown ? {} : { categoryLabel: n }) })
     setName('')
-    toast(`«${n}» creada. Ya puedes usarla en tus artículos.`, 'success')
+    toast(shown ? `«${n}» creada.` : `«${n}» creada y puesta como categoría de tu local.`, 'success')
   }
   return (
     <div className="space-y-2 sm:col-span-2">
@@ -268,19 +270,30 @@ export function QuickCategories({ store, onChange }: { store: Store; onChange: (
           <Plus className="size-4" /> Agregar
         </button>
       </div>
-      {cats.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {cats.map((c) => (
-            <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-sand px-3 py-1.5 text-xs font-bold">
-              {c.name}
-              <button type="button" aria-label={`Quitar ${c.name}`} className="grid size-4 place-items-center rounded-full text-ink-soft hover:bg-ink/10" onClick={() => onChange(cats.filter((x) => x.id !== c.id))}>
+      <p className="text-[12px] text-ink-soft">
+        Se muestra en tu local como: <b className="text-ink">{storeCategoryName(store) ?? '—'}</b>. Toca una de tus categorías para mostrarla en su lugar.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {shown && (
+          <button type="button" onClick={() => onChange({ categoryLabel: undefined })} className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink-soft">
+            Usar la del mall
+          </button>
+        )}
+        {cats.map((c) => {
+          const on = shown?.toLowerCase() === c.name.toLowerCase()
+          return (
+            <span key={c.id} className={`inline-flex items-center gap-1 rounded-full py-1.5 pr-1.5 pl-3 text-xs font-bold ${on ? 'bg-ink text-white' : 'bg-sand'}`}>
+              <button type="button" onClick={() => onChange({ categoryLabel: c.name })} aria-pressed={on}>
+                {on && <Check className="mr-1 inline size-3" strokeWidth={3} />}
+                {c.name}
+              </button>
+              <button type="button" aria-label={`Quitar ${c.name}`} className="grid size-4 place-items-center rounded-full hover:bg-black/15" onClick={() => onChange({ categories: cats.filter((x) => x.id !== c.id), ...(on ? { categoryLabel: undefined } : {}) })}>
                 <X className="size-3" />
               </button>
             </span>
-          ))}
-        </div>
-      )}
-      <p className="text-[11px] text-ink-soft">Se guardan al tocar «Guardar» y las puedes asignar a cada artículo. Para ordenarlas o ver cuántos artículos tiene cada una, ve a la pestaña de tu catálogo.</p>
+          )
+        })}
+      </div>
     </div>
   )
 }

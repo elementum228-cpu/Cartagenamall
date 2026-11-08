@@ -30,7 +30,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { CATEGORIES, CATEGORY_BY_ID, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
+import { CATEGORIES, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import type { DeliveryMode, FacadeStyle, OrderStatus, Product, ProductIcon, Store } from '../domain/types'
 import { formatCOP, formatDateTime } from '../lib/format'
 import { readImageFile, storedBytes } from '../lib/image'
@@ -52,6 +52,7 @@ import { ProductImage } from '../ui/ProductImage'
 import { EmptyState, StoreLogo, btn, input } from '../ui/bits'
 import { MerchantPromotions } from './MerchantPromotions'
 import { CategoriesManager, CategoryPicker, QuickCategories } from './MerchantCategories'
+import { storeCategoryName } from '../lib/storeCategories'
 import { MerchantDashboard } from './MerchantDashboard'
 import { StoreColors } from '../ui/StoreColors'
 import { PhotoBackgroundEditor } from '../ui/PhotoBackground'
@@ -283,7 +284,7 @@ function StorePicker({ stores, preselect, onPick }: { stores: Store[]; preselect
                 <span className="min-w-0">
                   <span className="block truncate font-bold">{s.name}</span>
                   <span className="block truncate text-xs text-ink-soft">
-                    {CATEGORY_BY_ID[s.categoryId]?.name} · {sp ? `${FLOOR_BY_ID[sp.floorId].name}, local ${sp.label}` : 'Sin local asignado'}
+                    {storeCategoryName(s)} · {sp ? `${FLOOR_BY_ID[sp.floorId].name}, local ${sp.label}` : 'Sin local asignado'}
                   </span>
                 </span>
               </button>
@@ -504,7 +505,7 @@ function ProfileEditor({ store }: { store: Store }) {
             ))}
           </select>
         </Field>
-        <QuickCategories store={f} onChange={(categories) => setF((x) => ({ ...x, categories }))} />
+        <QuickCategories store={f} onChange={(patch) => setF((x) => ({ ...x, ...patch }))} />
         <Field label="Fachada del local">
           <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
             <option value="awning">Toldo a rayas</option>

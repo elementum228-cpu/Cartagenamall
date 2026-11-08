@@ -133,6 +133,8 @@ export interface Store {
   /** Dirección escrita y enlace de Google Maps del local (se muestra en su ficha con «Cómo llegar»). */
   address?: { text: string; mapsUrl?: string }
   /** Música de fondo al entrar al local: la clásica de siempre, la que sube el dueño, o ninguna. */
+  /** Nombre de categoría propio que se muestra en lugar del rubro del mall (ej. «Gorras urbanas»). */
+  categoryLabel?: string
   /** Color de fondo al «Entrar al local» (si no hay foto de fondo). */
   interiorBg?: string
   music?: { mode: 'classic' | 'custom' | 'off'; url?: string | null }

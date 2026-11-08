@@ -1,4 +1,5 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { storeCategoryName } from '../lib/storeCategories'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CATEGORY_BY_ID, FLOOR_BY_ID, FLOOR_OF_ZONE, ZONES } from '../config/mall'
@@ -73,7 +74,7 @@ export function ShopPage() {
     (s) =>
       s.status === 'open' &&
       (!f.zoneId || s.zoneId === f.zoneId) &&
-      (!q || normalizeText(`${s.name} ${s.tagline} ${CATEGORY_BY_ID[s.categoryId]?.name ?? ''}`).includes(q)),
+      (!q || normalizeText(`${s.name} ${s.tagline} ${storeCategoryName(s) ?? ''}`).includes(q)),
   )
   const zone = f.zoneId ? ZONES.find((z) => z.id === f.zoneId) : null
   const priceIdx = Math.max(0, PRICE_RANGES.findIndex((r) => r.min === f.minPrice && r.max === f.maxPrice))
