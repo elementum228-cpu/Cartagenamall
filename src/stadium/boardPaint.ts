@@ -1,4 +1,5 @@
 import type { StadiumEventKind } from '../config/stadium'
+import { clearBorderWhite, hasTransparentCorners } from '../lib/whiteCutout'
 import { DEFAULT_FIT, MIN_ZOOM, TEXT_IDS, TEXT_MAX, TEXT_MIN, boardHasContent, type BoardTeam, type EventBoard, type ImageFit, type TextId } from './board'
 
 // Dibuja el cartel del estadio en un lienzo 2D. Lo usan el estadio en 3D (como textura) y la vista previa
@@ -64,7 +65,42 @@ export function crestBox(team: BoardTeam, side: 'home' | 'away') {
   return { cx, cy, size: BOARD_H * 0.74 * Math.max(MIN_ZOOM, f.zoom) }
 }
 
-function crest(g: CanvasRenderingContext2D, cx: number, cy: number, size: number, team: BoardTeam, img: HTMLImageElement | null) {
+const crestCache = new Map<string, Promise<HTMLImageElement | HTMLCanvasElement | null>>()
+
+/**
+ * Carga un escudo y le quita el fondo blanco (si lo trae), así se ve sin recuadro aunque se haya subido
+ * con fondo. Si la imagen ya es transparente o no se puede procesar, se usa tal cual.
+ */
+export function loadCrest(url: string | null | undefined): Promise<HTMLImageElement | HTMLCanvasElement | null> {
+  if (!url) return Promise.resolve(null)
+  let p = crestCache.get(url)
+  if (!p) {
+    p = loadImage(url).then((img) => {
+      if (!img) return null
+      try {
+        const scale = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight))
+        const w = Math.max(1, Math.round(img.naturalWidth * scale))
+        const h = Math.max(1, Math.round(img.naturalHeight * scale))
+        const c = document.createElement('canvas')
+        c.width = w
+        c.height = h
+        const g = c.getContext('2d', { willReadFrequently: true })!
+        g.drawImage(img, 0, 0, w, h)
+        const px = g.getImageData(0, 0, w, h)
+        if (hasTransparentCorners(px.data, w, h)) return img
+        clearBorderWhite(px.data, w, h)
+        g.putImageData(px, 0, 0)
+        return c
+      } catch {
+        return img
+      }
+    })
+    crestCache.set(url, p)
+  }
+  return p
+}
+
+function crest(g: CanvasRenderingContext2D, cx: number, cy: number, size: number, team: BoardTeam, img: HTMLImageElement | HTMLCanvasElement | null) {
   // halo suave detrás del escudo
   const halo = g.createRadialGradient(cx, cy, size * 0.2, cx, cy, size * 0.75)
   halo.addColorStop(0, 'rgba(255,255,255,0.22)')
@@ -72,10 +108,10 @@ function crest(g: CanvasRenderingContext2D, cx: number, cy: number, size: number
   g.fillStyle = halo
   g.fillRect(cx - size, cy - size, size * 2, size * 2)
   if (img) {
-    const k = Math.min(size / img.naturalWidth, size / img.naturalHeight)
-    const w = img.naturalWidth * k
-    const h = img.naturalHeight * k
-    g.drawImage(img, cx - w / 2, cy - h / 2, w, h)
+    const iw = 'naturalWidth' in img ? img.naturalWidth : img.width
+    const ih = 'naturalHeight' in img ? img.naturalHeight : img.height
+    const k = Math.min(size / iw, size / ih)
+    g.drawImage(img, cx - (iw * k) / 2, cy - (ih * k) / 2, iw * k, ih * k)
     return
   }
   // sin escudo: un escudo genérico con las iniciales
@@ -224,7 +260,7 @@ function drawText(g: CanvasRenderingContext2D, id: TextId, input: BoardInput) {
 /** Dibuja el cartel completo. Espera a que carguen las imágenes. */
 export async function paintBoard(canvas: HTMLCanvasElement, input: BoardInput): Promise<void> {
   const { kind, board } = input
-  const [home, away, poster] = await Promise.all([loadImage(board.home.crest), loadImage(board.away.crest), loadImage(board.image)])
+  const [home, away, poster] = await Promise.all([loadCrest(board.home.crest), loadCrest(board.away.crest), loadImage(board.image)])
   const g = canvas.getContext('2d')
   if (!g) return
   canvas.width = BOARD_W
