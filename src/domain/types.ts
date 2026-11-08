@@ -165,6 +165,8 @@ export interface Product {
   cutout?: string
   /** Ajuste del producto sobre el fondo: tamaño relativo y desplazamiento horizontal (fracción del ancho). */
   photoFit?: { scale: number; dx: number; dy?: number }
+  /** Restaurantes: ajuste del recorte circular de la foto del plato (zoom y desplazamiento). */
+  photoPlate?: { scale: number; dx: number; dy: number }
   /** ¿Se muestra la foto montada sobre el fondo de la tienda (true) o la foto original (false)? */
   photoStudio?: boolean
   icon: ProductIcon

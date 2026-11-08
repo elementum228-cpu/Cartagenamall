@@ -19,6 +19,8 @@ export interface PhotoState {
   fit?: { scale: number; dx: number; dy?: number }
   /** Modo elegido: con el fondo de la tienda o foto original. */
   studio?: boolean
+  /** Ajuste del modo «plato» (restaurantes): zoom y desplazamiento del recorte circular. */
+  plate?: { scale: number; dx: number; dy: number }
 }
 
 type Cut = HTMLImageElement | HTMLCanvasElement

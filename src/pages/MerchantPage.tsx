@@ -53,6 +53,7 @@ import { MerchantDashboard } from './MerchantDashboard'
 import { StoreColors } from '../ui/StoreColors'
 import { PhotoBackgroundEditor } from '../ui/PhotoBackground'
 import { ProductPhotoField, type PhotoState } from './MerchantPhoto'
+import { PlatePhotoField } from './MerchantPlate'
 import { instagramHandle } from '../lib/instagram'
 import { categoryWords, groupOf, groupsWithProducts, storeCategories } from '../lib/storeCategories'
 
@@ -761,7 +762,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
   const [shopCategory, setShopCategory] = useState(base?.shopCategory ?? '')
   const ownCategories = storeCategories(store)
   const [icon, setIcon] = useState<ProductIcon>(base?.icon ?? 'gift')
-  const [photo, setPhoto] = useState<PhotoState>({ image: base?.image ?? null, original: base?.photoOriginal, cutout: base?.cutout, fit: base?.photoFit, studio: base?.photoStudio })
+  const [photo, setPhoto] = useState<PhotoState>({ image: base?.image ?? null, original: base?.photoOriginal, cutout: base?.cutout, fit: base?.photoFit, studio: base?.photoStudio, plate: base?.photoPlate })
   const [variants, setVariants] = useState(base?.variants.map((v) => v.name).join(', ') ?? '')
   const [sizes, setSizes] = useState(base?.sizes.join(', ') ?? '')
   const [stock, setStock] = useState(isCopy ? String(Math.max(...Object.values(seed!.inventory), 0) || 5) : '5')
@@ -822,6 +823,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
       cutout: photos.cutout,
       photoFit: photos.cutout ? photo.fit : undefined,
       photoStudio: photos.cutout ? photo.studio : undefined,
+      photoPlate: photos.image ? photo.plate : undefined,
       icon,
       categoryId,
       shopCategory: ownCategories.some((c) => c.id === shopCategory) ? shopCategory : undefined,
@@ -851,12 +853,20 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
           <X className="size-5" />
         </button>
       </div>
+      {isRestaurant(store) ? (
+        <PlatePhotoField
+          value={photo}
+          onChange={setPhoto}
+          placeholder={<ProductImage product={{ ...(product ?? ({} as Product)), name: name || 'Plato', image: null, icon, variants: [] }} brandColor={store.brandColor} className="size-full rounded-full" />}
+        />
+      ) : (
       <ProductPhotoField
         store={store}
         value={photo}
         onChange={setPhoto}
         placeholder={<ProductImage product={{ ...(product ?? ({} as Product)), name: name || 'Artículo', image: null, icon, variants: [] }} brandColor={store.brandColor} className="size-40 rounded-2xl" />}
       />
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nombre">
           <input className={input} value={name} maxLength={50} onChange={(e) => setName(e.target.value)} autoFocus={!product} onFocus={(e) => isCopy && e.currentTarget.select()} />
