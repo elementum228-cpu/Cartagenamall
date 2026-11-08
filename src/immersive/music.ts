@@ -13,6 +13,26 @@ export const useInteriorSound = create<{ muted: boolean; setMuted: (m: boolean) 
 export const MUSIC_VOLUME = 0.32
 
 let audio: HTMLAudioElement | null = null
+// Un solo elemento de audio para toda la app: en iPhone, el navegador solo deja sonar al que ya «desbloqueó» un toque
+// de la persona. Con el primer toque en cualquier parte de la app lo desbloqueamos (en silencio) y desde entonces la
+// música puede empezar sola al entrar a un local, aunque el sonido se decida segundos después (p. ej. el respaldo de YouTube).
+let shared: HTMLAudioElement | null = null
+const getAudio = () => (shared ??= new Audio())
+const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    const el = getAudio()
+    if (audio === el || !el.paused) return
+    try {
+      el.src = SILENT
+      void el.play().then(() => el.pause()).catch(() => undefined)
+    } catch {
+      /* sin audio */
+    }
+  }
+  window.addEventListener('pointerdown', unlock, { once: true, capture: true })
+  window.addEventListener('touchend', unlock, { once: true, capture: true })
+}
 /** Cada pista lleva su propia rampa de volumen: una pista vieja no puede pisar la de la nueva. */
 const fades = new WeakMap<HTMLAudioElement, number>()
 
@@ -198,7 +218,9 @@ export function startMusic(url: string | null, fallback: string | null = null, f
 function playAudio(url: string) {
   if (audio) stopAudio(true)
   try {
-    const el = new Audio(url)
+    const el = getAudio()
+    el.pause()
+    el.src = url
     el.loop = true
     el.volume = 0
     audio = el
@@ -243,7 +265,10 @@ function stopAudio(now: boolean) {
     el.pause()
     return
   }
-  ramp(el, 0, 900, () => el.pause())
+  ramp(el, 0, 900, () => {
+    // si mientras bajaba empezó otra pista en el mismo elemento, no la apagues
+    if (audio !== el) el.pause()
+  })
 }
 
 /** Silencia o reactiva la música que está sonando. */

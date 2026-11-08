@@ -104,13 +104,18 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
   const close = () => useUI.getState().openInterior(null)
   const night = useIsNight()
   const dark = useDarkBackdrop(store, scene !== 'shop')
-  const [dockH, setDockH] = useState(200)
   const tabs = useMemo(() => interiorTabs(store, products), [store, products])
   const [tab, setTab] = useState(() => firstTab(interiorTabs(store, products)))
   const items = useMemo(() => itemsFor(store, products, tab), [store, products, tab])
   const [index, setIndex] = useState(0)
   const n = items.length
   const cur = items[wrapIndex(index, n)]
+  // Alto reservado al panel de abajo: se calcula con lo más alto que puede ser en este local, así el escenario no cambia
+  // de tamaño al pasar de un producto a otro (si cambiara, las tarjetas saltarían en medio de la animación).
+  const dockH = useMemo(
+    () => 124 + (items.some((p) => p.name.length > 26) ? 22 : 0) + (items.some((p) => productDesc(p)) ? 40 : 0) + (items.some((p) => p.variants.length > 0) ? 46 : 0) + (items.some((p) => p.sizes.length > 0) ? 50 : 0),
+    [items],
+  )
   const go = (d: number) => setIndex((i) => wrapIndex(i + d, n))
 
   // entrada: las puertas de vidrio se abren solas; con «reducir movimiento» no hay animación
@@ -270,7 +275,7 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
               )}
             </div>
             <Dots n={n} i={wrapIndex(index, n)} dark={dark} warm={scene === 'restaurant'} bottom={`calc(max(14px, env(safe-area-inset-bottom)) + ${dockH + 20}px)`} />
-            <Dock key={cur.id} store={store} product={cur} scene={scene} onHeight={setDockH} />
+            <Dock key={cur.id} store={store} product={cur} scene={scene} />
           </>
         )}
       </div>
@@ -513,17 +518,7 @@ function Stage({
 }
 
 /** Barra inferior: nombre, precio, opción y talla, y el botón para agregar. */
-function Dock({ store, product, scene, onHeight }: { store: Store; product: Product; scene: Scene; onHeight: (h: number) => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const ro = new ResizeObserver(() => onHeight(Math.round(el.getBoundingClientRect().height)))
-    ro.observe(el)
-    onHeight(Math.round(el.getBoundingClientRect().height))
-    return () => ro.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+function Dock({ store, product, scene }: { store: Store; product: Product; scene: Scene }) {
   const { priceOf } = usePricing()
   const info = priceOf(product)
   const dark = scene === 'restaurant'
@@ -534,7 +529,6 @@ function Dock({ store, product, scene, onHeight }: { store: Store; product: Prod
   const unit = info.final
   return (
     <div
-      ref={ref}
       className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl animate-[dockIn_.3s_ease-out] rounded-[30px] border p-4 backdrop-blur-xl border-white/90 bg-white/90 text-[#1d1a16]`}
       style={{ boxShadow: '0 20px 44px -14px rgba(0,0,0,0.5)' }}
     >
