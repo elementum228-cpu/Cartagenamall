@@ -1,10 +1,70 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { useStadiumMatch } from '../state/stadiumEvents'
+import { useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch } from '../state/stadiumEvents'
+import { resolveBoard } from '../stadium/board'
 import { GOAL_SHOW_MS } from '../stadium/match'
+import { SCORE_H, SCORE_W, paintScoreboard, scoreKey } from '../stadium/scoreboardPaint'
+import { GEO, mat } from './materials'
+import { glowMat, nightState } from './night'
 
-// Fuegos artificiales sobre el estadio cuando el equipo local mete gol (el marcador va en la pantalla de la fachada).
+// Marcador en vivo dentro del estadio y fuegos artificiales cuando el equipo local mete gol.
+
+/**
+ * Pantalla del marcador dentro del estadio, sobre la tribuna norte. Mira al sur, igual que la pantalla de la
+ * fachada, así las dos se ven con el mismo ángulo diagonal desde la cámara. El reloj corre en vivo.
+ */
+export function IndoorScoreboard({ position }: { position: [number, number, number] }) {
+  const activeId = useStadiumConfig((s) => s.activeEventId)
+  const events = useStadiumEvents((s) => s.events)
+  const general = useStadiumBoard((s) => s.board)
+  const board = useMemo(() => resolveBoard(events.find((e) => e.id === activeId) ?? null, general), [events, activeId, general])
+  const { canvas, tex } = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = SCORE_W
+    c.height = SCORE_H
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    t.anisotropy = 4
+    return { canvas: c, tex: t }
+  }, [])
+  const screen = useMemo(() => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [tex])
+  const key = useRef('')
+  const acc = useRef(1)
+  const busy = useRef(false)
+  useFrame((_, dt) => {
+    screen.color.setScalar(0.42 + 0.58 * nightState.t)
+    acc.current += dt
+    if (acc.current < 0.2 || busy.current) return
+    acc.current = 0
+    const match = useStadiumMatch.getState().match
+    const now = Date.now()
+    const k = scoreKey(match, board, now)
+    if (k === key.current) return
+    key.current = k
+    busy.current = true
+    void paintScoreboard(canvas, { match, board, now }).then(() => {
+      tex.needsUpdate = true
+      busy.current = false
+    })
+  })
+  // cuando cambian los escudos hay que redibujar aunque el marcador sea el mismo
+  useEffect(() => {
+    key.current = ''
+  }, [board])
+  const W = 10.4
+  const H = (W * SCORE_H) / SCORE_W
+  return (
+    <group position={position}>
+      <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, -0.1]} scale={[W + 0.5, H + 0.5, 0.2]} castShadow />
+      <mesh geometry={GEO.box} material={glowMat('#7fe7b0', 1.5, { dayGlow: 0.05 })} position={[0, 0, -0.02]} scale={[W + 0.3, H + 0.3, 0.06]} />
+      <mesh geometry={GEO.plane} material={screen} position={[0, 0, 0.06]} scale={[W, H, 1]} />
+      {[-4, 4].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={mat('#6c747c')} position={[x, H / 2 + 1.4, -0.1]} scale={[0.06, 2.8, 0.06]} />
+      ))}
+    </group>
+  )
+}
 
 function rng(seed: number) {
   let a = seed >>> 0
