@@ -316,7 +316,7 @@ function StoreBody({ store }: { store: Store }) {
 
 /** Dirección del local con «Cómo llegar» (abre Google Maps). Solo aparece si el dueño la puso. */
 function AddressRow({ store }: { store: Store }) {
-  if (!hasAddress(store.address)) return null
+  if (store.deliveryOnly || !hasAddress(store.address)) return null
   const href = directionsUrl(store.address)
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3">

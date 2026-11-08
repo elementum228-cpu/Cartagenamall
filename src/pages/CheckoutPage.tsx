@@ -31,7 +31,10 @@ export function CheckoutPage() {
   const profile = useProfile.getState()
   const [name, setName] = useState(profile.fullName)
   const [whatsapp, setWhatsapp] = useState(profile.phone)
-  const [mode, setMode] = useState<DeliveryMode>('pickup')
+  // si alguna tienda del pedido no tiene punto físico, solo se puede pedir a domicilio
+  const pickupOk = groups.every((g) => !g.store?.deliveryOnly)
+  const [pickedMode, setMode] = useState<DeliveryMode>('pickup')
+  const mode: DeliveryMode = pickupOk ? pickedMode : 'delivery'
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
   const [touched, setTouched] = useState(false)
@@ -108,13 +111,15 @@ export function CheckoutPage() {
         </section>
         <section className="space-y-3 rounded-3xl border border-line bg-card p-5">
           <p className="text-sm font-semibold">Modalidad de entrega</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid gap-2 ${pickupOk ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {(
               [
                 ['pickup', 'Recoger en el local', StoreIcon],
                 ['delivery', 'Domicilio', Truck],
               ] as const
-            ).map(([m, label, Icon]) => (
+            )
+              .filter(([m]) => pickupOk || m === 'delivery')
+              .map(([m, label, Icon]) => (
               <button
                 type="button"
                 key={m}
@@ -126,6 +131,11 @@ export function CheckoutPage() {
               </button>
             ))}
           </div>
+          {!pickupOk && (
+            <p className="rounded-2xl bg-sand p-3 text-xs font-semibold text-ink-soft">
+              {groups.filter((g) => g.store?.deliveryOnly).map((g) => g.store.name).join(', ')} {groups.filter((g) => g.store?.deliveryOnly).length === 1 ? 'no tiene' : 'no tienen'} punto físico: este pedido es solo a domicilio.
+            </p>
+          )}
           {mode === 'delivery' && (
             <label className="block">
               <span className="mb-1 block text-sm font-semibold">Dirección</span>

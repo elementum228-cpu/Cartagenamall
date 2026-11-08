@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, ChevronRight, MapPin, MessageCircle, Scissors, ShoppingBag, Store as StoreIcon, UtensilsCrossed, X } from 'lucide-react'
+import { Bike, Check, ChevronRight, MapPin, MessageCircle, Scissors, ShoppingBag, Store as StoreIcon, UtensilsCrossed, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
@@ -69,17 +69,20 @@ export function OwnerWelcome() {
   const upsertStore = useCatalog((s) => s.upsertStore)
   const forced = useWelcome((s) => s.forced)
   const navigate = useNavigate()
-  const [step, setStep] = useState<'hello' | 'type' | 'plan'>('hello')
+  const [step, setStep] = useState<'hello' | 'type' | 'place' | 'plan'>('hello')
   const [kind, setKind] = useState<Kind>('restaurant')
   // el tipo llega sugerido (lo deducimos de lo que pidió); la persona solo confirma o lo cambia
   const [picked, setPicked] = useState<Kind | null>(null)
   const [closed, setClosed] = useState(false)
+  // ¿tiene punto físico? (si no, solo se le pide a domicilio)
+  const [physical, setPhysical] = useState<boolean | null>(null)
   const { spaceByStore } = useCatalogMaps()
   const store = useMemo(() => (import.meta.env.DEV && location.search.includes('welcometest') ? stores.find((s) => s.id === 'STORE-004') : remoteEnabled() && session.userId ? stores.find((s) => s.setup === 'pending' && session.storeIds.includes(s.id)) : undefined), [stores, session.userId, session.storeIds])
 
   useEffect(() => {
     setClosed(false)
     setStep('hello')
+    setPhysical(null)
     if (store) {
       const g = guessKind(store)
       setKind(g)
@@ -102,6 +105,7 @@ export function OwnerWelcome() {
       ...store,
       businessType: kind,
       setup: 'done',
+      deliveryOnly: physical === false,
       description: PLACEHOLDER_DESC.test(store.description) ? `Bienvenido a ${store.name}.` : store.description,
       categoryId: kind === 'restaurant' && !isFoodCategory(store.categoryId) ? 'gastronomia' : store.categoryId,
     })
@@ -134,9 +138,9 @@ export function OwnerWelcome() {
           aria-label="Bienvenida a tu local"
         >
           <div className="flex items-center justify-between">
-            <div className="flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={3} aria-valuenow={step === 'hello' ? 1 : step === 'type' ? 2 : 3} aria-label="Paso de la bienvenida">
-              {(['hello', 'type', 'plan'] as const).map((k, i) => (
-                <span key={k} className={`h-1.5 rounded-full transition-all ${k === step ? 'w-7 bg-white' : i < ['hello', 'type', 'plan'].indexOf(step) ? 'w-3 bg-white/80' : 'w-3 bg-white/30'}`} />
+            <div className="flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={['hello', 'type', 'place', 'plan'].indexOf(step) + 1} aria-label="Paso de la bienvenida">
+              {(['hello', 'type', 'place', 'plan'] as const).map((k, i) => (
+                <span key={k} className={`h-1.5 rounded-full transition-all ${k === step ? 'w-7 bg-white' : i < ['hello', 'type', 'place', 'plan'].indexOf(step) ? 'w-3 bg-white/80' : 'w-3 bg-white/30'}`} />
               ))}
             </div>
             <button className="grid size-10 place-items-center rounded-full bg-white/15 backdrop-blur" onClick={later} aria-label="Cerrar y configurar después">
@@ -245,6 +249,42 @@ export function OwnerWelcome() {
               </motion.div>
             )}
 
+            {step === 'place' && (
+              <motion.div key="place" className="my-auto py-4" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
+                <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">¿{store.name} tiene un punto físico?</h2>
+                <p className="mt-1 text-sm opacity-80">Así tus clientes solo ven las opciones que sí puedes ofrecer al pedir.</p>
+                <div className="mt-5 space-y-3" role="radiogroup" aria-label="Punto físico">
+                  {[
+                    { v: true, icon: StoreIcon, t: 'Sí, tengo local', d: 'Pueden recoger el pedido allá o pedir a domicilio.' },
+                    { v: false, icon: Bike, t: 'No, solo domicilio', d: 'Vendo desde casa o una cocina: todo se entrega a domicilio.' },
+                  ].map(({ v, icon: Icon, t, d }) => {
+                    const on = physical === v
+                    const dim = physical !== null && !on
+                    return (
+                      <button
+                        key={t}
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setPhysical(v)}
+                        className={`flex w-full items-center gap-4 rounded-3xl p-4 text-left transition duration-200 active:scale-[0.98] ${on ? 'bg-white text-ink shadow-[0_14px_40px_rgb(0_0_0/0.35)] ring-[3px] ring-teal-bright' : dim ? 'bg-white/10 text-white/70 ring-1 ring-white/15 backdrop-blur' : 'bg-white text-ink shadow-[0_10px_30px_rgb(0_0_0/0.25)]'}`}
+                      >
+                        <span className={`grid size-14 shrink-0 place-items-center rounded-2xl ${dim ? 'bg-white/15 text-white/80' : 'text-white'}`} style={dim ? undefined : { background: store.brandColor }}>
+                          <Icon className="size-7" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-lg font-extrabold">{t}</span>
+                          <span className={`block text-[13px] leading-snug ${dim ? 'text-white/65' : 'text-ink-soft'}`}>{d}</span>
+                        </span>
+                        <span className={`grid size-7 shrink-0 place-items-center rounded-full border-2 ${on ? 'border-teal-bright bg-teal-bright text-white' : dim ? 'border-white/30' : 'border-line'}`} aria-hidden>
+                          {on && <Check className="size-4" strokeWidth={3} />}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </motion.div>
+            )}
+
             {step === 'plan' && (
               <motion.div key="plan" className="my-auto py-4" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
                 <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">{PLAN[kind].title}</h2>
@@ -269,7 +309,12 @@ export function OwnerWelcome() {
               </button>
             )}
             {step === 'type' && (
-              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={!picked} onClick={() => setStep('plan')}>
+              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={!picked} onClick={() => setStep('place')}>
+                Continuar <ChevronRight className="size-4" />
+              </button>
+            )}
+            {step === 'place' && (
+              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={physical === null} onClick={() => setStep('plan')}>
                 Continuar <ChevronRight className="size-4" />
               </button>
             )}
@@ -284,7 +329,7 @@ export function OwnerWelcome() {
               </>
             )}
             {step !== 'hello' && (
-              <button className="w-full text-xs font-semibold opacity-70" onClick={() => setStep(step === 'plan' ? 'type' : 'hello')}>
+              <button className="w-full text-xs font-semibold opacity-70" onClick={() => setStep(step === 'plan' ? 'place' : step === 'place' ? 'type' : 'hello')}>
                 ← Atrás
               </button>
             )}

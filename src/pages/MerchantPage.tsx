@@ -529,6 +529,13 @@ function ProfileEditor({ store }: { store: Store }) {
           <input className={input} inputMode="tel" value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
         </Field>
         <MessagesEditor store={f} onChange={(m) => setF((x) => ({ ...x, messages: m }))} />
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-white p-3 sm:col-span-2">
+          <input type="checkbox" className="mt-0.5 size-5 accent-brand" checked={!!f.deliveryOnly} onChange={(e) => setF((x) => ({ ...x, deliveryOnly: e.target.checked }))} />
+          <span>
+            <span className="block text-sm font-bold">No tengo punto físico: solo vendo a domicilio</span>
+            <span className="block text-xs text-ink-soft">Tus clientes solo verán la opción «Domicilio» al pedir y no aparecerá la dirección del local.</span>
+          </span>
+        </label>
         <AddressEditor store={f} onChange={(address) => setF((x) => ({ ...x, address }))} />
         <InteriorBgEditor value={f.interiorBg} onChange={(interiorBg) => setF((x) => ({ ...x, interiorBg }))} />
         <MusicEditor store={f} onChange={(music) => setF((x) => ({ ...x, music }))} />
