@@ -1,13 +1,13 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, ChevronRight, Scissors, ShoppingBag, Store as StoreIcon, UtensilsCrossed, X } from 'lucide-react'
+import { Check, ChevronRight, MapPin, MessageCircle, Scissors, ShoppingBag, Store as StoreIcon, UtensilsCrossed, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
-import { isFoodCategory } from '../lib/restaurant'
-import { useCatalog } from '../state/catalog'
+import { isFoodCategory, isRestaurant } from '../lib/restaurant'
+import { FLOOR_BY_ID, FLOOR_OF_ZONE, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
+import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { btn } from '../ui/bits'
-import { categoryWords, newCategoryId, suggestedCategories } from '../lib/storeCategories'
 import type { Store } from '../domain/types'
 import { create } from 'zustand'
 
@@ -35,22 +35,29 @@ const KINDS: { id: Kind; name: string; hint: string; icon: typeof StoreIcon }[] 
 const PLAN: Record<Kind, { title: string; steps: string[]; cta: string }> = {
   restaurant: {
     title: 'Vamos a armar tu restaurante',
-    steps: ['Sube tu logo y revisa tus datos', 'Carga tu menú: tus primeros platos con foto y precio', 'Abre tu local para recibir pedidos en tu WhatsApp'],
+    steps: ['Tu local ya está en el mapa', 'Carga tu menú: tus primeros platos con foto y precio', 'Abre tu local para recibir pedidos en tu WhatsApp'],
     cta: 'Cargar mi menú',
   },
   shop: {
     title: 'Vamos a armar tu tienda',
-    steps: ['Sube tu logo y revisa tus datos', 'Arma tu catálogo: tus primeros productos con foto, precio e inventario', 'Abre tu local para recibir pedidos en tu WhatsApp'],
+    steps: ['Tu local ya está en el mapa', 'Arma tu catálogo: tus primeros productos con foto, precio e inventario', 'Abre tu local para recibir pedidos en tu WhatsApp'],
     cta: 'Subir mi primer producto',
   },
   service: {
     title: 'Vamos a armar tu negocio de servicios',
-    steps: ['Sube tu logo y revisa tus datos', 'Arma tu catálogo de servicios con su precio', 'Abre tu local para recibir solicitudes en tu WhatsApp'],
+    steps: ['Tu local ya está en el mapa', 'Arma tu catálogo de servicios con su precio', 'Abre tu local para recibir solicitudes en tu WhatsApp'],
     cta: 'Agregar mi primer servicio',
   },
 }
 
 const CONFETTI = Array.from({ length: 22 }, (_, i) => ({ x: ((i * 37) % 100) - 50, d: 0.05 * i, r: (i * 53) % 360, c: ['#f27b68', '#ffd166', '#06d6a0', '#ffffff', '#4cc9f0'][i % 5], s: 6 + (i % 4) * 2 }))
+
+/** Tipo de negocio que sugerimos según lo que pidió al reclamar el local (rubro y zona). */
+const guessKind = (store: Store): Kind => (isRestaurant(store) ? 'restaurant' : store.zoneId === 'F' ? 'service' : 'shop')
+/** Tamaño de letra para que el logo de texto quepa entero en el cuadro. */
+const logoFont = (t: string) => (t.length <= 4 ? 34 : t.length <= 6 ? 26 : t.length <= 8 ? 20 : 15)
+/** Un texto de relleno que dejó la aprobación: no debe verlo el público. */
+const PLACEHOLDER_DESC = /^Nueva tienda de .*Completa la descripción/
 
 /**
  * Bienvenida del dueño de un local recién aprobado: animación «¡Eres dueño de un local!», pregunta qué tipo de negocio es
@@ -62,38 +69,56 @@ export function OwnerWelcome() {
   const upsertStore = useCatalog((s) => s.upsertStore)
   const forced = useWelcome((s) => s.forced)
   const navigate = useNavigate()
-  const [step, setStep] = useState<'hello' | 'type' | 'cats' | 'plan'>('hello')
+  const [step, setStep] = useState<'hello' | 'type' | 'plan'>('hello')
   const [kind, setKind] = useState<Kind>('restaurant')
-  // en el paso del tipo: nada elegido hasta que la persona toca una opción
+  // el tipo llega sugerido (lo deducimos de lo que pidió); la persona solo confirma o lo cambia
   const [picked, setPicked] = useState<Kind | null>(null)
   const [closed, setClosed] = useState(false)
-  // categorías con las que arranca el catálogo (opcional): nombres elegidos entre las ideas o escritos por la persona
-  const [catNames, setCatNames] = useState<string[]>([])
-  const [catDraft, setCatDraft] = useState('')
+  const { spaceByStore } = useCatalogMaps()
   const store = useMemo(() => (import.meta.env.DEV && location.search.includes('welcometest') ? stores.find((s) => s.id === 'STORE-004') : remoteEnabled() && session.userId ? stores.find((s) => s.setup === 'pending' && session.storeIds.includes(s.id)) : undefined), [stores, session.userId, session.storeIds])
 
   useEffect(() => {
     setClosed(false)
     setStep('hello')
+    if (store) {
+      const g = guessKind(store)
+      setKind(g)
+      setPicked(g)
+    }
   }, [forced, store?.id])
-  // solo se abre cuando la persona toca el aviso «Tu solicitud fue aprobada» (o la tarjeta de Mi cuenta)
-  const show = !!store && !closed && forced > 0
+  // se abre sola al entrar con una solicitud recién aprobada (una vez por sesión); también desde el aviso o «Mi cuenta»
+  const dismissed = (() => {
+    try {
+      return sessionStorage.getItem('cm:welcome-dismissed') === '1'
+    } catch {
+      return false
+    }
+  })()
+  const show = !!store && !closed && (forced > 0 || !dismissed)
 
   const finish = (go: boolean) => {
     if (!store) return
-    const taken = (store.categories ?? []).map((c) => c.id)
-    const fresh: { id: string; name: string }[] = []
-    for (const name of catNames) {
-      if ((store.categories ?? []).some((c) => c.name.toLowerCase() === name.toLowerCase())) continue
-      const id = newCategoryId(name, taken)
-      taken.push(id)
-      fresh.push({ id, name })
-    }
-    upsertStore({ ...store, categories: [...(store.categories ?? []), ...fresh], businessType: kind, setup: 'done', categoryId: kind === 'restaurant' && !isFoodCategory(store.categoryId) ? 'gastronomia' : store.categoryId })
+    upsertStore({
+      ...store,
+      businessType: kind,
+      setup: 'done',
+      description: PLACEHOLDER_DESC.test(store.description) ? `Bienvenido a ${store.name}.` : store.description,
+      categoryId: kind === 'restaurant' && !isFoodCategory(store.categoryId) ? 'gastronomia' : store.categoryId,
+    })
     setClosed(true)
     navigate(go ? `/mi-negocio?tienda=${store.id}&tab=articulos&nuevo=1` : `/mi-negocio?tienda=${store.id}`)
   }
-  const later = () => setClosed(true)
+  const later = () => {
+    try {
+      sessionStorage.setItem('cm:welcome-dismissed', '1')
+    } catch {
+      /* sin almacenamiento */
+    }
+    setClosed(true)
+  }
+  const space = store ? SPACE_BY_ID[spaceByStore[store.id]] : undefined
+  const zone = store ? ZONE_BY_ID[store.zoneId] : undefined
+  const placeLine = store && zone ? [space?.label, zone.id === 'E' ? zone.name : `Pasillo ${zone.id}`, FLOOR_BY_ID[FLOOR_OF_ZONE[zone.id]]?.name].filter(Boolean).join(' · ') : ''
 
   return (
     <AnimatePresence>
@@ -108,13 +133,21 @@ export function OwnerWelcome() {
           role="dialog"
           aria-label="Bienvenida a tu local"
         >
-          <button className="ml-auto grid size-10 place-items-center rounded-full bg-white/15 backdrop-blur" onClick={later} aria-label="Cerrar y configurar después">
-            <X className="size-5" />
-          </button>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={3} aria-valuenow={step === 'hello' ? 1 : step === 'type' ? 2 : 3} aria-label="Paso de la bienvenida">
+              {(['hello', 'type', 'plan'] as const).map((k, i) => (
+                <span key={k} className={`h-1.5 rounded-full transition-all ${k === step ? 'w-7 bg-white' : i < ['hello', 'type', 'plan'].indexOf(step) ? 'w-3 bg-white/80' : 'w-3 bg-white/30'}`} />
+              ))}
+            </div>
+            <button className="grid size-10 place-items-center rounded-full bg-white/15 backdrop-blur" onClick={later} aria-label="Cerrar y configurar después">
+              <X className="size-5" />
+            </button>
+          </div>
 
+          <div className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2">
           <AnimatePresence mode="wait">
             {step === 'hello' && (
-              <motion.div key="hello" className="relative flex flex-1 flex-col items-center justify-center text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }}>
+              <motion.div key="hello" className="relative my-auto flex flex-col items-center py-4 text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -20 }}>
                 {CONFETTI.map((c, i) => (
                   <motion.span
                     key={i}
@@ -134,7 +167,7 @@ export function OwnerWelcome() {
                   {store.logo ? (
                     <img src={store.logo} alt={`Logo de ${store.name}`} className="size-full object-contain p-3" />
                   ) : (
-                    <span className="px-2 text-center text-[34px] leading-none font-extrabold tracking-tight" style={{ color: store.brandColor }}>
+                    <span className="max-w-full px-2 text-center leading-none font-extrabold tracking-tight whitespace-nowrap" style={{ color: store.brandColor, fontSize: logoFont(store.logoText) }}>
                       {store.logoText}
                     </span>
                   )}
@@ -148,16 +181,31 @@ export function OwnerWelcome() {
                 <motion.p className="mt-3 text-[22px] font-bold" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.95 }}>
                   {store.name}
                 </motion.p>
-                <motion.p className="mt-2 max-w-xs text-[15px] opacity-85" initial={{ opacity: 0 }} animate={{ opacity: 0.85 }} transition={{ delay: 1.2 }}>
-                  Ya es tuyo en MallPlay. Vamos a dejarlo listo en un minuto.
-                </motion.p>
+                <motion.ul className="mt-5 w-full max-w-xs space-y-2 text-left" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }}>
+                  {[
+                    { icon: MapPin, t: 'Tu espacio en el mall', d: placeLine },
+                    { icon: StoreIcon, t: 'Tu ficha pública', d: 'Ya la pueden encontrar y visitar' },
+                    { icon: MessageCircle, t: 'Pedidos por WhatsApp', d: store.whatsapp ? `Llegan al ${store.whatsapp}` : 'Llegan a tu WhatsApp' },
+                  ].map(({ icon: Icon, t, d }) => (
+                    <li key={t} className="flex items-center gap-3 rounded-2xl bg-white/12 px-3.5 py-2.5 backdrop-blur">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-ink">
+                        <Icon className="size-4" />
+                      </span>
+                      <span className="min-w-0 leading-tight">
+                        <span className="block text-[14px] font-extrabold">{t}</span>
+                        <span className="block truncate text-[12.5px] opacity-80">{d}</span>
+                      </span>
+                      <Check className="ml-auto size-4 shrink-0 text-teal-bright" strokeWidth={3} />
+                    </li>
+                  ))}
+                </motion.ul>
               </motion.div>
             )}
 
             {step === 'type' && (
-              <motion.div key="type" className="flex flex-1 flex-col justify-center" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
+              <motion.div key="type" className="my-auto py-4" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
                 <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">¿Qué tipo de negocio es {store.name}?</h2>
-                <p className="mt-1 text-sm opacity-80">Así te mostramos las herramientas que necesitas.</p>
+                <p className="mt-1 text-sm opacity-80">Creemos que es {KINDS.find((k) => k.id === guessKind(store))?.name.toLowerCase()}. Confírmalo o cámbialo.</p>
                 <div className="mt-5 space-y-3" role="radiogroup" aria-label="Tipo de negocio">
                   {KINDS.map((k) => {
                     const Icon = k.icon
@@ -197,50 +245,14 @@ export function OwnerWelcome() {
               </motion.div>
             )}
 
-            {step === 'cats' && (
-              <motion.div key="cats" className="flex flex-1 flex-col justify-center" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
-                <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">¿Cómo vas a organizar {kind === 'restaurant' ? 'tu menú' : kind === 'service' ? 'tus servicios' : 'tu catálogo'}?</h2>
-                <p className="mt-1 text-sm opacity-80">Las categorías ayudan a tus clientes a encontrar lo que buscan. Elige las que quieras o escribe las tuyas; las cambias cuando quieras.</p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {[...suggestedCategories({ ...store, businessType: kind }), ...catNames.filter((n) => !suggestedCategories({ ...store, businessType: kind }).includes(n))].map((n) => {
-                    const on = catNames.includes(n)
-                    return (
-                      <button
-                        key={n}
-                        onClick={() => setCatNames((c) => (on ? c.filter((x) => x !== n) : [...c, n]))}
-                        aria-pressed={on}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[14px] font-bold transition active:scale-95 ${on ? 'bg-white text-ink ring-[3px] ring-teal-bright' : 'bg-white/12 text-white ring-1 ring-white/20 backdrop-blur'}`}
-                      >
-                        {on && <Check className="size-4 text-teal" strokeWidth={3} />} {n}
-                      </button>
-                    )
-                  })}
-                </div>
-                <form
-                  className="mt-4 flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    const n = catDraft.trim().slice(0, 30)
-                    if (n.length > 1 && !catNames.some((x) => x.toLowerCase() === n.toLowerCase())) setCatNames((c) => [...c, n])
-                    setCatDraft('')
-                  }}
-                >
-                  <input className="h-12 min-w-0 flex-1 rounded-2xl border-0 bg-white/15 px-4 text-[15px] text-white outline-none placeholder:text-white/60 focus:bg-white/20 focus:ring-2 focus:ring-white/50" value={catDraft} maxLength={30} onChange={(e) => setCatDraft(e.target.value)} placeholder={categoryWords({ ...store, businessType: kind }).placeholder} aria-label="Escribir otra categoría" />
-                  <button type="submit" className="h-12 rounded-2xl bg-white/20 px-4 text-sm font-bold backdrop-blur disabled:opacity-40" disabled={catDraft.trim().length < 2}>
-                    Agregar
-                  </button>
-                </form>
-              </motion.div>
-            )}
-
             {step === 'plan' && (
-              <motion.div key="plan" className="flex flex-1 flex-col justify-center" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
+              <motion.div key="plan" className="my-auto py-4" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}>
                 <h2 className="text-[26px] leading-tight font-extrabold tracking-tight">{PLAN[kind].title}</h2>
-                <p className="mt-1 text-sm opacity-80">Son tres pasos y ya vendes:</p>
+                <p className="mt-1 text-sm opacity-80">Casi listo. Esto es lo que sigue:</p>
                 <ol className="mt-5 space-y-3">
                   {PLAN[kind].steps.map((t, i) => (
                     <motion.li key={t} className="flex items-start gap-3 rounded-2xl bg-white/12 p-3.5 backdrop-blur" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.12 }}>
-                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white text-sm font-extrabold text-ink">{i + 1}</span>
+                      <span className={`grid size-7 shrink-0 place-items-center rounded-full text-sm font-extrabold ${i === 0 ? 'bg-teal-bright text-white' : 'bg-white text-ink'}`}>{i === 0 ? <Check className="size-4" strokeWidth={3} /> : i + 1}</span>
                       <span className="text-[15px] leading-snug font-semibold">{t}</span>
                     </motion.li>
                   ))}
@@ -248,6 +260,7 @@ export function OwnerWelcome() {
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
 
           <div className="mt-4 space-y-2.5">
             {step === 'hello' && (
@@ -256,21 +269,9 @@ export function OwnerWelcome() {
               </button>
             )}
             {step === 'type' && (
-              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={!picked} onClick={() => setStep('cats')}>
+              <button className={`${btn.primary} w-full !bg-white !text-ink`} disabled={!picked} onClick={() => setStep('plan')}>
                 Continuar <ChevronRight className="size-4" />
               </button>
-            )}
-            {step === 'cats' && (
-              <>
-                <button className={`${btn.primary} w-full !bg-white !text-ink`} onClick={() => setStep('plan')}>
-                  {catNames.length ? `Continuar con ${catNames.length} ${catNames.length === 1 ? 'categoría' : 'categorías'}` : 'Continuar'} <ChevronRight className="size-4" />
-                </button>
-                {catNames.length > 0 && (
-                  <button className="w-full py-1 text-sm font-semibold opacity-85" onClick={() => { setCatNames([]); setStep('plan') }}>
-                    Omitir por ahora
-                  </button>
-                )}
-              </>
             )}
             {step === 'plan' && (
               <>
@@ -283,7 +284,7 @@ export function OwnerWelcome() {
               </>
             )}
             {step !== 'hello' && (
-              <button className="w-full text-xs font-semibold opacity-70" onClick={() => setStep(step === 'plan' ? 'cats' : step === 'cats' ? 'type' : 'hello')}>
+              <button className="w-full text-xs font-semibold opacity-70" onClick={() => setStep(step === 'plan' ? 'type' : 'hello')}>
                 ← Atrás
               </button>
             )}
