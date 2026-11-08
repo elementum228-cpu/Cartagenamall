@@ -21,6 +21,19 @@ export async function uploadStorePhoto(storeId: string, dataUrl: string): Promis
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
 }
 
+const MUSIC_BUCKET = 'store-music'
+export const MAX_STORE_MUSIC_BYTES = 8 * 1024 * 1024
+
+/** Sube la música de fondo de un local (carpeta de la tienda) y devuelve su dirección pública. */
+export async function uploadStoreMusic(storeId: string, file: File): Promise<string> {
+  if (!supabase) throw new Error('Sin conexión a la base de datos.')
+  const ext = (file.name.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `${storeId}/${uniqueId('m')}.${ext}`
+  const { error } = await supabase.storage.from(MUSIC_BUCKET).upload(path, file, { contentType: file.type || 'audio/mpeg', cacheControl: '31536000', upsert: false })
+  if (error) throw new Error(error.message)
+  return supabase.storage.from(MUSIC_BUCKET).getPublicUrl(path).data.publicUrl
+}
+
 const IMAGE_BUCKET = 'stadium-images'
 
 /** Sube un escudo o el afiche del cartel del estadio (data URL) y devuelve su dirección pública. */

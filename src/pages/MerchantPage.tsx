@@ -2,6 +2,7 @@ import { messageFor } from '../lib/messages'
 import { absoluteUrl, localPath } from '../lib/links'
 import { copyText } from '../lib/clipboard'
 import { MessagesEditor } from './MerchantMessages'
+import { MusicEditor } from './MerchantMusic'
 import { EventsManager } from '../stadium/EventsManager'
 import { useStadiumConfig } from '../state/stadiumEvents'
 import {
@@ -522,6 +523,7 @@ function ProfileEditor({ store }: { store: Store }) {
           <input className={input} inputMode="tel" value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
         </Field>
         <MessagesEditor store={f} onChange={(m) => setF((x) => ({ ...x, messages: m }))} />
+        <MusicEditor store={f} onChange={(music) => setF((x) => ({ ...x, music }))} />
         <Field label="Estado" wide>
           <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>
             <option value="open">Abierto: recibe pedidos</option>

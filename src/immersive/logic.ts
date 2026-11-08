@@ -12,6 +12,17 @@ export const sceneOf = (store: Store): Scene => (isRestaurant(store) ? 'restaura
 /** ¿Se puede entrar a este local? Con la beta encendida por la administración y el local habilitado. */
 export const canEnter = (betaOn: boolean, store: Pick<Store, 'interior'> | undefined | null): boolean => betaOn && store?.interior === true
 
+/** Pieza clásica suave que suena en todos los locales mientras el dueño no ponga otra. */
+export const DEFAULT_MUSIC = 'audio/clasica.mp3'
+
+/** Música del local: null si está apagada; la propia si la subió y la eligió; si no, la clásica de siempre. */
+export function musicUrlFor(store: Pick<Store, 'music'>, base = '/'): string | null {
+  const m = store.music
+  if (m?.mode === 'off') return null
+  if (m?.mode === 'custom' && m.url) return m.url
+  return `${base}${DEFAULT_MUSIC}`
+}
+
 export interface InteriorTab {
   id: string
   name: string

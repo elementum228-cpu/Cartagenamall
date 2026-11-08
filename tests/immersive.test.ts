@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Product, Store } from '../src/domain/types'
-import { canEnter, firstTab, interiorProducts, interiorTabs, itemsFor, relPos, sceneOf, wrapIndex } from '../src/immersive/logic'
+import { DEFAULT_MUSIC, canEnter, musicUrlFor, firstTab, interiorProducts, interiorTabs, itemsFor, relPos, sceneOf, wrapIndex } from '../src/immersive/logic'
 
 const store = (p: Partial<Store> = {}) => ({ id: 's1', categoryId: 'moda', zoneId: 'A', ...p }) as Store
 const prod = (id: string, p: Partial<Product> = {}) => ({ id, storeId: 's1', active: true, featured: false, ...p }) as Product
@@ -50,5 +50,13 @@ describe('entrar al local (beta)', () => {
     expect([0, 1, 2, 3, 4].map((i) => relPos(i, 4, 5))).toEqual([1, 2, -2, -1, 0])
     expect([0, 1].map((i) => relPos(i, 0, 2))).toEqual([0, 1])
     expect(relPos(0, 0, 1)).toBe(0)
+  })
+  it('la música del local: clásica de entrada, propia si la sube, o apagada', () => {
+    expect(musicUrlFor({}, '/')).toBe(`/${DEFAULT_MUSIC}`)
+    expect(musicUrlFor({ music: { mode: 'classic' } }, '/app/')).toBe(`/app/${DEFAULT_MUSIC}`)
+    expect(musicUrlFor({ music: { mode: 'custom', url: 'https://x/y.mp3' } })).toBe('https://x/y.mp3')
+    // «Mi música» sin pista cargada vuelve a la clásica
+    expect(musicUrlFor({ music: { mode: 'custom', url: null } }, '/')).toBe(`/${DEFAULT_MUSIC}`)
+    expect(musicUrlFor({ music: { mode: 'off', url: 'https://x/y.mp3' } })).toBeNull()
   })
 })

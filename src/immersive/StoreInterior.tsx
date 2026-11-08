@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, MessageCircle, Minus, Plus, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MessageCircle, Minus, Plus, ShoppingBag, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Product, Store } from '../domain/types'
@@ -14,7 +14,8 @@ import { useUI } from '../state/ui'
 import { ProductImage } from '../ui/ProductImage'
 import { StoreLogo } from '../ui/bits'
 import { useBeta } from '../state/beta'
-import { firstTab, interiorProducts, interiorTabs, itemsFor, relPos, sceneOf, wrapIndex, type Scene } from './logic'
+import { firstTab, interiorProducts, interiorTabs, itemsFor, musicUrlFor, relPos, sceneOf, wrapIndex, type Scene } from './logic'
+import { setMusicMuted, startMusic, stopMusic, useInteriorSound } from './music'
 
 // «Entrar al local» (beta): en vez de abrir una ficha, se entra al negocio. El fondo es el del local (el que
 // sube el dueño en el estudio de fotos) y lo que vende flota delante; abajo, una barra con lo esencial para
@@ -66,6 +67,14 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // música de fondo del local: suave, empieza al entrar y se apaga al salir
+  const musicUrl = musicUrlFor(store, import.meta.env.BASE_URL)
+  const muted = useInteriorSound((s) => s.muted)
+  useEffect(() => {
+    startMusic(musicUrl)
+    return () => stopMusic()
+  }, [musicUrl])
+
   // cerrar con Escape y flechas del teclado
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
@@ -87,21 +96,36 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
   const pill = dark ? 'border-white/25 bg-white/85 text-[#1d1a16]' : 'border-black/10 bg-[#1d1a16]/85 text-white'
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Dentro de ${store.name}`} className="fixed inset-0 z-[55] overflow-hidden" style={{ background: SCENE_BG[scene], color: dark ? '#f4ede2' : '#1d1a16' }}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Dentro de ${store.name}`}
+      className="fixed inset-0 z-[55] overflow-hidden"
+      style={{ background: SCENE_BG[scene], color: dark ? '#f4ede2' : '#1d1a16' }}
+    >
       <div className="absolute inset-0 origin-center transition-transform duration-[1800ms] ease-out" style={{ transform: doors === 'closed' ? 'scale(1.06)' : 'scale(1)' }}>
         {bg && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bg})`, opacity: 0.9 }} />}
         {/* luz del día/noche sobre el local */}
-        <div className="pointer-events-none absolute inset-0" style={{ background: night ? 'rgba(12,22,48,0.42)' : dark ? 'rgba(0,0,0,0.0)' : 'radial-gradient(ellipse at 50% 0%, rgba(255,246,226,0.55), rgba(255,246,226,0) 70%)' }} />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: night ? 'rgba(12,22,48,0.42)' : dark ? 'rgba(0,0,0,0.0)' : 'radial-gradient(ellipse at 50% 0%, rgba(255,246,226,0.55), rgba(255,246,226,0) 70%)' }}
+        />
 
         <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 px-4 pt-[max(14px,env(safe-area-inset-top))]">
-          <button onClick={close} aria-label="Salir del local" className={`grid size-11 shrink-0 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/35 text-white' : 'border-white/70 bg-white/60'}`}>
+          <button
+            onClick={close}
+            aria-label="Salir del local"
+            className={`grid size-11 shrink-0 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/35 text-white' : 'border-white/70 bg-white/60'}`}
+          >
             <ChevronLeft className="size-5" />
           </button>
           {/* logo y nombre del local, en una pastilla que contrasta con cualquier fondo */}
-          <div className={`flex min-w-0 items-center gap-2.5 rounded-full border py-1.5 pr-4 pl-1.5 shadow-soft backdrop-blur-md ${pill}`}>
-            <StoreLogo store={store} size={38} />
+          <div className={`flex min-w-0 items-center gap-3 rounded-full border py-1.5 pr-5 pl-1.5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.45)] backdrop-blur-xl ${pill}`}>
+            <span className="grid shrink-0 place-items-center rounded-full bg-white p-[3px] shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
+              <StoreLogo store={store} size={40} round />
+            </span>
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-[14px] font-extrabold tracking-[0.12em] uppercase">{store.name}</div>
+              <div className="truncate text-[14px] font-extrabold tracking-[0.14em] uppercase">{store.name}</div>
               {store.tagline && <div className="truncate text-[11px] font-semibold opacity-70">{store.tagline}</div>}
             </div>
           </div>
@@ -109,21 +133,35 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
         </header>
 
         {tabs.length > 0 && (
-          <nav aria-label="Categorías" className="scrollbar-none absolute inset-x-0 top-[calc(max(14px,env(safe-area-inset-top))+64px)] z-10 flex gap-1.5 overflow-x-auto px-4 py-1">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                aria-pressed={tab === t.id}
-                onClick={() => {
-                  setTab(t.id)
-                  setIndex(0)
-                }}
-                className={`h-10 shrink-0 rounded-full px-4 text-[13px] font-bold transition ${tab === t.id ? (dark ? 'bg-[#f4ede2] text-[#2a1a0c] shadow-soft' : 'bg-[#1d1a16] text-white shadow-soft') : dark ? 'border border-white/25 bg-black/25 text-[#f1e4d2] backdrop-blur-md' : 'border border-white/80 bg-white/60 text-[#4a4338] backdrop-blur-md'}`}
-              >
-                {t.name}
-              </button>
-            ))}
+          <nav aria-label="Categorías" className="scrollbar-none absolute inset-x-0 top-[calc(max(14px,env(safe-area-inset-top))+68px)] z-10 overflow-x-auto px-4 py-1">
+            <div className="mx-auto flex w-max gap-1.5">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  aria-pressed={tab === t.id}
+                  onClick={() => {
+                    setTab(t.id)
+                    setIndex(0)
+                  }}
+                  className={`h-10 shrink-0 rounded-full px-4 text-[13px] font-bold transition ${tab === t.id ? (dark ? 'bg-[#f4ede2] text-[#2a1a0c] shadow-soft' : 'bg-[#1d1a16] text-white shadow-soft') : dark ? 'border border-white/25 bg-black/25 text-[#f1e4d2] backdrop-blur-md' : 'border border-white/80 bg-white/60 text-[#4a4338] backdrop-blur-md'}`}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
           </nav>
+        )}
+
+        {musicUrl !== null && (
+          <button
+            onClick={() => setMusicMuted(!muted, musicUrl)}
+            aria-label={muted ? 'Activar la música del local' : 'Silenciar la música del local'}
+            aria-pressed={!muted}
+            className={`absolute left-4 z-10 grid size-11 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/35 text-white' : 'border-white/70 bg-white/60 text-[#1d1a16]'}`}
+            style={{ top: `calc(max(14px, env(safe-area-inset-top)) + ${TOP_BAR + 8}px)` }}
+          >
+            {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+          </button>
         )}
 
         {!cur ? (
@@ -199,9 +237,15 @@ function GlassDoors({ open, name }: { open: boolean; name: string }) {
       <div className="absolute inset-x-0 top-[9%] h-[8px]" style={{ background: 'linear-gradient(180deg, #e9eef1, #98a2aa)' }} />
       <div className="absolute inset-x-0 bottom-0 h-[6%]" style={{ background: 'linear-gradient(180deg, #c6ced4, #8c969e)' }} />
       {/* manija vertical */}
-      <div className="absolute top-[42%] h-[16%] w-[7px] rounded-full" style={{ [side === 'left' ? 'right' : 'left']: 30, background: 'linear-gradient(90deg, #8f99a1, #f2f5f7, #8f99a1)', boxShadow: '0 0 6px rgba(0,0,0,0.25)' }} />
+      <div
+        className="absolute top-[42%] h-[16%] w-[7px] rounded-full"
+        style={{ [side === 'left' ? 'right' : 'left']: 30, background: 'linear-gradient(90deg, #8f99a1, #f2f5f7, #8f99a1)', boxShadow: '0 0 6px rgba(0,0,0,0.25)' }}
+      />
       {/* reflejo diagonal que cruza el vidrio */}
-      <div className="absolute inset-y-0 w-[38%] -skew-x-[18deg]" style={{ left: side === 'left' ? '18%' : '40%', background: 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.28), rgba(255,255,255,0))' }} />
+      <div
+        className="absolute inset-y-0 w-[38%] -skew-x-[18deg]"
+        style={{ left: side === 'left' ? '18%' : '40%', background: 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.28), rgba(255,255,255,0))' }}
+      />
     </div>
   )
   return (
@@ -229,7 +273,11 @@ function CartButton({ dark }: { dark: boolean }) {
       className={`relative grid size-11 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/30 text-white' : 'border-white/70 bg-white/55'}`}
     >
       <ShoppingBag className="size-5" />
-      {count > 0 && <span className="absolute -top-1 -right-1 grid min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[11px] leading-[18px] font-extrabold text-white">{count}</span>}
+      {count > 0 && (
+        <span className="absolute -top-1 -right-1 grid min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[11px] leading-[18px] font-extrabold text-white">
+          {count}
+        </span>
+      )}
     </button>
   )
 }
@@ -251,7 +299,11 @@ function Dots({ n, i, dark }: { n: number; i: number; dark: boolean }) {
   return (
     <div className="absolute inset-x-0 bottom-[276px] z-10 flex justify-center gap-1.5" aria-hidden>
       {Array.from({ length: n }, (_, k) => (
-        <span key={k} className="h-1.5 rounded-full transition-all" style={{ width: k === i ? 18 : 6, background: dark ? (k === i ? '#f2a33a' : 'rgba(255,255,255,0.3)') : k === i ? '#1d1a16' : 'rgba(29,26,22,0.25)' }} />
+        <span
+          key={k}
+          className="h-1.5 rounded-full transition-all"
+          style={{ width: k === i ? 18 : 6, background: dark ? (k === i ? '#f2a33a' : 'rgba(255,255,255,0.3)') : k === i ? '#1d1a16' : 'rgba(29,26,22,0.25)' }}
+        />
       ))}
     </div>
   )
@@ -262,7 +314,23 @@ function Dots({ n, i, dark }: { n: number; i: number; dark: boolean }) {
  * mueven, se achican y se desvanecen según su distancia al centro) y siguen al dedo mientras se arrastra;
  * tocar una vecina la trae al centro.
  */
-function Stage({ scene, store, items, index, onGo, dragX, dragging }: { scene: Scene; store: Store; items: Product[]; index: number; onGo: (d: number) => void; dragX: number; dragging: boolean }) {
+function Stage({
+  scene,
+  store,
+  items,
+  index,
+  onGo,
+  dragX,
+  dragging,
+}: {
+  scene: Scene
+  store: Store
+  items: Product[]
+  index: number
+  onGo: (d: number) => void
+  dragX: number
+  dragging: boolean
+}) {
   const plate = scene === 'restaurant'
   const n = items.length
   // las tarjetas que dan la vuelta (de un extremo al otro) se acomodan sin recorrer la pantalla
@@ -282,21 +350,35 @@ function Stage({ scene, store, items, index, onGo, dragX, dragging }: { scene: S
         key={p.id}
         onClick={side ? () => onGo(rel) : undefined}
         aria-hidden={d !== 0}
-        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full' : 'rounded-[30px] border border-white/80 bg-white/60 p-3.5 backdrop-blur-xl'}`}
+        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full' : 'rounded-[34px] border-[3px] border-white/90 bg-gradient-to-b from-white/85 to-white/45 p-3.5 backdrop-blur-xl'}`}
         style={{
           width: 'var(--w)',
           aspectRatio: plate ? '1 / 1' : '0.72',
-          maxHeight: '96%',
+          maxHeight: '98%',
           zIndex: 10 - d,
-          opacity: d === 0 ? 1 : d === 1 ? 0.62 : 0,
-          transform: `translate(calc(-50% + ${rel} * var(--w) * 0.92 + ${dragX}px), -50%) scale(${d === 0 ? 1 : d === 1 ? 0.8 : 0.62})`,
+          opacity: d === 0 ? 1 : d === 1 ? 0.7 : 0,
+          transform: `translate(calc(-50% + ${rel} * var(--w) * 0.9 + ${dragX}px), -50%) perspective(1200px) rotateY(${-rel * 14}deg) scale(${d === 0 ? 1 : d === 1 ? 0.8 : 0.62})`,
           transition: dragging || jumped ? 'none' : 'transform 760ms cubic-bezier(0.33, 0, 0.15, 1), opacity 560ms ease-out',
-          boxShadow: d === 0 ? (plate ? '0 30px 50px -20px rgba(0,0,0,0.7)' : '0 28px 50px -18px rgba(70,45,15,0.45)') : 'none',
+          boxShadow: plate
+            ? d === 0
+              ? '0 40px 60px -22px rgba(0,0,0,0.75), 0 14px 22px -10px rgba(0,0,0,0.5)'
+              : 'none'
+            : d === 0
+              ? '0 46px 70px -24px rgba(50,40,80,0.55), 0 18px 28px -12px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -10px 18px rgba(120,130,170,0.18)'
+              : '0 24px 40px -22px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.7)',
           cursor: side ? 'pointer' : 'default',
           pointerEvents: d === 2 ? 'none' : 'auto',
         }}
       >
-        <ProductImage product={p} brandColor={store.brandColor} className={`size-full ${plate ? 'rounded-full border-[6px] border-[#fffaf1]' : 'rounded-2xl object-contain'}`} />
+        <ProductImage product={p} brandColor={store.brandColor} className={`size-full ${plate ? 'rounded-full border-[6px] border-[#fffaf1]' : 'rounded-[22px] object-contain'}`} />
+        {/* brillo de vidrio sobre la tarjeta */}
+        {!plate && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-[31px]"
+            style={{ background: 'linear-gradient(120deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 38%, rgba(255,255,255,0) 70%, rgba(255,255,255,0.18) 100%)' }}
+          />
+        )}
       </div>
     )
   })
@@ -304,7 +386,10 @@ function Stage({ scene, store, items, index, onGo, dragX, dragging }: { scene: S
     last.current = next
   })
   return (
-    <div className="relative mx-auto h-full w-full max-w-3xl" style={{ ['--w' as string]: plate ? 'min(78vw, 330px)' : 'min(66vw, 270px)' }}>
+    <div
+      className="relative mx-auto h-full w-full max-w-3xl"
+      style={{ ['--w' as string]: plate ? 'min(78vw, calc((100dvh - 440px) * 0.96), 520px)' : 'min(66vw, calc((100dvh - 440px) * 0.7), 470px)' }}
+    >
       {nodes}
     </div>
   )
@@ -321,7 +406,10 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
   const needsSize = product.sizes.length > 0
   const unit = info.final
   return (
-    <div className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl animate-[dockIn_.3s_ease-out] rounded-[30px] border p-4 backdrop-blur-xl ${dark ? 'border-white/10 bg-[#f7efe4]/95 text-[#2a1a0c]' : 'border-white/90 bg-white/75 text-[#1d1a16]'}`} style={{ boxShadow: '0 20px 44px -14px rgba(0,0,0,0.5)' }}>
+    <div
+      className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl animate-[dockIn_.3s_ease-out] rounded-[30px] border p-4 backdrop-blur-xl ${dark ? 'border-white/10 bg-[#f7efe4]/95 text-[#2a1a0c]' : 'border-white/90 bg-white/75 text-[#1d1a16]'}`}
+      style={{ boxShadow: '0 20px 44px -14px rgba(0,0,0,0.5)' }}
+    >
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-[17px] leading-tight font-extrabold">{product.name}</h2>
         <div className="text-right">
@@ -333,7 +421,12 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
       {product.variants.length > 0 && (
         <div className="mt-2.5 flex flex-wrap gap-1.5" role="group" aria-label="Opción">
           {product.variants.map((v) => (
-            <button key={v.id} aria-pressed={variantId === v.id} onClick={() => setVariant(v.id)} className={`flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-bold ${variantId === v.id ? 'border-transparent bg-[#1d1a16] text-white' : 'border-black/15 bg-white/70'}`}>
+            <button
+              key={v.id}
+              aria-pressed={variantId === v.id}
+              onClick={() => setVariant(v.id)}
+              className={`flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-bold ${variantId === v.id ? 'border-transparent bg-[#1d1a16] text-white' : 'border-black/15 bg-white/70'}`}
+            >
               {v.swatch && <span className="size-3.5 rounded-full border border-black/15" style={{ background: v.swatch }} />}
               {v.name}
             </button>
@@ -346,7 +439,13 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
           {product.sizes.map((s) => {
             const out = stockFor(product, variantId, s) === 0
             return (
-              <button key={s} disabled={out} aria-pressed={size === s} onClick={() => setSize(s)} className={`h-11 min-w-11 rounded-[14px] border px-2 text-[13px] font-bold disabled:line-through disabled:opacity-40 ${size === s ? 'border-transparent bg-[#1d1a16] text-white' : 'border-black/15 bg-white'}`}>
+              <button
+                key={s}
+                disabled={out}
+                aria-pressed={size === s}
+                onClick={() => setSize(s)}
+                className={`h-11 min-w-11 rounded-[14px] border px-2 text-[13px] font-bold disabled:line-through disabled:opacity-40 ${size === s ? 'border-transparent bg-[#1d1a16] text-white' : 'border-black/15 bg-white'}`}
+              >
                 {s}
               </button>
             )
@@ -356,9 +455,13 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
       <div className="mt-3 flex items-center gap-2.5">
         {scene === 'restaurant' && (
           <div className="flex h-[52px] items-center rounded-full bg-black/[0.07] px-1">
-            <button aria-label="Menos" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid size-11 place-items-center rounded-full"><Minus className="size-4" /></button>
+            <button aria-label="Menos" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid size-11 place-items-center rounded-full">
+              <Minus className="size-4" />
+            </button>
             <span className="w-6 text-center text-base font-extrabold">{qty}</span>
-            <button aria-label="Más" onClick={() => setQty((q) => Math.min(20, q + 1))} className="grid size-11 place-items-center rounded-full"><Plus className="size-4" /></button>
+            <button aria-label="Más" onClick={() => setQty((q) => Math.min(20, q + 1))} className="grid size-11 place-items-center rounded-full">
+              <Plus className="size-4" />
+            </button>
           </div>
         )}
         <button
@@ -369,7 +472,11 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
         >
           Agregar · {formatCOP(unit * qty)}
         </button>
-        <button onClick={() => useUI.getState().openProduct(product.id)} aria-label="Ver detalles" className={`h-[52px] shrink-0 rounded-full border px-4 text-[13px] font-bold ${dark ? 'border-black/20' : 'border-black/15 bg-white/70'}`}>
+        <button
+          onClick={() => useUI.getState().openProduct(product.id)}
+          aria-label="Ver detalles"
+          className={`h-[52px] shrink-0 rounded-full border px-4 text-[13px] font-bold ${dark ? 'border-black/20' : 'border-black/15 bg-white/70'}`}
+        >
           Detalles
         </button>
       </div>
@@ -382,7 +489,10 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
 function ServiceScene({ store, items, cur, onPick, index, top }: { store: Store; items: Product[]; cur: Product; onPick: (i: number) => void; index: number; top: number }) {
   const { priceOf } = usePricing()
   return (
-    <div className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-xl flex-col px-4 pb-[max(14px,env(safe-area-inset-bottom))]" style={{ top: `calc(max(14px, env(safe-area-inset-top)) + ${top}px)` }}>
+    <div
+      className="absolute inset-x-0 bottom-0 z-10 mx-auto flex max-w-xl flex-col px-4 pb-[max(14px,env(safe-area-inset-bottom))]"
+      style={{ top: `calc(max(14px, env(safe-area-inset-top)) + ${top}px)` }}
+    >
       <p className="text-[11px] font-extrabold tracking-[0.14em] text-[#9fb7b8]">ELIGE EL SERVICIO</p>
       <ul className="mt-2.5 flex-1 space-y-2 overflow-y-auto pb-3">
         {items.map((p, i) => {
@@ -390,7 +500,11 @@ function ServiceScene({ store, items, cur, onPick, index, top }: { store: Store;
           const price = priceOf(p).final
           return (
             <li key={p.id}>
-              <button onClick={() => onPick(i)} aria-pressed={on} className={`flex min-h-[60px] w-full items-center justify-between gap-3 rounded-[20px] px-4 py-2.5 text-left ${on ? 'border-2 border-[#4fd1c1] bg-[#4fd1c1]/15' : 'border border-white/15 bg-white/[0.06]'}`}>
+              <button
+                onClick={() => onPick(i)}
+                aria-pressed={on}
+                className={`flex min-h-[60px] w-full items-center justify-between gap-3 rounded-[20px] px-4 py-2.5 text-left ${on ? 'border-2 border-[#4fd1c1] bg-[#4fd1c1]/15' : 'border border-white/15 bg-white/[0.06]'}`}
+              >
                 <span className="min-w-0">
                   <span className="block text-[14px] font-extrabold">{p.name}</span>
                   {p.description && <span className="block truncate text-[12px] font-medium text-[#b7cfd0]">{p.description}</span>}

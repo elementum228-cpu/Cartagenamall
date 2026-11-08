@@ -50,7 +50,7 @@ export function Countdown({ endsAt, className = '' }: { endsAt: string | null; c
   )
 }
 
-export function StoreLogo({ store, size = 44 }: { store: Pick<Store, 'logoText' | 'brandColor' | 'logo'>; size?: number }) {
+export function StoreLogo({ store, size = 44, round = false }: { store: Pick<Store, 'logoText' | 'brandColor' | 'logo'>; size?: number; round?: boolean }) {
   if (store.logo)
     return (
       <img
@@ -59,13 +59,13 @@ export function StoreLogo({ store, size = 44 }: { store: Pick<Store, 'logoText' 
         crossOrigin={store.logo.startsWith('data:') ? undefined : 'anonymous'}
         alt=""
         aria-hidden
-        className="shrink-0 rounded-2xl bg-white object-contain shadow-soft ring-1 ring-line"
+        className={`shrink-0 bg-white shadow-soft ring-1 ring-line ${round ? 'rounded-full object-cover' : 'rounded-2xl object-contain'}`}
         style={{ width: size, height: size }}
       />
     )
   return (
     <div
-      className="grid shrink-0 place-items-center rounded-2xl font-extrabold tracking-tight text-white shadow-soft"
+      className={`grid shrink-0 place-items-center font-extrabold tracking-tight text-white shadow-soft ${round ? 'rounded-full' : 'rounded-2xl'}`}
       style={{ width: size, height: size, background: store.brandColor, fontSize: Math.max(9, size / 4.6) }}
       aria-hidden
     >
