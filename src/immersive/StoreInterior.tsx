@@ -350,7 +350,7 @@ function Stage({
         key={p.id}
         onClick={side ? () => onGo(rel) : undefined}
         aria-hidden={d !== 0}
-        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
+        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full p-[7%]' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
         style={{
           width: 'var(--w)',
           aspectRatio: plate ? '1 / 1' : '0.72',
@@ -370,7 +370,19 @@ function Stage({
           pointerEvents: d === 2 ? 'none' : 'auto',
         }}
       >
-        <ProductImage product={p} brandColor={store.brandColor} className={`size-full ${plate ? 'rounded-full border-[6px] border-[#fffaf1]' : 'rounded-[22px] object-contain'}`} />
+        {plate ? (
+          <>
+            {/* plato: borde de loza, surco y la comida adentro */}
+            <span aria-hidden className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 34% 28%, #ffffff 0%, #f6f0e6 45%, #ddd2bf 100%)' }} />
+            <span aria-hidden className="absolute inset-[3.5%] rounded-full border border-black/[0.07]" style={{ boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.9)' }} />
+            <span className="relative block size-full overflow-hidden rounded-full" style={{ boxShadow: 'inset 0 0 0 2px rgba(0,0,0,0.08), inset 0 6px 14px rgba(0,0,0,0.22)' }}>
+              <ProductImage product={p} brandColor={store.brandColor} className="size-full object-cover" />
+              <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 30% 24%, rgba(255,255,255,0.28), rgba(255,255,255,0) 46%)' }} />
+            </span>
+          </>
+        ) : (
+          <ProductImage product={p} brandColor={store.brandColor} className="size-full rounded-[22px] object-contain" />
+        )}
         {/* brillo de vidrio sobre la tarjeta */}
         {!plate && (
           <span
