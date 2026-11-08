@@ -3,13 +3,20 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch } from '../state/stadiumEvents'
 import { resolveBoard } from '../stadium/board'
-import { playGoalSound } from '../state/goalSound'
-import { FIREWORKS_DELAY_S } from '../stadium/match'
+import { playGoalSound, useGoalPreview } from '../state/goalSound'
+import { FIREWORKS_DELAY_S, GOAL_SHOW_MS, type MatchState } from '../stadium/match'
 import { SCORE_H, SCORE_W, paintScoreboard, scoreKey } from '../stadium/scoreboardPaint'
 import { GEO, mat } from './materials'
 import { glowMat, nightState } from './night'
 
 // Marcador en vivo dentro del estadio y fuegos artificiales cuando el equipo local mete gol.
+
+/** Durante una prueba de gol (solo en este dispositivo) el marcador muestra un gol más del local y el aviso de gol. */
+function withPreview(m: MatchState, now: number): MatchState {
+  const pv = useGoalPreview.getState()
+  if (!pv.at || now - pv.at >= GOAL_SHOW_MS) return m
+  return { ...m, status: m.status === 'pre' ? 'live' : m.status, since: m.status === 'pre' ? pv.at : m.since, home: m.home + 1, goal: { side: 'home', n: 1_000_000 + pv.n, at: pv.at } }
+}
 
 /**
  * Pantalla del marcador dentro del estadio, sobre la tribuna norte. Mira al sur, igual que la pantalla de la
@@ -38,8 +45,8 @@ export function IndoorScoreboard({ position }: { position: [number, number, numb
     acc.current += dt
     if (acc.current < 0.2 || busy.current) return
     acc.current = 0
-    const match = useStadiumMatch.getState().match
     const now = Date.now()
+    const match = withPreview(useStadiumMatch.getState().match, now)
     const k = scoreKey(match, board, now)
     if (k === key.current) return
     key.current = k
@@ -131,6 +138,15 @@ export function Fireworks({ baseY, quality, reduceMotion }: { baseY: number; qua
   const start = useRef(false)
   const t0 = useRef<number | null>(null)
   const goal = useStadiumMatch((s) => s.match.goal)
+  const preview = useGoalPreview((s) => s.n)
+  const seenPreview = useRef(preview)
+  // prueba de gol de la administración: se ve y se oye solo en este dispositivo
+  useEffect(() => {
+    if (preview === seenPreview.current) return
+    seenPreview.current = preview
+    start.current = true
+    playGoalSound()
+  }, [preview])
 
   useEffect(() => {
     if (!goal) {
@@ -139,9 +155,11 @@ export function Fireworks({ baseY, quality, reduceMotion }: { baseY: number; qua
     }
     if (goal.n !== seen.current) {
       seen.current = goal.n
-      if (goal.side === 'home') start.current = true
-      // suena el gol a quien está viendo el estadio en el momento (fuegos y grito sincronizados en el mismo archivo)
-      playGoalSound(goal.side)
+      // solo el gol del local tiene fuegos artificiales y sonido (el del visitante solo cambia el marcador)
+      if (goal.side === 'home') {
+        start.current = true
+        playGoalSound()
+      }
     }
   }, [goal])
 

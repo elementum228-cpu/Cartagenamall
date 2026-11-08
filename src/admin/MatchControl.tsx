@@ -4,6 +4,7 @@ import { useStadiumEvent } from '../state/stadium'
 import { useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch } from '../state/stadiumEvents'
 import { resolveBoard } from '../stadium/board'
 import { emptyMatch, finishMatch, matchClock, matchLabel, nudgeMinute, pauseHalf, resumeMatch, scoreGoal, startMatch, undoGoal, type Side } from '../stadium/match'
+import { playGoalSound } from '../state/goalSound'
 import { btn } from '../ui/bits'
 
 /**
@@ -58,6 +59,12 @@ export function MatchControl() {
       <div className="mt-3 grid grid-cols-2 gap-3">
         <Team side="home" />
         <Team side="away" />
+      </div>
+      <div className="mt-3 rounded-2xl bg-sand p-3 text-[12px] text-ink-soft">
+        Para ver y oír un gol sin tocar el marcador: abre el mall, acércate al estadio y toca el botón rojo de fiesta (arriba a la derecha, junto al de las boletas). Solo lo ves y oyes tú.
+        <button className={`${btn.ghost} mt-1 !px-2`} onClick={() => playGoalSound()}>
+          Escuchar el sonido de gol
+        </button>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {match.status === 'pre' && (

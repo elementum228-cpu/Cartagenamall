@@ -13,7 +13,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
-import { useStadiumBoard, useStadiumConfig, useStadiumEvents } from '../state/stadiumEvents'
+import { useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch } from '../state/stadiumEvents'
 import { Fireworks, IndoorScoreboard } from './MatchEffects'
 import { boardWhen, resolveBoard } from '../stadium/board'
 import { BOARD_H, BOARD_W, drawCover, loadImage, paintBoard } from '../stadium/boardPaint'
@@ -1197,6 +1197,16 @@ const LAMP_OFF = new THREE.Color('#4b535b')
 const LAMP_ON = new THREE.Color('#fffbe0')
 
 /** ¿Están encendidas las luces? Casi terminado: sí. Inaugurado: mientras el estadio está «encendido» (suena). */
+/**
+ * ¿Hay acción en el estadio? En un partido: jugando (el marcador en vivo está corriendo), aunque no suene nada;
+ * así los jugadores juegan y la gente salta durante el partido. En un concierto, cuando suena la música. El
+ * botón de sonido solo pone el cántico: no mueve a nadie.
+ */
+function actionOn() {
+  if (useStadiumEvent.getState().kind === 'match') return useStadiumMatch.getState().match.status === 'live'
+  return useStadiumSound.getState().playing
+}
+
 function useLit(phase: StadiumPhase) {
   const on = useStadiumSound((s) => s.playing)
   return phase === 'almost' || (phase === 'open' && on)
@@ -1432,7 +1442,7 @@ function Crowd({ spots: allSpots, reduceMotion, hideWhenOff = false, F = 0.62, d
   }, [spots])
   const ARM = 0.34 * F
   useFrame(({ clock }, dt) => {
-    const on = useStadiumSound.getState().playing && !reduceMotion
+    const on = actionOn() && !reduceMotion
     // la energía sube y baja con suavidad al encender o apagar
     energy.current += ((on ? 1 : 0) - energy.current) * Math.min(1, dt * 4)
     const e = energy.current
@@ -1506,7 +1516,7 @@ function Confetti({ reduceMotion, count = CONFETTI }: { reduceMotion: boolean; c
     if (mesh.current?.instanceColor) mesh.current.instanceColor.needsUpdate = true
   }, [seeds])
   useFrame(({ clock }, dt) => {
-    const on = useStadiumSound.getState().playing && !reduceMotion
+    const on = actionOn() && !reduceMotion
     level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 3)
     const t = clock.elapsedTime
     seeds.forEach((c, k) => {
@@ -1567,7 +1577,7 @@ function MatchPlayers({ reduceMotion }: { reduceMotion: boolean }) {
     return [Math.max(-PX + 0.6, Math.min(PX - 0.6, x)), Math.max(-PZ + 0.6, Math.min(PZ - 0.6, z))] as const
   }
   useFrame(({ clock }) => {
-    const on = useStadiumSound.getState().playing
+    const on = actionOn()
     const t = reduceMotion ? 0 : clock.elapsedTime
     HOME.forEach((_, k) => {
       const [x, z] = pos(k, t)
@@ -1981,7 +1991,7 @@ function Arrivals({ reduceMotion, count = ARRIVALS }: { reduceMotion: boolean; c
   }, [walkers])
   const CYCLE = 30
   useFrame(({ clock }, dt) => {
-    const on = useStadiumSound.getState().playing && !reduceMotion
+    const on = actionOn() && !reduceMotion
     level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 2)
     const t = clock.elapsedTime
     walkers.forEach((w, k) => {
@@ -2148,7 +2158,7 @@ export function Stadium({ reduceMotion, quality = 'high' }: { reduceMotion: bool
   useFrame(({ clock }, dt) => {
     const g = bounce.current
     if (!g) return
-    const on = phase === 'open' && useStadiumSound.getState().playing && !reduceMotion
+    const on = phase === 'open' && actionOn() && !reduceMotion
     bounceLevel.current += ((on ? 1 : 0) - bounceLevel.current) * Math.min(1, dt * 4)
     const b = smooth01(beatOf(clock.elapsedTime)) * bounceLevel.current
     g.scale.y = 1 + 0.011 * b

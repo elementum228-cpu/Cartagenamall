@@ -1,6 +1,9 @@
 import { openCourtOrClaim } from '../football/open'
 import { EVENT_KINDS, PHASES, STADIUM, phaseInfo } from '../config/stadium'
 import { cameraState } from '../world/cameraState'
+import { previewGoal } from '../state/goalSound'
+import { remoteEnabled } from '../remote/client'
+import { useSession } from '../remote/session'
 import { stopStadiumSound, toggleStadiumSound, toggleWorksSound, useStadiumEvent, useStadiumPhase, useStadiumSound } from '../state/stadium'
 import { BOAT_OF_STORE } from '../tourism/config'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
@@ -9,6 +12,7 @@ import {
   Music2,
   Volume2,
   Ticket,
+  PartyPopper,
   VolumeX,
   HardHat,
   Gamepad2,
@@ -865,6 +869,8 @@ function StadiumListenButton() {
   }, [phase])
   useEffect(() => () => stopStadiumSound(), [])
   const concert = useStadiumEvent((s) => s.kind) === 'concert'
+  const isAdmin = useSession((s) => s.isAdmin)
+  const canTest = isAdmin || !remoteEnabled()
   const noun = concert ? 'el concierto' : 'el estadio'
   const label = open ? (on ? `Apagar ${noun}` : `Escuchar ${noun}`) : on ? 'Parar las obras' : 'Escuchar obras'
   const show = (near || on) && !closeUp
@@ -904,6 +910,18 @@ function StadiumListenButton() {
       >
         <Ticket className="size-5" strokeWidth={2.2} />
       </button>
+      {/* solo para la administración: ver y oír un gol de prueba (solo en este dispositivo, no toca el marcador de todos) */}
+      {canTest && open && !concert && (
+        <button
+          tabIndex={show ? 0 : -1}
+          onClick={() => previewGoal()}
+          aria-label="Probar un gol"
+          title="Probar un gol (solo lo ves y oyes tú)"
+          className={`glass pointer-events-auto mt-2 grid size-11 place-items-center rounded-full bg-coral text-white shadow-soft transition active:scale-95 ${show ? '' : 'pointer-events-none'}`}
+        >
+          <PartyPopper className="size-5" strokeWidth={2.2} />
+        </button>
+      )}
     </div>
   )
 }
