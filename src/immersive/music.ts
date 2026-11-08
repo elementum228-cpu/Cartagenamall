@@ -19,6 +19,7 @@ const fades = new WeakMap<HTMLAudioElement, number>()
 // ---- YouTube: reproductor oficial incrustado, sin imagen, solo suena la pista ----
 interface YTPlayer {
   playVideo: () => void
+  unMute?: () => void
   pauseVideo: () => void
   setVolume: (v: number) => void
   getVolume: () => number
@@ -57,41 +58,83 @@ function startYouTube(id: string, fallback: string | null) {
     .then((api) => {
       if (ytToken !== token) return
       const host = document.createElement('div')
-      // fuera de la vista pero «visible» para el navegador, para que no lo pause
-      host.style.cssText = 'position:fixed;left:-9999px;top:0;width:200px;height:200px;opacity:0;pointer-events:none'
+      // en pantalla pero invisible (no fuera de ella): así el navegador no lo trata como oculto ni lo pausa
+      host.style.cssText = 'position:fixed;right:0;bottom:0;width:200px;height:200px;opacity:0.01;pointer-events:none;z-index:-1;overflow:hidden'
       const inner = document.createElement('div')
       host.appendChild(inner)
       document.body.appendChild(host)
+      let started = false
+      let blockedTimer: number | undefined
+      let offRetry: (() => void) | null = null
+      const cleanup = () => {
+        window.clearTimeout(blockedTimer)
+        offRetry?.()
+        offRetry = null
+      }
+      const begin = () => {
+        if (started || ytToken !== token) return
+        started = true
+        cleanup()
+        // si mientras esperábamos sonó la clásica de respaldo, se apaga: ahora suena YouTube
+        if (audio) stopAudio(true)
+        window.clearInterval(ytFade)
+        player.setVolume(0)
+        const t0 = performance.now()
+        ytFade = window.setInterval(() => {
+          const u = Math.min(1, (performance.now() - t0) / 2600)
+          player.setVolume(Math.round(MUSIC_VOLUME * 100 * u))
+          if (u >= 1) window.clearInterval(ytFade)
+        }, 80)
+      }
       const player = new api.Player(inner, {
         width: 200,
         height: 200,
         videoId: id,
-        playerVars: { autoplay: 1, controls: 0, loop: 1, playlist: id, playsinline: 1, disablekb: 1, fs: 0, modestbranding: 1, rel: 0 },
+        playerVars: { autoplay: 1, controls: 0, loop: 1, playlist: id, playsinline: 1, disablekb: 1, fs: 0, modestbranding: 1, rel: 0, enablejsapi: 1, origin: location.origin },
         events: {
           onReady: () => {
             if (ytToken !== token) return
+            player.unMute?.()
             player.setVolume(0)
             player.playVideo()
-            window.clearInterval(ytFade)
-            const t0 = performance.now()
-            ytFade = window.setInterval(() => {
-              const u = Math.min(1, (performance.now() - t0) / 2600)
-              player.setVolume(Math.round(MUSIC_VOLUME * 100 * u))
-              if (u >= 1) window.clearInterval(ytFade)
-            }, 80)
+            // si en unos segundos no empezó, el navegador bloqueó el autoplay: suena la clásica y, con el primer toque, se reintenta YouTube
+            blockedTimer = window.setTimeout(() => {
+              if (started || ytToken !== token) return
+              if (fallback && !audio) playAudio(fallback)
+              const retry = () => {
+                offRetry?.()
+                offRetry = null
+                if (ytToken !== token) return
+                player.unMute?.()
+                player.playVideo()
+              }
+              window.addEventListener('pointerdown', retry, { once: true })
+              window.addEventListener('keydown', retry, { once: true })
+              offRetry = () => {
+                window.removeEventListener('pointerdown', retry)
+                window.removeEventListener('keydown', retry)
+              }
+            }, 3500)
+          },
+          // 1 = reproduciendo
+          onStateChange: (e: { data: number }) => {
+            if (e.data === 1) begin()
+            // el video terminó (por si el bucle del reproductor falla): arranca de nuevo
+            else if (e.data === 0 && ytToken === token) player.playVideo()
           },
           // el video no se puede incrustar o no existe: suena la clásica de siempre
           onError: () => {
             if (ytToken !== token) return
+            cleanup()
             stopYouTube(true)
-            if (fallback) startMusic(fallback)
+            if (fallback) playAudio(fallback)
           },
         },
       })
       yt = { player, host }
     })
     .catch(() => {
-      if (ytToken === token && fallback) startMusic(fallback)
+      if (ytToken === token && fallback) playAudio(fallback)
     })
 }
 let ytToken = ''
@@ -148,6 +191,12 @@ export function startMusic(url: string | null, fallback: string | null = null, f
   stopMusic(true)
   if (!url || (!force && useInteriorSound.getState().muted)) return
   if (url.startsWith('yt:')) return startYouTube(url.slice(3), fallback)
+  playAudio(url)
+}
+
+/** Pista de audio normal (archivo): empieza con entrada gradual. */
+function playAudio(url: string) {
+  if (audio) stopAudio(true)
   try {
     const el = new Audio(url)
     el.loop = true
@@ -182,6 +231,10 @@ export function startMusic(url: string | null, fallback: string | null = null, f
 /** Apaga la música con salida gradual (o de golpe, al cambiar de pista). */
 export function stopMusic(now = false) {
   stopYouTube(now)
+  stopAudio(now)
+}
+
+function stopAudio(now: boolean) {
   const el = audio
   audio = null
   if (!el) return
