@@ -22,6 +22,8 @@ export const emptyMatch = (): MatchState => ({ status: 'pre', home: 0, away: 0, 
 
 /** Cuánto dura el aviso de «¡GOL!» y los fuegos artificiales (ms). */
 export const GOAL_SHOW_MS = 9000
+/** Los fuegos artificiales arrancan después del grito de gol (así está mezclado el audio): segundos tras el gol. */
+export const FIREWORKS_DELAY_S = 6
 
 /** Minuto del partido a esta hora. */
 export function matchMinute(m: MatchState, now: number): number {

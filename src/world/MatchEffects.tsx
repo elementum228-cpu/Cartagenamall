@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch } from '../state/stadiumEvents'
 import { resolveBoard } from '../stadium/board'
-import { GOAL_SHOW_MS } from '../stadium/match'
+import { playGoalSound } from '../state/goalSound'
+import { FIREWORKS_DELAY_S } from '../stadium/match'
 import { SCORE_H, SCORE_W, paintScoreboard, scoreKey } from '../stadium/scoreboardPaint'
 import { GEO, mat } from './materials'
 import { glowMat, nightState } from './night'
@@ -52,14 +53,14 @@ export function IndoorScoreboard({ position }: { position: [number, number, numb
   useEffect(() => {
     key.current = ''
   }, [board])
-  const W = 10.4
+  const W = 8.2
   const H = (W * SCORE_H) / SCORE_W
   return (
     <group position={position}>
       <mesh geometry={GEO.box} material={mat('#1d2a33')} position={[0, 0, -0.1]} scale={[W + 0.5, H + 0.5, 0.2]} castShadow />
       <mesh geometry={GEO.box} material={glowMat('#7fe7b0', 1.5, { dayGlow: 0.05 })} position={[0, 0, -0.02]} scale={[W + 0.3, H + 0.3, 0.06]} />
       <mesh geometry={GEO.plane} material={screen} position={[0, 0, 0.06]} scale={[W, H, 1]} />
-      {[-4, 4].map((x) => (
+      {[-3.2, 3.2].map((x) => (
         <mesh key={x} geometry={GEO.box} material={mat('#6c747c')} position={[x, H / 2 + 1.4, -0.1]} scale={[0.06, 2.8, 0.06]} />
       ))}
     </group>
@@ -80,15 +81,16 @@ function rng(seed: number) {
 const COLORS = ['#22d36a', '#f6c619', '#ffffff', '#ff5a4a', '#5ad7ff', '#ff7ad9']
 const GRAVITY = 5.5
 const RISE = 0.8
-const LIFE = 2.4
+const LIFE = 2.8
 
 /**
  * Fuegos artificiales sobre el estadio: salen cuando el marcador registra un gol del equipo local. Cohetes que
  * suben y estallan en chispas de colores. Un solo `Points` con todo, actualizado en el CPU (pocas partículas).
  */
 export function Fireworks({ baseY, quality, reduceMotion }: { baseY: number; quality: 'low' | 'medium' | 'high'; reduceMotion: boolean }) {
-  const bursts = quality === 'low' ? 6 : quality === 'medium' ? 10 : 14
-  const per = quality === 'low' ? 34 : 64
+  // primero el grito de gol y, a los 6 segundos, los fuegos artificiales (unos 10 s, hasta que se apaga el audio)
+  const bursts = 12
+  const per = quality === 'low' ? 30 : quality === 'medium' ? 48 : 64
   const total = bursts * per
   const data = useMemo(() => {
     const r = rng(2026)
@@ -100,7 +102,7 @@ export function Fireworks({ baseY, quality, reduceMotion }: { baseY: number; qua
     const c = new THREE.Color()
     for (let b = 0; b < bursts; b++) {
       origin.set([(r() * 2 - 1) * 12, baseY + 13 + r() * 7, (r() * 2 - 1) * 9], b * 3)
-      delay[b] = b * 0.42 + r() * 0.2
+      delay[b] = b * 0.5 + r() * 0.25
       c.set(COLORS[b % COLORS.length])
       color.set([c.r, c.g, c.b], b * 3)
       for (let i = 0; i < per; i++) {
@@ -124,38 +126,43 @@ export function Fireworks({ baseY, quality, reduceMotion }: { baseY: number; qua
     [],
   )
   const group = useRef<THREE.Points>(null)
-  const seen = useRef<number | null>(null)
+  // al abrir la página no se repite un gol viejo: solo cuentan los goles que llegan mientras se mira
+  const seen = useRef(useStadiumMatch.getState().match.goal?.n ?? 0)
   const start = useRef(false)
   const t0 = useRef<number | null>(null)
   const goal = useStadiumMatch((s) => s.match.goal)
 
   useEffect(() => {
-    if (!goal) return
-    if (seen.current === null) {
-      // al abrir la página no se repite un gol viejo; uno de hace segundos sí se ve
-      seen.current = goal.n
-      if (goal.side === 'home' && Date.now() - goal.at < GOAL_SHOW_MS) start.current = true
+    if (!goal) {
+      seen.current = 0 // marcador reiniciado
       return
     }
     if (goal.n !== seen.current) {
       seen.current = goal.n
       if (goal.side === 'home') start.current = true
+      // suena el gol a quien está viendo el estadio en el momento (fuegos y grito sincronizados en el mismo archivo)
+      playGoalSound(goal.side)
     }
   }, [goal])
 
-  const showLen = bursts * 0.42 + RISE + LIFE + 0.4
+  const showLen = bursts * 0.5 + 0.25 + RISE + LIFE + 0.4
   useFrame(({ clock }) => {
     const pts = group.current
     if (!pts) return
     if (start.current) {
       start.current = false
-      t0.current = clock.elapsedTime
+      t0.current = clock.elapsedTime + FIREWORKS_DELAY_S
     }
     if (t0.current === null || reduceMotion) {
       pts.visible = false
       return
     }
     const t = clock.elapsedTime - t0.current
+    if (t < 0) {
+      // todavía suena el grito de gol: los fuegos esperan
+      pts.visible = false
+      return
+    }
     if (t > showLen) {
       t0.current = null
       pts.visible = false
