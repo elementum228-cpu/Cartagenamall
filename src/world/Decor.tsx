@@ -135,8 +135,7 @@ const underEscalator = (x: number, z: number) => x < -6 && z < -6 && Math.abs(x 
 for (let i = 0; i < 4; i++) {
   const a = Math.PI / 4 + (i * Math.PI) / 2
   if (!onEscalator(Math.sin(a) * 5.2, Math.cos(a) * 5.2)) bench(Math.sin(a) * 5.2, Math.cos(a) * 5.2, a + Math.PI)
-  const [px, pz] = [Math.sin(a) * 7.6, Math.cos(a) * 7.6]
-  if (!onEscalator(px, pz)) palm(px, pz, 3.6, Y, i * 1.7)
+  // la plaza central queda limpia: sin palmeras alrededor de la fuente
   for (const d of [0.45, -0.45]) {
     const [qx, qz] = [Math.sin(a + d) * 7.4, Math.cos(a + d) * 7.4]
     if (!onEscalator(qx, qz)) plant(qx, qz, 0.75)
