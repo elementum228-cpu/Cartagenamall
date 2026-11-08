@@ -1198,12 +1198,15 @@ const LAMP_ON = new THREE.Color('#fffbe0')
 
 /** ¿Están encendidas las luces? Casi terminado: sí. Inaugurado: mientras el estadio está «encendido» (suena). */
 /**
- * ¿Hay acción en el estadio? En un partido: jugando (el marcador en vivo está corriendo), aunque no suene nada;
- * así los jugadores juegan y la gente salta durante el partido. En un concierto, cuando suena la música. El
- * botón de sonido solo pone el cántico: no mueve a nadie.
+ * ¿Hay acción en el estadio? Con el evento de hoy en «Partido de fútbol» el partido se está jugando: los jugadores
+ * corren y la grada salta, suene o no el audio (solo se apaga en el medio tiempo y al terminar). En un concierto,
+ * cuando suena la música. El botón de sonido solo pone el cántico o la música.
  */
 function actionOn() {
-  if (useStadiumEvent.getState().kind === 'match') return useStadiumMatch.getState().match.status === 'live'
+  if (useStadiumEvent.getState().kind === 'match') {
+    const st = useStadiumMatch.getState().match.status
+    return st === 'pre' || st === 'live'
+  }
   return useStadiumSound.getState().playing
 }
 
