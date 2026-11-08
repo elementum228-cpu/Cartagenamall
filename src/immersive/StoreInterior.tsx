@@ -87,9 +87,12 @@ function useDarkBackdrop(store: Store, sceneDark: boolean): boolean {
   return sceneDark
 }
 
+/** Estilo del plato (propuesta A «loza clásica» o B «plato hondo»). Para comparar en desarrollo: ?plato=b */
+const PLATE_V: 'a' | 'b' = import.meta.env.DEV && typeof location !== 'undefined' && location.search.includes('plato=b') ? 'b' : 'a'
+
 const SCENE_BG: Record<Scene, string> = {
   shop: 'linear-gradient(180deg, #e9d9c3 0%, #ddc7ab 58%, #cbb192 100%)',
-  restaurant: 'radial-gradient(ellipse at 50% 34%, #5a3b27 0%, #36231a 55%, #1f140f 100%)',
+  restaurant: 'radial-gradient(ellipse at 50% 42%, #7d553a 0%, #4b3023 42%, #22150f 100%)',
   service: 'linear-gradient(180deg, #1c2a30 0%, #16222a 60%, #101a20 100%)',
 }
 
@@ -425,9 +428,10 @@ function Stage({
           else if (side) onGo(rel)
         }}
         aria-hidden={d !== 0}
-        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full p-[1.8%]' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
+        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full' : 'rounded-[28px] border border-white/80 bg-white/40 p-1.5 backdrop-blur-xl'}`}
         style={{
           width: 'var(--w)',
+          ...(plate ? { padding: 'calc(var(--w) * 0.018)' } : {}),
           // el plato es siempre un círculo (alto = ancho), aunque la foto sea vertical; la tarjeta, un rectángulo
           ...(plate ? { height: 'var(--w)' } : { aspectRatio: '0.72', maxHeight: '98%' }),
           zIndex: 10 - d,
@@ -436,8 +440,10 @@ function Stage({
           transition: dragging || jumped ? 'none' : 'transform 760ms cubic-bezier(0.33, 0, 0.15, 1), opacity 560ms ease-out',
           boxShadow: plate
             ? d === 0
-              ? '0 40px 60px -22px rgba(0,0,0,0.75), 0 14px 22px -10px rgba(0,0,0,0.5)'
-              : 'none'
+              ? PLATE_V === 'b'
+                ? '26px 40px 50px -14px rgba(0,0,0,0.8), 8px 12px 18px -8px rgba(0,0,0,0.55), inset 0 2px 2px rgba(255,255,255,0.9)'
+                : '0 26px 36px -16px rgba(0,0,0,0.72), 0 8px 14px -6px rgba(0,0,0,0.5), inset 0 2px 2px rgba(255,255,255,0.85)'
+              : '0 14px 22px -12px rgba(0,0,0,0.5)'
             : d === 0
               ? '0 46px 70px -24px rgba(50,40,80,0.55), 0 18px 28px -12px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.9)'
               : '0 24px 40px -22px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.7)',
@@ -447,12 +453,36 @@ function Stage({
       >
         {plate ? (
           <>
-            {/* plato: borde de loza, surco y la comida adentro */}
-            <span aria-hidden className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 34% 28%, #ffffff 0%, #f6f0e6 45%, #ddd2bf 100%)' }} />
-            <span aria-hidden className="absolute inset-[0.8%] rounded-full border border-black/[0.06]" />
-            <span className="relative block size-full overflow-hidden rounded-full" style={{ boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }}>
+            {/* sombra de contacto: una elipse aplanada bajo el plato, como apoyado en la mesa */}
+            {d === 0 && <span aria-hidden className="pointer-events-none absolute -bottom-[5%] left-[6%] h-[13%] w-[88%] rounded-[50%] bg-black/75 blur-2xl" style={{ zIndex: -1 }} />}
+            {/* plato: borde de loza fino con brillo, y el pozo donde se sirve la comida */}
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-full"
+              style={{ background: PLATE_V === 'b' ? 'linear-gradient(135deg, #ffffff 0%, #f3ecdf 38%, #d9cdb7 72%, #b9ab92 100%)' : 'radial-gradient(circle at 34% 28%, #ffffff 0%, #f6f0e6 45%, #ddd2bf 100%)' }}
+            />
+            <span aria-hidden className="absolute inset-[0.8%] rounded-full" style={{ boxShadow: PLATE_V === 'b' ? 'inset 0 0 0 1px rgba(0,0,0,0.1), inset 0 -1px 0 1px rgba(255,255,255,0.8)' : 'inset 0 0 0 1px rgba(0,0,0,0.08), inset 0 1.5px 0 1px rgba(255,255,255,0.95)' }} />
+            <span
+              className="relative block size-full overflow-hidden rounded-full"
+              style={{
+                boxShadow:
+                  PLATE_V === 'b'
+                    ? 'inset 0 0 0 1px rgba(0,0,0,0.16), inset 0 0 34px 4px rgba(0,0,0,0.55), inset 0 10px 16px -2px rgba(0,0,0,0.4)'
+                    : 'inset 0 0 0 1px rgba(0,0,0,0.14), inset 0 9px 14px -3px rgba(0,0,0,0.5), inset 0 -3px 8px rgba(255,255,255,0.2)',
+              }}
+            >
               <ProductImage product={p} brandColor={store.brandColor} className="absolute inset-0 size-full object-cover" />
-              <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 30% 24%, rgba(255,255,255,0.28), rgba(255,255,255,0) 46%)' }} />
+              {/* profundidad del pozo y brillo de la loza sobre la comida */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-full"
+                style={{
+                  background:
+                    PLATE_V === 'b'
+                      ? 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.26) 100%), radial-gradient(circle at 28% 22%, rgba(255,255,255,0.3), rgba(255,255,255,0) 42%)'
+                      : 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 72%, rgba(0,0,0,0.16) 100%), radial-gradient(circle at 30% 24%, rgba(255,255,255,0.28), rgba(255,255,255,0) 46%)',
+                }}
+              />
             </span>
           </>
         ) : (
