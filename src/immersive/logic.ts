@@ -1,5 +1,6 @@
 import type { Product, Store } from '../domain/types'
 import { isRestaurant, isService } from '../lib/restaurant'
+import { groupOf, groupsWithProducts } from '../lib/storeCategories'
 
 // «Entrar al local» (beta): reglas sin interfaz, para poder probarlas.
 
@@ -19,26 +20,31 @@ export interface InteriorTab {
 /** Productos que se muestran adentro: los activos del local. */
 export const interiorProducts = (store: Pick<Store, 'id'>, products: Product[]) => products.filter((p) => p.storeId === store.id && p.active)
 
-/** Pestañas: «Todo» y cada categoría propia del local que tenga productos, en el orden del dueño. */
+/**
+ * Categorías de arriba: «Todo» y una por cada categoría del local con productos (las propias del dueño en su
+ * orden, y luego las del rubro general). Con una sola categoría solo se muestra esa. Sin productos, ninguna.
+ */
 export function interiorTabs(store: Pick<Store, 'categories'>, products: Product[]): InteriorTab[] {
-  const tabs: InteriorTab[] = []
-  for (const c of store.categories ?? []) if (products.some((p) => p.shopCategory === c.id)) tabs.push({ id: c.id, name: c.name })
-  // sin categorías propias no hay pestañas: se ve todo seguido
-  return tabs.length > 1 ? [{ id: 'all', name: 'Todo' }, ...tabs] : []
+  const groups = groupsWithProducts(store, products)
+  if (groups.length === 0) return []
+  if (groups.length === 1) return [{ id: groups[0].id, name: groups[0].name }]
+  return [{ id: 'all', name: 'Todo' }, ...groups.map((g) => ({ id: g.id, name: g.name }))]
 }
 
+/** Pestaña con la que se empieza: «Todo», o la única categoría si es solo una. */
+export const firstTab = (tabs: InteriorTab[]) => tabs[0]?.id ?? 'all'
+
 /** Los productos de una pestaña (los destacados primero, sin cambiar el orden del resto). */
-export function itemsFor(products: Product[], tab: string): Product[] {
-  const list = tab === 'all' ? products : products.filter((p) => p.shopCategory === tab)
+export function itemsFor(store: Pick<Store, 'categories'>, products: Product[], tab: string): Product[] {
+  const list = tab === 'all' ? products : products.filter((p) => groupOf(store, p).id === tab)
   return [...list.filter((p) => p.featured), ...list.filter((p) => !p.featured)]
 }
 
 /** Índice circular: pasar del último al primero y al revés. */
 export const wrapIndex = (i: number, n: number) => (n <= 0 ? 0 : ((i % n) + n) % n)
 
-/** Los vecinos que asoman a los lados de la tarjeta central (el carrusel da la vuelta). Con 1 o 2 productos no se repiten. */
-export function neighbors(index: number, n: number): { prev: number | null; next: number | null } {
-  if (n <= 1) return { prev: null, next: null }
-  if (n === 2) return { prev: null, next: wrapIndex(index + 1, n) }
-  return { prev: wrapIndex(index - 1, n), next: wrapIndex(index + 1, n) }
+/** Posición relativa (circular) de un producto respecto al que está al centro: 0 centro, ±1 vecinos. */
+export function relPos(i: number, index: number, n: number): number {
+  const r = (((i - index) % n) + n) % n
+  return r > n / 2 ? r - n : r
 }

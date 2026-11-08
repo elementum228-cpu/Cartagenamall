@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Product, Store } from '../src/domain/types'
-import { canEnter, interiorProducts, interiorTabs, itemsFor, neighbors, sceneOf, wrapIndex } from '../src/immersive/logic'
+import { canEnter, firstTab, interiorProducts, interiorTabs, itemsFor, relPos, sceneOf, wrapIndex } from '../src/immersive/logic'
 
 const store = (p: Partial<Store> = {}) => ({ id: 's1', categoryId: 'moda', zoneId: 'A', ...p }) as Store
 const prod = (id: string, p: Partial<Product> = {}) => ({ id, storeId: 's1', active: true, featured: false, ...p }) as Product
@@ -22,26 +22,33 @@ describe('entrar al local (beta)', () => {
     const list = [prod('a'), prod('b', { active: false }), prod('c', { storeId: 'otro' })]
     expect(interiorProducts(store(), list).map((p) => p.id)).toEqual(['a'])
   })
-  it('las pestañas salen de las categorías propias con productos', () => {
+  it('las pestañas salen de las categorías del local (propias y del rubro) y empiezan en «Todo»', () => {
     const s = store({ categories: [{ id: 'c1', name: 'Superior' }, { id: 'c2', name: 'Inferior' }, { id: 'c3', name: 'Vacía' }] })
     const list = [prod('a', { shopCategory: 'c1' }), prod('b', { shopCategory: 'c2' })]
     expect(interiorTabs(s, list).map((t) => t.id)).toEqual(['all', 'c1', 'c2'])
-    // con una sola categoría o ninguna no hace falta barra
-    expect(interiorTabs(store({ categories: [{ id: 'c1', name: 'x' }] }), list)).toEqual([])
-    expect(interiorTabs(store(), list)).toEqual([])
+    const sin = interiorTabs(store(), [prod('a', { categoryId: 'moda' }), prod('b', { categoryId: 'belleza' })])
+    expect(sin.map((t) => t.id)).toEqual(['all', 'g:moda', 'g:belleza'])
+    const una = interiorTabs(store(), [prod('a', { categoryId: 'moda' })])
+    expect(una.map((t) => t.id)).toEqual(['g:moda'])
+    expect(firstTab(una)).toBe('g:moda')
+    expect(firstTab(interiorTabs(s, list))).toBe('all')
+    expect(interiorTabs(store(), [])).toEqual([])
+    expect(firstTab([])).toBe('all')
   })
   it('una pestaña muestra sus productos y los destacados van primero', () => {
+    const s = store({ categories: [{ id: 'c1', name: 'A' }, { id: 'c2', name: 'B' }] })
     const list = [prod('a', { shopCategory: 'c1' }), prod('b', { shopCategory: 'c1', featured: true }), prod('c', { shopCategory: 'c2' })]
-    expect(itemsFor(list, 'all').map((p) => p.id)).toEqual(['b', 'a', 'c'])
-    expect(itemsFor(list, 'c1').map((p) => p.id)).toEqual(['b', 'a'])
-    expect(itemsFor(list, 'zzz')).toEqual([])
+    expect(itemsFor(s, list, 'all').map((p) => p.id)).toEqual(['b', 'a', 'c'])
+    expect(itemsFor(s, list, 'c1').map((p) => p.id)).toEqual(['b', 'a'])
+    expect(itemsFor(s, list, 'zzz')).toEqual([])
   })
-  it('el carrusel da la vuelta', () => {
+  it('el carrusel da la vuelta y cada tarjeta sabe dónde está respecto al centro', () => {
     expect(wrapIndex(-1, 4)).toBe(3)
     expect(wrapIndex(4, 4)).toBe(0)
     expect(wrapIndex(5, 0)).toBe(0)
-    expect(neighbors(0, 4)).toEqual({ prev: 3, next: 1 })
-    expect(neighbors(0, 2)).toEqual({ prev: null, next: 1 })
-    expect(neighbors(0, 1)).toEqual({ prev: null, next: null })
+    expect([0, 1, 2, 3, 4].map((i) => relPos(i, 0, 5))).toEqual([0, 1, 2, -2, -1])
+    expect([0, 1, 2, 3, 4].map((i) => relPos(i, 4, 5))).toEqual([1, 2, -2, -1, 0])
+    expect([0, 1].map((i) => relPos(i, 0, 2))).toEqual([0, 1])
+    expect(relPos(0, 0, 1)).toBe(0)
   })
 })

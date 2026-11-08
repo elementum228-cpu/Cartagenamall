@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, MessageCircle, Minus, Plus, ShoppingBag } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Product, Store } from '../domain/types'
 import { stockFor } from '../lib/inventory'
@@ -12,11 +12,15 @@ import { useCatalog } from '../state/catalog'
 import { usePricing } from '../state/pricing'
 import { useUI } from '../state/ui'
 import { ProductImage } from '../ui/ProductImage'
-import { interiorProducts, interiorTabs, itemsFor, neighbors, sceneOf, wrapIndex, type Scene } from './logic'
+import { StoreLogo } from '../ui/bits'
+import { useBeta } from '../state/beta'
+import { firstTab, interiorProducts, interiorTabs, itemsFor, relPos, sceneOf, wrapIndex, type Scene } from './logic'
 
 // «Entrar al local» (beta): en vez de abrir una ficha, se entra al negocio. El fondo es el del local (el que
 // sube el dueño en el estudio de fotos) y lo que vende flota delante; abajo, una barra con lo esencial para
 // comprar. Un mismo motor con tres escenarios: tienda (prendas), restaurante (plato) y servicios (reserva).
+
+if (import.meta.env.DEV) (window as unknown as { __cmInterior?: unknown }).__cmInterior = { useUI, useCatalog, useBeta }
 
 export function StoreInterior() {
   const id = useUI((s) => s.interiorStoreId)
@@ -32,18 +36,35 @@ const SCENE_BG: Record<Scene, string> = {
   service: 'linear-gradient(180deg, #1c2a30 0%, #16222a 60%, #101a20 100%)',
 }
 
+/** Alto (px, sin la zona segura de arriba) que ocupan el encabezado con el logo y las categorías. */
+const TOP_BAR = 128
+
 function Interior({ store, products }: { store: Store; products: Product[] }) {
   const scene = sceneOf(store)
   const close = () => useUI.getState().openInterior(null)
   const night = useIsNight()
   const dark = scene !== 'shop'
   const tabs = useMemo(() => interiorTabs(store, products), [store, products])
-  const [tab, setTab] = useState('all')
-  const items = useMemo(() => itemsFor(products, tab), [products, tab])
+  const [tab, setTab] = useState(() => firstTab(interiorTabs(store, products)))
+  const items = useMemo(() => itemsFor(store, products, tab), [store, products, tab])
   const [index, setIndex] = useState(0)
-  const cur = items[wrapIndex(index, items.length)]
-  const nb = neighbors(wrapIndex(index, items.length), items.length)
-  const go = (d: number) => setIndex((i) => wrapIndex(i + d, items.length))
+  const n = items.length
+  const cur = items[wrapIndex(index, n)]
+  const go = (d: number) => setIndex((i) => wrapIndex(i + d, n))
+
+  // entrada: las puertas de vidrio se abren solas; con «reducir movimiento» no hay animación
+  const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+  const [doors, setDoors] = useState<'closed' | 'open' | 'gone'>(reduce ? 'gone' : 'closed')
+  useEffect(() => {
+    if (doors === 'gone') return
+    const t1 = window.setTimeout(() => setDoors('open'), 380)
+    const t2 = window.setTimeout(() => setDoors('gone'), 380 + 1750)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // cerrar con Escape y flechas del teclado
   useEffect(() => {
@@ -55,79 +76,142 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
     window.addEventListener('keydown', on)
     return () => window.removeEventListener('keydown', on)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length])
+  }, [n])
 
-  // deslizar con el dedo o el mouse
-  const drag = useRef<number | null>(null)
+  // deslizar con el dedo o el mouse: la tarjeta sigue al dedo y, al soltar, se acomoda sola
+  const drag = useRef<{ x0: number; id: number } | null>(null)
+  const [dragX, setDragX] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const stageRef = useRef<HTMLDivElement>(null)
   const bg = store.photoBg?.url
+  const pill = dark ? 'border-white/25 bg-white/85 text-[#1d1a16]' : 'border-black/10 bg-[#1d1a16]/85 text-white'
 
   return (
     <div role="dialog" aria-modal="true" aria-label={`Dentro de ${store.name}`} className="fixed inset-0 z-[55] overflow-hidden" style={{ background: SCENE_BG[scene], color: dark ? '#f4ede2' : '#1d1a16' }}>
-      {bg && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bg})`, opacity: 0.9 }} />}
-      {/* luz del día/noche sobre el local */}
-      <div className="pointer-events-none absolute inset-0" style={{ background: night ? 'rgba(12,22,48,0.42)' : dark ? 'rgba(0,0,0,0.0)' : 'radial-gradient(ellipse at 50% 0%, rgba(255,246,226,0.55), rgba(255,246,226,0) 70%)' }} />
+      <div className="absolute inset-0 origin-center transition-transform duration-[1800ms] ease-out" style={{ transform: doors === 'closed' ? 'scale(1.06)' : 'scale(1)' }}>
+        {bg && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bg})`, opacity: 0.9 }} />}
+        {/* luz del día/noche sobre el local */}
+        <div className="pointer-events-none absolute inset-0" style={{ background: night ? 'rgba(12,22,48,0.42)' : dark ? 'rgba(0,0,0,0.0)' : 'radial-gradient(ellipse at 50% 0%, rgba(255,246,226,0.55), rgba(255,246,226,0) 70%)' }} />
 
-      <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(14px,env(safe-area-inset-top))]">
-        <button onClick={close} aria-label="Salir del local" className={`grid size-11 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/30 text-white' : 'border-white/70 bg-white/55'}`}>
-          <ChevronLeft className="size-5" />
-        </button>
-        <div className="text-center leading-tight" style={{ textShadow: dark ? '0 1px 8px rgba(0,0,0,0.5)' : 'none' }}>
-          <div className="text-[15px] font-extrabold tracking-[0.18em] uppercase">{store.name}</div>
-          <div className="mt-0.5 text-[11px] font-semibold opacity-75">{store.tagline}</div>
-        </div>
-        {scene === 'service' ? <span className="size-11" /> : <CartButton dark={dark} />}
-      </header>
-
-      {tabs.length > 0 && (
-        <nav aria-label="Categorías" className="scrollbar-none absolute inset-x-0 top-[calc(max(14px,env(safe-area-inset-top))+62px)] z-10 flex gap-1.5 overflow-x-auto px-4">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              aria-pressed={tab === t.id}
-              onClick={() => {
-                setTab(t.id)
-                setIndex(0)
-              }}
-              className={`h-10 shrink-0 rounded-full px-4 text-[13px] font-bold transition ${tab === t.id ? (dark ? 'bg-[#f4ede2] text-[#2a1a0c]' : 'bg-white text-ink shadow-soft') : dark ? 'border border-white/25 bg-white/10 text-[#f1e4d2]' : 'border border-white/70 bg-white/45 text-ink-soft'}`}
-            >
-              {t.name}
-            </button>
-          ))}
-        </nav>
-      )}
-
-      {!cur ? (
-        <div className="absolute inset-0 grid place-items-center px-8 text-center">
-          <p className="text-sm font-semibold opacity-80">Este local todavía no tiene productos publicados.</p>
-        </div>
-      ) : scene === 'service' ? (
-        <ServiceScene store={store} items={items} cur={cur} onPick={(i) => setIndex(i)} index={wrapIndex(index, items.length)} top={tabs.length ? 124 : 80} />
-      ) : (
-        <>
-          <div
-            className="absolute inset-x-0 top-[calc(max(14px,env(safe-area-inset-top))+(var(--tabs,0px))+82px)] bottom-[250px] touch-pan-y select-none"
-            style={{ ['--tabs' as string]: tabs.length ? '50px' : '0px' }}
-            onPointerDown={(e) => (drag.current = e.clientX)}
-            onPointerUp={(e) => {
-              if (drag.current === null) return
-              const dx = e.clientX - drag.current
-              drag.current = null
-              if (Math.abs(dx) > 42) go(dx < 0 ? 1 : -1)
-            }}
-            onPointerCancel={() => (drag.current = null)}
-          >
-            <Stage scene={scene} store={store} cur={cur} prev={nb.prev !== null ? items[nb.prev] : null} next={nb.next !== null ? items[nb.next] : null} />
-            {items.length > 1 && (
-              <>
-                <Arrow side="left" dark={dark} onClick={() => go(-1)} />
-                <Arrow side="right" dark={dark} onClick={() => go(1)} />
-              </>
-            )}
+        <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 px-4 pt-[max(14px,env(safe-area-inset-top))]">
+          <button onClick={close} aria-label="Salir del local" className={`grid size-11 shrink-0 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/35 text-white' : 'border-white/70 bg-white/60'}`}>
+            <ChevronLeft className="size-5" />
+          </button>
+          {/* logo y nombre del local, en una pastilla que contrasta con cualquier fondo */}
+          <div className={`flex min-w-0 items-center gap-2.5 rounded-full border py-1.5 pr-4 pl-1.5 shadow-soft backdrop-blur-md ${pill}`}>
+            <StoreLogo store={store} size={38} />
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-[14px] font-extrabold tracking-[0.12em] uppercase">{store.name}</div>
+              {store.tagline && <div className="truncate text-[11px] font-semibold opacity-70">{store.tagline}</div>}
+            </div>
           </div>
-          <Dots n={items.length} i={wrapIndex(index, items.length)} dark={dark} />
-          <Dock key={cur.id} store={store} product={cur} scene={scene} />
-        </>
-      )}
+          {scene === 'service' ? <span className="size-11 shrink-0" /> : <CartButton dark={dark} />}
+        </header>
+
+        {tabs.length > 0 && (
+          <nav aria-label="Categorías" className="scrollbar-none absolute inset-x-0 top-[calc(max(14px,env(safe-area-inset-top))+64px)] z-10 flex gap-1.5 overflow-x-auto px-4 py-1">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                aria-pressed={tab === t.id}
+                onClick={() => {
+                  setTab(t.id)
+                  setIndex(0)
+                }}
+                className={`h-10 shrink-0 rounded-full px-4 text-[13px] font-bold transition ${tab === t.id ? (dark ? 'bg-[#f4ede2] text-[#2a1a0c] shadow-soft' : 'bg-[#1d1a16] text-white shadow-soft') : dark ? 'border border-white/25 bg-black/25 text-[#f1e4d2] backdrop-blur-md' : 'border border-white/80 bg-white/60 text-[#4a4338] backdrop-blur-md'}`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </nav>
+        )}
+
+        {!cur ? (
+          <div className="absolute inset-0 grid place-items-center px-8 text-center">
+            <p className="text-sm font-semibold opacity-80">Este local todavía no tiene productos publicados.</p>
+          </div>
+        ) : scene === 'service' ? (
+          <ServiceScene store={store} items={items} cur={cur} onPick={(i) => setIndex(i)} index={wrapIndex(index, n)} top={TOP_BAR} />
+        ) : (
+          <>
+            <div
+              ref={stageRef}
+              className="absolute inset-x-0 bottom-[292px] touch-pan-y select-none"
+              style={{ top: `calc(max(14px, env(safe-area-inset-top)) + ${TOP_BAR}px)` }}
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement).closest('button')) return
+                drag.current = { x0: e.clientX, id: e.pointerId }
+                setDragging(true)
+              }}
+              onPointerMove={(e) => {
+                if (drag.current) setDragX(Math.max(-220, Math.min(220, e.clientX - drag.current.x0)))
+              }}
+              onPointerUp={(e) => {
+                if (!drag.current) return
+                const dx = e.clientX - drag.current.x0
+                drag.current = null
+                setDragging(false)
+                setDragX(0)
+                if (Math.abs(dx) > 48) go(dx < 0 ? 1 : -1)
+              }}
+              onPointerCancel={() => {
+                drag.current = null
+                setDragging(false)
+                setDragX(0)
+              }}
+            >
+              <Stage scene={scene} store={store} items={items} index={wrapIndex(index, n)} onGo={go} dragX={dragX} dragging={dragging} />
+              {n > 1 && (
+                <>
+                  <Arrow side="left" dark={dark} onClick={() => go(-1)} />
+                  <Arrow side="right" dark={dark} onClick={() => go(1)} />
+                </>
+              )}
+            </div>
+            <Dots n={n} i={wrapIndex(index, n)} dark={dark} />
+            <Dock key={cur.id} store={store} product={cur} scene={scene} />
+          </>
+        )}
+      </div>
+      {doors !== 'gone' && <GlassDoors open={doors === 'open'} name={store.name} />}
+    </div>
+  )
+}
+
+/** Dos puertas automáticas de vidrio que se abren hacia los lados al entrar al local. */
+function GlassDoors({ open, name }: { open: boolean; name: string }) {
+  const leaf = (side: 'left' | 'right') => (
+    <div
+      className="absolute inset-y-0 w-1/2 overflow-hidden"
+      style={{
+        [side]: 0,
+        transform: open ? `translateX(${side === 'left' ? '-101%' : '101%'})` : 'translateX(0)',
+        transition: 'transform 1500ms cubic-bezier(0.65, 0, 0.25, 1)',
+        background: 'linear-gradient(105deg, rgba(214,236,242,0.62) 0%, rgba(240,250,252,0.34) 45%, rgba(190,222,232,0.55) 100%)',
+        backdropFilter: 'blur(5px) saturate(1.1)',
+        WebkitBackdropFilter: 'blur(5px) saturate(1.1)',
+        boxShadow: `inset ${side === 'left' ? '-' : ''}10px 0 22px rgba(255,255,255,0.35)`,
+      }}
+    >
+      {/* marco de aluminio */}
+      <div className="absolute inset-y-0 w-[10px]" style={{ [side === 'left' ? 'left' : 'right']: 0, background: 'linear-gradient(90deg, #aab3ba, #e9eef1, #98a2aa)' }} />
+      <div className="absolute inset-y-0 w-[14px]" style={{ [side === 'left' ? 'right' : 'left']: 0, background: 'linear-gradient(90deg, #8f99a1, #dfe6ea, #8f99a1)' }} />
+      <div className="absolute inset-x-0 top-[9%] h-[8px]" style={{ background: 'linear-gradient(180deg, #e9eef1, #98a2aa)' }} />
+      <div className="absolute inset-x-0 bottom-0 h-[6%]" style={{ background: 'linear-gradient(180deg, #c6ced4, #8c969e)' }} />
+      {/* manija vertical */}
+      <div className="absolute top-[42%] h-[16%] w-[7px] rounded-full" style={{ [side === 'left' ? 'right' : 'left']: 30, background: 'linear-gradient(90deg, #8f99a1, #f2f5f7, #8f99a1)', boxShadow: '0 0 6px rgba(0,0,0,0.25)' }} />
+      {/* reflejo diagonal que cruza el vidrio */}
+      <div className="absolute inset-y-0 w-[38%] -skew-x-[18deg]" style={{ left: side === 'left' ? '18%' : '40%', background: 'linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.28), rgba(255,255,255,0))' }} />
+    </div>
+  )
+  return (
+    <div className="absolute inset-0 z-40" aria-hidden style={{ pointerEvents: open ? 'none' : 'auto' }}>
+      {leaf('left')}
+      {leaf('right')}
+      {/* rótulo sobre las puertas, que se va con ellas */}
+      <div className="absolute inset-x-0 top-[38%] text-center transition-opacity duration-500" style={{ opacity: open ? 0 : 1 }}>
+        <span className="inline-block rounded-full bg-[#1d1a16]/80 px-5 py-2 text-[12px] font-extrabold tracking-[0.2em] text-white uppercase backdrop-blur-md">{name}</span>
+      </div>
     </div>
   )
 }
@@ -165,7 +249,7 @@ function Arrow({ side, dark, onClick }: { side: 'left' | 'right'; dark: boolean;
 function Dots({ n, i, dark }: { n: number; i: number; dark: boolean }) {
   if (n < 2 || n > 12) return null
   return (
-    <div className="absolute inset-x-0 bottom-[236px] z-10 flex justify-center gap-1.5" aria-hidden>
+    <div className="absolute inset-x-0 bottom-[276px] z-10 flex justify-center gap-1.5" aria-hidden>
       {Array.from({ length: n }, (_, k) => (
         <span key={k} className="h-1.5 rounded-full transition-all" style={{ width: k === i ? 18 : 6, background: dark ? (k === i ? '#f2a33a' : 'rgba(255,255,255,0.3)') : k === i ? '#1d1a16' : 'rgba(29,26,22,0.25)' }} />
       ))}
@@ -173,30 +257,55 @@ function Dots({ n, i, dark }: { n: number; i: number; dark: boolean }) {
   )
 }
 
-/** El escenario del centro: tarjeta con la prenda (tienda) o plato visto desde arriba (restaurante), con vecinos que asoman. */
-function Stage({ scene, store, cur, prev, next }: { scene: Scene; store: Store; cur: Product; prev: Product | null; next: Product | null }) {
+/**
+ * El escenario: un carrusel de verdad. Las tarjetas cercanas se deslizan juntas, despacio y con suavidad (se
+ * mueven, se achican y se desvanecen según su distancia al centro) y siguen al dedo mientras se arrastra;
+ * tocar una vecina la trae al centro.
+ */
+function Stage({ scene, store, items, index, onGo, dragX, dragging }: { scene: Scene; store: Store; items: Product[]; index: number; onGo: (d: number) => void; dragX: number; dragging: boolean }) {
   const plate = scene === 'restaurant'
-  return (
-    <div className="relative mx-auto h-full max-w-3xl">
-      {[prev, next].map((p, k) =>
-        p ? (
-          <div
-            key={`${k}-${p.id}`}
-            className={`absolute top-[14%] hidden h-[70%] w-[30%] overflow-hidden opacity-70 sm:block ${plate ? 'rounded-full' : 'rounded-[26px] border border-white/60 bg-white/35 backdrop-blur-md'}`}
-            style={{ [k === 0 ? 'left' : 'right']: '-2%' }}
-            aria-hidden
-          >
-            <ProductImage product={p} brandColor={store.brandColor} className={`size-full ${plate ? 'rounded-full' : 'object-contain p-5'}`} />
-          </div>
-        ) : null,
-      )}
+  const n = items.length
+  // las tarjetas que dan la vuelta (de un extremo al otro) se acomodan sin recorrer la pantalla
+  const last = useRef(new Map<string, number>())
+  const prev = last.current
+  const next = new Map<string, number>()
+  const nodes = items.map((p, i) => {
+    const rel = relPos(i, index, n)
+    next.set(p.id, rel)
+    const d = Math.abs(rel)
+    if (d > 2) return null
+    const was = prev.get(p.id)
+    const jumped = was !== undefined && Math.abs(rel - was) > 2
+    const side = d === 1
+    return (
       <div
-        key={cur.id}
-        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-[fadeUp_.28s_ease-out] ${plate ? 'aspect-square h-[88%] max-h-[330px] rounded-full' : 'h-[96%] max-h-[420px] w-[min(72vw,280px)] rounded-[32px] border border-white/80 bg-white/60 p-4 backdrop-blur-xl'}`}
-        style={{ boxShadow: plate ? '0 30px 50px -20px rgba(0,0,0,0.7)' : '0 28px 50px -18px rgba(70,45,15,0.45)' }}
+        key={p.id}
+        onClick={side ? () => onGo(rel) : undefined}
+        aria-hidden={d !== 0}
+        className={`absolute top-1/2 left-1/2 will-change-transform ${plate ? 'rounded-full' : 'rounded-[30px] border border-white/80 bg-white/60 p-3.5 backdrop-blur-xl'}`}
+        style={{
+          width: 'var(--w)',
+          aspectRatio: plate ? '1 / 1' : '0.72',
+          maxHeight: '96%',
+          zIndex: 10 - d,
+          opacity: d === 0 ? 1 : d === 1 ? 0.62 : 0,
+          transform: `translate(calc(-50% + ${rel} * var(--w) * 0.92 + ${dragX}px), -50%) scale(${d === 0 ? 1 : d === 1 ? 0.8 : 0.62})`,
+          transition: dragging || jumped ? 'none' : 'transform 760ms cubic-bezier(0.33, 0, 0.15, 1), opacity 560ms ease-out',
+          boxShadow: d === 0 ? (plate ? '0 30px 50px -20px rgba(0,0,0,0.7)' : '0 28px 50px -18px rgba(70,45,15,0.45)') : 'none',
+          cursor: side ? 'pointer' : 'default',
+          pointerEvents: d === 2 ? 'none' : 'auto',
+        }}
       >
-        <ProductImage product={cur} brandColor={store.brandColor} className={`size-full ${plate ? 'rounded-full border-[6px] border-[#fffaf1]' : 'rounded-2xl object-contain'}`} />
+        <ProductImage product={p} brandColor={store.brandColor} className={`size-full ${plate ? 'rounded-full border-[6px] border-[#fffaf1]' : 'rounded-2xl object-contain'}`} />
       </div>
+    )
+  })
+  useLayoutEffect(() => {
+    last.current = next
+  })
+  return (
+    <div className="relative mx-auto h-full w-full max-w-3xl" style={{ ['--w' as string]: plate ? 'min(78vw, 330px)' : 'min(66vw, 270px)' }}>
+      {nodes}
     </div>
   )
 }
@@ -212,7 +321,7 @@ function Dock({ store, product, scene }: { store: Store; product: Product; scene
   const needsSize = product.sizes.length > 0
   const unit = info.final
   return (
-    <div className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl rounded-[30px] border p-4 backdrop-blur-xl ${dark ? 'border-white/10 bg-[#f7efe4]/95 text-[#2a1a0c]' : 'border-white/90 bg-white/75 text-[#1d1a16]'}`} style={{ boxShadow: '0 20px 44px -14px rgba(0,0,0,0.5)' }}>
+    <div className={`absolute inset-x-3 bottom-[max(14px,env(safe-area-inset-bottom))] z-10 mx-auto max-w-xl animate-[dockIn_.3s_ease-out] rounded-[30px] border p-4 backdrop-blur-xl ${dark ? 'border-white/10 bg-[#f7efe4]/95 text-[#2a1a0c]' : 'border-white/90 bg-white/75 text-[#1d1a16]'}`} style={{ boxShadow: '0 20px 44px -14px rgba(0,0,0,0.5)' }}>
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-[17px] leading-tight font-extrabold">{product.name}</h2>
         <div className="text-right">

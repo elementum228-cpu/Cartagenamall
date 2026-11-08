@@ -411,3 +411,14 @@ select:not([multiple]):disabled {
     transform: translate(-50%, -50%) scale(1);
   }
 }
+
+@keyframes dockIn {
+  from {
+    opacity: 0.4;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
