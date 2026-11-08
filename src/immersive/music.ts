@@ -10,7 +10,11 @@ export const useInteriorSound = create<{ muted: boolean; setMuted: (m: boolean) 
 )
 
 /** Volumen de fondo: bajito, para que acompañe y no cubra al visitante. */
-export const MUSIC_VOLUME = 0.32
+export const MUSIC_VOLUME = 0.4
+
+/** Estado real de la música: el botón del local lo muestra tal cual (no «activa» mientras el navegador la tiene bloqueada). */
+export const useMusicStatus = create<{ status: 'idle' | 'playing' | 'blocked' }>()(() => ({ status: 'idle' }))
+const setStatus = (status: 'idle' | 'playing' | 'blocked') => useMusicStatus.setState({ status })
 
 let audio: HTMLAudioElement | null = null
 // Un solo elemento de audio para toda la app: en iPhone, el navegador solo deja sonar al que ya «desbloqueó» un toque
@@ -20,19 +24,31 @@ let shared: HTMLAudioElement | null = null
 const getAudio = () => (shared ??= new Audio())
 const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
 if (typeof window !== 'undefined') {
+  let unlocked = false
   const unlock = () => {
+    if (unlocked) return
     const el = getAudio()
-    if (audio === el || !el.paused) return
+    if (audio === el || !el.paused) {
+      unlocked = true
+      return
+    }
     try {
       el.src = SILENT
-      void el.play().then(() => el.pause()).catch(() => undefined)
+      void el
+        .play()
+        .then(() => {
+          unlocked = true
+          if (audio !== el) el.pause()
+        })
+        .catch(() => undefined)
     } catch {
       /* sin audio */
     }
   }
-  window.addEventListener('pointerdown', unlock, { once: true, capture: true })
-  window.addEventListener('touchend', unlock, { once: true, capture: true })
+  // en iPhone solo cuentan como «toque de la persona» el clic y el final del toque (no al deslizar)
+  for (const ev of ['click', 'touchend', 'keydown'] as const) window.addEventListener(ev, unlock, { capture: true })
 }
+
 /** Cada pista lleva su propia rampa de volumen: una pista vieja no puede pisar la de la nueva. */
 const fades = new WeakMap<HTMLAudioElement, number>()
 
@@ -48,6 +64,8 @@ interface YTPlayer {
 type YTApi = { Player: new (el: HTMLElement, o: unknown) => YTPlayer }
 let ytApi: Promise<YTApi> | null = null
 let yt: { player: YTPlayer; host: HTMLElement } | null = null
+/** Todos los reproductores de YouTube vivos (también los que se están apagando): al cambiar de local se eliminan todos. */
+const ytAll = new Set<{ player: YTPlayer; host: HTMLElement }>()
 let ytFade: number | undefined
 
 function loadYT(): Promise<YTApi> {
@@ -94,6 +112,7 @@ function startYouTube(id: string, fallback: string | null) {
       const begin = () => {
         if (started || ytToken !== token) return
         started = true
+        setStatus('playing')
         cleanup()
         // si mientras esperábamos sonó la clásica de respaldo, se apaga: ahora suena YouTube
         if (audio) stopAudio(true)
@@ -121,6 +140,7 @@ function startYouTube(id: string, fallback: string | null) {
             blockedTimer = window.setTimeout(() => {
               if (started || ytToken !== token) return
               if (fallback && !audio) playAudio(fallback)
+              else if (!fallback) setStatus('blocked')
               const retry = () => {
                 offRetry?.()
                 offRetry = null
@@ -152,6 +172,7 @@ function startYouTube(id: string, fallback: string | null) {
         },
       })
       yt = { player, host }
+      ytAll.add(yt)
     })
     .catch(() => {
       if (ytToken === token && fallback) playAudio(fallback)
@@ -164,6 +185,19 @@ function stopYouTube(now: boolean) {
   yt = null
   ytToken = ''
   window.clearInterval(ytFade)
+  if (now) {
+    // cambio de local (o apagado de golpe): nada de YouTube puede quedar sonando, ni siquiera lo que se estaba apagando
+    for (const o of ytAll) {
+      try {
+        o.player.destroy()
+      } catch {
+        /* ya destruido */
+      }
+      o.host.remove()
+    }
+    ytAll.clear()
+    return
+  }
   if (!cur) return
   const kill = () => {
     try {
@@ -172,8 +206,8 @@ function stopYouTube(now: boolean) {
       /* ya destruido */
     }
     cur.host.remove()
+    ytAll.delete(cur)
   }
-  if (now) return kill()
   const t0 = performance.now()
   const from = cur.player.getVolume?.() ?? 0
   const iv = window.setInterval(() => {
@@ -209,6 +243,7 @@ function ramp(el: HTMLAudioElement, to: number, ms: number, done?: () => void) {
 /** Empieza (o cambia) la música con entrada gradual. Si el navegador no deja reproducir, no pasa nada. */
 export function startMusic(url: string | null, fallback: string | null = null, force = false) {
   stopMusic(true)
+  setStatus('idle')
   if (!url || (!force && useInteriorSound.getState().muted)) return
   if (url.startsWith('yt:')) return startYouTube(url.slice(3), fallback)
   playAudio(url)
@@ -228,15 +263,26 @@ function playAudio(url: string) {
       .play()
       .then(() => {
         // si mientras tanto cambió o se apagó la pista, no la subimos
-        if (audio === el) ramp(el, MUSIC_VOLUME, 2600)
+        if (audio === el) {
+          setStatus('playing')
+          ramp(el, MUSIC_VOLUME, 2600)
+        }
       })
       .catch(() => {
         // el navegador pidió un toque antes de dejar sonar: con el primero que haga, empieza
         if (audio !== el) return
+        setStatus('blocked')
         const retry = () => {
           off()
           if (audio !== el) return
-          void el.play().then(() => audio === el && ramp(el, MUSIC_VOLUME, 2600)).catch(() => undefined)
+          void el
+            .play()
+            .then(() => {
+              if (audio !== el) return
+              setStatus('playing')
+              ramp(el, MUSIC_VOLUME, 2600)
+            })
+            .catch(() => undefined)
         }
         const off = () => {
           window.removeEventListener('pointerdown', retry)
@@ -254,6 +300,7 @@ function playAudio(url: string) {
 export function stopMusic(now = false) {
   stopYouTube(now)
   stopAudio(now)
+  setStatus('idle')
 }
 
 function stopAudio(now: boolean) {

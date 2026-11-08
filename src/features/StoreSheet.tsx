@@ -176,14 +176,14 @@ function StoreBody({ store }: { store: Store }) {
       {!food && canEnter(betaOn, store) && mine.length > 0 && (
         <button
           onClick={() => useUI.getState().openInterior(store.id)}
-          className="group relative flex h-[128px] w-full items-end justify-between overflow-hidden rounded-[28px] p-5 text-left text-white shadow-[0_22px_36px_-18px_rgba(15,118,110,0.7)] transition active:scale-[0.99]"
-          style={{ background: 'linear-gradient(120deg, #0f766e 0%, #0b5e57 100%)' }}
+          className="group relative flex h-[128px] w-full items-end justify-between overflow-hidden rounded-[28px] p-5 text-left text-white shadow-[0_18px_30px_-20px_rgba(10,20,24,0.75)] transition active:scale-[0.99]"
+          // un solo tono, el del local, oscurecido y con un degradé suave y lineal (sin formas decorativas)
+          style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${store.brandColor} 62%, #0a1013) 0%, color-mix(in srgb, ${store.brandColor} 34%, #0a1013) 100%)` }}
         >
-          <span aria-hidden className="absolute -top-9 -right-9 size-[150px] rounded-full bg-white/10" />
-          <span className="absolute top-[18px] left-5 rounded-full bg-white/20 px-2.5 py-1 text-[10.5px] font-extrabold tracking-widest">BETA</span>
+          <span className="absolute top-[18px] left-5 text-[10.5px] font-bold tracking-[0.18em] text-white/70">BETA</span>
           <span className="relative leading-tight">
-            <span className="block text-[22px] font-extrabold">Entrar al local</span>
-            <span className="mt-0.5 block text-[12.5px] opacity-85">Recórrelo como si estuvieras adentro</span>
+            <span className="block text-[22px] font-extrabold tracking-tight">Entrar al local</span>
+            <span className="mt-0.5 block text-[12.5px] text-white/75">Recórrelo como si estuvieras adentro</span>
           </span>
           {/* productos que asoman */}
           <span aria-hidden className="absolute top-[26px] right-[72px] flex">
@@ -193,7 +193,7 @@ function StoreBody({ store }: { store: Store }) {
               </span>
             ))}
           </span>
-          <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-brand transition group-hover:translate-x-0.5">
+          <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0f1a1d] transition group-hover:translate-x-0.5">
             <ArrowRight className="size-5" strokeWidth={2.6} />
           </span>
         </button>

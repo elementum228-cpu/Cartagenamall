@@ -16,7 +16,8 @@ import { ProductImage } from '../ui/ProductImage'
 import { StoreLogo } from '../ui/bits'
 import { useBeta } from '../state/beta'
 import { DEFAULT_MUSIC, firstTab, interiorProducts, interiorTabs, itemsFor, musicUrlFor, relPos, sceneOf, wrapIndex, type Scene } from './logic'
-import { setMusicMuted, startMusic, stopMusic, useInteriorSound } from './music'
+import { setMusicMuted, startMusic, stopMusic, useInteriorSound, useMusicStatus } from './music'
+import { stopStadiumSound } from '../state/stadium'
 
 // «Entrar al local» (beta): en vez de abrir una ficha, se entra al negocio. El fondo es el del local (el que
 // sube el dueño en el estudio de fotos) y lo que vende flota delante; abajo, una barra con lo esencial para
@@ -135,7 +136,11 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
   // música de fondo del local: suave, empieza al entrar y se apaga al salir
   const musicUrl = musicUrlFor(store, import.meta.env.BASE_URL)
   const muted = useInteriorSound((s) => s.muted)
+  const playing = useMusicStatus((s) => s.status === 'playing')
+  const fallbackMusic = `${import.meta.env.BASE_URL}${DEFAULT_MUSIC}`
   useEffect(() => {
+    // el sonido del estadio no se mezcla con la música del local
+    if (musicUrl) stopStadiumSound()
     startMusic(musicUrl, `${import.meta.env.BASE_URL}${DEFAULT_MUSIC}`)
     return () => stopMusic()
   }, [musicUrl])
@@ -221,13 +226,18 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
 
         {musicUrl !== null && (
           <button
-            onClick={() => setMusicMuted(!muted, musicUrl, `${import.meta.env.BASE_URL}${DEFAULT_MUSIC}`)}
-            aria-label={muted ? 'Activar la música del local' : 'Silenciar la música del local'}
-            aria-pressed={!muted}
-            className={`absolute left-4 z-10 grid size-11 place-items-center rounded-full border backdrop-blur-md ${dark ? 'border-white/20 bg-black/35 text-white' : 'border-white/70 bg-white/60 text-[#1d1a16]'}`}
+            onClick={() => {
+              // sonando → silenciar; en cualquier otro estado → activar (el toque es el permiso que pide el navegador)
+              if (playing) setMusicMuted(true, musicUrl, fallbackMusic)
+              else setMusicMuted(false, musicUrl, fallbackMusic)
+            }}
+            aria-label={playing ? 'Silenciar la música del local' : 'Activar la música del local'}
+            aria-pressed={playing}
+            className={`absolute left-4 z-30 flex h-11 items-center gap-2 rounded-full border backdrop-blur-md ${playing || muted ? 'w-11 justify-center' : 'pr-4 pl-3'} ${dark ? 'border-white/20 bg-black/35 text-white' : 'border-white/70 bg-white/60 text-[#1d1a16]'}`}
             style={{ top: `calc(max(14px, env(safe-area-inset-top)) + ${TOP_BAR + 8}px)` }}
           >
-            {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+            {playing ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
+            {!playing && !muted && <span className="text-[13px] font-bold">Activar música</span>}
           </button>
         )}
 
