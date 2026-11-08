@@ -19,9 +19,24 @@ export const SKY_NIGHT: Sky = { night: 1, warm: 0 }
 /** El momento más naranja del atardecer (sol bajo, ya casi de noche). */
 export const SKY_DUSK: Sky = { night: 0.3, warm: 1 }
 
-/** Estado del cielo a una hora dada. */
+/** Zona horaria del mall: Cartagena (Colombia, UTC−5 todo el año). El cielo sigue esta hora, no la del teléfono. */
+export const MALL_TIMEZONE = 'America/Bogota'
+
+/** Hora decimal (0 a 24) en Cartagena de un instante dado, venga de la zona horaria que venga el dispositivo. */
+export function mallHour(date: Date): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: MALL_TIMEZONE, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(date)
+    const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0)
+    return get('hour') + get('minute') / 60 + get('second') / 3600
+  } catch {
+    // sin Intl con zonas: Colombia no cambia de hora, es UTC−5 fijo
+    return (((date.getUTCHours() - 5 + 24) % 24) + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600) % 24
+  }
+}
+
+/** Estado del cielo a una hora dada (hora de Cartagena). */
 export function skyAt(date: Date): Sky {
-  const h = date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600
+  const h = mallHour(date)
   if (h >= 12) {
     // tarde: de 4 a 6 p. m. se pone naranja; entre 5:30 y 7 p. m. se hace de noche; el naranja se apaga al anochecer
     return { night: smooth(17.5, 19, h), warm: smooth(15.75, 17.75, h) * (1 - smooth(18.1, 19.2, h)) }

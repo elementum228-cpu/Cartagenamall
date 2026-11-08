@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { isNightHour, skyAt } from '../src/lib/daylight'
+import { isNightHour, mallHour, skyAt } from '../src/lib/daylight'
 
-const at = (h: number, m = 0) => skyAt(new Date(2026, 10, 8, h, m))
+// 2026-11-08 a la hora h:m de Cartagena (UTC−5)
+const at = (h: number, m = 0) => skyAt(new Date(Date.UTC(2026, 10, 8, h + 5, m)))
 
 describe('ciclo del día', () => {
   it('a mediodía es de día y de madrugada es de noche', () => {
@@ -43,9 +44,18 @@ describe('ciclo del día', () => {
     }
   })
   it('isNightHour: de noche después de las 6:30 p. m. y antes del amanecer', () => {
-    expect(isNightHour(new Date(2026, 10, 8, 20))).toBe(true)
-    expect(isNightHour(new Date(2026, 10, 8, 4))).toBe(true)
-    expect(isNightHour(new Date(2026, 10, 8, 10))).toBe(false)
-    expect(isNightHour(new Date(2026, 10, 8, 17))).toBe(false)
+    expect(isNightHour(new Date(Date.UTC(2026, 10, 9, 1)))).toBe(true) // 8 p. m. en Cartagena
+    expect(isNightHour(new Date(Date.UTC(2026, 10, 8, 9)))).toBe(true) // 4 a. m.
+    expect(isNightHour(new Date(Date.UTC(2026, 10, 8, 15)))).toBe(false) // 10 a. m.
+    expect(isNightHour(new Date(Date.UTC(2026, 10, 8, 22)))).toBe(false) // 5 p. m.
+  })
+})
+
+describe('zona horaria del mall', () => {
+  it('la hora de Cartagena no depende de la zona horaria del dispositivo', () => {
+    const noon = new Date(Date.UTC(2026, 10, 8, 17, 0)) // 12:00 en Cartagena
+    expect(mallHour(noon)).toBeCloseTo(12, 5)
+    const sunset = new Date(Date.UTC(2026, 10, 8, 23, 0)) // 6:00 p. m. en Cartagena
+    expect(mallHour(sunset)).toBeCloseTo(18, 5)
   })
 })
