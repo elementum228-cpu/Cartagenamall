@@ -3,6 +3,7 @@ import { absoluteUrl, localPath } from '../lib/links'
 import { copyText } from '../lib/clipboard'
 import { MessagesEditor } from './MerchantMessages'
 import { MusicEditor } from './MerchantMusic'
+import { InteriorBgEditor } from './MerchantInteriorBg'
 import { AddressEditor } from './MerchantAddress'
 import { cleanAddress } from '../lib/maps'
 import { EventsManager } from '../stadium/EventsManager'
@@ -527,6 +528,7 @@ function ProfileEditor({ store }: { store: Store }) {
         </Field>
         <MessagesEditor store={f} onChange={(m) => setF((x) => ({ ...x, messages: m }))} />
         <AddressEditor store={f} onChange={(address) => setF((x) => ({ ...x, address }))} />
+        <InteriorBgEditor value={f.interiorBg} onChange={(interiorBg) => setF((x) => ({ ...x, interiorBg }))} />
         <MusicEditor store={f} onChange={(music) => setF((x) => ({ ...x, music }))} />
         <Field label="Estado" wide>
           <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>

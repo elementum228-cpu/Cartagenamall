@@ -133,6 +133,8 @@ export interface Store {
   /** Dirección escrita y enlace de Google Maps del local (se muestra en su ficha con «Cómo llegar»). */
   address?: { text: string; mapsUrl?: string }
   /** Música de fondo al entrar al local: la clásica de siempre, la que sube el dueño, o ninguna. */
+  /** Color de fondo al «Entrar al local» (si no hay foto de fondo). */
+  interiorBg?: string
   music?: { mode: 'classic' | 'custom' | 'off'; url?: string | null }
   /** Beta «Entrar al local»: la administración habilita este local para la experiencia inmersiva. */
   interior?: boolean

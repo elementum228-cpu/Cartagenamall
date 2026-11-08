@@ -31,6 +31,19 @@ export function StoreInterior() {
   return <Interior key={store.id} store={store} products={interiorProducts(store, products)} />
 }
 
+/** Pantalla ancha (escritorio): se ven más productos a los lados. */
+function useWide() {
+  const q = '(min-width: 1024px)'
+  const [w, setW] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches)
+  useEffect(() => {
+    const m = window.matchMedia(q)
+    const f = () => setW(m.matches)
+    m.addEventListener('change', f)
+    return () => m.removeEventListener('change', f)
+  }, [])
+  return w
+}
+
 const SCENE_BG: Record<Scene, string> = {
   shop: 'linear-gradient(180deg, #e9d9c3 0%, #ddc7ab 58%, #cbb192 100%)',
   restaurant: 'radial-gradient(ellipse at 50% 34%, #5a3b27 0%, #36231a 55%, #1f140f 100%)',
@@ -101,7 +114,7 @@ function Interior({ store, products }: { store: Store; products: Product[] }) {
       aria-modal="true"
       aria-label={`Dentro de ${store.name}`}
       className="fixed inset-0 z-[55] overflow-hidden"
-      style={{ background: SCENE_BG[scene], color: dark ? '#f4ede2' : '#1d1a16' }}
+      style={{ background: store.interiorBg ?? SCENE_BG[scene], color: dark ? '#f4ede2' : '#1d1a16' }}
     >
       <div className="absolute inset-0 origin-center transition-transform duration-[1800ms] ease-out" style={{ transform: doors === 'closed' ? 'scale(1.06)' : 'scale(1)' }}>
         {bg && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bg})`, opacity: 0.9 }} />}
@@ -333,6 +346,8 @@ function Stage({
 }) {
   const plate = scene === 'restaurant'
   const n = items.length
+  const wide = useWide()
+  const maxD = wide ? 3 : 2
   // las tarjetas que dan la vuelta (de un extremo al otro) se acomodan sin recorrer la pantalla
   const last = useRef(new Map<string, number>())
   const prev = last.current
@@ -341,10 +356,10 @@ function Stage({
     const rel = relPos(i, index, n)
     next.set(p.id, rel)
     const d = Math.abs(rel)
-    if (d > 2) return null
+    if (d > maxD) return null
     const was = prev.get(p.id)
     const jumped = was !== undefined && Math.abs(rel - was) > 2
-    const side = d === 1
+    const side = d >= 1 && d <= (wide ? 2 : 1)
     return (
       <div
         key={p.id}
@@ -356,8 +371,8 @@ function Stage({
           // el plato es siempre un círculo (alto = ancho), aunque la foto sea vertical; la tarjeta, un rectángulo
           ...(plate ? { height: 'var(--w)' } : { aspectRatio: '0.72', maxHeight: '98%' }),
           zIndex: 10 - d,
-          opacity: d === 0 ? 1 : d === 1 ? 0.7 : 0,
-          transform: `translate(calc(-50% + ${rel} * var(--w) * 0.9 + ${dragX}px), -50%) perspective(1200px) rotateY(${-rel * 14}deg) scale(${d === 0 ? 1 : d === 1 ? 0.8 : 0.62})`,
+          opacity: d === 0 ? 1 : d === 1 ? 0.7 : d === 2 ? (wide ? 0.5 : 0) : wide ? 0.3 : 0,
+          transform: `translate(calc(-50% + ${rel} * var(--w) * 0.9 + ${dragX}px), -50%) perspective(1200px) rotateY(${-rel * 14}deg) scale(${d === 0 ? 1 : d === 1 ? 0.8 : d === 2 ? 0.66 : 0.54})`,
           transition: dragging || jumped ? 'none' : 'transform 760ms cubic-bezier(0.33, 0, 0.15, 1), opacity 560ms ease-out',
           boxShadow: plate
             ? d === 0
@@ -367,7 +382,7 @@ function Stage({
               ? '0 46px 70px -24px rgba(50,40,80,0.55), 0 18px 28px -12px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.9)'
               : '0 24px 40px -22px rgba(50,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.7)',
           cursor: side ? 'pointer' : 'default',
-          pointerEvents: d === 2 ? 'none' : 'auto',
+          pointerEvents: d > (wide ? 2 : 1) ? 'none' : 'auto',
         }}
       >
         {plate ? (
@@ -399,7 +414,7 @@ function Stage({
   })
   return (
     <div
-      className="relative mx-auto h-full w-full max-w-3xl"
+      className="relative mx-auto h-full w-full"
       style={{ ['--w' as string]: plate ? 'min(78vw, calc((100dvh - 440px) * 0.96), 520px)' : 'min(66vw, calc((100dvh - 440px) * 0.7), 470px)' }}
     >
       {nodes}
