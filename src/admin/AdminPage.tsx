@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Plug, RotateCcw, ShieldAlert, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, Plug, RotateCcw, ShieldAlert, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CATEGORIES, CATEGORY_BY_ID, COURT_SPACE, TRACK_SPACE, FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
@@ -404,6 +404,7 @@ function StoreEditor({ store, onDone }: { store: Store; onDone: () => void }) {
   const set = <K extends keyof Store>(k: K, v: Store[K]) => setF((s) => ({ ...s, [k]: v }))
   return (
     <Card className="space-y-3 ring-2 ring-brand/20">
+      <p className="text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase">Datos del negocio</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nombre">
           <input className={input} value={f.name} onChange={(e) => set('name', e.target.value)} />
@@ -433,32 +434,48 @@ function StoreEditor({ store, onDone }: { store: Store; onDone: () => void }) {
         <Field label="Descripción" wide>
           <textarea className={`${input} min-h-20`} value={f.description} onChange={(e) => set('description', e.target.value)} />
         </Field>
-        <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
-        <PhotoBackgroundEditor storeId={f.id} value={f.photoBg} onChange={(photoBg) => setF((x) => ({ ...x, photoBg }))} />
-        <Field label="Fachada">
-          <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
-            <option value="awning">Toldo</option>
-            <option value="arch">Arco</option>
-            <option value="minimal">Minimalista</option>
-          </select>
+        <Field label="WhatsApp">
+          <input className={input} value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
         </Field>
+        <Field label="Instagram">
+          <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} />
+        </Field>
+      </div>
+
+      <p className="pt-1 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase">Estado</p>
+      <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Estado comercial">
           <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>
             <option value="open">Abierta (recibe pedidos)</option>
             <option value="paused">Pausada</option>
           </select>
         </Field>
-        <Field label="Instagram">
-          <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} />
-        </Field>
-        <label className="flex items-center gap-2 self-end rounded-xl border border-line bg-white px-3.5 py-3 text-sm font-semibold sm:col-span-2">
+        <label className="flex items-center gap-2 self-end rounded-xl border border-line bg-white px-3.5 py-3 text-sm font-semibold">
           <input type="checkbox" className="size-5 accent-brand" checked={isHighlighted(f)} onChange={(e) => set('highlight', e.target.checked)} />
-          Tienda destacada: cartel grande en el techo y luz propia en el mall
+          Tienda destacada
         </label>
-        <Field label="WhatsApp">
-          <input className={input} value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
-        </Field>
       </div>
+
+      <details className="group rounded-2xl border border-line bg-sand/40">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+          <span>
+            <span className="block text-sm font-extrabold">Apariencia</span>
+            <span className="block text-[12px] text-ink-soft">Colores, fondo de fotos y fachada</span>
+          </span>
+          <ChevronDown className="size-5 shrink-0 text-ink-soft transition group-open:rotate-180" />
+        </summary>
+        <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
+          <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
+          <PhotoBackgroundEditor storeId={f.id} value={f.photoBg} onChange={(photoBg) => setF((x) => ({ ...x, photoBg }))} />
+          <Field label="Fachada">
+            <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
+              <option value="awning">Toldo</option>
+              <option value="arch">Arco</option>
+              <option value="minimal">Minimalista</option>
+            </select>
+          </Field>
+        </div>
+      </details>
       {remoteEnabled() && <StoreOwners storeId={store.id} />}
       <div className="flex justify-end gap-2">
         <button className={btn.secondary} onClick={onDone}>

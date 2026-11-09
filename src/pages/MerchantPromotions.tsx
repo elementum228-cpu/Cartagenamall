@@ -1,4 +1,4 @@
-import { Clock, Gem, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
+import { Gem, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
 import { BOAT_OF_STORE } from '../tourism/config'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -133,24 +133,24 @@ export function MerchantPromotions({ store }: { store: Store }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <p className="text-[17px] leading-tight font-extrabold">{c.name}</p>
-                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-bold text-brand">{c.tag}</span>
                     {on && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Activa</span>}
                   </div>
                   {c.recommended && !on && (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-ink px-2 py-0.5 text-[11px] font-bold text-white">
+                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-brand">
                       <Star className="size-3" /> Recomendada para hoy
                     </span>
                   )}
                   <p className="mt-1 text-sm leading-snug text-ink-soft">{c.help}</p>
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-soft">
-                    <Clock className="size-3.5" /> {c.meta}
-                  </p>
                 </div>
               </div>
-              {how === c.mode && <p className="rounded-2xl bg-sand p-3 text-xs leading-relaxed text-ink-soft">{c.how}</p>}
+              {how === c.mode && (
+                <p className="rounded-2xl bg-sand p-3 text-xs leading-relaxed text-ink-soft">
+                  {c.how} <span className="font-bold">{c.meta}</span>
+                </p>
+              )}
               <div className="mt-auto flex items-center justify-between gap-2">
-                <button className="text-sm font-semibold text-brand underline underline-offset-2" onClick={() => setHow(how === c.mode ? null : c.mode)}>
-                  {how === c.mode ? 'Ocultar' : 'Ver cómo funciona'}
+                <button className="text-xs font-semibold text-ink-soft underline underline-offset-2" onClick={() => setHow(how === c.mode ? null : c.mode)}>
+                  {how === c.mode ? 'Ocultar' : 'Cómo funciona'}
                 </button>
                 <button className={`${btn.primary} min-w-32`} onClick={() => setOpen(selected ? null : c.mode)}>
                   {selected ? 'Cerrar' : 'Configurar'}

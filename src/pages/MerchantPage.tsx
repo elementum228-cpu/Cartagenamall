@@ -941,7 +941,8 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
         placeholder={<ProductImage product={{ ...(product ?? ({} as Product)), name: name || 'Artículo', image: null, icon, variants: [] }} brandColor={store.brandColor} className="size-40 rounded-2xl" />}
       />
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <p className="-mb-1 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase">Lo básico</p>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre">
           <input className={input} value={name} maxLength={50} onChange={(e) => setName(e.target.value)} autoFocus={!product} onFocus={(e) => isCopy && e.currentTarget.select()} />
         </Field>
@@ -954,7 +955,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
             placeholder="45.000"
           />
         </Field>
-        <Field label="Descripción" wide>
+        <Field label="Descripción (opcional)" wide>
           <textarea className={`${input} min-h-20`} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} />
         </Field>
         <Field label={categoryWords(store).title} wide>
@@ -965,63 +966,90 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
             <input className={input} inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value.replace(/\D/g, ''))} />
           </Field>
         )}
-        <details className="group rounded-2xl border border-line bg-sand/40 sm:col-span-2" open={!!(product && (product.variants.length || product.sizes.length))}>
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
-            <span>
-              Más opciones
-              <span className="block text-[11px] font-medium text-ink-soft">Colores, tallas, rubro, ilustración y destacado</span>
-            </span>
-            <ChevronDown className="size-5 shrink-0 text-ink-soft transition group-open:rotate-180" />
-          </summary>
-          <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
-            <Field label="Rubro (para las búsquedas)">
-              <select className={input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                {zoneCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Ilustración si no hay foto">
-              <select className={input} value={icon} onChange={(e) => setIcon(e.target.value as ProductIcon)}>
-                {(Object.keys(ICON_LABELS) as ProductIcon[]).map((i) => (
-                  <option key={i} value={i}>
-                    {ICON_LABELS[i]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Colores o variantes (opcional)" hint="Separados por coma: Rojo, Azul">
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase">Opciones</p>
+        {!isRestaurant(store) && (
+          <Section
+            icon={<Palette className="size-5" />}
+            title="Colores y tallas"
+            summary={product && (product.variants.length || product.sizes.length) ? [product.variants.map((v) => v.name).join(', '), product.sizes.join(', ')].filter(Boolean).join(' · ') : 'Opcional: si el artículo viene en varias presentaciones'}
+            defaultOpen={!!(product && (product.variants.length || product.sizes.length))}
+          >
+            <Field label="Colores o variantes" hint="Separados por coma: Rojo, Azul">
               <input className={input} value={variants} onChange={(e) => setVariants(e.target.value)} />
             </Field>
-            <Field label="Tallas (opcional)" hint="Separadas por coma: S, M, L">
+            <Field label="Tallas" hint="Separadas por coma: S, M, L">
               <input className={input} value={sizes} onChange={(e) => setSizes(e.target.value)} />
             </Field>
-            <div className="sm:col-span-2">
-              <label className="flex items-center gap-2 text-sm font-semibold">
-                <input type="checkbox" className="size-5 accent-brand" checked={featured} onChange={(e) => setFeatured(e.target.checked)} /> Destacado
-              </label>
-            </div>
+          </Section>
+        )}
+        <Section icon={<Package className="size-5" />} title="Avanzado" summary="Rubro para las búsquedas e ilustración si no hay foto">
+          <Field label="Rubro (para las búsquedas)">
+            <select className={input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              {zoneCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Ilustración si no hay foto">
+            <select className={input} value={icon} onChange={(e) => setIcon(e.target.value as ProductIcon)}>
+              {(Object.keys(ICON_LABELS) as ProductIcon[]).map((i) => (
+                <option key={i} value={i}>
+                  {ICON_LABELS[i]}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {isRestaurant(store) && (
+            <>
+              <Field label="Colores o variantes (opcional)" hint="Separados por coma: Rojo, Azul">
+                <input className={input} value={variants} onChange={(e) => setVariants(e.target.value)} />
+              </Field>
+              <Field label="Tallas (opcional)" hint="Separadas por coma: S, M, L">
+                <input className={input} value={sizes} onChange={(e) => setSizes(e.target.value)} />
+              </Field>
+            </>
+          )}
+        </Section>
+      </div>
+
+      <div className="divide-y divide-line overflow-hidden rounded-3xl border border-line bg-white">
+        {(
+          [
+            ['Visible en la tienda', 'Si lo apagas, nadie lo ve ni lo puede pedir.', active, setActive],
+            ['Destacado', 'Aparece primero en tu ficha.', featured, setFeatured],
+          ] as const
+        ).map(([label, hint, on, setOn]) => (
+          <div key={label} className="flex items-center justify-between gap-3 p-3.5">
+            <span className="leading-tight">
+              <span className="block text-sm font-extrabold">{label}</span>
+              <span className="block text-xs text-ink-soft">{hint}</span>
+            </span>
+            <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => setOn(!on)} className={`relative h-8 w-14 shrink-0 rounded-full transition ${on ? 'bg-emerald-500' : 'bg-ink/25'}`}>
+              <span className={`absolute top-1 left-1 size-6 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-6' : ''}`} />
+            </button>
           </div>
-        </details>
-        <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
-          <input type="checkbox" className="size-5 accent-brand" checked={active} onChange={(e) => setActive(e.target.checked)} /> Visible en la tienda
-        </label>
+        ))}
       </div>
       {product && <InventoryEditor product={product} />}
-      <div className="flex flex-wrap justify-end gap-2">
-        <button className={btn.secondary} onClick={onDone}>
-          Cancelar
-        </button>
-        {!product && onAnother && (
-          <button className={btn.secondary} disabled={!valid || saving} onClick={() => void save(true)}>
-            Guardar y agregar otro
-          </button>
-        )}
-        <button className={btn.primary} disabled={!valid || saving} onClick={() => void save()}>
+      <div className="flex flex-col gap-2 sm:flex-row-reverse sm:items-center">
+        <button className={`${btn.primary} w-full sm:w-auto`} disabled={!valid || saving} onClick={() => void save()}>
           {saving ? 'Guardando…' : product ? `Guardar ${catalogWords(store).one}` : `Crear ${catalogWords(store).one}`}
         </button>
+        <div className="flex gap-2">
+          {!product && onAnother && (
+            <button className={`${btn.secondary} flex-1 sm:flex-none`} disabled={!valid || saving} onClick={() => void save(true)}>
+              Guardar y agregar otro
+            </button>
+          )}
+          <button className={`${btn.ghost} ${!product && onAnother ? '' : 'flex-1 sm:flex-none'}`} onClick={onDone}>
+            Cancelar
+          </button>
+        </div>
       </div>
     </Card>
   )
