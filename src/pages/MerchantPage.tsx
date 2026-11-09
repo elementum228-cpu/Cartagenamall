@@ -5,7 +5,7 @@ import { MessagesEditor } from './MerchantMessages'
 import { MusicEditor } from './MerchantMusic'
 import { InteriorBgEditor } from './MerchantInteriorBg'
 import { AddressEditor } from './MerchantAddress'
-import { cleanAddress } from '../lib/maps'
+import { cleanAddress, hasAddress } from '../lib/maps'
 import { EventsManager } from '../stadium/EventsManager'
 import { useStadiumConfig } from '../state/stadiumEvents'
 import {
@@ -14,11 +14,15 @@ import {
   BarChart3,
   ChevronDown,
   Copy,
+  Music2,
+  Palette,
+  Truck,
   Zap,
   ArrowLeftRight,
   ClipboardList,
   ImagePlus,
   Info,
+  MessageCircle,
   MapPin,
   Package,
   Pencil,
@@ -384,6 +388,26 @@ function Card({ children, className = '' }: { children: ReactNode; className?: s
   return <div className={`rounded-3xl border border-line bg-card p-4 ${className}`}>{children}</div>
 }
 
+/** Sección plegable del perfil: título, un resumen de lo configurado y el contenido solo al abrirla. */
+function Section({ icon, title, summary, badge, defaultOpen, children }: { icon: ReactNode; title: string; summary: string; badge?: string; defaultOpen?: boolean; children: ReactNode }) {
+  return (
+    <details className="group overflow-hidden rounded-3xl border border-line bg-card" open={defaultOpen}>
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-4 [&::-webkit-details-marker]:hidden">
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-sand text-ink">{icon}</span>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="flex items-center gap-2 text-[15px] font-extrabold">
+            {title}
+            {badge && <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-brand uppercase">{badge}</span>}
+          </span>
+          <span className="mt-0.5 block truncate text-xs text-ink-soft">{summary}</span>
+        </span>
+        <ChevronDown className="size-5 shrink-0 text-ink-soft transition group-open:rotate-180" />
+      </summary>
+      <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-2">{children}</div>
+    </details>
+  )
+}
+
 /** Botón que abre el selector de archivos (cámara o galería en móvil) y entrega la imagen reducida. */
 function ImagePicker({ kind, storeId, label, onImage, children }: { kind: 'logo' | 'product'; storeId?: string; label: string; onImage: (dataUrl: string) => void; children?: ReactNode }) {
   const ref = useRef<HTMLInputElement>(null)
@@ -466,86 +490,121 @@ function ProfileEditor({ store }: { store: Store }) {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <p className="font-bold">Logo</p>
-        <p className="text-xs text-ink-soft">Aparece en el letrero de tu local en el mall, en tu ficha y en Comprar. Mejor cuadrado y con fondo claro.</p>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <StoreLogo store={f} size={84} />
-          <div className="flex flex-wrap gap-2">
-            <ImagePicker kind="logo" label={f.logo ? 'Cambiar logo' : 'Subir logo'} onImage={(d) => set('logo', d)} />
-            {f.logo && (
-              <button className={btn.ghost} onClick={() => set('logo', null)}>
-                <X className="size-4" /> Quitar logo
-              </button>
-            )}
+      {/* identidad: lo primero que ve el dueño y lo que más cambia */}
+      <Card className="space-y-5 !p-5">
+        <div className="flex items-center gap-4">
+          <StoreLogo store={f} size={72} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-extrabold">Logo</p>
+            <p className="text-xs text-ink-soft">Aparece en tu letrero del mall y en tu ficha. Mejor cuadrado y con fondo claro.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <ImagePicker kind="logo" label={f.logo ? 'Cambiar logo' : 'Subir logo'} onImage={(d) => set('logo', d)} />
+              {f.logo && (
+                <button className={btn.ghost} onClick={() => set('logo', null)}>
+                  <X className="size-4" /> Quitar
+                </button>
+              )}
+            </div>
           </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nombre del negocio">
+            <input className={input} value={f.name} maxLength={28} onChange={(e) => set('name', e.target.value)} />
+          </Field>
+          <Field label="Nombre corto del letrero" hint="Se usa cuando no hay logo (máx. 8 letras).">
+            <input className={input} value={f.logoText} maxLength={8} onChange={(e) => set('logoText', e.target.value.toUpperCase())} />
+          </Field>
+          <Field label="Frase" wide>
+            <input className={input} value={f.tagline} maxLength={60} onChange={(e) => set('tagline', e.target.value)} />
+          </Field>
+          <Field label="Descripción" wide>
+            <textarea className={`${input} min-h-24`} value={f.description} maxLength={400} onChange={(e) => set('description', e.target.value)} />
+          </Field>
+          <Field label="WhatsApp para pedidos">
+            <input className={input} inputMode="tel" value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
+          </Field>
+          <Field
+            label="Instagram"
+            hint={instagramHandle(f.instagram) ? `Tus clientes llegan a instagram.com/${instagramHandle(f.instagram)}` : 'Tu usuario (@minegocio): aparece como botón en tu ficha.'}
+          >
+            <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@minegocio" autoCapitalize="none" />
+          </Field>
         </div>
       </Card>
 
       <StoreLinkCard store={store} />
-      <Card className="grid gap-3 sm:grid-cols-2">
-        <Field label="Nombre del negocio">
-          <input className={input} value={f.name} maxLength={28} onChange={(e) => set('name', e.target.value)} />
-        </Field>
-        <Field label="Nombre corto del letrero" hint="Se usa cuando no hay logo (máx. 8 letras).">
-          <input className={input} value={f.logoText} maxLength={8} onChange={(e) => set('logoText', e.target.value.toUpperCase())} />
-        </Field>
-        <Field label="Frase" wide>
-          <input className={input} value={f.tagline} maxLength={60} onChange={(e) => set('tagline', e.target.value)} />
-        </Field>
-        <Field label="Descripción" wide>
-          <textarea className={`${input} min-h-24`} value={f.description} maxLength={400} onChange={(e) => set('description', e.target.value)} />
-        </Field>
-        <Field label="Categoría" hint={`Dentro de ${ZONE_BY_ID[store.zoneId].name}. Cambiar de zona lo decide la administración.`}>
-          <select className={input} value={f.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
-            {zoneCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <QuickCategories store={f} onChange={(patch) => setF((x) => ({ ...x, ...patch }))} />
-        <Field label="Fachada del local">
-          <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
-            <option value="awning">Toldo a rayas</option>
-            <option value="arch">Arco con apliques</option>
-            <option value="minimal">Minimalista con luz</option>
-          </select>
-        </Field>
-        <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
-        <PhotoBackgroundEditor storeId={f.id} value={f.photoBg} onChange={(photoBg) => setF((x) => ({ ...x, photoBg }))} />
-        <Field
-          label="Instagram"
-          hint={
-            instagramHandle(f.instagram)
-              ? `Tus clientes llegan a instagram.com/${instagramHandle(f.instagram)}`
-              : 'Escribe tu usuario (@minegocio): aparece como botón en tu ficha.'
-          }
+
+      {/* el resto, plegado: cada sección dice en una línea lo que ya tiene */}
+      <div className="space-y-3">
+        <p className="px-1 text-[11px] font-extrabold tracking-[0.14em] text-ink-soft uppercase">Personaliza tu local</p>
+
+        <Section
+          icon={<StoreIcon className="size-5" />}
+          title="Categoría"
+          summary={[storeCategoryName(f), (f.categories?.length ?? 0) > 0 ? `${f.categories!.length} propias` : ''].filter(Boolean).join(' · ')}
         >
-          <input className={input} value={f.instagram} onChange={(e) => set('instagram', e.target.value)} placeholder="@minegocio" autoCapitalize="none" />
-        </Field>
-        <Field label="WhatsApp">
-          <input className={input} inputMode="tel" value={f.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
-        </Field>
-        <MessagesEditor store={f} onChange={(m) => setF((x) => ({ ...x, messages: m }))} />
-        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-white p-3 sm:col-span-2">
-          <input type="checkbox" className="mt-0.5 size-5 accent-brand" checked={!!f.deliveryOnly} onChange={(e) => setF((x) => ({ ...x, deliveryOnly: e.target.checked }))} />
-          <span>
-            <span className="block text-sm font-bold">No tengo punto físico: solo vendo a domicilio</span>
-            <span className="block text-xs text-ink-soft">Tus clientes solo verán la opción «Domicilio» al pedir y no aparecerá la dirección del local.</span>
-          </span>
-        </label>
-        <AddressEditor store={f} onChange={(address) => setF((x) => ({ ...x, address }))} />
-        <InteriorBgEditor value={f.interiorBg} tone={f.interiorTone} onChange={(interiorBg) => setF((x) => ({ ...x, interiorBg }))} onTone={(interiorTone) => setF((x) => ({ ...x, interiorTone }))} />
-        <MusicEditor store={f} onChange={(music) => setF((x) => ({ ...x, music }))} />
-        <Field label="Estado" wide>
-          <select className={input} value={f.status} onChange={(e) => set('status', e.target.value as Store['status'])}>
-            <option value="open">Abierto: recibe pedidos</option>
-            <option value="paused">Cerrado: se ve, pero no recibe pedidos</option>
-          </select>
-        </Field>
-      </Card>
+          <Field label="Categoría del mall" hint={`Dentro de ${ZONE_BY_ID[store.zoneId].name}. Cambiar de zona lo decide la administración.`}>
+            <select className={input} value={f.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
+              {zoneCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <QuickCategories store={f} onChange={(patch) => setF((x) => ({ ...x, ...patch }))} />
+        </Section>
+
+        <Section
+          icon={<Palette className="size-5" />}
+          title="Apariencia"
+          summary={`Fachada ${f.facade === 'awning' ? 'con toldo' : f.facade === 'arch' ? 'con arco' : 'minimalista'} · color ${f.brandColor.toUpperCase()}${f.photoBg ? ' · fondo de fotos' : ''}`}
+        >
+          <Field label="Fachada del local">
+            <select className={input} value={f.facade} onChange={(e) => set('facade', e.target.value as FacadeStyle)}>
+              <option value="awning">Toldo a rayas</option>
+              <option value="arch">Arco con apliques</option>
+              <option value="minimal">Minimalista con luz</option>
+            </select>
+          </Field>
+          <StoreColors store={f} onChange={(c) => setF((x) => ({ ...x, ...c }))} />
+          <PhotoBackgroundEditor storeId={f.id} value={f.photoBg} onChange={(photoBg) => setF((x) => ({ ...x, photoBg }))} />
+        </Section>
+
+        <Section
+          icon={<Truck className="size-5" />}
+          title="Ubicación y entrega"
+          summary={f.deliveryOnly ? 'Solo domicilio' : hasAddress(f.address) ? f.address!.text : 'Con punto físico · sin dirección'}
+        >
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-white p-3 sm:col-span-2">
+            <input type="checkbox" className="mt-0.5 size-5 accent-brand" checked={!!f.deliveryOnly} onChange={(e) => setF((x) => ({ ...x, deliveryOnly: e.target.checked }))} />
+            <span>
+              <span className="block text-sm font-bold">No tengo punto físico: solo vendo a domicilio</span>
+              <span className="block text-xs text-ink-soft">Tus clientes solo verán la opción «Domicilio» al pedir y no aparecerá la dirección del local.</span>
+            </span>
+          </label>
+          {!f.deliveryOnly && <AddressEditor store={f} onChange={(address) => setF((x) => ({ ...x, address }))} />}
+        </Section>
+
+        <Section
+          icon={<Music2 className="size-5" />}
+          title="Dentro del local"
+          badge="Beta"
+          summary={`Música ${f.music?.mode === 'off' ? 'apagada' : f.music?.mode === 'youtube' ? 'de YouTube' : f.music?.mode === 'custom' ? 'propia' : 'clásica'} · fondo ${f.interiorBg ? 'personalizado' : 'automático'}`}
+        >
+          <InteriorBgEditor value={f.interiorBg} tone={f.interiorTone} onChange={(interiorBg) => setF((x) => ({ ...x, interiorBg }))} onTone={(interiorTone) => setF((x) => ({ ...x, interiorTone }))} />
+          <MusicEditor store={f} onChange={(music) => setF((x) => ({ ...x, music }))} />
+        </Section>
+
+        <Section
+          icon={<MessageCircle className="size-5" />}
+          title="Mensajes de WhatsApp"
+          summary={Object.values(f.messages ?? {}).some((v) => v?.trim()) ? 'Con textos propios' : 'Usando los textos de MallPlay'}
+        >
+          <MessagesEditor store={f} onChange={(m) => setF((x) => ({ ...x, messages: m }))} />
+        </Section>
+      </div>
 
       <div className="sticky bottom-[calc(var(--chrome-bottom)+8px)] z-10 flex justify-end gap-2 md:bottom-4">
         {dirty && (

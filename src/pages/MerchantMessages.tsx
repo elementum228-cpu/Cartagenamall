@@ -1,4 +1,3 @@
-import { ChevronDown } from 'lucide-react'
 import type { Store } from '../domain/types'
 import { MESSAGE_DEFAULTS, MESSAGE_FIELDS, type MessageKey } from '../lib/messages'
 import { input } from '../ui/bits'
@@ -14,17 +13,8 @@ export function MessagesEditor({ store, onChange }: { store: Store; onChange: (m
     delete next[key]
     onChange(next)
   }
-  const custom = Object.values(msgs).filter((v) => v?.trim()).length
   return (
-    <details className="group rounded-2xl border border-line bg-sand/40 sm:col-span-2">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-        <span>
-          <span className="block text-sm font-bold text-ink">Mensajes de WhatsApp</span>
-          <span className="block text-[12px] text-ink-soft">{custom ? `${custom} personalizado${custom > 1 ? 's' : ''}` : 'Usando los textos de MallPlay'}</span>
-        </span>
-        <ChevronDown className="size-5 shrink-0 text-ink-soft transition group-open:rotate-180" />
-      </summary>
-      <div className="space-y-3 px-4 pb-4">
+    <div className="space-y-3 sm:col-span-2">
         <p className="text-[12px] text-ink-soft">
           Así le escriben tus clientes y así les escribes tú. Puedes cambiar el texto; las palabras entre llaves, como {'{tienda}'}, se llenan solas.
         </p>
@@ -48,7 +38,6 @@ export function MessagesEditor({ store, onChange }: { store: Store; onChange: (m
           )
         })}
         <p className="text-[11px] text-ink-soft">Si dejas un campo vacío, se envía el texto de MallPlay (lo ves en gris).</p>
-      </div>
-    </details>
+    </div>
   )
 }
