@@ -175,6 +175,10 @@ function Shell() {
   )
 }
 
+/** Distancia (a lo largo del recorrido) del visitante más cercano a la puerta: la lee la puerta automática. */
+const door = { near: 99 }
+const DOOR_X = -31.2
+
 const COATS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95']
 
 /**
@@ -203,6 +207,7 @@ function Walkers() {
   const people = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ phase: i / 6, lane: (i % 3 - 1) * 0.8 })), [])
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
+    let nearest = 99
     people.forEach((p, i) => {
       const el = refs.current[i]
       if (!el) return
@@ -221,10 +226,12 @@ function Walkers() {
       const x = seg.p[0] + seg.dx * f
       let z = seg.p[1] + seg.dz * f
       if (x < -33.5) z += p.lane
+      if (Math.abs(z) < 3.2) nearest = Math.min(nearest, Math.abs(x - DOOR_X))
       el.position.set(x, 0.2 + Math.abs(Math.sin(t * 4 + i * 2)) * 0.03, z)
       const sign = going ? 1 : -1
       el.rotation.y = Math.atan2(seg.dx * sign, seg.dz * sign)
     })
+    door.near = nearest
   })
   return (
     <>
@@ -235,6 +242,62 @@ function Walkers() {
         </group>
       ))}
     </>
+  )
+}
+
+/** Puertas automáticas de vidrio: se abren hacia los lados cuando alguien se acerca y se cierran cuando se aleja. */
+function AutoDoors() {
+  const left = useRef<THREE.Group>(null)
+  const right = useRef<THREE.Group>(null)
+  const light = useRef<THREE.Mesh>(null)
+  const open = useRef(0)
+  useFrame((_, dt) => {
+    const target = door.near < 3.6 ? 1 : 0
+    open.current += (target - open.current) * Math.min(1, dt * (target ? 4 : 2.2))
+    const o = open.current
+    if (left.current) left.current.position.z = -1.35 - o * 1.2
+    if (right.current) right.current.position.z = 1.35 + o * 1.2
+    if (light.current) (light.current.material as THREE.MeshStandardMaterial).emissiveIntensity = o > 0.2 ? 1.6 : 0.3
+  })
+  const leaf = (ref: React.RefObject<THREE.Group | null>, z0: number) => (
+    <group ref={ref} position={[DOOR_X, 0, z0]} userData={{ dynamic: true }}>
+      <mesh geometry={GEO.box} material={GLASS} position={[0, 1.75, 0]} scale={[0.08, 3.5, 2.6]} />
+      <mesh geometry={GEO.box} material={mat('#c9ced4', { rough: 0.2 })} position={[0, 1.75, 1.3]} scale={[0.14, 3.5, 0.1]} />
+      <mesh geometry={GEO.box} material={mat('#c9ced4', { rough: 0.2 })} position={[0, 1.75, -1.3]} scale={[0.14, 3.5, 0.1]} />
+      <mesh geometry={GEO.box} material={mat('#c9ced4', { rough: 0.2 })} position={[0, 3.45, 0]} scale={[0.14, 0.1, 2.6]} />
+      <mesh geometry={GEO.box} material={mat('#c9ced4', { rough: 0.2 })} position={[0, 0.25, 0]} scale={[0.14, 0.1, 2.6]} />
+    </group>
+  )
+  return (
+    <group>
+      {leaf(left, -1.35)}
+      {leaf(right, 1.35)}
+      {/* carril y sensor sobre las puertas */}
+      <mesh geometry={GEO.box} material={mat('#2a3038')} position={[DOOR_X, 3.7, 0]} scale={[0.3, 0.3, 6.2]} />
+      <mesh ref={light} geometry={GEO.sphereSmooth} material={new THREE.MeshStandardMaterial({ color: '#7dffb2', emissive: '#7dffb2', emissiveIntensity: 0.3 })} position={[DOOR_X - 0.2, 3.7, 0]} scale={0.14} />
+    </group>
+  )
+}
+
+/** Cámara de seguridad que barre el salón de lado a lado, con su luz roja intermitente. */
+function SecurityCam({ x, z, base, phase }: { x: number; z: number; base: number; phase: number }) {
+  const head = useRef<THREE.Group>(null)
+  const led = useRef<THREE.Mesh>(null)
+  const ledMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#ff3b30', emissive: '#ff3b30', emissiveIntensity: 1 }), [])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    if (head.current) head.current.rotation.y = base + Math.sin(t * 0.55 + phase) * 0.85
+    ledMat.emissiveIntensity = Math.sin(t * 4 + phase) > 0.3 ? 2.2 : 0.15
+  })
+  return (
+    <group position={[x, 3.15, z]} userData={{ dynamic: true }}>
+      <mesh geometry={GEO.box} material={mat('#2a3038')} position={[0, 0.2, 0]} scale={[0.3, 0.1, 0.3]} />
+      <group ref={head} rotation={[0, base, 0]}>
+        <mesh geometry={GEO.box} material={mat('#f2f3f5', { rough: 0.3 })} position={[0, 0, 0.3]} scale={[0.34, 0.3, 0.7]} castShadow />
+        <mesh geometry={GEO.cylinder} material={mat('#10131a')} position={[0, 0, 0.68]} rotation={[Math.PI / 2, 0, 0]} scale={[0.22, 0.06, 0.22]} />
+        <mesh ref={led} geometry={GEO.sphereSmooth} material={ledMat} position={[0.12, 0.17, 0.5]} scale={0.07} />
+      </group>
+    </group>
   )
 }
 
@@ -250,6 +313,10 @@ export function JewelryZone() {
       <Patrol z={-2.3} phase={0} />
       <Patrol z={2.3} phase={1} />
       <Walkers />
+      <AutoDoors />
+      <SecurityCam x={-38.5} z={-5.2} base={0} phase={0} />
+      <SecurityCam x={-46.5} z={-5.2} base={0} phase={2} />
+      <SecurityCam x={-51.8} z={0} base={Math.PI / 2} phase={4} />
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       {[-37, -44, -50].map((x) => (
         <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
