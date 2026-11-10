@@ -1,4 +1,5 @@
 import type { Order, Product, Promotion, SpaceClaim, Store, SubOrder } from '../domain/types'
+import { useEdition, type Edition } from '../hoy/edition'
 import { SEED_ASSIGNMENTS, SEED_PRODUCTS, SEED_STORES, createSeedPromotions } from '../data/seed'
 import { isDemoPromotion } from '../promotions/demo'
 import { isShipPromotion, syncShipBoarding, useDiscountShip, type ShipOffer } from '../ship/offers'
@@ -362,6 +363,22 @@ export async function loadSeason() {
   if (mode) applyRemote(() => useSeasonSettings.setState({ mode }))
 }
 
+/** Edición de «MallPlay Hoy» que publica la administración, en mall_settings «hoy». */
+export async function loadHoy() {
+  if (!supabase || !pricingTable) return
+  const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'hoy').maybeSingle()
+  if (error) return
+  const ed = (data as Doc<Edition | null> | null)?.doc
+  applyRemote(() => useEdition.setState({ ed: ed && typeof ed === 'object' && 'headline' in ed ? ed : null }))
+}
+
+function pushHoy(ed: Edition | null) {
+  enqueue(async () => {
+    const { error } = await supabase!.from('mall_settings').upsert({ key: 'hoy', doc: ed })
+    if (error) throw new Error(error.message)
+  })
+}
+
 /** Respaldo del tiempo real: trae solo las promociones (las que otro local acaba de lanzar) y las aplica si cambiaron. */
 async function refreshPromotions() {
   if (!supabase || document.hidden) return
@@ -576,6 +593,7 @@ export function startRemoteSync() {
   void loadCatalog()
   void loadPricing()
   void loadSeason()
+  void loadHoy()
   void loadFeatures()
   void loadMatch()
   void loadShip()
@@ -654,6 +672,10 @@ export function startRemoteSync() {
     if (applying || !useSession.getState().isAdmin || next.mode === prev.mode) return
     pushSeason(next.mode)
   })
+  useEdition.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.ed === prev.ed) return
+    pushHoy(next.ed)
+  })
   useOrders.subscribe((next, prev) => {
     if (applying || next.orders === prev.orders) return
     pushOrders(prev.orders, next.orders)
@@ -689,6 +711,7 @@ export function startRemoteSync() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'mall_settings' }, () => {
       void loadPricing()
       void loadSeason()
+      void loadHoy()
       void loadFeatures()
       void loadMatch()
       void loadShip()

@@ -25,7 +25,7 @@ import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { Entertainment } from './Entertainment'
 import { Airport } from './Airport'
-import { Stadium, StairFans } from './Stadium'
+import { MallToStadium, Stadium, StairFans } from './Stadium'
 import { Island } from './Island'
 import { Harbor } from './Harbor'
 import { District } from './District'
@@ -150,6 +150,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         {airportOn && <Airport reduceMotion={reduceMotion} />}
         <Stadium reduceMotion={reduceMotion} quality={quality} />
         <StairFans reduceMotion={reduceMotion} />
+        <MallToStadium reduceMotion={reduceMotion} />
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
         {JOYERIA && <JewelryZone />}

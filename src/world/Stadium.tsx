@@ -2321,3 +2321,65 @@ export function StairFans({ reduceMotion }: { reduceMotion: boolean }) {
     </group>
   )
 }
+
+// ── visitantes que pasan del mall al estadio por el hueco de la muralla norte ───────────────────────────────
+/** Ruta (x, z del mundo): bajan por el pasillo de Moda, rodean el local del fondo, cruzan el paso y el puente. */
+const PASS_ROUTE: [number, number][] = [
+  [3, -11],
+  [3, -20.4],
+  [7.3, -20.4],
+  [7.3, -29.4],
+  [3, -29.4],
+  [3, -33],
+  [3, -39.6],
+  [3.6, -41.2],
+]
+const PASS_SEG = PASS_ROUTE.slice(1).map((q, i) => ({ p: PASS_ROUTE[i], dx: q[0] - PASS_ROUTE[i][0], dz: q[1] - PASS_ROUTE[i][1], len: Math.hypot(q[0] - PASS_ROUTE[i][0], q[1] - PASS_ROUTE[i][1]) }))
+const PASS_LEN = PASS_SEG.reduce((a, s) => a + s.len, 0)
+
+/** Con el estadio inaugurado, la gente va y viene del mall al estadio por el paso de la muralla, y se hace pequeña al llegar. */
+export function MallToStadium({ reduceMotion }: { reduceMotion: boolean }) {
+  const open = useStadiumPhase((st) => st.phase === 'open')
+  const count = 8
+  const refs = useRef<(THREE.Group | null)[]>([])
+  const people = useMemo(() => Array.from({ length: count }, (_, i) => ({ phase: i / count, lane: ((i % 3) - 1) * 0.35, shirt: FAN_SHIRTS[i % FAN_SHIRTS.length], skin: FAN_SKIN[i % FAN_SKIN.length] })), [])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    people.forEach((p, i) => {
+      const el = refs.current[i]
+      if (!el) return
+      el.visible = open && !reduceMotion
+      if (!el.visible) return
+      const u = (((t * 1.1) / (2 * PASS_LEN) + p.phase) % 1 + 1) % 1
+      const going = u < 0.5
+      let d = (going ? u * 2 : (1 - u) * 2) * PASS_LEN
+      let seg = PASS_SEG[PASS_SEG.length - 1]
+      for (const sg of PASS_SEG) {
+        if (d <= sg.len) {
+          seg = sg
+          break
+        }
+        d -= sg.len
+      }
+      const f = Math.min(1, d / seg.len)
+      const x = seg.p[0] + seg.dx * f + p.lane
+      const z = seg.p[1] + seg.dz * f
+      // al cruzar el puente la persona se achica hasta la escala del estadio
+      const k = z < -33 ? 1 - (1 - S) * Math.min(1, (-33 - z) / 6.5) : 1
+      el.position.set(x, 0.2 + Math.abs(Math.sin(t * 4 + i * 2)) * 0.03 * k, z)
+      el.scale.setScalar(k)
+      const sign = going ? 1 : -1
+      el.rotation.y = Math.atan2(seg.dx * sign, seg.dz * sign)
+    })
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      {people.map((p, i) => (
+        <group key={i} ref={(g) => (refs.current[i] = g)} visible={false}>
+          <mesh geometry={GEO.capsule} material={mat(p.shirt)} position={[0, 0.43, 0]} castShadow />
+          <mesh geometry={GEO.sphereSmooth} material={mat(p.skin)} position={[0, 0.95, 0]} scale={0.36} castShadow />
+        </group>
+      ))}
+    </group>
+  )
+}

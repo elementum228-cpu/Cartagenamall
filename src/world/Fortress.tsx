@@ -332,6 +332,28 @@ function Shore({ sparse }: { sparse: boolean }) {
   )
 }
 
+/** Hueco de la muralla norte frente al puente del estadio (x del mundo). */
+export const STADIUM_PASS = 3
+
+/** Paso con arco de piedra y suelo continuo entre el pasillo del mall y el puente. */
+function StadiumPass() {
+  const z = -S
+  const stone = mat(STONE[0])
+  return (
+    <group>
+      <mesh geometry={GEO.box} material={mat('#c9b48e')} position={[STADIUM_PASS, 0.06, z]} scale={[3.4, 0.14, WT + 0.6]} receiveShadow />
+      {[-1, 1].map((sd) => (
+        <group key={sd}>
+          <mesh geometry={GEO.box} material={stone} position={[STADIUM_PASS + sd * 1.95, (WH + 0.3) / 2, z]} scale={[0.9, WH + 0.3, WT + 0.2]} castShadow />
+          <mesh geometry={GEO.box} material={mat(CORDON)} position={[STADIUM_PASS + sd * 1.95, WH + 0.35, z]} scale={[1.05, 0.16, WT + 0.35]} />
+        </group>
+      ))}
+      <mesh geometry={GEO.box} material={stone} position={[STADIUM_PASS, WH - 0.4, z]} scale={[3.4, 0.9, WT + 0.2]} castShadow />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={[STADIUM_PASS, WH + 0.2, z]} scale={[3.9, 0.16, WT + 0.35]} />
+    </group>
+  )
+}
+
 /**
  * Fortaleza completa. `onEnter`: la puerta es interactiva (lleva a la plaza del piso 1).
  * Se dibuja siempre: es el contexto de todos los pisos.
@@ -347,7 +369,10 @@ export function FortressEnvironment({ onEnter, sparse = false }: { onEnter: () =
         <mesh geometry={GEO.cylinder} material={WATER} position={[0, -1.3, 0]} scale={[1000, 1.6, 1000]} receiveShadow />
         <mesh geometry={GEO.box} material={mat(PALETTE.sand)} position={[0, -0.35, 0]} scale={[2 * S - 0.5, 0.7, 2 * S - 0.5]} receiveShadow />
         {/* murallas (las esquinas con baluarte o puerta se resuelven aparte) */}
-        <WallRun from={[-S + 3, -S]} to={[S - 3, -S]} outward={[0, -1]} />
+        {/* paso en la muralla norte hacia el puente del estadio */}
+        <WallRun from={[-S + 3, -S]} to={[STADIUM_PASS - 1.9, -S]} outward={[0, -1]} />
+        <WallRun from={[STADIUM_PASS + 1.9, -S]} to={[S - 3, -S]} outward={[0, -1]} />
+        <StadiumPass />
         {JOYERIA ? (
           <>
             <WallRun from={[-S, -S + 3]} to={[-S, -2.6]} outward={[-1, 0]} />

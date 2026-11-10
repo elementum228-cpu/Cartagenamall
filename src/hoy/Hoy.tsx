@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Bell, ChevronLeft, ChevronRight, Clock, Heart, Lock, Newspaper, Share2, Star, Ticket, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useUI } from '../state/ui'
-import { COVER, PROMOS, SECRET, type Promo } from './data'
+import { useEditionData, type EdPromo } from './edition'
 import { useHoy } from './store'
 
 const INK = '#14202e'
@@ -15,6 +15,8 @@ const SERIF: CSSProperties = { fontFamily: "'Fraunces', Georgia, 'Times New Roma
 const GRAIN =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .18  0 0 0 .09 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>\")"
 const paper: CSSProperties = { backgroundColor: PAPER, backgroundImage: `${GRAIN}, linear-gradient(180deg, rgba(255,255,255,.35), rgba(120,90,40,.06))`, color: INK }
+
+const HUE: Record<string, string> = { Gastronomía: CORAL, Belleza: '#c2607f', Tecnología: DEEP, Moda: MUSTARD, Lifestyle: '#5f9a6e', Deportes: TEAL, Servicios: '#7a6ff0' }
 
 const dateLabel = () => {
   const d = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -33,13 +35,13 @@ function useWide() {
 }
 
 /** Cuenta regresiva HH:MM:SS desde que se abre la edición. */
-function useCountdown(ms: number) {
-  const end = useRef(Date.now() + ms)
-  const [left, setLeft] = useState(ms)
+function useCountdown(endsAt: string | number) {
+  const end = typeof endsAt === 'number' ? Date.now() + endsAt : Date.parse(endsAt)
+  const [left, setLeft] = useState(() => Math.max(0, end - Date.now()))
   useEffect(() => {
-    const t = setInterval(() => setLeft(Math.max(0, end.current - Date.now())), 1000)
+    const t = setInterval(() => setLeft(Math.max(0, end - Date.now())), 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [end])
   const s = Math.floor(left / 1000)
   const p = (n: number) => String(n).padStart(2, '0')
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`
@@ -59,7 +61,22 @@ function Rule({ thick = false }: { thick?: boolean }) {
 }
 
 /** Espacio publicitario integrado al periódico. */
-function AdSlot({ label, hint, tone = TEAL, className = '' }: { label: string; hint: string; tone?: string; className?: string }) {
+function AdSlot({ label, hint, tone = TEAL, className = '', slot }: { label: string; hint: string; tone?: string; className?: string; slot?: { name: string; text: string; image: string | null } }) {
+  if (slot && (slot.name || slot.image))
+    return (
+      <article className={`relative overflow-hidden rounded-sm border-2 ${className}`} style={{ borderColor: tone, background: '#fffaf0' }}>
+        {slot.image && <img src={slot.image} alt={slot.name} className="h-24 w-full object-cover" />}
+        <div className="p-2.5">
+          <span className="text-[9.5px] font-extrabold tracking-[0.18em] uppercase" style={{ color: tone }}>
+            {label}
+          </span>
+          <h4 className="text-[15px] leading-tight font-extrabold" style={SERIF}>
+            {slot.name}
+          </h4>
+          {slot.text && <p className="text-[12px] leading-snug opacity-75">{slot.text}</p>}
+        </div>
+      </article>
+    )
   return (
     <div className={`relative flex flex-col justify-center rounded-sm border-2 border-dashed px-3 py-2.5 ${className}`} style={{ borderColor: tone, background: `${tone}12` }}>
       <span className="text-[9.5px] font-extrabold tracking-[0.18em] uppercase" style={{ color: tone }}>
@@ -117,7 +134,9 @@ function EventArt() {
 }
 
 function Cover({ onOpenEvent }: { onOpenEvent: () => void }) {
-  const left = useCountdown(5 * 3600_000 + 12 * 60_000 + 40_000)
+  const ed = useEditionData()
+  const top = ed.promos.filter((p) => !p.ended).sort((a, b) => a.left - b.left)[0] ?? ed.promos[0]
+  const left = useCountdown(top?.endsAt ?? 0)
   return (
     <div className="flex min-h-full flex-col gap-3 p-4 sm:p-6" style={paper}>
       <div className="flex items-center justify-between gap-2 pr-11 text-[10px] font-bold tracking-[0.12em] uppercase sm:pr-0">
@@ -137,28 +156,26 @@ function Cover({ onOpenEvent }: { onOpenEvent: () => void }) {
       <Rule thick />
 
       <h2 className="text-balance leading-[1.02] font-black" style={{ ...SERIF, fontSize: 'clamp(26px, 5.6vw, 40px)' }}>
-        {COVER.headline}
+        {ed.headline}
       </h2>
 
       <div className="grid gap-3 sm:grid-cols-5">
         {/* evento del día */}
         <article className="relative overflow-hidden rounded-sm border-2 sm:col-span-3" style={{ borderColor: INK }}>
-          <div className="aspect-[16/8.5]">
-            <EventArt />
-          </div>
+          <div className="aspect-[16/8.5]">{ed.event.image ? <img src={ed.event.image} alt={ed.event.title} className="size-full object-cover" /> : <EventArt />}</div>
           <div className="absolute top-2 left-2">
             <Stamp color="#fff" rot={-4} className="!bg-[#e8613c] !border-[#e8613c]">
-              {COVER.event.kicker}
+              {ed.event.kicker}
             </Stamp>
           </div>
           <div className="space-y-1.5 p-3" style={{ background: PAPER }}>
             <h3 className="text-[19px] leading-tight font-extrabold" style={SERIF}>
-              {COVER.event.title}
+              {ed.event.title}
             </h3>
-            <p className="text-[13px] leading-snug opacity-80">{COVER.event.text}</p>
+            <p className="text-[13px] leading-snug opacity-80">{ed.event.text}</p>
             <div className="flex items-center justify-between gap-2 pt-1">
               <span className="text-[11.5px] font-bold opacity-75">
-                {COVER.event.when} · {COVER.event.where}
+                {ed.event.when} · {ed.event.where}
               </span>
               <button onClick={onOpenEvent} className="shrink-0 rounded-full px-4 py-2 text-[13px] font-extrabold text-white active:scale-95" style={{ background: DEEP }}>
                 Ver evento
@@ -169,14 +186,17 @@ function Cover({ onOpenEvent }: { onOpenEvent: () => void }) {
 
         <div className="flex flex-col gap-3 sm:col-span-2">
           {/* última hora */}
-          <article className="relative rounded-sm p-3 text-white" style={{ background: INK }}>
-            <Stamp color={MUSTARD} rot={-3}>
-              Última hora
-            </Stamp>
-            <h3 className="mt-2 text-[18px] leading-tight font-extrabold" style={SERIF}>
-              {COVER.lastHour.title}
-            </h3>
-            <p className="mt-1 text-[12.5px] leading-snug opacity-80">{COVER.lastHour.text}</p>
+          <article className="relative overflow-hidden rounded-sm p-3 text-white" style={{ background: INK }}>
+            {ed.lastHour.image && <img src={ed.lastHour.image} alt="" className="absolute inset-0 size-full object-cover opacity-35" />}
+            <div className="relative">
+              <Stamp color={MUSTARD} rot={-3}>
+                Última hora
+              </Stamp>
+              <h3 className="mt-2 text-[18px] leading-tight font-extrabold" style={SERIF}>
+                {ed.lastHour.title}
+              </h3>
+              <p className="mt-1 text-[12.5px] leading-snug opacity-80">{ed.lastHour.text}</p>
+            </div>
           </article>
           {/* promoción más buscada */}
           <article className="relative rounded-sm border-2 p-3" style={{ borderColor: CORAL, background: '#fff6ef' }}>
@@ -185,9 +205,11 @@ function Cover({ onOpenEvent }: { onOpenEvent: () => void }) {
             </span>
             <div className="mt-1 flex items-end gap-2">
               <span className="text-[44px] leading-none font-black" style={{ ...SERIF, color: CORAL }}>
-                2x1
+                {top?.big}
               </span>
-              <span className="pb-1 text-[13px] leading-tight font-bold">Higiene facial · Lau Beauty Studio</span>
+              <span className="pb-1 text-[13px] leading-tight font-bold">
+                {top?.title} · {top?.store}
+              </span>
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-[12px] font-bold">
               <Clock className="size-3.5" /> Termina en {left}
@@ -197,28 +219,29 @@ function Cover({ onOpenEvent }: { onOpenEvent: () => void }) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <AdSlot label="Patrocinador principal" hint="Tu marca en la portada de hoy" tone={TEAL} className="sm:col-span-1" />
-        <AdSlot label="Recomendado por MallPlay" hint="Destaca tu local entre los favoritos" tone={MUSTARD} className="sm:col-span-1" />
+        <AdSlot label="Patrocinador principal" hint="Tu marca en la portada de hoy" tone={TEAL} className="sm:col-span-1" slot={ed.sponsor} />
+        <AdSlot label="Recomendado por MallPlay" hint="Destaca tu local entre los favoritos" tone={MUSTARD} className="sm:col-span-1" slot={ed.recommended} />
         <article className="rounded-sm p-3" style={{ background: '#e7efe9' }}>
           <span className="text-[10px] font-extrabold tracking-[0.16em] uppercase" style={{ color: TEAL }}>
             Próximamente en MallPlay
           </span>
           <h3 className="mt-0.5 text-[16px] leading-tight font-extrabold" style={SERIF}>
-            {COVER.soon.title}
+            {ed.soon.title}
           </h3>
-          <p className="mt-0.5 text-[12px] leading-snug opacity-75">{COVER.soon.text}</p>
+          <p className="mt-0.5 text-[12px] leading-snug opacity-75">{ed.soon.text}</p>
         </article>
       </div>
 
-      <AdSlot label="Negocio aliado" hint="Banner inferior de marca · espacio disponible" tone={DEEP} className="text-center" />
+      <AdSlot label="Negocio aliado" hint="Banner inferior de marca · espacio disponible" tone={DEEP} className="text-center" slot={ed.banner} />
       <PageFoot n={1} name="Primera plana" />
     </div>
   )
 }
 
-function PromoCard({ p, saved, onSave }: { p: Promo; saved: boolean; onSave: () => void }) {
-  const left = useCountdown(p.endsInMs)
-  const out = p.ended
+function PromoCard({ p, saved, onSave }: { p: EdPromo; saved: boolean; onSave: () => void }) {
+  const left = useCountdown(p.endsAt)
+  const out = p.ended || Date.parse(p.endsAt) <= Date.now()
+  const hue = HUE[p.cat]
   const toast = useUI((s) => s.toast)
   const share = () => {
     const text = `${p.big} en ${p.store}: ${p.title}. Mira MallPlay Hoy.`
@@ -226,12 +249,13 @@ function PromoCard({ p, saved, onSave }: { p: Promo; saved: boolean; onSave: () 
   }
   return (
     <article className={`relative overflow-hidden rounded-sm border-2 ${out ? 'opacity-70 grayscale' : ''}`} style={{ borderColor: INK, background: '#fffaf0' }}>
-      <div className="relative flex items-center gap-3 p-3" style={{ background: `${p.hue}22` }}>
-        <div className="grid size-[72px] shrink-0 place-items-center rounded-sm text-center leading-none font-black text-white" style={{ ...SERIF, background: p.hue, fontSize: p.big.length > 6 ? 15 : p.big.length > 4 ? 17 : 24 }}>
+      {p.image && <img src={p.image} alt={p.store} className="h-32 w-full object-cover" />}
+      <div className="relative flex items-center gap-3 p-3" style={{ background: `${hue}22` }}>
+        <div className="grid size-[72px] shrink-0 place-items-center rounded-sm text-center leading-none font-black text-white" style={{ ...SERIF, background: hue, fontSize: p.big.length > 6 ? 15 : p.big.length > 4 ? 17 : 24 }}>
           {p.big}
         </div>
         <div className="min-w-0">
-          <span className="text-[9.5px] font-extrabold tracking-[0.16em] uppercase" style={{ color: p.hue === MUSTARD ? '#8a6200' : p.hue }}>
+          <span className="text-[9.5px] font-extrabold tracking-[0.16em] uppercase" style={{ color: hue === MUSTARD ? '#8a6200' : hue }}>
             {p.cat}
           </span>
           <h3 className="truncate text-[16px] leading-tight font-extrabold" style={SERIF}>
@@ -283,6 +307,7 @@ function PromoCard({ p, saved, onSave }: { p: Promo; saved: boolean; onSave: () 
 }
 
 function Promos() {
+  const ed = useEditionData()
   const [saved, setSaved] = useState<string[]>([])
   const toggle = (id: string) => setSaved((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
   return (
@@ -290,7 +315,7 @@ function Promos() {
       <div className="flex items-center justify-between pr-11 text-[10px] font-bold tracking-[0.16em] uppercase sm:pr-0">
         <span>Sección · Promociones</span>
         <Stamp color={TEAL} rot={0}>
-          {PROMOS.filter((p) => !p.ended).length} activas
+          {ed.promos.filter((p) => !p.ended).length} activas
         </Stamp>
       </div>
       <Rule thick />
@@ -298,7 +323,7 @@ function Promos() {
         Las promociones que no puedes dejar pasar
       </h2>
       <div className="grid gap-3 sm:grid-cols-2">
-        {PROMOS.map((p) => (
+        {ed.promos.map((p) => (
           <PromoCard key={p.id} p={p} saved={saved.includes(p.id)} onSave={() => toggle(p.id)} />
         ))}
       </div>
@@ -316,13 +341,13 @@ function Promos() {
               La oferta secreta del día
             </h3>
             <p className="text-[12.5px] opacity-80">
-              <span className="blur-[3.5px] select-none">Un descuento de 40% en un local sorpresa</span> · explora {SECRET.need} locales para desbloquearla.
+              <span className="blur-[3.5px] select-none">{ed.secret.title}</span> · explora {ed.secret.need} locales para desbloquearla.
             </p>
           </div>
         </div>
-        <div className="mt-3 flex gap-1.5" aria-label={`${SECRET.done} de ${SECRET.need} locales explorados`}>
-          {Array.from({ length: SECRET.need }, (_, i) => (
-            <span key={i} className="h-2 flex-1 rounded-full" style={{ background: i < SECRET.done ? MUSTARD : 'rgba(255,255,255,.2)' }} />
+        <div className="mt-3 flex gap-1.5" aria-label={`1 de ${ed.secret.need} locales explorados`}>
+          {Array.from({ length: ed.secret.need }, (_, i) => (
+            <span key={i} className="h-2 flex-1 rounded-full" style={{ background: i < 1 ? MUSTARD : 'rgba(255,255,255,.2)' }} />
           ))}
         </div>
       </article>
@@ -374,12 +399,29 @@ function NextPage({ onActivate }: { onActivate: () => void }) {
   )
 }
 
+/** Hoja del periódico que se pliega y despliega: la mitad de abajo gira sobre el pliegue central, como un diario de verdad. */
+function Flap({ delay = 0.5 }: { delay?: number }) {
+  return (
+    <motion.div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-1/2 z-40 h-1/2 origin-top"
+      style={{ ...paper, transformPerspective: 2200, backfaceVisibility: 'visible', boxShadow: '0 -30px 60px -20px rgba(0,0,0,.45)' }}
+      initial={{ rotateX: 178, opacity: 1 }}
+      animate={{ rotateX: 0, opacity: [1, 1, 0], transition: { rotateX: { delay, duration: 1.05, ease: [0.3, 0.7, 0.2, 1] }, opacity: { delay, duration: 1.2, times: [0, 0.92, 1] } } }}
+      exit={{ rotateX: 178, opacity: [0, 1, 1], transition: { rotateX: { duration: 0.8, ease: [0.5, 0, 0.7, 0.3] }, opacity: { duration: 0.2 } } }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/5 to-transparent" />
+    </motion.div>
+  )
+}
+
 function Reader() {
   const close = useHoy((s) => s.close)
   const toast = useUI((s) => s.toast)
   const wide = useWide()
   const [spread, setSpread] = useState(0)
   const [mobilePage, setMobilePage] = useState(0)
+  const [dir, setDir] = useState(1)
   const scroller = useRef<HTMLDivElement>(null)
   const openEvent = () => {
     close()
@@ -390,77 +432,91 @@ function Reader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
+  const spreads = Math.ceil(pages.length / 2)
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
-      if (wide && e.key === 'ArrowRight') setSpread((s) => Math.min(1, s + 1))
-      if (wide && e.key === 'ArrowLeft') setSpread((s) => Math.max(0, s - 1))
+      if (wide && e.key === 'ArrowRight') turn(1)
+      if (wide && e.key === 'ArrowLeft') turn(-1)
     }
     window.addEventListener('keydown', on)
     return () => window.removeEventListener('keydown', on)
-  }, [close, wide])
-  const total = wide ? 2 : pages.length
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [close, wide, spread])
+  const total = wide ? spreads : pages.length
   const cur = wide ? spread : mobilePage
-  const go = (d: number) => {
-    if (wide) setSpread((s) => Math.max(0, Math.min(1, s + d)))
-    else scroller.current?.scrollTo({ left: (mobilePage + d) * (scroller.current?.clientWidth ?? 0), behavior: 'smooth' })
+  const turn = (d: number) => {
+    if (wide) {
+      setDir(d)
+      setSpread((s) => Math.max(0, Math.min(spreads - 1, s + d)))
+    } else scroller.current?.scrollTo({ left: (mobilePage + d) * (scroller.current?.clientWidth ?? 0), behavior: 'smooth' })
   }
   return (
-    <motion.div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#0b1620]/80 backdrop-blur-sm sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ perspective: 1800 }}>
+    <motion.div
+      className="fixed inset-0 z-[130] flex items-center justify-center bg-[#0b1620]/80 backdrop-blur-sm sm:p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { delay: 0.55, duration: 0.3 } }}
+      style={{ perspective: 2000, height: '100dvh' }}
+    >
       <motion.div
         role="dialog"
         aria-modal="true"
         aria-label="MallPlay Hoy"
-        className="relative flex h-full w-full flex-col overflow-hidden shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)] sm:h-[min(94vh,860px)] sm:max-w-[1240px] sm:rounded-md"
-        style={{ ...paper, transformOrigin: '50% 50%' }}
-        initial={{ clipPath: 'inset(49% 2% 49% 2%)', rotateX: 28, scale: 0.86, y: 60 }}
-        animate={{ clipPath: 'inset(0% 0% 0% 0%)', rotateX: 0, scale: 1, y: 0 }}
-        exit={{ clipPath: 'inset(49% 2% 49% 2%)', scale: 0.9, opacity: 0 }}
-        transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
+        className="relative flex h-full w-full flex-col sm:h-[min(94vh,860px)] sm:max-w-[1240px]"
+        style={{ transformOrigin: '50% 100%' }}
+        initial={{ y: 140, scale: 0.78, rotate: -5, opacity: 0 }}
+        animate={{ y: 0, scale: 1, rotate: 0, opacity: 1, transition: { type: 'spring', stiffness: 150, damping: 17 } }}
+        exit={{ y: 120, scale: 0.7, rotate: 5, opacity: 0, transition: { delay: 0.7, duration: 0.45, ease: [0.5, 0, 0.8, 0.4] } }}
       >
-        {/* pliegue central que se desvanece al abrir */}
-        <motion.div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 z-20 h-px bg-black/40 shadow-[0_0_30px_14px_rgba(0,0,0,0.25)]" initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ delay: 0.5, duration: 0.7 }} />
-        <button onClick={close} aria-label="Cerrar el periódico" className="absolute top-2 right-2 z-30 grid size-10 place-items-center rounded-full text-white shadow-lg" style={{ background: INK }}>
-          <X className="size-5" />
-        </button>
-
-        {wide ? (
-          <div className="relative grid min-h-0 flex-1 grid-cols-2">
-            <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-10 -translate-x-1/2 bg-gradient-to-r from-transparent via-black/15 to-transparent" />
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div key={spread} className="col-span-2 grid min-h-0 grid-cols-2" initial={{ opacity: 0, rotateY: spread ? 14 : -14 }} animate={{ opacity: 1, rotateY: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
-                <div className="min-h-0 overflow-y-auto border-r border-black/10">{pages[spread * 2]}</div>
-                <div className="min-h-0 overflow-y-auto">{pages[spread * 2 + 1] ?? <BackPage />}</div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        ) : (
-          <div
-            ref={scroller}
-            className="scrollbar-none flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto"
-            onScroll={(e) => setMobilePage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
-          >
-            {pages.map((pg, i) => (
-              <div key={i} className="min-h-0 w-full shrink-0 snap-center overflow-y-auto">
-                {pg}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-3 border-t border-black/15 px-3 py-2" style={{ background: '#efe6d2' }}>
-          <button onClick={() => go(-1)} disabled={cur === 0} aria-label="Hoja anterior" className="grid size-9 place-items-center rounded-full border-2 disabled:opacity-30" style={{ borderColor: INK }}>
-            <ChevronLeft className="size-4" />
+        {/* la hoja: al abrir se despliega y al cerrar se vuelve a doblar */}
+        <motion.div
+          className="relative flex min-h-0 flex-1 flex-col overflow-hidden shadow-[0_40px_120px_-20px_rgba(0,0,0,0.75)] sm:rounded-md"
+          style={paper}
+          initial={{ clipPath: 'inset(0% 0% 50% 0%)' }}
+          animate={{ clipPath: 'inset(0% 0% 0% 0%)', transition: { delay: 0.5, duration: 1.0, ease: [0.3, 0.7, 0.2, 1] } }}
+          exit={{ clipPath: 'inset(0% 0% 50% 0%)', transition: { duration: 0.8, ease: [0.5, 0, 0.7, 0.3] } }}
+        >
+          <button onClick={close} aria-label="Cerrar el periódico" className="absolute top-[max(10px,env(safe-area-inset-top))] right-3 z-30 grid size-11 place-items-center rounded-full text-white shadow-lg" style={{ background: INK }}>
+            <X className="size-5" />
           </button>
-          <div className="flex items-center gap-1.5" aria-hidden>
-            {Array.from({ length: total }, (_, i) => (
-              <span key={i} className="h-1.5 rounded-full transition-all" style={{ width: i === cur ? 22 : 7, background: i === cur ? INK : 'rgba(20,32,46,.25)' }} />
-            ))}
+
+          {wide ? (
+            <div className="relative grid min-h-0 flex-1 grid-cols-2">
+              <div aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-12 -translate-x-1/2 bg-gradient-to-r from-transparent via-black/15 to-transparent" />
+              <AnimatePresence mode="wait" initial={false} custom={dir}>
+                <motion.div key={spread} className="col-span-2 grid min-h-0 grid-cols-2" style={{ transformPerspective: 2200, transformOrigin: dir > 0 ? '0% 50%' : '100% 50%' }} initial={{ rotateY: dir > 0 ? 70 : -70, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} exit={{ rotateY: dir > 0 ? -70 : 70, opacity: 0 }} transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}>
+                  <div className="min-h-0 overflow-y-auto border-r border-black/10">{pages[spread * 2]}</div>
+                  <div className="min-h-0 overflow-y-auto">{pages[spread * 2 + 1] ?? <BackPage />}</div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div ref={scroller} className="scrollbar-none flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto" onScroll={(e) => setMobilePage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
+              {pages.map((pg, i) => (
+                <div key={i} className="min-h-0 w-full shrink-0 snap-center overflow-y-auto pt-[env(safe-area-inset-top)]">
+                  {pg}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* controles de página: siempre visibles, por encima de la barra de inicio del teléfono */}
+          <div className="relative z-30 flex items-center justify-between gap-3 border-t-2 px-4 pt-3 pb-[max(14px,env(safe-area-inset-bottom))]" style={{ background: '#efe6d2', borderColor: INK }}>
+            <button onClick={() => turn(-1)} disabled={cur === 0} aria-label="Hoja anterior" className="flex h-12 items-center gap-1 rounded-full border-2 pr-4 pl-2.5 text-[13px] font-extrabold disabled:opacity-30" style={{ borderColor: INK }}>
+              <ChevronLeft className="size-5" /> Anterior
+            </button>
+            <div className="flex items-center gap-1.5" aria-label={`Hoja ${cur + 1} de ${total}`}>
+              {Array.from({ length: total }, (_, i) => (
+                <span key={i} className="h-2 rounded-full transition-all" style={{ width: i === cur ? 26 : 8, background: i === cur ? INK : 'rgba(20,32,46,.28)' }} />
+              ))}
+            </div>
+            <button onClick={() => turn(1)} disabled={cur >= total - 1} aria-label="Hoja siguiente" className="flex h-12 items-center gap-1 rounded-full pr-2.5 pl-4 text-[13px] font-extrabold text-white disabled:opacity-30" style={{ background: INK }}>
+              Siguiente <ChevronRight className="size-5" />
+            </button>
           </div>
-          <button onClick={() => go(1)} disabled={cur >= total - 1} aria-label="Hoja siguiente" className="grid size-9 place-items-center rounded-full border-2 disabled:opacity-30" style={{ borderColor: INK }}>
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
+        </motion.div>
+        <Flap />
       </motion.div>
     </motion.div>
   )
