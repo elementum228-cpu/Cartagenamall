@@ -27,11 +27,12 @@ const item = (productId: string, variantId: string | null, size: string | null, 
 })
 
 describe('mall layout', () => {
-  it('genera los espacios desde configuración: 20 en los pasillos 4 en servicios y 4 de joyería (piso 1), 11 en entretenimiento, 20 en el piso 2 (ampliado)', () => {
-    expect(SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))).toHaveLength(39)
+  it('genera los espacios desde configuración: 20 en los pasillos, 4 en servicios, 4 de joyería y 14 en la terraza de servicios (piso 1), 11 en entretenimiento, 20 en el piso 2 (ampliado)', () => {
+    expect(SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))).toHaveLength(53)
     expect(SPACES.filter((s) => s.zoneId === 'G')).toHaveLength(11)
     expect(SPACES.filter((s) => s.id.startsWith('P1-I'))).toHaveLength(20)
-    expect(SPACES.filter((s) => s.zoneId === 'F')).toHaveLength(4)
+    expect(SPACES.filter((s) => s.zoneId === 'F' && !s.id.startsWith('P1-S'))).toHaveLength(4)
+    expect(SPACES.filter((s) => s.id.startsWith('P1-S'))).toHaveLength(14)
     expect(SPACES.filter((s) => s.floorId === 'P2')).toHaveLength(20)
     for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z && !s.id.startsWith('P1-I') && !s.id.startsWith('P1-J'))).toHaveLength(5)
     expect(new Set(SPACES.map((s) => s.id)).size).toBe(SPACES.length)
@@ -44,11 +45,11 @@ describe('mall layout', () => {
         expect(d).toBeGreaterThan((Math.min(...a.size) + Math.min(...b.size)) / 2 - 0.01)
       }
   })
-  it('piso 1 conserva 5 tiendas y 30 espacios libres (4 de servicios, 11 de entretenimiento); piso 2 tiene 6 negocios y 14 libres', () => {
+  it('piso 1 conserva 5 tiendas y 48 espacios libres (4 de servicios, 11 de entretenimiento, 14 de terraza); piso 2 tiene 6 negocios y 14 libres', () => {
     const p1 = SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))
     const p2 = SPACES.filter((s) => s.floorId === 'P2')
     expect(p1.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(5)
-    expect(p1.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(34)
+    expect(p1.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(48)
     expect(p2.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(6)
     expect(p2.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(14)
     expect(SPACE_TYPES.premium.monthlyPriceCOP).toBe(180_000)

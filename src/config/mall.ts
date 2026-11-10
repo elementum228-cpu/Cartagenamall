@@ -475,7 +475,28 @@ export const JEWELRY_SPACES: SpaceSlot[] = JOYERIA
       ] as [number, number, number][]
     ).map(([x, z, r], i) => ({ id: `P1-J${i + 1}`, floorId: 'P1', zoneId: 'A' as ZoneId, type: 'island' as SpaceType, label: `J-0${i + 1}`, position: [x, z] as [number, number], rotation: r, size: SPACE_TYPES.island.size }))
   : []
-export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES, ...ENTERTAINMENT_SPACES, ...JEWELRY_SPACES]
+/** Terraza de servicios sobre la joyería (segundo piso nuevo): locales grandes pegados a la muralla, de cara al patio hundido. */
+export const TERRACE_ELEVATION = 6.52
+export const TERRACE_SPACES: SpaceSlot[] = JOYERIA
+  ? (
+      [
+        ...[-75.5, -69.5, -63.5, -57.5, -51.5].map((x) => [x, -44, 0]),
+        ...[-38.5, -32.5, -26.5, -20.5, -14.5, -8.5].map((z) => [-81, z, Math.PI / 2]),
+        ...[-80.5, -74.5, -68.5].map((x) => [x, 3.6, Math.PI]),
+      ] as [number, number, number][]
+    ).map(([x, z, r], i) => ({
+      id: `P1-S${i + 1}`,
+      floorId: 'P1',
+      zoneId: 'F' as ZoneId,
+      type: 'local' as SpaceType,
+      label: `S-${String(i + 1).padStart(2, '0')}`,
+      position: [x, z] as [number, number],
+      rotation: r,
+      size: SPACE_TYPES.local.size,
+      elevation: TERRACE_ELEVATION,
+    }))
+  : []
+export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES, ...ENTERTAINMENT_SPACES, ...JEWELRY_SPACES, ...TERRACE_SPACES]
 
 /**
  * ¿El punto (x, z) cae dentro de un local o isla (más `margin` alrededor)? Las zonas de locales

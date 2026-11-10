@@ -55,7 +55,7 @@ describe('zona de servicios', () => {
   type Box = [number, number, number, number]
   const boxOf = (cx: number, cz: number, w: number, d: number): Box => [cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2]
   const overlap = (a: Box, b: Box) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
-  const spaces = SPACES.filter((s) => s.zoneId === 'F').map((s) => {
+  const spaces = SPACES.filter((s) => s.zoneId === 'F' && !s.id.startsWith('P1-S')).map((s) => {
     const [w, d] = Math.abs(Math.sin(s.rotation)) > 0.5 ? [s.size[1], s.size[0]] : s.size
     return boxOf(s.position[0], s.position[1], w, d)
   })
