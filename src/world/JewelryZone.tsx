@@ -190,7 +190,6 @@ function Terrace() {
     [TX0, COURT.x1, OPEN, T.z1],
     [COURT.x1, T.x1, COURT.z0, -OPEN],
     [COURT.x1, T.x1, OPEN, T.z1],
-    [-56.2, T.x1, -OPEN, OPEN],
   ]
   // muralla de piedra (lados lejanos a la cámara): del mar al adarve, con almenas
   const mural: [number, number, number, number][] = [
@@ -198,15 +197,15 @@ function Terrace() {
     [T.x0, T.x1, T.z0, T.z0],
   ]
   // muros sólidos del mar a la terraza en los lados cercanos (donde antes había columnas), con parapeto y almenas
-  const solid: [number, number, number, number][] = [
-    [T.x0, -52.6, T.z1, T.z1],
+  const solid: [number, number, number, number][] = [[T.x0, T.x1, T.z1, T.z1]]
+  // sobre la joyería, el muro de la unión con la zona de comida es de vidrio, con marcos negros y almenas bajas
+  const glassE: [number, number, number, number][] = [
     [T.x1, T.x1, -9.75, -OPEN],
     [T.x1, T.x1, OPEN, T.z1],
-    [T.x1, T.x1, -OPEN, OPEN],
   ]
   const rails: [number, number, number, number][] = [
-    [TX0, -56.2, -OPEN, -OPEN],
-    [TX0, -56.2, OPEN, OPEN],
+    [TX0, T.x1, -OPEN, -OPEN],
+    [TX0, T.x1, OPEN, OPEN],
     [T.x1 - 0.15, T.x1 - 0.15, T.z0, -9.75],
   ]
   const walls: [number, number, number, number][] = [
@@ -254,6 +253,22 @@ function Terrace() {
             <mesh geometry={GEO.box} material={mat(STONE[0])} position={[(xa + xb) / 2, top + 0.4, (za + zb) / 2]} scale={[w, 0.8, d]} castShadow />
             <mesh geometry={GEO.box} material={mat(CORDON)} position={[(xa + xb) / 2, top + 0.85, (za + zb) / 2]} scale={[w + 0.1, 0.1, d + 0.1]} />
             <Merlons x0={xa} z0={za} x1={xb} z1={zb} y={top + 0.9} />
+          </group>
+        )
+      })}
+      {glassE.map(([xa, xb, za, zb], i) => {
+        const d = zb - za
+        const n = Math.max(1, Math.round(d / 3.4))
+        return (
+          <group key={`ge${i}`}>
+            <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[xa, -0.3, (za + zb) / 2]} scale={[1.5, 1.2, d + 0.5]} />
+            <mesh geometry={GEO.box} material={mat(STONE[0])} position={[xa, (top - 0.4) / 2, (za + zb) / 2]} scale={[1.0, top - 0.4 + 0.6, d]} castShadow receiveShadow />
+            <mesh geometry={GEO.box} material={mat(CORDON)} position={[xa, top + 0.25, (za + zb) / 2]} scale={[1.12, 0.18, d + 0.12]} />
+            <mesh geometry={GEO.box} material={GLASS} position={[xa, top + 1.55, (za + zb) / 2]} scale={[0.1, 2.6, d]} />
+            <mesh geometry={GEO.box} material={black} position={[xa, top + 2.88, (za + zb) / 2]} scale={[0.2, 0.1, d + 0.1]} />
+            {Array.from({ length: n + 1 }, (_, k) => (
+              <mesh key={k} geometry={GEO.box} material={black} position={[xa, top + 1.55, za + (k * d) / n]} scale={[0.14, 2.6, 0.12]} />
+            ))}
           </group>
         )
       })}
@@ -624,7 +639,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-12">
+      <Batch version="joyeria-escalera-13">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
