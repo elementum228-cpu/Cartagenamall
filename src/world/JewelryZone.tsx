@@ -148,8 +148,8 @@ function StairDoor() {
 
 // Terraza: un gran cuadrado ~2 m más bajo que el piso 2 (se nota el desnivel), con muralla de piedra, muros sólidos en los lados cercanos,
 // locales pegados al muro y un patio hundido muy grande en el centro. Termina en el tercer local del piso 2, antes de su garita.
-const T = { x0: -91, x1: -48, z0: -38, z1: 6.4 }
-const COURT = { x0: -82, x1: -54, z0: -29, z1: -5, drop: 3.6 }
+const T = { x0: -77, x1: -48, z0: -32, z1: 6.4 }
+const COURT = { x0: -70, x1: -54, z0: -24, z1: -5, drop: 3.6 }
 const OPEN = 2.3 // media anchura del hueco por donde pasa la escalera
 const WALL_T = 1.0
 
@@ -180,8 +180,8 @@ function Terrace() {
   const cy = top - COURT.drop
   const CX2 = (COURT.x0 + COURT.x1) / 2
   const CZ2 = (COURT.z0 + COURT.z1) / 2
-  const stairX = -68
-  const gap = 4.2
+  const stairX = -60
+  const gap = 3
   const slabs: [number, number, number, number][] = [
     [T.x0, T.x1, T.z0, COURT.z0],
     [T.x0, COURT.x0, COURT.z0, T.z1],
@@ -190,6 +190,7 @@ function Terrace() {
     [TX0, COURT.x1, OPEN, T.z1],
     [COURT.x1, T.x1, COURT.z0, -OPEN],
     [COURT.x1, T.x1, OPEN, T.z1],
+    [-56.2, T.x1, -OPEN, OPEN],
   ]
   // muralla de piedra (lados lejanos a la cámara): del mar al adarve, con almenas
   const mural: [number, number, number, number][] = [
@@ -201,10 +202,12 @@ function Terrace() {
     [T.x0, -52.6, T.z1, T.z1],
     [T.x1, T.x1, -9.75, -OPEN],
     [T.x1, T.x1, OPEN, T.z1],
+    [T.x1, T.x1, -OPEN, OPEN],
   ]
   const rails: [number, number, number, number][] = [
-    [TX0, T.x1, -OPEN, -OPEN],
-    [TX0, T.x1, OPEN, OPEN],
+    [TX0, -56.2, -OPEN, -OPEN],
+    [TX0, -56.2, OPEN, OPEN],
+    [T.x1 - 0.15, T.x1 - 0.15, T.z0, -9.75],
   ]
   const walls: [number, number, number, number][] = [
     [COURT.x0, COURT.x0, COURT.z0, COURT.z1],
@@ -268,10 +271,9 @@ function Terrace() {
       {/* gran escalinata: del paseo al patio, con descanso a media altura, alfombra roja, barandas con luces y arco dorado */}
       {(() => {
         const stone = mat('#efe3cc')
-        const red = mat('#b9242b', { rough: 0.95 })
         const half = COURT.drop / 2
         const sw = gap * 2
-        const nUp = 10
+        const nUp = 8
         const rn = 0.5
         const steps: { z: number; h: number }[] = []
         for (let i = 0; i < nUp; i++) steps.push({ z: COURT.z1 - 0.15 - (i + 0.5) * rn, h: COURT.drop - (half / nUp) * (i + 1) })
@@ -285,13 +287,11 @@ function Terrace() {
             {steps.map((st, i) => (
               <group key={`gs${i}`}>
                 <mesh geometry={GEO.box} material={stone} position={[stairX, cy + st.h / 2, st.z]} scale={[sw, st.h, rn + 0.01]} castShadow receiveShadow />
-                <mesh geometry={GEO.box} material={red} position={[stairX, cy + st.h + 0.012, st.z]} scale={[3.2, 0.03, rn + 0.01]} />
                 <mesh geometry={GEO.box} material={strip} position={[stairX, cy + st.h - 0.07, st.z + rn / 2 + 0.005]} scale={[sw - 0.6, 0.05, 0.02]} />
               </group>
             ))}
             {/* descanso */}
             <mesh geometry={GEO.box} material={stone} position={[stairX, cy + half / 2, (zl + zl2) / 2]} scale={[sw, half, zl - zl2]} castShadow receiveShadow />
-            <mesh geometry={GEO.box} material={red} position={[stairX, cy + half + 0.012, (zl + zl2) / 2]} scale={[3.2, 0.03, zl - zl2]} />
             <mesh geometry={GEO.box} material={goldM} position={[stairX, cy + half + 0.03, (zl + zl2) / 2]} scale={[sw, 0.03, 0.12]} />
             {/* balaustradas de piedra con globos de luz */}
             {[-1, 1].map((sd) => (
@@ -324,10 +324,10 @@ function Terrace() {
                 ))}
               </group>
             ))}
-            <mesh geometry={GEO.cylinder} material={mat('#d9c9a5')} position={[stairX, cy + 0.03, zEnd - 3.2]} scale={[6.4, 0.04, 6.4]} receiveShadow />
-            <mesh geometry={GEO.cylinder} material={goldM} position={[stairX, cy + 0.06, zEnd - 3.2]} scale={[5.2, 0.03, 5.2]} />
-            <mesh geometry={GEO.cylinder} material={mat('#efe6d2')} position={[stairX, cy + 0.09, zEnd - 3.2]} scale={[4.9, 0.03, 4.9]} />
-            <mesh geometry={GEO.cylinder} material={goldM} position={[stairX, cy + 0.12, zEnd - 3.2]} scale={[1.6, 0.03, 1.6]} />
+            <mesh geometry={GEO.cylinder} material={mat('#d9c9a5')} position={[stairX, cy + 0.03, zEnd - 2.2]} scale={[4.8, 0.04, 4.8]} receiveShadow />
+            <mesh geometry={GEO.cylinder} material={goldM} position={[stairX, cy + 0.06, zEnd - 2.2]} scale={[3.9, 0.03, 3.9]} />
+            <mesh geometry={GEO.cylinder} material={mat('#efe6d2')} position={[stairX, cy + 0.09, zEnd - 2.2]} scale={[3.6, 0.03, 3.6]} />
+            <mesh geometry={GEO.cylinder} material={goldM} position={[stairX, cy + 0.12, zEnd - 2.2]} scale={[1.2, 0.03, 1.2]} />
           </>
         )
       })()}
@@ -339,19 +339,24 @@ function Terrace() {
       ] as [number, number, number, number][]).map(([x, z, w, d], i) => (
         <mesh key={`lw${i}`} geometry={GEO.box} material={strip} position={[x, cy + 0.12, z]} scale={[w, 0.06, d]} />
       ))}
-      {/* baranda de vidrio solo donde pasa la escalera de la joyería */}
+      {/* barandas de vidrio con pasamanos negro: junto a la escalera de la joyería y en la unión con la zona de comida (vidrio alto con marcos) */}
       {rails.map(([xa, xb, za, zb], i) => {
         const w = Math.max(0.05, xb - xa)
         const d = Math.max(0.05, zb - za)
+        const tall = i === 2
+        const h = tall ? 2.4 : 1
         return (
           <group key={`t${i}`}>
-            <mesh geometry={GEO.box} material={GLASS} position={[(xa + xb) / 2, top + 0.5, (za + zb) / 2]} scale={[w, 1, d]} />
-            <mesh geometry={GEO.box} material={black} position={[(xa + xb) / 2, top + 1.02, (za + zb) / 2]} scale={[Math.max(w, 0.07), 0.06, Math.max(d, 0.07)]} />
+            <mesh geometry={GEO.box} material={GLASS} position={[(xa + xb) / 2, top + h / 2, (za + zb) / 2]} scale={[w, h, d]} />
+            <mesh geometry={GEO.box} material={black} position={[(xa + xb) / 2, top + h + 0.02, (za + zb) / 2]} scale={[Math.max(w, 0.09), 0.08, Math.max(d, 0.09)]} />
+            {tall && Array.from({ length: Math.floor(d / 3.2) + 1 }, (_, k) => (
+              <mesh key={k} geometry={GEO.box} material={black} position={[xa, top + h / 2, za + k * (d / Math.floor(d / 3.2))]} scale={[0.1, h, 0.1]} />
+            ))}
           </group>
         )
       })}
       {/* faroles cálidos en el paseo */}
-      {[[-91.4, -34], [-91.4, -22], [-91.4, -10], [-91.4, 4.2], [-78, 4.2], [-66, 4.2], [-56, -33], [-66, -31.6], [-78, -31.6], [-53.2, -32], [-53.2, -4]].map(([x, z], i) => (
+      {[[-77.4, -30], [-77.4, -18], [-77.4, -6], [-77.4, 4.2], [-70, 4.2], [-60, 4.2], [-72, -31], [-60, -31], [-52, -31], [-53.2, -26]].map(([x, z], i) => (
         <group key={`f${i}`}>
           <mesh geometry={GEO.cylinder} material={black} position={[x, top + 1.2, z]} scale={[0.08, 2.4, 0.08]} />
           <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, top + 2.5, z]} scale={0.34} />
@@ -619,7 +624,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-11">
+      <Batch version="joyeria-escalera-12">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
@@ -633,9 +638,9 @@ export function JewelryZone() {
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       <pointLight position={[-56, 3.2, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
       <pointLight position={[-70, 9, 0]} color="#ffe2a8" intensity={night ? 18 : 3} distance={15} decay={2} />
-      <pointLight position={[-68, 4.5, -15]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
-      <pointLight position={[-75, 8.5, -30]} color="#ffe2a8" intensity={night ? 16 : 2} distance={16} decay={2} />
-      <pointLight position={[-68, 8, -4]} color="#ffe2a8" intensity={night ? 16 : 2} distance={14} decay={2} />
+      <pointLight position={[-61, 4.5, -14]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
+      <pointLight position={[-64, 8.5, -27]} color="#ffe2a8" intensity={night ? 16 : 2} distance={16} decay={2} />
+      <pointLight position={[-62, 8, -2]} color="#ffe2a8" intensity={night ? 16 : 2} distance={14} decay={2} />
       {[-37, -44, -50].map((x) => (
         <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
       ))}
