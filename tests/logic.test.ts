@@ -27,8 +27,8 @@ const item = (productId: string, variantId: string | null, size: string | null, 
 })
 
 describe('mall layout', () => {
-  it('genera los espacios desde configuración: 20 en los pasillos y 4 en servicios (piso 1), 11 en entretenimiento, 20 en el piso 2 (ampliado)', () => {
-    expect(SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))).toHaveLength(35)
+  it('genera los espacios desde configuración: 20 en los pasillos 4 en servicios y 4 de joyería (piso 1), 11 en entretenimiento, 20 en el piso 2 (ampliado)', () => {
+    expect(SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))).toHaveLength(39)
     expect(SPACES.filter((s) => s.zoneId === 'G')).toHaveLength(11)
     expect(SPACES.filter((s) => s.id.startsWith('P1-I'))).toHaveLength(20)
     expect(SPACES.filter((s) => s.zoneId === 'F')).toHaveLength(4)
@@ -48,7 +48,7 @@ describe('mall layout', () => {
     const p1 = SPACES.filter((s) => s.floorId === 'P1' && !s.id.startsWith('P1-I'))
     const p2 = SPACES.filter((s) => s.floorId === 'P2')
     expect(p1.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(5)
-    expect(p1.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(30)
+    expect(p1.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(34)
     expect(p2.filter((s) => SEED_ASSIGNMENTS[s.id])).toHaveLength(6)
     expect(p2.filter((s) => !SEED_ASSIGNMENTS[s.id])).toHaveLength(14)
     expect(SPACE_TYPES.premium.monthlyPriceCOP).toBe(180_000)

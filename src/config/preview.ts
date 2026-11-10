@@ -4,5 +4,5 @@
  */
 export const P2_GROW = 5
 
-/** Propuesta (?vista=joyeria): puerta en la muralla oeste, zona de joyería y cristalería bajo el piso 2. */
-export const JOYERIA = typeof location !== 'undefined' && /[?&]vista=joyeria/.test(location.search)
+/** Zona de joyería aprobada: puerta en la muralla oeste, salón exclusivo con 4 locales y cristalería bajo el piso 2. */
+export const JOYERIA = true
