@@ -73,7 +73,7 @@ function Patrol({ z, phase }: { z: number; phase: number }) {
     el.rotation.y = t < 1 ? Math.PI / 2 : -Math.PI / 2
   })
   return (
-    <group ref={g} scale={1.75} userData={{ dynamic: true }}>
+    <group ref={g} scale={1.2} userData={{ dynamic: true }}>
       <mesh geometry={GEO.capsule} material={mat(NAVY)} position={[0, 0.43, 0]} castShadow />
       <mesh geometry={GEO.box} material={mat(GOLD)} position={[0, 0.5, 0.2]} scale={[0.34, 0.05, 0.02]} />
       <mesh geometry={GEO.sphereSmooth} material={mat('#e0b08a')} position={[0, 0.95, 0]} scale={0.36} castShadow />
@@ -160,7 +160,7 @@ const COATS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95']
 /** Visitantes que bajan por el pasillo de Lifestyle, cruzan la puerta de la muralla, recorren la alfombra y regresan. */
 function Walkers() {
   const refs = useRef<(THREE.Group | null)[]>([])
-  const people = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ phase: i / 6, lane: (i % 3 - 1) * 0.9, speed: 0.045 + (i % 3) * 0.006 })), [])
+  const people = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ phase: i / 6, lane: (i % 3 - 1) * 0.9, speed: 0.0165 + (i % 3) * 0.002 })), [])
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     people.forEach((p, i) => {
@@ -170,14 +170,14 @@ function Walkers() {
       const going = u < 0.5
       const f = going ? u * 2 : (1 - u) * 2
       const x = -16 - f * 33
-      el.position.set(x, 0.2 + Math.abs(Math.sin(t * 5 + i * 2)) * 0.04, p.lane + (going ? 0.4 : -0.4))
+      el.position.set(x, 0.2 + Math.abs(Math.sin(t * 4 + i * 2)) * 0.03, p.lane + (going ? 0.4 : -0.4))
       el.rotation.y = going ? Math.PI / 2 : -Math.PI / 2
     })
   })
   return (
     <>
       {people.map((_, i) => (
-        <group key={i} ref={(g) => (refs.current[i] = g)} scale={1.5} userData={{ dynamic: true }}>
+        <group key={i} ref={(g) => (refs.current[i] = g)} scale={1} userData={{ dynamic: true }}>
           <mesh geometry={GEO.capsule} material={mat(COATS[i % COATS.length])} position={[0, 0.43, 0]} castShadow />
           <mesh geometry={GEO.sphereSmooth} material={mat(i % 2 ? '#c58c64' : '#8d5a3b')} position={[0, 0.95, 0]} scale={0.36} castShadow />
         </group>
