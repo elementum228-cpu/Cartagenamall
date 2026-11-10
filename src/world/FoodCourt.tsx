@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { FLOOR_BY_ID, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
+import { FLOOR_BY_ID, FOOD_ISLAND_AT, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
+import { P2_GROW as G } from '../config/preview'
 import { Batch } from './Batch'
 import { helmetColor, useHelmetsOn } from './helmets'
 import { FoodCrowd } from './FlashCrowd'
@@ -50,9 +51,10 @@ function chamferedSlab(half: number, cut: number, h: number) {
  * Columnas de la arcada frontal (coordenadas del piso). Se saltan los tramos que caerían sobre
  * los locales premium del piso 1 y donde llegan las escaleras.
  */
+const ARCADE_Z = G ? [-13, -8.5, -4, 0.5, 5, 9.5, 14].map((v) => v + (G ? 0 : 0)) : [-4, 0.5, 5, 9.5]
 const ARCADE: [number, number][] = ([
-  ...[-4, 0.5, 5, 9.5].map((z): [number, number] => [H - 0.6, z]),
-  ...[-4, 0.5, 5].map((x): [number, number] => [x, H - 0.6]),
+  ...ARCADE_Z.map((z): [number, number] => [H - 0.6, z]),
+  ...ARCADE_Z.slice(0, G ? 6 : 3).map((x): [number, number] => [x, H - 0.6]),
   // Una columna nunca se apoya sobre la plaza o un pasillo del piso 1: ahí camina la gente.
 ] as [number, number][]).filter(
   ([x, z]) => !onP1Walkway(x + OFFSET[0], z + OFFSET[1], 0.8) && Math.hypot(x - FOOD_LAYOUT.arrival.x, z - FOOD_LAYOUT.arrival.z) > 3.5,
@@ -77,18 +79,21 @@ function Shell() {
   const wall = mat(PALETTE.wall)
   const wood = mat(PALETTE.wood)
   // Columnas en el jardín del fondo de la fortaleza (no caen sobre tiendas del piso 1).
-  const columns: [number, number][] = [
-    [-6.5, -6.5],
-    [4, -6.5],
-    [-6.5, 4],
-    [4, 4],
-  ]
+  // con la losa más grande, el patio queda sin columnas: solo apoyos finos en el borde y el torreón del fondo
+  const columns: [number, number][] = G
+    ? []
+    : [
+        [-6.5, -6.5],
+        [4, -6.5],
+        [-6.5, 4],
+        [4, 4],
+      ]
   return (
     <group>
       {/* losa: piso claro, canto de piedra y faja inferior */}
       <mesh geometry={slab.top} material={mat(PALETTE.floor)} position={[0, -0.05, 0]} receiveShadow castShadow />
       <mesh geometry={slab.band} material={mat(STONE_DARK)} position={[0, -0.6, 0]} />
-      <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[2, 0.212, 2]} scale={[19, 0.02, 19]} receiveShadow />
+      <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[H - 12, 0.212, H - 12]} scale={[2 * H - 9, 0.02, 2 * H - 9]} receiveShadow />
       {/* terraza de madera con pérgola en la esquina del fondo */}
       <mesh geometry={GEO.box} material={mat(WOOD_DECK)} position={[(T.x0 + T.x1) / 2 + 0.2, 0.215, (T.z0 + T.z1) / 2 + 0.2]} scale={[T.x1 - T.x0 - 0.4, 0.03, T.z1 - T.z0 - 0.4]} receiveShadow />
       {[
@@ -114,8 +119,8 @@ function Shell() {
       {/* arcada bajo los bordes que dan a la plaza: el piso se lee elevado desde la fortaleza */}
       {ARCADE.map(([x, z]) => (
         <group key={`a${x}${z}`} position={[x, 0, z]}>
-          <mesh geometry={GEO.box} material={mat(STONE)} position={[0, -ELEV / 2 - 0.4, 0]} scale={[0.75, ELEV - 0.8, 0.75]} castShadow />
-          <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -ELEV + 0.3, 0]} scale={[1.05, 0.4, 1.05]} />
+          <mesh geometry={GEO.box} material={mat(STONE)} position={[0, -ELEV / 2 - 0.4, 0]} scale={[G ? 0.5 : 0.75, ELEV - 0.8, G ? 0.5 : 0.75]} castShadow />
+          <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -ELEV + 0.3, 0]} scale={[G ? 0.8 : 1.05, 0.4, G ? 0.8 : 1.05]} />
         </group>
       ))}
       <mesh geometry={GEO.box} material={mat(STONE)} position={[H - 0.3, -1.05, -CUT / 2]} scale={[0.6, 0.7, 2 * H - CUT]} />
@@ -161,7 +166,7 @@ function Keep() {
         </group>
       ))}
       {/* troneras en la cara que mira al frente */}
-      {[-12.6, -10.2].map((x) => (
+      {[-12.6 + G, -10.2 + G].map((x) => (
         <mesh key={x} geometry={GEO.box} material={dark} position={[x, -ELEV / 2, E + 0.01]} scale={[0.35, 1.1, 0.04]} />
       ))}
     </group>
@@ -202,12 +207,7 @@ function Instanced({ geometry, material, items, shadow = false }: { geometry: TH
 const WHITE = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 })
 
 /** Islas del patio (coordenadas del piso) para no poner mesas encima. */
-const ISLANDS: [number, number][] = [
-  [-3, 10],
-  [10, -3],
-  [-2, 2],
-  [5.5, 5.5],
-]
+const ISLANDS: [number, number][] = FOOD_ISLAND_AT
 
 /** Mesas, sillas, sombrillas, jardineras, palmeras, faroles, guirnaldas y comensales. */
 /** Mobiliario de la terraza (posiciones fijas). `footprints`: huellas en el piso para la navegación. */
@@ -257,8 +257,8 @@ function buildFurniture() {
 
   // Patio: rejilla que evita islas, frentes de locales, terraza y la llegada de las escaleras.
   // En damero (una sí, una no): el patio respira y se ven bien los locales y las islas.
-  for (let gx = 0, x = -5.5; x <= 12; x += 4.2, gx++)
-    for (let gz = 0, z = -5.5; z <= 12; z += 4.2, gz++) {
+  for (let gx = 0, x = -H + 8.5; x <= H - 2; x += 4.2, gx++)
+    for (let gz = 0, z = -H + 8.5; z <= H - 2; z += 4.2, gz++) {
       if ((gx + gz) % 2 === 1) continue
       if (ISLANDS.some(([ix, iz]) => Math.hypot(x - ix, z - iz) < 3.2)) continue
       if (x > FOOD_LAYOUT.arrival.x - 3 && z > FOOD_LAYOUT.arrival.z - 3.5) continue
@@ -274,8 +274,8 @@ function buildFurniture() {
     leaves.push({ p: [x, 0.2 + 0.95 * size, z], s: [1 * size, 1.15 * size, 1 * size] })
   }
   // Jardineras a lo largo de las barandas
-  for (const z of [-10, -4, 2]) plant(H - 1.2, z, 0.85)
-  for (const x of [-11, -5, 1.5]) plant(x, H - 1.2, 0.85)
+  for (let z = -H + 4; z <= H - 12; z += 6) plant(H - 1.2, z, 0.85)
+  for (let x = -H + 3; x <= H - 12.5; x += 6.5) plant(x, H - 1.2, 0.85)
   plant(T.x1 - 0.6, T.z0 + 0.9, 0.7)
   plant(T.x0 + 0.9, T.z1 - 0.6, 0.7)
 
@@ -287,14 +287,22 @@ function buildFurniture() {
     lampHeads.push({ p: [x, 2.85, z], s: [0.4, 0.4, 0.4] })
     pools.push({ p: [x, 0.24, z], s: [4, 4, 1], rx: -Math.PI / 2 })
   }
-  for (const [x, z] of [
-    [-6.5, -6.5],
-    [8, -6.5],
-    [-6.5, 7],
-    [H - 1, 9],
-    [8.5, H - 1],
-  ])
-    lamp(x, z)
+  const LAMPS: [number, number][] = G
+    ? [
+        [-8, -4],
+        [6, -5],
+        [-8, 9.5],
+        [H - 1, 10],
+        [9.5, H - 1],
+      ]
+    : [
+        [-6.5, -6.5],
+        [8, -6.5],
+        [-6.5, 7],
+        [H - 1, 9],
+        [8.5, H - 1],
+      ]
+  for (const [x, z] of LAMPS) lamp(x, z)
 
   // Guirnaldas sobre la pérgola y a lo largo de la baranda frontal
   for (let i = 0; i <= 10; i++) {
@@ -313,11 +321,11 @@ function buildFurniture() {
       bulbs.push({ p: [a[0] + (b[0] - a[0]) * u, top - Math.sin(u * Math.PI) * sag, a[1] + (b[1] - a[1]) * u], s: [0.11, 0.11, 0.11] })
     }
   }
-  strand([-6.5, -6.5], [8, -6.5], 14)
-  strand([-6.5, -6.5], [-6.5, 7], 13)
-  strand([-6.5, 7], [8.5, H - 1], 14)
-  strand([8, -6.5], [H - 1, 9], 13)
-  strand([-6.5, -6.5], [H - 1, 9], 20, 3.9, 0.5)
+  strand(LAMPS[0], LAMPS[1], 14)
+  strand(LAMPS[0], LAMPS[2], 13)
+  strand(LAMPS[2], LAMPS[4], 14)
+  strand(LAMPS[1], LAMPS[3], 13)
+  strand(LAMPS[0], LAMPS[3], 20, 3.9, 0.5)
 
   return { tops, legs, stools, poles, canopies, pots, leaves, trunks, fronds, lampPoles, lampHeads, pools, bodies, heads, hats, bulbs, candles, footprints }
 }
@@ -381,7 +389,7 @@ export function FoodCourtLabels() {
   const terrace = useMemo(() => getGlassPill('Terraza', { dot: '#d4842e', dark: night }), [night])
   return (
     <>
-      <ScreenLabel label={title} position={[3, 5.4, 3]} pixelHeight={35} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      <ScreenLabel label={title} position={[H - 11, 5.4, H - 11]} pixelHeight={35} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       <ScreenLabel label={terrace} position={[(T.x0 + T.x1) / 2, 4, (T.z0 + T.z1) / 2]} pixelHeight={24} minZoomRatio={0.9} priority={LABEL_PRIORITY.section} />
     </>
   )

@@ -1,5 +1,4 @@
 import { openCourtOrClaim, useCourtOperator } from '../football/open'
-import { PISOS_PREVIEW, PisosPropuesta } from './PisosPropuesta'
 import { useMemo } from 'react'
 import { COURT_SPACE, FLOORS, FLOOR_BY_ID, FLOOR_OF_ZONE, SPACES, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import type { FloorConfig, Product, SpaceSlot } from '../domain/types'
@@ -150,7 +149,6 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         <Stadium reduceMotion={reduceMotion} quality={quality} />
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
-        {PISOS_PREVIEW && <PisosPropuesta />}
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
         <Batch version="jardines">
           <Diorama />

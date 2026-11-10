@@ -1,4 +1,5 @@
 import { COURT, SPORTS_HALF } from '../football/config'
+import { P2_GROW as G } from './preview'
 import { ENT_CENTER, ENT_COLOR, ENT_SLOTS, ENT_SUGGESTED, ENT_TRACK, ENT_UNIT } from '../entertainment/config'
 import type { FloorConfig, FloorId, MallConfig, SpaceSlot, SpaceType, SpaceTypeInfo, ZoneConfig, ZoneId } from '../domain/types'
 
@@ -178,11 +179,11 @@ export const LANE_SPREAD = [-0.45, -0.15, 0.15, 0.45]
 // Plataforma elevada en el cuadrante del fondo de la fortaleza (detrás de la plaza, entre
 // Lifestyle y Moda). Coordenadas del piso: centro de la losa = origen del piso.
 export const FOOD_LAYOUT = {
-  half: 14,
+  half: 14 + G,
   /** Terraza con pérgola en la esquina del fondo. */
-  terrace: { x0: -14, x1: -7.4, z0: -14, z1: -7.4 },
+  terrace: { x0: -14 - G, x1: -7.4 - G, z0: -14 - G, z1: -7.4 - G },
   /** Donde llegan las escaleras: la esquina del frente de la terraza (hacia la plaza). */
-  arrival: { x: 11.2, z: 11.2 },
+  arrival: { x: 11.2 + G, z: 11.2 + G },
   /** Esa esquina va recortada en diagonal (chaflán): la escalera llega derecho a un borde recto. */
   arrivalCut: 4,
 } as const
@@ -192,7 +193,7 @@ export const FOOD_LAYOUT = {
  * sin taparlos: su losa empieza justo donde terminan esos locales (|x|, |z| > 9.5) y se apoya,
  * hacia afuera, en un torreón que agranda el castillo sobre el baluarte del fondo.
  */
-const P2_OFFSET: [number, number] = [-23.75, -23.75]
+const P2_OFFSET: [number, number] = [-23.75 - G, -23.75 - G]
 const P2_ELEVATION = 7.2
 
 /**
@@ -248,18 +249,45 @@ interface SlotDef {
  * Espacios de la terraza: locales en los dos bordes del fondo (mirando hacia la plaza) e islas
  * en el patio. Se conservan los IDs E1–E10: las asignaciones guardadas siguen valiendo.
  */
-const FOOD_SLOTS: SlotDef[] = [
-  { n: 1, type: 'local', at: [-4, -11.3], facing: 0 },
-  { n: 2, type: 'local', at: [3, -11.3], facing: 0 },
-  { n: 3, type: 'local', at: [10, -11.3], facing: 0 },
-  { n: 4, type: 'local', at: [-11.3, -4], facing: Math.PI / 2 },
-  { n: 5, type: 'local', at: [-11.3, 3], facing: Math.PI / 2 },
-  { n: 6, type: 'local', at: [-11.3, 10], facing: Math.PI / 2 },
-  { n: 7, type: 'island', at: [-3, 10], facing: Math.PI / 4 },
-  { n: 8, type: 'island', at: [10, -3], facing: Math.PI / 4 },
-  { n: 9, type: 'island', at: [-2, 2], facing: Math.PI / 4 },
-  { n: 10, type: 'island', at: [5.5, 5.5], facing: Math.PI / 4 },
-]
+const FOOD_SLOTS: SlotDef[] =
+  G === 0
+    ? [
+        { n: 1, type: 'local', at: [-4, -11.3], facing: 0 },
+        { n: 2, type: 'local', at: [3, -11.3], facing: 0 },
+        { n: 3, type: 'local', at: [10, -11.3], facing: 0 },
+        { n: 4, type: 'local', at: [-11.3, -4], facing: Math.PI / 2 },
+        { n: 5, type: 'local', at: [-11.3, 3], facing: Math.PI / 2 },
+        { n: 6, type: 'local', at: [-11.3, 10], facing: Math.PI / 2 },
+        { n: 7, type: 'island', at: [-3, 10], facing: Math.PI / 4 },
+        { n: 8, type: 'island', at: [10, -3], facing: Math.PI / 4 },
+        { n: 9, type: 'island', at: [-2, 2], facing: Math.PI / 4 },
+        { n: 10, type: 'island', at: [5.5, 5.5], facing: Math.PI / 4 },
+      ]
+    : [
+        // losa más grande: cuatro locales en el borde del fondo y cuatro en el del oeste (mirando al patio)
+        { n: 1, type: 'local', at: [-8.5, -16.3], facing: 0 },
+        { n: 2, type: 'local', at: [-1.5, -16.3], facing: 0 },
+        { n: 3, type: 'local', at: [5.5, -16.3], facing: 0 },
+        { n: 4, type: 'local', at: [-16.3, -8.5], facing: Math.PI / 2 },
+        { n: 5, type: 'local', at: [-16.3, -1.5], facing: Math.PI / 2 },
+        { n: 6, type: 'local', at: [-16.3, 5.5], facing: Math.PI / 2 },
+        // islas del patio (E7–E10 se conservan) y las nuevas
+        { n: 7, type: 'island', at: [-3, 12.5], facing: Math.PI / 4 },
+        { n: 8, type: 'island', at: [14.5, -3], facing: Math.PI / 4 },
+        { n: 9, type: 'island', at: [-3.5, 3.5], facing: Math.PI / 4 },
+        { n: 10, type: 'island', at: [8, 7], facing: Math.PI / 4 },
+        { n: 11, type: 'local', at: [12.5, -16.3], facing: 0 },
+        { n: 12, type: 'local', at: [-16.3, 12.5], facing: Math.PI / 2 },
+        { n: 13, type: 'island', at: [-6, -9], facing: Math.PI / 4 },
+        { n: 14, type: 'island', at: [2, -9], facing: Math.PI / 4 },
+        { n: 15, type: 'island', at: [10, -9], facing: Math.PI / 4 },
+        { n: 16, type: 'island', at: [-10, 0], facing: Math.PI / 4 },
+        { n: 17, type: 'island', at: [-10, 8], facing: Math.PI / 4 },
+        { n: 18, type: 'island', at: [4, 15], facing: Math.PI / 4 },
+        { n: 19, type: 'island', at: [14.5, 5], facing: Math.PI / 4 },
+        { n: 20, type: 'island', at: [-9, 15.5], facing: Math.PI / 4 },
+      ]
+export const FOOD_ISLAND_AT: [number, number][] = FOOD_SLOTS.filter((t) => t.type === 'island').map((t) => t.at)
 
 export const MALL: MallConfig = {
   id: 'cartagena-mall',
@@ -288,8 +316,8 @@ export const MALL: MallConfig = {
       elevation: P2_ELEVATION,
       offset: P2_OFFSET,
       layout: 'foodcourt',
-      homeZoom: 1.7,
-      bounds: 14,
+      homeZoom: G ? 1.45 : 1.7,
+      bounds: 14 + G,
       zones: [FOOD_ZONE],
     },
   ],
