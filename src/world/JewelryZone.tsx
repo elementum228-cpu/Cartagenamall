@@ -74,7 +74,11 @@ function Post({ x, z }: { x: number; z: number }) {
 
 
 const AX = X0 - 0.3 // cara exterior del muro del fondo
-const STAIR_ROOM = { len: 6.4, half: 2.0 }
+const STAIR_ROOM = { len: 7.2, half: 2.0 }
+/** Nivel de la terraza (segundo piso nuevo) sobre el piso de la joyería. */
+const TOP = 4.5
+const SW = 5.2 // altura de los muros de la escalera
+const STEPS = 20
 
 /** Puerta en la pared del fondo, al final de la alfombra, y el vestíbulo donde arranca la escalera al segundo piso. */
 function StairDoor() {
@@ -83,12 +87,19 @@ function StairDoor() {
   const wall = mat('#f1e9d8')
   const stone = mat('#efe3cc')
   const goldM = mat(GOLD, { rough: 0.3 })
+  const black = mat('#1b1d22', { rough: 0.4 })
   const x1 = AX - STAIR_ROOM.len
   const mid = (AX + x1) / 2
-  const steps = 9
-  const run = 4.6
-  const stepL = run / steps
-  const sx0 = AX - 1.0
+  const tread = 0.3
+  const rise = TOP / STEPS
+  const run = STEPS * tread
+  const sx0 = AX - 0.9
+  const slope = Math.atan2(TOP, run)
+  const rail = Math.hypot(run, TOP)
+  const TX0 = x1 - 0.2 // la terraza empieza donde termina la escalera
+  const TLEN = 8.6
+  const TZ = 6.4 // semiancho de la terraza
+  const tmid = TX0 - TLEN / 2
   return (
     <>
       {/* marco dorado de la puerta */}
@@ -98,44 +109,70 @@ function StairDoor() {
       <mesh geometry={GEO.box} material={goldM} position={[X0 - 0.1, 3.35, 0]} scale={[0.5, 0.35, 4.0]} castShadow />
       <mesh geometry={GEO.box} material={mat('#7a1620')} position={[X0 + 0.16, 3.1, 0]} scale={[0.06, 0.2, 3.4]} />
       <mesh geometry={GEO.box} material={wall} position={[X0 - 0.15, 3.5, 0]} scale={[0.3, 0.6, 3.5]} />
-      <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[X0 - 0.15, WH + 0.08, 0]} scale={[0.5, 0.18, 3.5]} />
+      <mesh geometry={GEO.box} material={goldM} position={[X0 - 0.15, WH + 0.08, 0]} scale={[0.5, 0.18, 3.5]} />
       {/* losa de piedra bajo el vestíbulo (sobre el mar) */}
       <mesh geometry={GEO.box} material={mat(STONE[0])} position={[mid, (Y - 1.5) / 2, 0]} scale={[STAIR_ROOM.len + 0.6, Y + 1.5, STAIR_ROOM.half * 2 + 0.8]} castShadow receiveShadow />
       <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[mid, -0.9, 0]} scale={[STAIR_ROOM.len + 1.2, 1.2, STAIR_ROOM.half * 2 + 1.4]} />
       <mesh geometry={GEO.box} material={mat('#f1ebdf', { rough: 0.3 })} position={[mid, Y + 0.02, 0]} scale={[STAIR_ROOM.len, 0.06, STAIR_ROOM.half * 2]} receiveShadow />
       <mesh geometry={GEO.box} material={CARPET} position={[X0 - 1.2, Y + 0.115, 0]} scale={[2.6, 0.02, 2.8]} />
-      {/* paredes del vestíbulo y muro del fondo */}
+      {/* muros altos de la escalera, con cornisa dorada y luz */}
       {[-1, 1].map((sd) => (
         <group key={sd}>
-          <mesh geometry={GEO.box} material={wall} position={[mid, WH / 2, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len, WH, 0.3]} castShadow receiveShadow />
-          <mesh geometry={GEO.box} material={goldM} position={[mid, WH + 0.08, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len + 0.2, 0.18, 0.5]} />
+          <mesh geometry={GEO.box} material={wall} position={[mid, SW / 2, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len, SW, 0.3]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={goldM} position={[mid, SW + 0.08, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len + 0.2, 0.18, 0.5]} />
           <mesh geometry={GEO.box} material={goldM} position={[mid, 0.3, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len + 0.1, 0.35, 0.42]} />
           <mesh geometry={GEO.box} material={strip} position={[mid, WH - 0.5, sd * STAIR_ROOM.half]} scale={[STAIR_ROOM.len - 0.4, 0.1, 0.05]} />
         </group>
       ))}
-      <mesh geometry={GEO.box} material={wall} position={[x1 - 0.15, WH / 2, 0]} scale={[0.3, WH, STAIR_ROOM.half * 2 + 0.6]} castShadow />
-      <mesh geometry={GEO.box} material={goldM} position={[x1 - 0.15, WH + 0.08, 0]} scale={[0.5, 0.18, STAIR_ROOM.half * 2 + 0.8]} />
-      {/* primeros escalones de piedra que suben hacia el segundo piso, con luz en cada uno */}
-      {Array.from({ length: steps }, (_, i) => {
-        const h = 0.2 * (i + 1)
-        const x = sx0 - (i + 0.5) * stepL
+      {/* escalera de piedra: sube desde la puerta hasta la terraza, con luz en cada escalón */}
+      {Array.from({ length: STEPS }, (_, i) => {
+        const h = rise * (i + 1)
+        const x = sx0 - (i + 0.5) * tread
         return (
           <group key={i}>
-            <mesh geometry={GEO.box} material={stone} position={[x, Y + h / 2, 0]} scale={[stepL + 0.01, h, STAIR_ROOM.half * 2 - 0.5]} castShadow receiveShadow />
-            <mesh geometry={GEO.box} material={strip} position={[x + stepL / 2 + 0.005, Y + h - 0.07, 0]} scale={[0.02, 0.05, STAIR_ROOM.half * 2 - 0.9]} />
+            <mesh geometry={GEO.box} material={stone} position={[x, Y + h / 2, 0]} scale={[tread + 0.01, h, STAIR_ROOM.half * 2 - 0.5]} castShadow receiveShadow />
+            <mesh geometry={GEO.box} material={strip} position={[x + tread / 2 + 0.005, Y + h - 0.07, 0]} scale={[0.02, 0.05, STAIR_ROOM.half * 2 - 0.9]} />
           </group>
         )
       })}
       {/* baranda de vidrio y metal negro a cada lado */}
       {[-1, 1].map((sd) => (
         <group key={`r${sd}`}>
-          <mesh geometry={GEO.box} material={GLASS} position={[sx0 - run / 2, Y + 0.95, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, Math.atan2(0.2 * steps, run)]} scale={[Math.hypot(run, 0.2 * steps), 0.8, 0.04]} />
-          <mesh geometry={GEO.box} material={mat('#1b1d22', { rough: 0.4 })} position={[sx0 - run / 2, Y + 1.4, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, Math.atan2(0.2 * steps, run)]} scale={[Math.hypot(run, 0.2 * steps), 0.05, 0.06]} />
+          <mesh geometry={GEO.box} material={GLASS} position={[sx0 - run / 2, Y + TOP / 2 + 0.55, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, slope]} scale={[rail, 0.9, 0.04]} />
+          <mesh geometry={GEO.box} material={black} position={[sx0 - run / 2, Y + TOP / 2 + 1.02, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, slope]} scale={[rail, 0.05, 0.06]} />
         </group>
       ))}
-      {/* fondo luminoso: invita a seguir subiendo */}
-      <mesh geometry={GEO.box} material={warm} position={[x1 + 0.02, 2.3, 0]} scale={[0.05, 2.2, 2.2]} />
-      <mesh geometry={GEO.box} material={goldM} position={[x1 + 0.05, 2.3, 0]} scale={[0.1, 2.5, 2.6]} />
+      {/* iluminación cálida sobre la escalera */}
+      <mesh geometry={GEO.box} material={warm} position={[mid, SW - 0.35, 0]} scale={[STAIR_ROOM.len - 0.6, 0.06, 0.3]} />
+      {/* terraza: plataforma de piedra clara sobre el mar, a la altura del segundo piso */}
+      <mesh geometry={GEO.box} material={mat('#f1ebdf', { rough: 0.45 })} position={[tmid + 0.2, Y + TOP - 0.17, 0]} scale={[TLEN + 0.4, 0.34, TZ * 2]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={goldM} position={[tmid + 0.2, Y + TOP - 0.33, 0]} scale={[TLEN + 0.5, 0.06, TZ * 2 + 0.1]} />
+      <mesh geometry={GEO.box} material={strip} position={[TX0 - TLEN - 0.02, Y + TOP - 0.25, 0]} scale={[0.04, 0.05, TZ * 2]} />
+      {/* columnas finas que la sostienen */}
+      {[-1, 1].flatMap((sd) => [TX0 - 0.6, TX0 - TLEN + 0.5].map((x) => ({ x, z: sd * (TZ - 0.5) }))).map(({ x, z }) => (
+        <mesh key={`${x}${z}`} geometry={GEO.cylinder} material={black} position={[x, (Y + TOP - 0.34) / 2, z]} scale={[0.32, Y + TOP - 0.34, 0.32]} castShadow />
+      ))}
+      {/* barandas de vidrio con pasamanos negro en el borde de la terraza */}
+      {[
+        [TX0 - TLEN + 0.1, 0, 0.05, TZ * 2],
+        [tmid + 0.2, -TZ + 0.1, TLEN, 0.05],
+        [tmid + 0.2, TZ - 0.1, TLEN, 0.05],
+      ].map(([x, z, w, d], i) => (
+        <group key={`t${i}`}>
+          <mesh geometry={GEO.box} material={GLASS} position={[x, Y + TOP + 0.5, z]} scale={[w, 1, d]} />
+          <mesh geometry={GEO.box} material={black} position={[x, Y + TOP + 1.02, z]} scale={[Math.max(w, 0.07), 0.06, Math.max(d, 0.07)]} />
+        </group>
+      ))}
+      {/* un poco de vida: jardineras, banca y faroles */}
+      {[-1, 1].map((sd) => (
+        <group key={`j${sd}`}>
+          <mesh geometry={GEO.box} material={mat('#8a6a4a')} position={[TX0 - TLEN + 1.1, Y + TOP + 0.3, sd * (TZ - 1)]} scale={[1.1, 0.6, 1.1]} castShadow />
+          <mesh geometry={GEO.sphere} material={mat('#4da862')} position={[TX0 - TLEN + 1.1, Y + TOP + 0.95, sd * (TZ - 1)]} scale={0.95} castShadow />
+          <mesh geometry={GEO.cylinder} material={black} position={[TX0 - 2.5, Y + TOP + 1.2, sd * (TZ - 0.5)]} scale={[0.08, 2.4, 0.08]} />
+          <mesh geometry={GEO.sphereSmooth} material={warm} position={[TX0 - 2.5, Y + TOP + 2.5, sd * (TZ - 0.5)]} scale={0.34} />
+        </group>
+      ))}
+      <mesh geometry={GEO.box} material={mat('#8a6a4a')} position={[TX0 - 4.5, Y + TOP + 0.25, 0]} scale={[0.5, 0.45, 2.4]} />
     </>
   )
 }
@@ -397,7 +434,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-1">
+      <Batch version="joyeria-escalera-2">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
@@ -409,7 +446,8 @@ export function JewelryZone() {
       <SecurityCam x={-46.5} z={-5.2} base={0} phase={2} />
       <SecurityCam x={-51.8} z={-3.4} base={Math.PI / 2} phase={4} />
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
-      <pointLight position={[-55, 2.8, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
+      <pointLight position={[-56, 3.2, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
+      <pointLight position={[-63, 6.8, 0]} color="#ffe2a8" intensity={night ? 16 : 3} distance={11} decay={2} />
       {[-37, -44, -50].map((x) => (
         <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
       ))}
