@@ -189,8 +189,8 @@ function GlassUnder() {
       <mesh geometry={GEO.plane} material={glassSheen()} position={[0, 0, 0.05]} scale={[len, h, 1]} />
       <mesh geometry={GEO.box} material={frame} position={[0, h / 2 - 0.03, 0]} scale={[len, 0.08, 0.12]} />
       <mesh geometry={GEO.box} material={frame} position={[0, -h / 2 + 0.03, 0]} scale={[len, 0.08, 0.12]} />
-      {Array.from({ length: Math.round(len / 3) + 1 }, (_, i) => (
-        <mesh key={i} geometry={GEO.box} material={frame} position={[-len / 2 + (i * len) / Math.round(len / 3), 0, 0]} scale={[0.07, h, 0.12]} />
+      {Array.from({ length: Math.max(1, Math.round(len / 3)) + 1 }, (_, i) => (
+        <mesh key={i} geometry={GEO.box} material={frame} position={[-len / 2 + (i * len) / Math.max(1, Math.round(len / 3)), 0, 0]} scale={[0.07, h, 0.12]} />
       ))}
     </group>
   )
@@ -198,6 +198,9 @@ function GlassUnder() {
     <>
       {glass(east, H - 0.6, -H + east / 2, Math.PI / 2, 'g-este')}
       {glass(south, -H + south / 2, H - 0.6, 0, 'g-sur')}
+      {/* en el chaflán de las escaleras: dos tramos a cada lado, dejando libre el paso de la escalera eléctrica */}
+      {glass(1.3, H - 0.6 - 0.46, H - CUT - 1 + 0.46, Math.PI / 4, 'g-ch1')}
+      {glass(1.3, H - CUT - 1 + 0.46, H - 0.6 - 0.46, Math.PI / 4, 'g-ch2')}
     </>
   )
 }

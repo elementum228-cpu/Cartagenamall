@@ -468,10 +468,10 @@ export const P1 = FLOORS[0]
 export const JEWELRY_SPACES: SpaceSlot[] = JOYERIA
   ? (
       [
-        [-38.5, -4.7, 0],
-        [-45.5, -4.7, 0],
-        [-38.5, 4.7, Math.PI],
-        [-45.5, 4.7, Math.PI],
+        [-38.5, -3.7, 0],
+        [-45.5, -3.7, 0],
+        [-38.5, 3.7, Math.PI],
+        [-45.5, 3.7, Math.PI],
       ] as [number, number, number][]
     ).map(([x, z, r], i) => ({ id: `P1-J${i + 1}`, floorId: 'P1', zoneId: 'A' as ZoneId, type: 'island' as SpaceType, label: `J-0${i + 1}`, position: [x, z] as [number, number], rotation: r, size: SPACE_TYPES.island.size }))
   : []

@@ -13,9 +13,9 @@ import { glowMat } from './night'
 // Zona de joyería (propuesta): plataforma de mármol al otro lado de una puerta en la muralla oeste, con alfombra roja,
 // cordones, dos vigilantes y cuatro locales pequeños (los reclamables van aparte, ver JEWELRY_SPACES).
 const CX = -42.4
-const CZ = -0.5
+const CZ = 0
 const W = 19.6
-const D = 15.4
+const D = 11
 const X0 = CX - W / 2
 const WH = 3.8
 const Y = 0.12
@@ -30,9 +30,9 @@ function useMarble() {
     const g = c.getContext('2d')!
     for (let i = 0; i < 4; i++)
       for (let j = 0; j < 4; j++) {
-        g.fillStyle = (i + j) % 2 ? '#f3eee2' : '#d9d0bb'
+        g.fillStyle = (i + j) % 2 ? '#fbf9f4' : '#eeeae0'
         g.fillRect(i * 64, j * 64, 64, 64)
-        g.strokeStyle = 'rgba(120,105,80,0.25)'
+        g.strokeStyle = 'rgba(150,150,160,0.28)'
         for (let k = 0; k < 3; k++) {
           g.beginPath()
           g.moveTo(i * 64 + ((k * 23 + i * 7) % 64), j * 64)
@@ -67,9 +67,9 @@ function Patrol({ z, phase }: { z: number; phase: number }) {
     const el = g.current
     if (!el) return
     const L = 14.5
-    const t = ((clock.elapsedTime * 0.35 + phase) % 2 + 2) % 2
+    const t = ((clock.elapsedTime * 0.14 + phase) % 2 + 2) % 2
     const u = t < 1 ? t : 2 - t
-    el.position.set(-34.6 - u * L, Y + Math.abs(Math.sin(clock.elapsedTime * 6 + phase * 5)) * 0.05, z)
+    el.position.set(-34.6 - u * L, Y + Math.abs(Math.sin(clock.elapsedTime * 3 + phase * 5)) * 0.04, z)
     el.rotation.y = t < 1 ? Math.PI / 2 : -Math.PI / 2
   })
   return (
@@ -95,6 +95,10 @@ function Shell() {
       <mesh geometry={GEO.box} material={mat(STONE[0])} position={[CX, (Y - 1.5) / 2, CZ]} scale={[W + 1, Y + 1.5, D + 1]} castShadow receiveShadow />
       <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[CX, -0.9, CZ]} scale={[W + 1.6, 1.2, D + 1.6]} />
       <mesh geometry={GEO.box} material={mat(CORDON)} position={[CX, Y - 0.04, CZ]} scale={[W + 1.1, 0.12, D + 1.1]} />
+      {/* paso completo bajo la puerta: sin hueco de agua entre el mall y la plataforma */}
+      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[-31.2, 0.05, 0]} scale={[4.6, 0.3, 5.4]} receiveShadow />
+      <mesh geometry={GEO.box} material={marble} position={[-31.2, 0.21, 0]} scale={[4.6, 0.04, 5.4]} receiveShadow />
+      <mesh geometry={GEO.box} material={mat(RED, { rough: 0.95 })} position={[-31.2, 0.24, 0]} scale={[4.6, 0.03, 2.8]} />
       {/* mármol, borde dorado y alfombra roja hasta el fondo */}
       <mesh geometry={GEO.box} material={marble} position={[CX, Y + 0.02, CZ]} scale={[W, 0.06, D]} receiveShadow />
       {[
@@ -151,6 +155,37 @@ function Shell() {
   )
 }
 
+const COATS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95']
+
+/** Visitantes que bajan por el pasillo de Lifestyle, cruzan la puerta de la muralla, recorren la alfombra y regresan. */
+function Walkers() {
+  const refs = useRef<(THREE.Group | null)[]>([])
+  const people = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ phase: i / 6, lane: (i % 3 - 1) * 0.9, speed: 0.045 + (i % 3) * 0.006 })), [])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    people.forEach((p, i) => {
+      const el = refs.current[i]
+      if (!el) return
+      const u = (((t * p.speed + p.phase) % 1) + 1) % 1
+      const going = u < 0.5
+      const f = going ? u * 2 : (1 - u) * 2
+      const x = -16 - f * 33
+      el.position.set(x, 0.2 + Math.abs(Math.sin(t * 5 + i * 2)) * 0.04, p.lane + (going ? 0.4 : -0.4))
+      el.rotation.y = going ? Math.PI / 2 : -Math.PI / 2
+    })
+  })
+  return (
+    <>
+      {people.map((_, i) => (
+        <group key={i} ref={(g) => (refs.current[i] = g)} scale={1.5} userData={{ dynamic: true }}>
+          <mesh geometry={GEO.capsule} material={mat(COATS[i % COATS.length])} position={[0, 0.43, 0]} castShadow />
+          <mesh geometry={GEO.sphereSmooth} material={mat(i % 2 ? '#c58c64' : '#8d5a3b')} position={[0, 0.95, 0]} scale={0.36} castShadow />
+        </group>
+      ))}
+    </>
+  )
+}
+
 export function JewelryZone() {
   const night = useIsNight()
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva · propuesta', dark: night }), [night])
@@ -162,9 +197,10 @@ export function JewelryZone() {
       {/* dos vigilantes que patrullan la alfombra */}
       <Patrol z={-2.3} phase={0} />
       <Patrol z={2.3} phase={1} />
+      <Walkers />
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       {[-37, -44, -50].map((x) => (
-        <pointLight key={x} position={[x, 3.4, CZ]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
+        <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
       ))}
     </group>
   )
