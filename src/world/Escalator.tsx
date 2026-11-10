@@ -9,7 +9,7 @@ import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
 import { getLabel } from './labelTexture'
 import { GEO, GLASS, PALETTE, mat } from './materials'
-import { glowMat } from './night'
+import { glowMat, lightPoolMat, nightVolumeMat } from './night'
 
 const FLOOR_TOP = 0.2 // altura de la superficie de cada piso respecto a su origen
 const STEPS = ESCALATOR_STEPS
@@ -38,6 +38,7 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
   const centerX = (ESCALATOR.lanesX[0] + ESCALATOR.lanesX[1]) / 2
 
   const marks = useRef<THREE.InstancedMesh>(null)
+  const edges = useRef<THREE.InstancedMesh>(null)
   const riderBodies = useRef<THREE.InstancedMesh>(null)
   const riderHeads = useRef<THREE.InstancedMesh>(null)
   const riderHats = useRef<THREE.InstancedMesh>(null)
@@ -82,6 +83,23 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
         }
       })
       m.instanceMatrix.needsUpdate = true
+    }
+    // filo luminoso de cada escalón (de noche marca el ritmo de la escalera)
+    const ed = edges.current
+    if (ed) {
+      o.rotation.set(0, 0, 0)
+      o.scale.set(w - 0.26, 0.03, 0.07)
+      ESCALATOR.lanesX.forEach((lx, lane) => {
+        for (let i = 0; i < STEPS; i++) {
+          const k = lane === 0 ? i + phase : i + 1 - phase
+          stepAt(lx, k / STEPS)
+          o.position.y += 0.035
+          o.position.z += run / STEPS / 2 - 0.04
+          o.updateMatrix()
+          ed.setMatrixAt(lane * STEPS + i, o.matrix)
+        }
+      })
+      ed.instanceMatrix.needsUpdate = true
     }
     // marcas de los pasamanos, a la misma velocidad
     const mk = marks.current
@@ -189,11 +207,20 @@ export function Escalators({ showUpSign }: { showUpSign: boolean }) {
             <group key={s} position={[(s * w) / 2, 0.45, 0]}>
               <mesh geometry={GEO.box} material={GLASS} scale={[0.05, 0.85, length]} />
               <mesh geometry={GEO.box} material={rail} position={[0, 0.45, 0]} scale={[0.1, 0.07, length + 0.3]} />
-              <mesh geometry={GEO.box} material={glowMat('#9fd8ff', 1.6, { dayGlow: 0.15 })} position={[0, -0.4, 0]} scale={[0.06, 0.04, length]} />
+              <mesh geometry={GEO.box} material={glowMat('#9fd8ff', 2.4, { dayGlow: 0.15 })} position={[0, -0.4, 0]} scale={[0.09, 0.06, length]} />
+              {/* de noche el vidrio del balaustre se ilumina desde abajo y el pasamanos brilla */}
+              <mesh geometry={GEO.box} material={nightVolumeMat('#bfe4ff', 0.34)} scale={[0.07, 0.8, length]} raycast={() => null} />
+              <mesh geometry={GEO.box} material={glowMat('#ffe2b0', 1.3)} position={[0, 0.41, 0]} scale={[0.05, 0.02, length]} raycast={() => null} />
             </group>
           ))}
+          {/* baño de luz cálida a lo largo de la rampa */}
+          <mesh geometry={GEO.plane} material={lightPoolMat('#ffd9a0', 0.55)} position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[w * 1.25, length * 1.05, 1]} renderOrder={2} raycast={() => null} />
         </group>
       ))}
+      <instancedMesh ref={edges} args={[GEO.box, glowMat('#ffd27a', 1.8, { dayGlow: 0.05 }), STEPS * 2]} frustumCulled={false} raycast={() => null} />
+      {/* halos en el arranque y la llegada, para que se lea dónde empieza y termina la escalera */}
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffd29a', 0.85)} position={[centerX, FLOOR_TOP + 0.16, ESCALATOR.bottomZ + 1.2]} rotation={[-Math.PI / 2, 0, 0]} scale={[5.4, 4.2, 1]} renderOrder={2} raycast={() => null} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffd29a', 0.75)} position={[centerX, FLOOR_TOP + rise + 0.16, ESCALATOR.topZ - 0.9]} rotation={[-Math.PI / 2, 0, 0]} scale={[5.2, 3.6, 1]} renderOrder={2} raycast={() => null} />
       <instancedMesh ref={steps} args={[GEO.box, mat('#8f959d'), STEPS * 2]} frustumCulled={false} />
       <instancedMesh ref={marks} args={[GEO.box, mat('#f5b544'), RAIL_MARKS * 4]} frustumCulled={false} raycast={() => null} />
       <instancedMesh ref={riderBodies} args={[GEO.capsule, mat('#ffffff'), RIDERS]} frustumCulled={false} raycast={() => null} />

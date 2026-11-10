@@ -1,5 +1,5 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { Bell, ChevronLeft, ChevronRight, Clock, Heart, Lock, Newspaper, Share2, Star, Ticket, X } from 'lucide-react'
+import { AnimatePresence, animate, motion, useMotionValue, usePresence, useReducedMotion, useTransform } from 'motion/react'
+import { Bell, ChevronLeft, ChevronRight, Clock, Heart, Lock, Newspaper, Pointer, Share2, Star, Ticket, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useUI } from '../state/ui'
 import { useEditionData, type EdPromo } from './edition'
@@ -399,24 +399,119 @@ function NextPage({ onActivate }: { onActivate: () => void }) {
   )
 }
 
-/** Hoja del periódico que se pliega y despliega: la mitad de abajo gira sobre el pliegue central, como un diario de verdad. */
-function Flap({ delay = 0.5 }: { delay?: number }) {
+/** Forma del pliegue: 0 = doblado (solo se ve la mitad de arriba), 1 = abierto. */
+const UNFOLD_EASE = [0.25, 0.85, 0.3, 1] as const
+
+/**
+ * Cómo se abre un diario de verdad: llega doblado por la mitad, con el cabezote a la vista, y la mitad de abajo
+ * baja girando sobre el pliegue. Mientras gira se ve en escorzo (más oscura cuanto más inclinada) y su borde
+ * avanza hasta quedar plana; el pliegue deja una sombra que se desvanece.
+ */
+function useFold() {
+  const fold = useMotionValue(0)
+  // ángulo de la mitad de abajo: 90° (de canto, invisible) → 0° (plana)
+  const reveal = useTransform(fold, (v) => Math.cos(((1 - v) * Math.PI) / 2))
+  const clipPath = useTransform(reveal, (r) => `inset(0% 0% ${(50 * (1 - r)).toFixed(3)}% 0%)`)
+  const edgeTop = useTransform(reveal, (r) => `${50 + 50 * r}%`)
+  const shade = useTransform(reveal, (r) => 0.55 * (1 - r))
+  const edgeOpacity = useTransform(fold, [0, 0.05, 0.9, 1], [0, 1, 1, 0])
+  const crease = useTransform(fold, [0, 0.7, 1], [1, 0.6, 0])
+  return { fold, clipPath, edgeTop, shade, edgeOpacity, crease }
+}
+
+const SWIPED_KEY = 'cm:hoy-swiped'
+const hasSwiped = () => {
+  try {
+    return localStorage.getItem(SWIPED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Invitación a pasar de hoja: un dedo que arrastra hacia la izquierda, con la flecha de "hay más". */
+function SwipeHint({ wide }: { wide: boolean }) {
   return (
     <motion.div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 top-1/2 z-40 h-1/2 origin-top"
-      style={{ ...paper, transformPerspective: 2200, backfaceVisibility: 'visible', boxShadow: '0 -30px 60px -20px rgba(0,0,0,.45)' }}
-      initial={{ rotateX: 178, opacity: 1 }}
-      animate={{ rotateX: 0, opacity: [1, 1, 0], transition: { rotateX: { delay, duration: 1.05, ease: [0.3, 0.7, 0.2, 1] }, opacity: { delay, duration: 1.2, times: [0, 0.92, 1] } } }}
-      exit={{ rotateX: 178, opacity: [0, 1, 1], transition: { rotateX: { duration: 0.8, ease: [0.5, 0, 0.7, 0.3] }, opacity: { duration: 0.2 } } }}
+      className="pointer-events-none absolute right-3 bottom-[calc(76px+env(safe-area-inset-bottom))] z-30 flex items-center gap-2 rounded-full py-2 pr-3 pl-2 text-[12.5px] font-extrabold text-white shadow-xl"
+      style={{ background: INK }}
+      initial={{ opacity: 0, y: 14, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.92, transition: { duration: 0.2 } }}
+      transition={{ type: 'spring', stiffness: 320, damping: 24 }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/5 to-transparent" />
+      <span className="relative grid size-8 place-items-center overflow-hidden rounded-full" style={{ background: MUSTARD, color: INK }}>
+        <motion.span animate={{ x: [7, -7, -7, 7], opacity: [0, 1, 1, 0], rotate: [-8, -14, -14, -8] }} transition={{ duration: 1.4, repeat: Infinity, times: [0, 0.35, 0.8, 1], ease: 'easeInOut' }}>
+          <Pointer className="size-4" strokeWidth={2.6} />
+        </motion.span>
+      </span>
+      {wide ? 'Pasa la hoja' : 'Desliza para ver más'}
+      <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}>
+        <ChevronRight className="size-4" strokeWidth={3} />
+      </motion.span>
     </motion.div>
   )
 }
 
 function Reader() {
   const close = useHoy((s) => s.close)
+  const reduce = useReducedMotion()
+  const [isPresent, safeToRemove] = usePresence()
+  const { fold, clipPath, edgeTop, shade, edgeOpacity, crease } = useFold()
+  // el diario doblado: entra desde abajo, ligeramente inclinado, y se asienta
+  const backdrop = useMotionValue(0)
+  const y = useMotionValue(reduce ? 0 : 160)
+  const tilt = useMotionValue(reduce ? 0 : -4)
+  const lean = useMotionValue(reduce ? 0 : 22)
+  const size = useMotionValue(reduce ? 1 : 0.86)
+  const sheetOpacity = useMotionValue(0)
+  const [unfolded, setUnfolded] = useState(false)
+  const [hint, setHint] = useState(false)
+  const nudging = useRef(false)
+  useEffect(() => {
+    if (!isPresent) return
+    if (reduce) {
+      fold.set(1)
+      animate(backdrop, 1, { duration: 0.2 })
+      animate(sheetOpacity, 1, { duration: 0.2 }).then(() => setUnfolded(true))
+      return
+    }
+    const land = { type: 'spring', stiffness: 260, damping: 26 } as const
+    animate(backdrop, 1, { duration: 0.25 })
+    animate(sheetOpacity, 1, { duration: 0.15 })
+    animate(y, 0, land)
+    animate(tilt, 0, land)
+    animate(size, 1, land)
+    animate(lean, 0, { duration: 0.45, ease: 'easeOut' })
+    // se despliega mientras termina de llegar: nada de pausas con media hoja quieta
+    animate(fold, 1, { delay: 0.22, duration: 0.75, ease: UNFOLD_EASE }).then(() => setUnfolded(true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPresent])
+  useEffect(() => {
+    if (isPresent) return
+    let alive = true
+    const run = async () => {
+      setUnfolded(false)
+      if (!reduce) {
+        // se vuelve a doblar y luego cae fuera de la pantalla
+        await animate(fold, 0, { duration: 0.38, ease: [0.55, 0, 0.75, 0.3] })
+        animate(backdrop, 0, { duration: 0.28 })
+        animate(tilt, 5, { duration: 0.28, ease: 'easeIn' })
+        animate(size, 0.86, { duration: 0.28, ease: 'easeIn' })
+        animate(sheetOpacity, 0, { delay: 0.12, duration: 0.16 })
+        await animate(y, 220, { duration: 0.28, ease: [0.5, 0, 0.9, 0.4] })
+      } else {
+        animate(backdrop, 0, { duration: 0.2 })
+        await animate(sheetOpacity, 0, { duration: 0.2 })
+      }
+      if (alive) safeToRemove?.()
+    }
+    run()
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPresent])
   const toast = useUI((s) => s.toast)
   const wide = useWide()
   const [spread, setSpread] = useState(0)
@@ -433,6 +528,54 @@ function Reader() {
     [],
   )
   const spreads = Math.ceil(pages.length / 2)
+  const dismissHint = () => {
+    setHint(false)
+    try {
+      localStorage.setItem(SWIPED_KEY, '1')
+    } catch {
+      /* nada */
+    }
+  }
+  // al terminar de desplegarse, la hoja se asoma hacia la siguiente para enseñar que se puede deslizar
+  useEffect(() => {
+    if (!unfolded || hasSwiped()) return
+    setHint(true)
+    const el = scroller.current
+    if (wide || reduce || !el) return
+    let cancelled = false
+    const peek = Math.min(110, el.clientWidth * 0.28)
+    const nudge = async () => {
+      await new Promise((r) => setTimeout(r, 450))
+      for (let i = 0; i < 2 && !cancelled; i++) {
+        nudging.current = true
+        el.style.scrollSnapType = 'none'
+        await animate(0, peek, { duration: 0.55, ease: [0.3, 0, 0.2, 1], onUpdate: (v) => !cancelled && (el.scrollLeft = v) })
+        if (cancelled) break
+        await animate(peek, 0, { type: 'spring', stiffness: 220, damping: 18, onUpdate: (v) => !cancelled && (el.scrollLeft = Math.max(0, v)) })
+        el.style.scrollSnapType = ''
+        nudging.current = false
+        await new Promise((r) => setTimeout(r, 900))
+      }
+      el.style.scrollSnapType = ''
+      nudging.current = false
+    }
+    const stop = () => {
+      cancelled = true
+      el.style.scrollSnapType = ''
+      nudging.current = false
+    }
+    el.addEventListener('touchstart', stop, { passive: true })
+    el.addEventListener('wheel', stop, { passive: true })
+    nudge()
+    const t = setTimeout(() => setHint(false), 7000)
+    return () => {
+      stop()
+      clearTimeout(t)
+      el.removeEventListener('touchstart', stop)
+      el.removeEventListener('wheel', stop)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unfolded, wide])
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
@@ -446,36 +589,26 @@ function Reader() {
   const total = wide ? spreads : pages.length
   const cur = wide ? spread : mobilePage
   const turn = (d: number) => {
+    if (hint) dismissHint()
     if (wide) {
       setDir(d)
       setSpread((s) => Math.max(0, Math.min(spreads - 1, s + d)))
     } else scroller.current?.scrollTo({ left: (mobilePage + d) * (scroller.current?.clientWidth ?? 0), behavior: 'smooth' })
   }
   return (
-    <motion.div
-      className="fixed inset-0 z-[130] flex items-center justify-center bg-[#0b1620]/80 backdrop-blur-sm sm:p-6"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { delay: 0.55, duration: 0.3 } }}
-      style={{ perspective: 2000, height: '100dvh' }}
-    >
+    <div className="fixed inset-0 z-[130] flex items-center justify-center sm:p-6" style={{ perspective: 1600, height: '100dvh' }}>
+      <motion.div aria-hidden className="absolute inset-0 bg-[#0b1620]/80 backdrop-blur-sm" style={{ opacity: backdrop }} />
       <motion.div
         role="dialog"
         aria-modal="true"
         aria-label="MallPlay Hoy"
         className="relative flex h-full w-full flex-col sm:h-[min(94vh,860px)] sm:max-w-[1240px]"
-        style={{ transformOrigin: '50% 100%' }}
-        initial={{ y: 140, scale: 0.78, rotate: -5, opacity: 0 }}
-        animate={{ y: 0, scale: 1, rotate: 0, opacity: 1, transition: { type: 'spring', stiffness: 150, damping: 17 } }}
-        exit={{ y: 120, scale: 0.7, rotate: 5, opacity: 0, transition: { delay: 0.7, duration: 0.45, ease: [0.5, 0, 0.8, 0.4] } }}
+        style={{ y, rotate: tilt, rotateX: lean, scale: size, opacity: sheetOpacity, transformOrigin: '50% 50%' }}
       >
-        {/* la hoja: al abrir se despliega y al cerrar se vuelve a doblar */}
+        {/* la hoja: llega doblada y la mitad de abajo se despliega sobre el pliegue */}
         <motion.div
           className="relative flex min-h-0 flex-1 flex-col overflow-hidden shadow-[0_40px_120px_-20px_rgba(0,0,0,0.75)] sm:rounded-md"
-          style={paper}
-          initial={{ clipPath: 'inset(0% 0% 50% 0%)' }}
-          animate={{ clipPath: 'inset(0% 0% 0% 0%)', transition: { delay: 0.5, duration: 1.0, ease: [0.3, 0.7, 0.2, 1] } }}
-          exit={{ clipPath: 'inset(0% 0% 50% 0%)', transition: { duration: 0.8, ease: [0.5, 0, 0.7, 0.3] } }}
+          style={{ ...paper, clipPath: unfolded ? 'none' : clipPath }}
         >
           <button onClick={close} aria-label="Cerrar el periódico" className="absolute top-[max(10px,env(safe-area-inset-top))] right-3 z-30 grid size-11 place-items-center rounded-full text-white shadow-lg" style={{ background: INK }}>
             <X className="size-5" />
@@ -492,7 +625,11 @@ function Reader() {
               </AnimatePresence>
             </div>
           ) : (
-            <div ref={scroller} className="scrollbar-none flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto" onScroll={(e) => setMobilePage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
+            <div ref={scroller} className="scrollbar-none flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto" onScroll={(e) => {
+                const pg = Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth)
+                setMobilePage(pg)
+                if (pg > 0 && !nudging.current && hint) dismissHint()
+              }}>
               {pages.map((pg, i) => (
                 <div key={i} className="min-h-0 w-full shrink-0 snap-center overflow-y-auto pt-[env(safe-area-inset-top)]">
                   {pg}
@@ -515,10 +652,19 @@ function Reader() {
               Siguiente <ChevronRight className="size-5" />
             </button>
           </div>
+          <AnimatePresence>{hint && cur === 0 && <SwipeHint wide={wide} />}</AnimatePresence>
+
+          {/* la mitad que baja: escorzo (sombra) y el borde del papel que avanza */}
+          {!unfolded && (
+            <>
+              <motion.div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 bottom-0 z-40 bg-gradient-to-b from-[#3b2a12] via-[#3b2a12]/70 to-[#3b2a12]/30" style={{ opacity: shade }} />
+              <motion.div aria-hidden className="pointer-events-none absolute inset-x-0 z-40 h-[3px] -translate-y-full bg-gradient-to-b from-transparent to-white/70" style={{ top: edgeTop, opacity: edgeOpacity }} />
+              <motion.div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 z-40 h-10 -translate-y-1/2" style={{ opacity: crease, background: 'linear-gradient(180deg, transparent, rgba(60,40,15,.28) 46%, rgba(255,255,255,.55) 52%, transparent)' }} />
+            </>
+          )}
         </motion.div>
-        <Flap />
       </motion.div>
-    </motion.div>
+    </div>
   )
 }
 

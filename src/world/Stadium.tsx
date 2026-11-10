@@ -1947,6 +1947,11 @@ function Stage({ reduceMotion, beamsOn = true }: { reduceMotion: boolean; beamsO
   )
 }
 
+/** Paso de caminata de la gente que entra al estadio (en unidades de la isla, que está escalada por S). */
+const walkSpeed = (k: number) => 1.5 + (k % 4) * 0.12
+/** Ritmo del vaivén al caminar. */
+const WALK_BOB = 6
+
 // ── gente que llega al estadio por el puente ────────────────────────────────────────────────────────
 const ARRIVALS = 16
 /** Puertas de la fachada hacia donde se dirigen los que llegan. */
@@ -1974,7 +1979,7 @@ function Arrivals({ reduceMotion, count = ARRIVALS }: { reduceMotion: boolean; c
           lens,
           total,
           off: k * 1.5,
-          speed: 1.5 + (k % 4) * 0.12,
+          speed: walkSpeed(k),
           shirt: FAN_SHIRTS[k % FAN_SHIRTS.length],
           skin: FAN_SKIN[k % FAN_SKIN.length],
         }
@@ -2018,7 +2023,7 @@ function Arrivals({ reduceMotion, count = ARRIVALS }: { reduceMotion: boolean; c
       // aparecen desde la valla del muro y se pierden al cruzar la puerta del estadio
       const grow = Math.min(1, dist / 1.6, Math.max(0, (w.total - dist) / 1.2))
       const sc = vis * Math.max(0, grow) * level.current
-      o.position.set(x, Y + 0.43 + Math.abs(Math.sin(t * 6 + k)) * 0.05, z)
+      o.position.set(x, Y + 0.43 + Math.abs(Math.sin(t * WALK_BOB + k)) * 0.05, z)
       o.rotation.set(0, hd, 0)
       o.scale.setScalar(sc)
       o.updateMatrix()
@@ -2256,7 +2261,7 @@ const FAN_ROUTE: [number, number, number][] = [
 const FAN_LENS = FAN_ROUTE.slice(1).map((q, i) => Math.hypot(q[0] - FAN_ROUTE[i][0], q[1] - FAN_ROUTE[i][1], q[2] - FAN_ROUTE[i][2]))
 const FAN_TOTAL = FAN_LENS.reduce((a, b) => a + b, 0)
 
-/** Con un partido en marcha, los hinchas suben a toda prisa de la terraza y bajan por la escalera hacia el estadio. */
+/** Con un partido en marcha, los hinchas salen de la terraza y bajan por la escalera hacia el estadio al paso de los demás visitantes. */
 export function StairFans({ reduceMotion }: { reduceMotion: boolean }) {
   const open = useStadiumPhase((st) => st.phase === 'open')
   const count = 14
@@ -2277,9 +2282,10 @@ export function StairFans({ reduceMotion }: { reduceMotion: boolean }) {
     level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 2)
     const t = clock.elapsedTime
     for (let k = 0; k < count; k++) {
-      const speed = 3.4 + (k % 4) * 0.25
+      // mismo paso que la gente que entra por el puente de abajo (esa va dentro de la isla escalada por S)
+      const speed = walkSpeed(k) * S
       const cycle = FAN_TOTAL / speed + 1.2
-      const age = (t + k * 0.9) % cycle
+      const age = (t + (k / count) * cycle) % cycle
       const dist = age * speed
       const vis = level.current > 0.05 && dist < FAN_TOTAL ? 1 : 0
       let acc = 0
@@ -2300,9 +2306,9 @@ export function StairFans({ reduceMotion }: { reduceMotion: boolean }) {
       const hd = Math.atan2(b[0] - a[0], b[2] - a[2])
       const grow = Math.min(1, dist / 1.2, Math.max(0, (FAN_TOTAL - dist) / 1.0))
       const sc = vis * Math.max(0, grow) * level.current * S
-      // en la escalera van inclinados hacia adelante, corriendo
-      o.position.set(x, y + 0.2 + 0.43 * S + Math.abs(Math.sin(t * 11 + k)) * 0.05, z)
-      o.rotation.set(0.18, hd, 0)
+      // bajan caminando, erguidos, con el mismo vaivén que los del puente
+      o.position.set(x, y + 0.2 + 0.43 * S + Math.abs(Math.sin(t * WALK_BOB + k)) * 0.05 * S, z)
+      o.rotation.set(0, hd, 0)
       o.scale.setScalar(sc)
       o.updateMatrix()
       bodies.current?.setMatrixAt(k, o.matrix)

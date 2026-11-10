@@ -35,16 +35,22 @@ function p1Lights(): PathLight[] {
     for (const s of [-1, 1])
       for (const z of [11, 21]) {
         const [x, wz] = toWorld([s * 4.2, z], zone.angle)
-        out.push({ id: `farol-${zone.id}${s}${z}`, floorId: 'P1', position: [x, wz], color: WARM, intensity: 0.75, radius: 2.3, active: true, fixture: 'none' })
+        out.push({ id: `farol-${zone.id}${s}${z}`, floorId: 'P1', position: [x, wz], color: WARM, intensity: 0.95, radius: 2.7, active: true, fixture: 'none' })
       }
-    // eje del pasillo: una "alfombra" de luz que se lee con el zoom alejado
-    for (const z of [10.2, 13.6, 17.5, 21]) {
+    // eje del pasillo: una "alfombra" de luz continua que se lee con el zoom alejado (de noche compite con la joyería)
+    for (const z of [9.4, 12, 14.6, 17.2, 19.8, 22.4]) {
       const [x, wz] = toWorld([0, z], zone.angle)
-      out.push({ id: `ruta-${zone.id}${z}`, floorId: 'P1', position: [x, wz], color: WARM, intensity: 0.45, radius: 3.4, active: true, fixture: 'none' })
+      if (!onEscalator(x, wz)) out.push({ id: `ruta-${zone.id}${z}`, floorId: 'P1', position: [x, wz], color: WARM, intensity: 0.7, radius: 3.6, active: true, fixture: 'none' })
     }
+    // luz que sale de las vitrinas hacia el pasillo, a ambos lados
+    for (const s of [-1, 1])
+      for (const z of [13, 16.5, 20]) {
+        const [x, wz] = toWorld([s * 2.9, z], zone.angle)
+        out.push({ id: `vitrina-${zone.id}${s}${z}`, floorId: 'P1', position: [x, wz], color: '#ffe4bd', intensity: 0.45, radius: 2.2, active: true, fixture: 'none' })
+      }
   }
   // plaza: gran halo alrededor de la fuente, bancas y balizas en las entradas de los pasillos
-  out.push({ id: 'plaza', floorId: 'P1', position: [0, 0], color: AMBER, intensity: 0.55, radius: 6.2, active: true, fixture: 'none' })
+  out.push({ id: 'plaza', floorId: 'P1', position: [0, 0], color: AMBER, intensity: 0.7, radius: 6.6, active: true, fixture: 'none' })
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + (i * Math.PI) / 2
     const [x, z] = [Math.sin(a) * 5.2, Math.cos(a) * 5.2]
