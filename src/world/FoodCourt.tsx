@@ -266,8 +266,10 @@ function Keep() {
   const dark = mat('#9c7d55')
   const cordon = mat('#e6d2a8')
   const E = H + 0.2
+  // el lado que mira al frente (sobre la joyería) es una fachada de vidrio (ver GlassUnder): el macizo se retira 5 m y delante queda una base de piedra
+  const GAL = JOYERIA ? 5 : 0
   const parts: { x: number; z: number; w: number; d: number }[] = [
-    { x: (-E + wall) / 2, z: 0, w: wall + E, d: 2 * E },
+    { x: (-E + wall) / 2, z: -GAL / 2, w: wall + E, d: 2 * E - GAL },
     { x: (wall + E) / 2, z: (-E + wall) / 2, w: E - wall, d: wall + E },
   ]
   return (
@@ -279,10 +281,17 @@ function Keep() {
           <mesh geometry={GEO.box} material={cordon} position={[p.x, top - 0.25, p.z]} scale={[p.w + 0.12, 0.16, p.d + 0.12]} />
         </group>
       ))}
-      {/* troneras en la cara que mira al frente */}
-      {[-12.6 + G, -10.2 + G].map((x) => (
-        <mesh key={x} geometry={GEO.box} material={dark} position={[x, -ELEV / 2, E + 0.01]} scale={[0.35, 1.1, 0.04]} />
-      ))}
+      {JOYERIA ? (
+        <>
+          {/* piso de piedra bajo la fachada de vidrio, a la altura de la fortaleza */}
+          <mesh geometry={GEO.box} material={stone} position={[(-E + wall) / 2, (bottom - ELEV + 0.1) / 2, E - GAL / 2]} scale={[wall + E, -ELEV + 0.1 - bottom, GAL]} receiveShadow />
+          <mesh geometry={GEO.box} material={dark} position={[(-E + wall) / 2, bottom + 0.9, E - GAL / 2]} scale={[wall + E + 0.5, 1.8, GAL + 0.5]} />
+          <mesh geometry={GEO.box} material={cordon} position={[(-E + wall) / 2, -ELEV + 0.05, E - GAL / 2]} scale={[wall + E + 0.12, 0.1, GAL + 0.12]} />
+        </>
+      ) : (
+        /* troneras en la cara que mira al frente */
+        [-12.6 + G, -10.2 + G].map((x) => <mesh key={x} geometry={GEO.box} material={dark} position={[x, -ELEV / 2, E + 0.01]} scale={[0.35, 1.1, 0.04]} />)
+      )}
     </group>
   )
 }

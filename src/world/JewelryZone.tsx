@@ -526,37 +526,56 @@ const COATS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95']
  * Recorrido de los visitantes: bajan por el pasillo de Lifestyle, rodean por el lado el local del fondo (que ocupa
  * el final del pasillo), pasan por la estrecha franja junto a la muralla, cruzan la puerta y siguen por la alfombra.
  */
-const ROUTE: [number, number][] = [
-  [-16, 0.5],
-  [-19.5, 2],
-  [-20.5, 6.6],
-  [-29.4, 6.6],
-  [-29.4, 0],
-  [-34, 0],
-  [-50, 0],
+const BASE_ROUTE: [number, number, number][] = [
+  [-16, 0.5, 0.2],
+  [-19.5, 2, 0.2],
+  [-20.5, 6.6, 0.2],
+  [-29.4, 6.6, 0.2],
+  [-29.4, 0, 0.2],
+  [-34, 0, 0.2],
+  [-50, 0, 0.2],
 ]
-const SEG = ROUTE.slice(1).map((q, i) => {
-  const p = ROUTE[i]
-  return { p, dx: q[0] - p[0], dz: q[1] - p[1], len: Math.hypot(q[0] - p[0], q[1] - p[1]) }
-})
-const ROUTE_LEN = SEG.reduce((a, s) => a + s.len, 0)
+/** Con la zona de servicios: cruzan la puerta del fondo, suben por la escalera y recorren el paseo de la terraza (por el pasillo libre que rodea el patio). */
+const TERRACE_ROUTE: [number, number, number][] = [
+  ...BASE_ROUTE,
+  [TX0 + 10.2, 0, 0.2],
+  [TX0, 0, Y + TOP + 0.08],
+  [-67, -0.4, Y + TOP + 0.08],
+  [-73.2, -0.4, Y + TOP + 0.08],
+  [-73.2, -27.8, Y + TOP + 0.08],
+  [-54.3, -27.8, Y + TOP + 0.08],
+  [-54.3, -4.5, Y + TOP + 0.08],
+]
+const makeRoute = (pts: [number, number, number][]) => {
+  const seg = pts.slice(1).map((q, i) => {
+    const p = pts[i]
+    const dx = q[0] - p[0]
+    const dz = q[1] - p[1]
+    return { p, dx, dz, dy: q[2] - p[2], len: Math.hypot(dx, dz) }
+  })
+  return { seg, len: seg.reduce((a, s) => a + s.len, 0) }
+}
+const ROUTE_BASE = makeRoute(BASE_ROUTE)
+const ROUTE_TERRACE = makeRoute(TERRACE_ROUTE)
 const WALK_SPEED = 1.1
 
-/** Visitantes que recorren esa ruta de ida y vuelta, a paso de caminata normal. */
-function Walkers() {
+/** Visitantes que recorren esa ruta de ida y vuelta, a paso de caminata normal; con la zona de servicios suben a la terraza. */
+function Walkers({ services }: { services: boolean }) {
   const refs = useRef<(THREE.Group | null)[]>([])
-  const people = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ phase: i / 6, lane: (i % 3 - 1) * 0.8 })), [])
+  const route = services ? ROUTE_TERRACE : ROUTE_BASE
+  const n = services ? 9 : 6
+  const people = useMemo(() => Array.from({ length: n }, (_, i) => ({ phase: i / n, lane: (i % 3 - 1) * 0.55 })), [n])
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     let nearest = 99
     people.forEach((p, i) => {
       const el = refs.current[i]
       if (!el) return
-      const u = (((t * WALK_SPEED) / (2 * ROUTE_LEN) + p.phase) % 1 + 1) % 1
+      const u = (((t * WALK_SPEED) / (2 * route.len) + p.phase) % 1 + 1) % 1
       const going = u < 0.5
-      let d = (going ? u * 2 : (1 - u) * 2) * ROUTE_LEN
-      let seg = SEG[SEG.length - 1]
-      for (const sg of SEG) {
+      let d = (going ? u * 2 : (1 - u) * 2) * route.len
+      let seg = route.seg[route.seg.length - 1]
+      for (const sg of route.seg) {
         if (d <= sg.len) {
           seg = sg
           break
@@ -564,11 +583,16 @@ function Walkers() {
         d -= sg.len
       }
       const f = Math.min(1, d / seg.len)
-      const x = seg.p[0] + seg.dx * f
+      let x = seg.p[0] + seg.dx * f
       let z = seg.p[1] + seg.dz * f
-      if (x < -33.5) z += p.lane
-      if (Math.abs(z) < 3.2) nearest = Math.min(nearest, Math.abs(x - DOOR_X))
-      el.position.set(x, 0.2 + Math.abs(Math.sin(t * 4 + i * 2)) * 0.03, z)
+      const y = seg.p[2] + seg.dy * f
+      if (x < -33.5) {
+        // carril: desplazado hacia un lado del recorrido
+        x += (-seg.dz / seg.len) * p.lane
+        z += (seg.dx / seg.len) * p.lane
+      }
+      if (y < 1 && Math.abs(z) < 3.2) nearest = Math.min(nearest, Math.abs(x - DOOR_X))
+      el.position.set(x, y + Math.abs(Math.sin(t * 4 + i * 2)) * 0.03, z)
       const sign = going ? 1 : -1
       el.rotation.y = Math.atan2(seg.dx * sign, seg.dz * sign)
     })
@@ -577,7 +601,7 @@ function Walkers() {
   return (
     <>
       {people.map((_, i) => (
-        <group key={i} ref={(g) => (refs.current[i] = g)} scale={1} userData={{ dynamic: true }}>
+        <group key={`${services}${i}`} ref={(g) => (refs.current[i] = g)} scale={1} userData={{ dynamic: true }}>
           <mesh geometry={GEO.capsule} material={mat(COATS[i % COATS.length])} position={[0, 0.43, 0]} castShadow />
           <mesh geometry={GEO.sphereSmooth} material={mat(i % 2 ? '#c58c64' : '#8d5a3b')} position={[0, 0.95, 0]} scale={0.36} castShadow />
         </group>
@@ -653,7 +677,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
       {/* dos vigilantes que patrullan la alfombra */}
       <Patrol z={-2.3} phase={0} />
       <Patrol z={2.3} phase={1} />
-      <Walkers />
+      <Walkers services={services} />
       <AutoDoors />
       <SecurityCam x={-38.5} z={-5.2} base={0} phase={0} />
       <SecurityCam x={-46.5} z={-5.2} base={0} phase={2} />
