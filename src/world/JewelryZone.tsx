@@ -405,7 +405,7 @@ function Patrol({ z, phase }: { z: number; phase: number }) {
   )
 }
 
-function Shell() {
+function Shell({ services }: { services: boolean }) {
   const marble = useMarble()
   const marbleInlay = useMemo(() => {
     const m = marble.clone()
@@ -444,8 +444,7 @@ function Shell() {
       ))}
       {/* paredes: fondo y norte altas con cornisa dorada; el lado de la cámara es una baranda de vidrio */}
       {[
-        [X0 - 0.15, -3.75, 0.3, 3.9, WH],
-        [X0 - 0.15, 3.75, 0.3, 3.9, WH],
+        ...(services ? [[X0 - 0.15, -3.75, 0.3, 3.9, WH], [X0 - 0.15, 3.75, 0.3, 3.9, WH]] : [[X0 - 0.15, CZ, 0.3, D + 0.6, WH]]),
         [CX, NZ - 0.15, W + 0.6, 0.3, WH],
       ].map(([x, z, w, d, h], i) => (
         <group key={i}>
@@ -460,8 +459,18 @@ function Shell() {
       {/* luz de cornisa y gran rótulo dorado en el fondo */}
       <mesh geometry={GEO.box} material={strip} position={[X0 + 0.04, WH - 0.5, CZ]} scale={[0.05, 0.12, D - 1]} />
       <mesh geometry={GEO.box} material={strip} position={[CX, WH - 0.5, NZ + 0.04]} scale={[W - 1, 0.12, 0.05]} />
-      <StairDoor />
-      <Terrace />
+      {services ? (
+        <>
+          <StairDoor />
+          <Terrace />
+        </>
+      ) : (
+        <>
+          {/* sin la zona de servicios: el fondo es un muro cerrado con su gran rótulo dorado */}
+          <mesh geometry={GEO.box} material={mat('#10183a')} position={[X0 + 0.06, 2.2, CZ]} scale={[0.1, 1.5, 6.4]} />
+          <mesh geometry={GEO.box} material={warm} position={[X0 + 0.14, 2.2, CZ]} scale={[0.05, 1.1, 5.6]} />
+        </>
+      )}
       {/* columnas doradas con luz a lo largo del pasillo */}
       {[-39, -44, -49].flatMap((x) => [NZ + 0.9, SZ - 0.9].map((z) => ({ x, z }))).map(({ x, z }) => (
         <group key={`${x}${z}`}>
@@ -634,13 +643,13 @@ function SecurityCam({ x, z, base, phase }: { x: number; z: number; base: number
   )
 }
 
-export function JewelryZone() {
+export function JewelryZone({ services = true }: { services?: boolean }) {
   const night = useIsNight()
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-16">
-        <Shell />
+      <Batch version={`joyeria-escalera-16-${services}`}>
+        <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
       <Patrol z={-2.3} phase={0} />
@@ -649,13 +658,17 @@ export function JewelryZone() {
       <AutoDoors />
       <SecurityCam x={-38.5} z={-5.2} base={0} phase={0} />
       <SecurityCam x={-46.5} z={-5.2} base={0} phase={2} />
-      <SecurityCam x={-51.8} z={-3.4} base={Math.PI / 2} phase={4} />
+      <SecurityCam x={-51.8} z={services ? -3.4 : 0} base={Math.PI / 2} phase={4} />
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
-      <pointLight position={[-56, 3.2, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
-      <pointLight position={[-70, 9, 0]} color="#ffe2a8" intensity={night ? 18 : 3} distance={15} decay={2} />
-      <pointLight position={[-61, 4.5, -14]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
-      <pointLight position={[-64, 8.5, -27]} color="#ffe2a8" intensity={night ? 16 : 2} distance={16} decay={2} />
-      <pointLight position={[-62, 8, -2]} color="#ffe2a8" intensity={night ? 16 : 2} distance={14} decay={2} />
+      {services && (
+        <>
+        <pointLight position={[-56, 3.2, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
+        <pointLight position={[-70, 9, 0]} color="#ffe2a8" intensity={night ? 18 : 3} distance={15} decay={2} />
+        <pointLight position={[-61, 4.5, -14]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
+        <pointLight position={[-64, 8.5, -27]} color="#ffe2a8" intensity={night ? 16 : 2} distance={16} decay={2} />
+        <pointLight position={[-62, 8, -2]} color="#ffe2a8" intensity={night ? 16 : 2} distance={14} decay={2} />
+        </>
+      )}
       {[-37, -44, -50].map((x) => (
         <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
       ))}

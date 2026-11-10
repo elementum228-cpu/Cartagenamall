@@ -4,6 +4,7 @@ import type { FloorConfig } from '../domain/types'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useClaims } from '../state/claims'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
+import { isServicesSpace, useServicesFeature } from '../state/servicesFeature'
 import { useUI } from '../state/ui'
 import { usePromoEvents } from '../promotions/store'
 
@@ -18,7 +19,8 @@ export function Map2D({ reason }: { reason?: string }) {
   const selectSpace = useUI((s) => s.selectSpace)
   const floor = FLOOR_BY_ID[useUI((s) => s.activeFloor)]
   const entOn = useEntertainmentFeature((s) => s.enabled)
-  const spaces = SPACES.filter((s) => s.floorId === floor.id && (entOn || s.zoneId !== 'G'))
+  const svcOn = useServicesFeature((s) => s.enabled)
+  const spaces = SPACES.filter((s) => s.floorId === floor.id && (entOn || s.zoneId !== 'G') && (svcOn || !isServicesSpace(s)))
   const claims = useClaims((s) => s.claims)
   const pending = useMemo(() => new Set(claims.filter((c) => c.status === 'pending').map((c) => c.spaceId)), [claims])
   const events = usePromoEvents((s) => s.events)

@@ -17,6 +17,7 @@ import {
   PartyPopper,
   VolumeX,
   HardHat,
+  Building2,
   Gamepad2,
   Plane,
   BookOpen,
@@ -79,6 +80,7 @@ import { ShipPill, ShipTestButton } from '../ship/ShipLayer'
 import { usePirateShip } from '../state/pirate'
 import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
+import { useServicesFeature } from '../state/servicesFeature'
 import { useFlight } from '../airport/flight'
 import { BOATS, BOAT_IDS } from '../tourism/config'
 import { startTour } from './GuidedTour'
@@ -617,6 +619,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           {use3D && <PirateToggle className={item} />}
           {use3D && <AirportToggle className={item} />}
           {use3D && <EntertainmentToggle className={item} />}
+          {use3D && <ServicesToggle className={item} />}
           {use3D && <StadiumToggle className={item} />}
           {use3D && <StadiumEventToggle className={item} />}
         </>
@@ -796,6 +799,30 @@ function EntertainmentToggle({ className }: { className: string }) {
       }}
     >
       <Gamepad2 className="size-4" /> {enabled ? 'Entretenimiento: ocultar' : 'Entretenimiento: mostrar'}
+    </button>
+  )
+}
+
+/** Muestra u oculta la zona de servicios (terraza sobre la joyería) para todos los visitantes. */
+function ServicesToggle({ className }: { className: string }) {
+  const enabled = useServicesFeature((s) => s.enabled)
+  const setEnabled = useServicesFeature((s) => s.setEnabled)
+  return (
+    <button
+      className={enabled ? `${className} !bg-deep/85 !text-white` : className}
+      aria-pressed={enabled}
+      aria-label={enabled ? 'Ocultar la zona de servicios' : 'Mostrar la zona de servicios'}
+      onClick={() => {
+        const on = !enabled
+        const ui = useUI.getState()
+        if (!on) {
+          if (ui.selectedSpaceId?.startsWith('P1-S')) ui.selectSpace(null)
+          ui.setOverview(true)
+        }
+        setEnabled(on)
+      }}
+    >
+      <Building2 className="size-4" /> {enabled ? 'Servicios: ocultar' : 'Servicios: mostrar'}
     </button>
   )
 }

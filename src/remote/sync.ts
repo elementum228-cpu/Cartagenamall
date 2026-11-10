@@ -13,6 +13,7 @@ import { useSeasonSettings, type SeasonMode } from '../state/season'
 import { useOrders } from '../state/orders'
 import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
+import { useServicesFeature } from '../state/servicesFeature'
 import { useStadiumEvent, useStadiumPhase, useStadiumSong } from '../state/stadium'
 import type { StadiumPhase } from '../config/stadium'
 import { useRemoteSold, useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch, useTickets } from '../state/stadiumEvents'
@@ -442,11 +443,12 @@ export async function loadFeatures() {
   if (!supabase) return
   const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'features').maybeSingle()
   if (error) return
-  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert'; stadiumSong?: { url: string | null; title: string; crowd: number }; stadiumOperator?: string | null; stadiumActive?: string | null; stadiumBoard?: unknown; interiorBeta?: boolean }> | null)?.doc
+  const doc = (data as Doc<{ airport?: boolean; pirateParked?: boolean; entertainment?: boolean; services?: boolean; stadium?: StadiumPhase; stadiumEvent?: 'match' | 'concert'; stadiumSong?: { url: string | null; title: string; crowd: number }; stadiumOperator?: string | null; stadiumActive?: string | null; stadiumBoard?: unknown; interiorBeta?: boolean }> | null)?.doc
   if (!doc) return
   applyRemote(() => {
     useAirportFeature.setState({ enabled: !!doc.airport })
     useEntertainmentFeature.setState({ enabled: !!doc.entertainment })
+    useServicesFeature.setState({ enabled: doc.services !== false })
     useStadiumPhase.setState({ phase: doc.stadium === 'almost' || doc.stadium === 'open' ? doc.stadium : 'construction' })
     useStadiumEvent.setState({ kind: doc.stadiumEvent === 'concert' ? 'concert' : 'match' })
     useStadiumConfig.setState({ operatorStoreId: doc.stadiumOperator ?? null, activeEventId: doc.stadiumActive ?? null })
@@ -473,7 +475,7 @@ function pushMatch(doc: unknown) {
 }
 
 function pushFeatures() {
-  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd }, stadiumOperator: useStadiumConfig.getState().operatorStoreId, stadiumActive: useStadiumConfig.getState().activeEventId, stadiumBoard: useStadiumBoard.getState().board, interiorBeta: useBeta.getState().interior }
+  const doc = { airport: useAirportFeature.getState().enabled, pirateParked: usePirateShip.getState().parked, entertainment: useEntertainmentFeature.getState().enabled, services: useServicesFeature.getState().enabled, stadium: useStadiumPhase.getState().phase, stadiumEvent: useStadiumEvent.getState().kind, stadiumSong: { url: useStadiumSong.getState().url, title: useStadiumSong.getState().title, crowd: useStadiumSong.getState().crowd }, stadiumOperator: useStadiumConfig.getState().operatorStoreId, stadiumActive: useStadiumConfig.getState().activeEventId, stadiumBoard: useStadiumBoard.getState().board, interiorBeta: useBeta.getState().interior }
   enqueue(async () => {
     const { error } = await supabase!.from('mall_settings').upsert({ key: 'features', doc })
     if (error) throw new Error(error.message)
@@ -621,6 +623,10 @@ export function startRemoteSync() {
     pushFeatures()
   })
   useEntertainmentFeature.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
+    pushFeatures()
+  })
+  useServicesFeature.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
     pushFeatures()
   })

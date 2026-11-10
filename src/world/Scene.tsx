@@ -1,6 +1,7 @@
 import { openCourtOrClaim, useCourtOperator } from '../football/open'
 import { JOYERIA } from '../config/preview'
 import { JewelryZone } from './JewelryZone'
+import { isServicesSpace, useServicesFeature } from '../state/servicesFeature'
 import { useMemo } from 'react'
 import { COURT_SPACE, FLOORS, FLOOR_BY_ID, FLOOR_OF_ZONE, SPACES, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import type { FloorConfig, Product, SpaceSlot } from '../domain/types'
@@ -56,6 +57,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
   const season = useSeason()
   const airportOn = useAirportFeature((s) => s.enabled)
   const entOn = useEntertainmentFeature((s) => s.enabled)
+  const svcOn = useServicesFeature((s) => s.enabled)
   const assignments = useCatalog((s) => s.assignments)
   const products = useCatalog((s) => s.products)
   const promotions = useCatalog((s) => s.promotions)
@@ -79,9 +81,9 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
 
   const availableByZone = useMemo(() => {
     const m: Record<string, SpaceSlot[]> = {}
-    for (const sp of SPACES) if ((entOn || sp.zoneId !== 'G') && !storeById[assignments[sp.id]]) (m[sp.zoneId] ??= []).push(sp)
+    for (const sp of SPACES) if ((entOn || sp.zoneId !== 'G') && (svcOn || !isServicesSpace(sp)) && !storeById[assignments[sp.id]]) (m[sp.zoneId] ??= []).push(sp)
     return m
-  }, [assignments, storeById, entOn])
+  }, [assignments, storeById, entOn, svcOn])
 
   const pendingSpaces = useMemo(() => new Set(claims.filter((c) => c.status === 'pending').map((c) => c.spaceId)), [claims])
   const secretPromos = useMemo(() => promotions.filter((p) => p.type === 'secret' && isPromotionLive(p, minute)), [promotions, minute])
@@ -153,7 +155,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         <MallToStadium reduceMotion={reduceMotion} />
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
-        {JOYERIA && <JewelryZone />}
+        {JOYERIA && <JewelryZone services={svcOn} />}
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
         <Batch version="jardines">
           <Diorama />
@@ -164,7 +166,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         {FLOORS.map((floor) => {
           const mode = modeFor(floor, active, overview)
           const interactive = mode === 'full'
-          const spaces = SPACES.filter((s) => s.floorId === floor.id && (entOn || s.zoneId !== 'G'))
+          const spaces = SPACES.filter((s) => s.floorId === floor.id && (entOn || s.zoneId !== 'G') && (svcOn || !isServicesSpace(s)))
           const cross = floor.layout === 'cross'
           return (
             <MallFloor

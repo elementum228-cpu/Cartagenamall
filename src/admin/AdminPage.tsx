@@ -1,5 +1,6 @@
 import { ArrowLeft, Check, ChevronDown, Plug, RotateCcw, ShieldAlert, Trash2, X } from 'lucide-react'
 import { HoyAdmin } from './HoyAdmin'
+import { ServicesAdmin } from './ServicesAdmin'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CATEGORIES, CATEGORY_BY_ID, COURT_SPACE, TRACK_SPACE, FLOORS, FLOOR_BY_ID, SPACES, SPACE_BY_ID, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
@@ -34,7 +35,7 @@ import { OwnerDashboard, PriceInput } from './OwnerDashboard'
 import { DemoInvites } from './DemoInvites'
 import { useSpacePrice, useSpacePricing } from '../state/spacePricing'
 
-type Tab = 'hoy' | 'beta' | 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'estadio' | 'invitaciones' | 'integraciones'
+type Tab = 'servicios' | 'hoy' | 'beta' | 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'estadio' | 'invitaciones' | 'integraciones'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'gestion', label: 'Gestión y precios' },
@@ -46,6 +47,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'pedidos', label: 'Pedidos' },
   { id: 'cancha', label: 'Deportes' },
   { id: 'estadio', label: 'Estadio' },
+  { id: 'servicios', label: 'Zonas de servicio' },
   { id: 'hoy', label: 'MallPlay Hoy' },
   { id: 'beta', label: 'Beta' },
   { id: 'invitaciones', label: 'Invitaciones' },
@@ -113,6 +115,7 @@ function AdminContent() {
         {tab === 'pedidos' && <OrdersAdmin />}
         {tab === 'cancha' && <CourtAdmin />}
         {tab === 'estadio' && <StadiumAdmin />}
+        {tab === 'servicios' && <ServicesAdmin />}
         {tab === 'hoy' && <HoyAdmin />}
         {tab === 'beta' && <InteriorAdmin />}
         {tab === 'invitaciones' && <DemoInvites />}

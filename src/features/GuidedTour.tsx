@@ -8,6 +8,7 @@ import { playSparkle, playWhoosh } from '../lib/doorSound'
 import { formatCOP } from '../lib/format'
 import { isPromotionLive } from '../lib/pricing'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
+import { isServicesSpace, useServicesFeature } from '../state/servicesFeature'
 import { ENT_COLOR } from '../entertainment/config'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { spacePrice, useSpacePricing } from '../state/spacePricing'
@@ -357,11 +358,12 @@ function useTourSteps(): Step[] {
   const { storeById, spaceByStore } = useCatalogMaps()
   const pricing = useSpacePricing()
   const entOn = useEntertainmentFeature((s) => s.enabled)
+  const svcOn = useServicesFeature((s) => s.enabled)
 
   return useMemo(() => {
     const ui = () => useUI.getState()
     const storesIn = (zone: ZoneId) => SPACES.filter((sp) => sp.zoneId === zone && assignments[sp.id]).map((sp) => storeById[assignments[sp.id]]?.name).filter(Boolean) as string[]
-    const tourSpaces = SPACES.filter((sp) => entOn || sp.zoneId !== 'G')
+    const tourSpaces = SPACES.filter((sp) => (entOn || sp.zoneId !== 'G') && (svcOn || !isServicesSpace(sp)))
     const freeSpaces = tourSpaces.filter((sp) => !assignments[sp.id])
     const totalStores = tourSpaces.filter((sp) => assignments[sp.id]).length
     const zoneStep = (id: ZoneId): Step => {
@@ -517,5 +519,5 @@ function useTourSteps(): Step[] {
       go: () => ui().setOverview(true),
     })
     return steps
-  }, [assignments, promotions, storeById, spaceByStore, pricing, entOn])
+  }, [assignments, promotions, storeById, spaceByStore, pricing, entOn, svcOn])
 }
