@@ -171,7 +171,6 @@ function Terrace() {
   const floorM = mat('#f1ebdf', { rough: 0.45 })
   const courtM = mat('#efe6d2', { rough: 0.5 })
   const wallM = mat('#a77b52', { rough: 0.7 })
-  const ledgeM = mat('#dcc9a0', { rough: 0.6 })
   const baseM = mat('#6f5a3e', { rough: 0.8 })
   const goldM = mat(GOLD, { rough: 0.3 })
   const black = mat('#1b1d22', { rough: 0.4 })
@@ -256,7 +255,7 @@ function Terrace() {
           </group>
         )
       })}
-      {glassE.map(([xa, xb, za, zb], i) => {
+      {glassE.map(([xa, , za, zb], i) => {
         const d = zb - za
         const n = Math.max(1, Math.round(d / 3.4))
         return (
