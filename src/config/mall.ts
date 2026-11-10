@@ -476,13 +476,13 @@ export const JEWELRY_SPACES: SpaceSlot[] = JOYERIA
     ).map(([x, z, r], i) => ({ id: `P1-J${i + 1}`, floorId: 'P1', zoneId: 'A' as ZoneId, type: 'island' as SpaceType, label: `J-0${i + 1}`, position: [x, z] as [number, number], rotation: r, size: SPACE_TYPES.island.size }))
   : []
 /** Terraza de servicios sobre la joyería (segundo piso nuevo): locales grandes pegados a la muralla, de cara al patio hundido. */
-export const TERRACE_ELEVATION = 6.52
+export const TERRACE_ELEVATION = 4.92
 export const TERRACE_SPACES: SpaceSlot[] = JOYERIA
   ? (
       [
-        ...[-75.5, -69.5, -63.5, -57.5, -51.5].map((x) => [x, -44, 0]),
-        ...[-38.5, -32.5, -26.5, -20.5, -14.5, -8.5].map((z) => [-81, z, Math.PI / 2]),
-        ...[-80.5, -74.5, -68.5].map((x) => [x, 3.6, Math.PI]),
+        ...[-96.5, -90.5, -84.5, -78.5, -72.5, -66.5, -60.5, -54.5].map((x) => [x, -31, 0]),
+        ...[-23.5, -17.5, -11.5, -5.5, 0.5].map((z) => [-97, z, Math.PI / 2]),
+        ...[-22.5, -16.5, -10.5].map((z) => [-50.5, z, -Math.PI / 2]),
       ] as [number, number, number][]
     ).map(([x, z, r], i) => ({
       id: `P1-S${i + 1}`,
