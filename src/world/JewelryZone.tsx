@@ -399,12 +399,14 @@ function Window({ i }: { i: number }) {
   const H = 3.75
   const D = 0.85
   const skin = mat('#d9b08c')
+  const pm = (k: number) => mat(c(k), { emissive: 0.35 })
+  const backGlow = glowMat('#ffd9a0', 1.3, { dayGlow: 0.18 })
   return (
     <group>
       {/* fondo cálido, suelo, techo y luz */}
-      <mesh geometry={GEO.box} material={mat('#f4d9a6', { rough: 0.9 })} position={[0, H / 2, 0.04]} scale={[WIN - 0.1, H, 0.06]} />
-      <mesh geometry={GEO.box} material={mat('#c99a62')} position={[0, 0.08, D / 2]} scale={[WIN - 0.1, 0.16, D]} />
-      <mesh geometry={GEO.box} material={light} position={[0, H - 0.18, D / 2]} scale={[WIN - 0.4, 0.06, D - 0.2]} />
+      <mesh geometry={GEO.box} material={backGlow} position={[0, H / 2, 0.04]} scale={[WIN - 0.1, H, 0.06]} />
+      <mesh geometry={GEO.box} material={glowMat('#e9b678', 0.9, { dayGlow: 0.12 })} position={[0, 0.08, D / 2]} scale={[WIN - 0.1, 0.16, D]} />
+      <mesh geometry={GEO.box} material={light} position={[0, H - 0.18, D / 2]} scale={[WIN - 0.4, 0.1, D - 0.2]} />
       {t === 0 && (
         <>
           {/* maniquíes con ropa */}
@@ -412,14 +414,14 @@ function Window({ i }: { i: number }) {
             <group key={k} position={[k * 0.95, 0.16, 0.5]}>
               <mesh geometry={GEO.cylinder} material={dark} position={[0, 0.06, 0]} scale={[0.4, 0.05, 0.4]} />
               <mesh geometry={GEO.cylinder} material={dark} position={[0, 0.55, 0]} scale={[0.05, 1.0, 0.05]} />
-              <mesh geometry={GEO.rounded} material={mat(c(k + 1))} position={[0, 1.2, 0]} scale={[0.5, 0.75, 0.28]} />
-              <mesh geometry={GEO.cylinder} material={mat(c(k + 4))} position={[0, 0.8, 0]} scale={[0.46, 0.45, 0.3]} />
+              <mesh geometry={GEO.rounded} material={pm(k + 1)} position={[0, 1.2, 0]} scale={[0.5, 0.75, 0.28]} />
+              <mesh geometry={GEO.cylinder} material={pm(k + 4)} position={[0, 0.8, 0]} scale={[0.46, 0.45, 0.3]} />
               <mesh geometry={GEO.sphereSmooth} material={skin} position={[0, 1.78, 0]} scale={0.26} />
             </group>
           ))}
           <mesh geometry={GEO.box} material={wood} position={[0, 2.85, 0.25]} scale={[WIN - 0.5, 0.05, 0.05]} />
           {[-1.2, -0.6, 0, 0.6, 1.2].map((x, k) => (
-            <mesh key={k} geometry={GEO.rounded} material={mat(c(k))} position={[x, 2.45, 0.25]} scale={[0.36, 0.7, 0.08]} />
+            <mesh key={k} geometry={GEO.rounded} material={pm(k)} position={[x, 2.45, 0.25]} scale={[0.36, 0.7, 0.08]} />
           ))}
         </>
       )}
@@ -430,7 +432,7 @@ function Window({ i }: { i: number }) {
               <mesh geometry={GEO.box} material={wood} position={[0, 0.7, 0.4]} scale={[WIN - 0.4, 0.06, 0.6]} />
               {[-1.1, -0.45, 0.2, 0.85].map((x, k) => (
                 <group key={k} position={[x, 0.78, 0.4]}>
-                  <mesh geometry={GEO.rounded} material={mat(c(k + r))} position={[0, 0.12, 0]} scale={[0.5, 0.22, 0.2]} />
+                  <mesh geometry={GEO.rounded} material={pm(k + r)} position={[0, 0.12, 0]} scale={[0.5, 0.22, 0.2]} />
                   <mesh geometry={GEO.box} material={dark} position={[0, 0.02, 0]} scale={[0.52, 0.05, 0.22]} />
                 </group>
               ))}
@@ -445,9 +447,9 @@ function Window({ i }: { i: number }) {
               <mesh geometry={GEO.box} material={wood} position={[0, 0.7, 0.4]} scale={[WIN - 0.4, 0.06, 0.6]} />
               {[-0.9, 0.2, 1.1].map((x, k) => (
                 <group key={k} position={[x, 0.9, 0.4]}>
-                  <mesh geometry={GEO.torus} material={mat(c(k + r))} position={[-0.17, 0, 0]} scale={0.14} />
-                  <mesh geometry={GEO.torus} material={mat(c(k + r))} position={[0.17, 0, 0]} scale={0.14} />
-                  <mesh geometry={GEO.box} material={mat(c(k + r))} position={[0, 0.02, 0]} scale={[0.08, 0.03, 0.03]} />
+                  <mesh geometry={GEO.torus} material={pm(k + r)} position={[-0.17, 0, 0]} scale={0.14} />
+                  <mesh geometry={GEO.torus} material={pm(k + r)} position={[0.17, 0, 0]} scale={0.14} />
+                  <mesh geometry={GEO.box} material={pm(k + r)} position={[0, 0.02, 0]} scale={[0.08, 0.03, 0.03]} />
                 </group>
               ))}
             </group>
@@ -460,7 +462,7 @@ function Window({ i }: { i: number }) {
             const h = 0.45 + (k % 2) * 0.35
             return (
               <group key={k} position={[x, 0.16, 0.45]}>
-                <mesh geometry={GEO.box} material={mat(c(k))} position={[0, h / 2, 0]} scale={[0.6, h, 0.6]} castShadow />
+                <mesh geometry={GEO.box} material={pm(k)} position={[0, h / 2, 0]} scale={[0.6, h, 0.6]} castShadow />
                 <mesh geometry={GEO.box} material={mat('#ffffff')} position={[0, h / 2, 0]} scale={[0.1, h + 0.01, 0.62]} />
                 <mesh geometry={GEO.box} material={mat('#ffffff')} position={[0, h / 2, 0]} scale={[0.62, h + 0.01, 0.1]} />
               </group>
@@ -487,8 +489,8 @@ function Window({ i }: { i: number }) {
           ))}
           {[-0.8, 0, 0.8].map((x, k) => (
             <group key={`h${k}`} position={[x, 0.45, 0.5]}>
-              <mesh geometry={GEO.cylinder} material={mat(c(k + 3))} position={[-0.13, 0.12, 0]} scale={[0.18, 0.08, 0.18]} />
-              <mesh geometry={GEO.cylinder} material={mat(c(k + 3))} position={[0.13, 0.12, 0]} scale={[0.18, 0.08, 0.18]} />
+              <mesh geometry={GEO.cylinder} material={pm(k + 3)} position={[-0.13, 0.12, 0]} scale={[0.18, 0.08, 0.18]} />
+              <mesh geometry={GEO.cylinder} material={pm(k + 3)} position={[0.13, 0.12, 0]} scale={[0.18, 0.08, 0.18]} />
               <mesh geometry={GEO.box} material={dark} position={[0, 0.28, 0]} scale={[0.3, 0.04, 0.04]} />
             </group>
           ))}
@@ -818,7 +820,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-24-${services}`}>
+      <Batch version={`joyeria-escalera-25-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
@@ -834,6 +836,9 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
         <>
         <pointLight position={[-56, 3.2, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
         <pointLight position={[-70, 9, 0]} color="#ffe2a8" intensity={night ? 18 : 3} distance={15} decay={2} />
+        <pointLight position={[-63, 2.4, -25]} color="#ffd9a0" intensity={night ? 24 : 0} distance={13} decay={2} />
+        <pointLight position={[-71, 2.4, -16]} color="#ffd9a0" intensity={night ? 20 : 0} distance={11} decay={2} />
+        <pointLight position={[-56.6, 2.4, -16]} color="#ffd9a0" intensity={night ? 20 : 0} distance={11} decay={2} />
         <pointLight position={[-61, 4.5, -14]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
         <pointLight position={[-64, 8.5, -27]} color="#ffe2a8" intensity={night ? 16 : 2} distance={16} decay={2} />
         <pointLight position={[-62, 8, -2]} color="#ffe2a8" intensity={night ? 16 : 2} distance={14} decay={2} />
