@@ -346,7 +346,7 @@ function Ground() {
         const q = OUTLINE[(i + 1) % n]
         return <WallRun key={i} a={[p[0] * 0.99, p[1] * 0.99]} b={[q[0] * 0.99, q[1] * 0.99]} />
       })}
-      {TOWERS.map((i) => (
+      {TOWERS.slice(0, 3).map((i) => (
         <RoundTower key={i} x={OUTLINE[i][0] * 0.99} z={OUTLINE[i][1] * 0.99} />
       ))}
       {/* rocas en la orilla */}
