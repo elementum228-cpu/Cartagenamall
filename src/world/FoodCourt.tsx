@@ -93,7 +93,7 @@ function Shell() {
       {/* losa: piso claro, canto de piedra y faja inferior */}
       <mesh geometry={slab.top} material={mat(PALETTE.floor)} position={[0, -0.05, 0]} receiveShadow castShadow />
       <mesh geometry={slab.band} material={mat(STONE_DARK)} position={[0, -0.6, 0]} />
-      <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[H - 12, 0.212, H - 12]} scale={[2 * H - 9, 0.02, 2 * H - 9]} receiveShadow />
+      <mesh geometry={GEO.box} material={mat(PALETTE.floorAlt)} position={[2, 0.212, 2]} scale={[2 * H - 9, 0.02, 2 * H - 9]} receiveShadow />
       {/* terraza de madera con pérgola en la esquina del fondo */}
       <mesh geometry={GEO.box} material={mat(WOOD_DECK)} position={[(T.x0 + T.x1) / 2 + 0.2, 0.215, (T.z0 + T.z1) / 2 + 0.2]} scale={[T.x1 - T.x0 - 0.4, 0.03, T.z1 - T.z0 - 0.4]} receiveShadow />
       {[
