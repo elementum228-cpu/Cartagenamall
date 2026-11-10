@@ -405,8 +405,6 @@ function Window({ i }: { i: number }) {
       <mesh geometry={GEO.box} material={mat('#f4d9a6', { rough: 0.9 })} position={[0, H / 2, 0.04]} scale={[WIN - 0.1, H, 0.06]} />
       <mesh geometry={GEO.box} material={mat('#c99a62')} position={[0, 0.08, D / 2]} scale={[WIN - 0.1, 0.16, D]} />
       <mesh geometry={GEO.box} material={light} position={[0, H - 0.18, D / 2]} scale={[WIN - 0.4, 0.06, D - 0.2]} />
-      {/* franja de cartel */}
-      <mesh geometry={GEO.box} material={mat(c(0))} position={[0, H - 0.05, D / 2]} scale={[WIN - 0.1, 0.3, D + 0.1]} />
       {t === 0 && (
         <>
           {/* maniquíes con ropa */}
@@ -820,7 +818,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-23-${services}`}>
+      <Batch version={`joyeria-escalera-24-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
