@@ -6,3 +6,6 @@ export const P2_GROW = 5
 
 /** Zona de joyería aprobada: puerta en la muralla oeste, salón exclusivo con 4 locales y cristalería bajo el piso 2. */
 export const JOYERIA = true
+
+/** Escaparates 3D detrás del vidrio de la fachada del piso 2 (propuesta). */
+export const SHOWCASE_FACADE = true

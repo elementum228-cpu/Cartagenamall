@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { FLOOR_BY_ID, FOOD_ISLAND_AT, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
-import { JOYERIA, P2_GROW as G } from '../config/preview'
+import { JOYERIA, P2_GROW as G, SHOWCASE_FACADE } from '../config/preview'
 import { Batch } from './Batch'
 import { helmetColor, useHelmetsOn } from './helmets'
 import { FoodCrowd } from './FlashCrowd'
@@ -10,6 +10,7 @@ import { LABEL_PRIORITY } from './labels'
 import { getGlassPill } from './labelTexture'
 import { GEO, GLASS, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
+import { Window, WIN } from './ShowcaseWindow'
 import { useIsNight } from '../lib/useIsNight'
 
 // Piso 2: terraza gastronómica colonial, elevada al fondo de la fortaleza. Coordenadas del piso
@@ -221,7 +222,7 @@ function makeGlassSky() {
 }
 const GLASS_REFL = new THREE.MeshPhysicalMaterial({ color: '#4f8ca3', roughness: 0.04, metalness: 0.3, transparent: true, opacity: 0.45, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.DoubleSide })
 let sheen: THREE.MeshBasicMaterial | null = null
-export const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
+export const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: SHOWCASE_FACADE ? 0.4 : 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
 
 /** Cristalería (propuesta): cierra con vidrio reflectante el hueco bajo la losa, por los dos bordes que dan a la plaza. */
 function GlassUnder() {
@@ -236,6 +237,11 @@ function GlassUnder() {
       <mesh geometry={GEO.plane} material={glassSheen()} position={[0, 0, 0.05]} scale={[len, h, 1]} />
       <mesh geometry={GEO.box} material={frame} position={[0, h / 2 - 0.03, 0]} scale={[len, 0.08, 0.12]} />
       <mesh geometry={GEO.box} material={frame} position={[0, -h / 2 + 0.03, 0]} scale={[len, 0.08, 0.12]} />
+      {SHOWCASE_FACADE && Array.from({ length: Math.floor(len / WIN) }, (_, k) => (
+        <group key={`w${k}`} position={[-len / 2 + WIN / 2 + k * ((len - 0) / Math.floor(len / WIN)) + (len / Math.floor(len / WIN) - WIN) / 2, -h / 2, -0.95]}>
+          <Window i={k + Math.round(len)} H={h} glass={false} />
+        </group>
+      ))}
       {Array.from({ length: Math.max(1, Math.round(len / 3)) + 1 }, (_, i) => (
         <mesh key={i} geometry={GEO.box} material={frame} position={[-len / 2 + (i * len) / Math.max(1, Math.round(len / 3)), 0, 0]} scale={[0.07, h, 0.12]} />
       ))}
@@ -492,7 +498,7 @@ function Furniture({ detail }: { detail: 'high' | 'low' }) {
 /** Estructura estática del piso 2 (también se ve como silueta desde otros pisos). */
 export function FoodCourtShell() {
   return (
-    <Batch version="estructura-p2-fortaleza">
+    <Batch version="estructura-p2-fortaleza-3">
       <Shell />
     </Batch>
   )
