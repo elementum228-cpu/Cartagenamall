@@ -148,8 +148,8 @@ function StairDoor() {
 
 // Terraza: un gran cuadrado ~2 m más bajo que el piso 2 (se nota el desnivel), con muralla de piedra, muros sólidos en los lados cercanos,
 // locales pegados al muro y un patio hundido muy grande en el centro. Termina en el tercer local del piso 2, antes de su garita.
-const T = { x0: -100, x1: -48, z0: -34, z1: 6.4 }
-const COURT = { x0: -91, x1: -56, z0: -26, z1: -8, drop: 3.6 }
+const T = { x0: -83, x1: -48, z0: -34, z1: 6.4 }
+const COURT = { x0: -80, x1: -56, z0: -31, z1: -8, drop: 3.6 }
 const OPEN = 2.3 // media anchura del hueco por donde pasa la escalera
 const WALL_T = 1.0
 
@@ -198,7 +198,7 @@ function Terrace() {
   ]
   // muros sólidos del mar a la terraza en los lados cercanos (donde antes había columnas), con parapeto y almenas
   const solid: [number, number, number, number][] = [
-    [T.x0, TX0 - 0.4, T.z1, T.z1],
+    [T.x0, -52.6, T.z1, T.z1],
     [T.x1, T.x1, -9.75, -OPEN],
     [T.x1, T.x1, OPEN, T.z1],
   ]
@@ -213,7 +213,6 @@ function Terrace() {
     [COURT.x0, stairX - gap, COURT.z1, COURT.z1],
     [stairX + gap, COURT.x1, COURT.z1, COURT.z1],
   ]
-  const ledge = 2.4
   const nSteps = 18
   const sRun = 5.4
   return (
@@ -268,17 +267,6 @@ function Terrace() {
           <mesh geometry={GEO.box} material={goldM} position={[(xa + xb) / 2, top + 0.05, (za + zb) / 2]} scale={[Math.max(0.42, xb - xa + 0.1), 0.1, Math.max(0.42, zb - za + 0.1)]} />
         </group>
       ))}
-      {/* grada intermedia alrededor del patio: el desnivel baja en dos tramos */}
-      {([
-        [COURT.x0, COURT.x1, COURT.z0, COURT.z0 + ledge],
-        [COURT.x0, COURT.x0 + ledge, COURT.z0 + ledge, COURT.z1 - ledge],
-        [COURT.x1 - ledge, COURT.x1, COURT.z0 + ledge, COURT.z1 - ledge],
-      ] as [number, number, number, number][]).map(([xa, xb, za, zb], i) => (
-        <group key={`lg${i}`}>
-          <mesh geometry={GEO.box} material={ledgeM} position={[(xa + xb) / 2, (top - COURT.drop / 2 + cy) / 2, (za + zb) / 2]} scale={[xb - xa, top - COURT.drop / 2 - cy, zb - za]} castShadow receiveShadow />
-          <mesh geometry={GEO.box} material={goldM} position={[(xa + xb) / 2, top - COURT.drop / 2 + 0.03, (za + zb) / 2]} scale={[xb - xa, 0.05, zb - za]} />
-        </group>
-      ))}
       {/* escalera ancha del borde al patio */}
       {Array.from({ length: nSteps - 1 }, (_, i) => {
         const h = COURT.drop - (COURT.drop / nSteps) * (i + 1)
@@ -288,27 +276,20 @@ function Terrace() {
       {[-1, 1].map((sd) => (
         <mesh key={`er${sd}`} geometry={GEO.box} material={black} position={[stairX + sd * (gap - 0.1), cy + COURT.drop / 2 + 0.95, COURT.z1 - 0.15 - sRun / 2]} rotation={[Math.atan2(COURT.drop, sRun), 0, 0]} scale={[0.06, 0.06, Math.hypot(sRun, COURT.drop)]} />
       ))}
-      {/* patio: espacio abierto con círculos de piedra, bancas, mesas y palmeras (sin fuente) */}
-      <mesh geometry={GEO.cylinder} material={mat('#d9c9a5')} position={[CX2, cy + 0.03, CZ2]} scale={[13, 0.04, 13]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={goldM} position={[CX2, cy + 0.06, CZ2]} scale={[10.6, 0.03, 10.6]} />
-      <mesh geometry={GEO.cylinder} material={mat('#efe6d2')} position={[CX2, cy + 0.09, CZ2]} scale={[10.1, 0.03, 10.1]} />
-      {[
-        [CX2 - 8, COURT.z0 + 0.5, 0],
-        [CX2 + 8, COURT.z0 + 0.5, 0],
-        [COURT.x0 + 0.5, CZ2, Math.PI / 2],
-        [COURT.x1 - 0.5, CZ2 - 2, Math.PI / 2],
-        [CX2 + 12, COURT.z1 - 1, 0],
-        [CX2 - 14, COURT.z1 - 1, 0],
-      ].map(([x, z, r], i) => (
-        <mesh key={`pb${i}`} geometry={GEO.box} material={mat('#8a6a4a')} position={[x, cy + 0.25, z]} rotation={[0, r, 0]} scale={[6, 0.45, 0.6]} castShadow />
+      {/* patio: espacio abierto en el centro (los locales van pegados a los muros), círculos de piedra, bancas, mesas y palmeras */}
+      <mesh geometry={GEO.cylinder} material={mat('#d9c9a5')} position={[-68, cy + 0.03, -17.5]} scale={[11, 0.04, 11]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={goldM} position={[-68, cy + 0.06, -17.5]} scale={[8.8, 0.03, 8.8]} />
+      <mesh geometry={GEO.cylinder} material={mat('#efe6d2')} position={[-68, cy + 0.09, -17.5]} scale={[8.4, 0.03, 8.4]} />
+      {[[-72, -12], [-64, -12], [-68, -23.5]].map(([x, z], i) => (
+        <mesh key={`pb${i}`} geometry={GEO.box} material={mat('#8a6a4a')} position={[x, cy + 0.25, z]} scale={[4, 0.45, 0.6]} castShadow />
       ))}
-      {[[-84, -21], [-63, -21], [-84, -13], [-63, -13], [-73.5, -23]].map(([x, z], i) => (
+      {[[-72, -20], [-64, -20], [-68, -17.5]].map(([x, z], i) => (
         <group key={`mt${i}`}>
           <mesh geometry={GEO.cylinder} material={mat('#8a6a4a')} position={[x, cy + 0.55, z]} scale={[1.3, 0.1, 1.3]} castShadow />
           <mesh geometry={GEO.cylinder} material={black} position={[x, cy + 0.28, z]} scale={[0.1, 0.56, 0.1]} />
         </group>
       ))}
-      {[[-89.4, -24.4], [-58, -24.4], [-89.4, -9.6], [-58, -9.6], [-73.5, -24.4]].map(([x, z], i) => (
+      {[[-74.5, -25.5], [-61.5, -25.5], [-74.5, -9.5]].map(([x, z], i) => (
         <group key={`pl${i}`} position={[x, cy, z]}>
           <mesh geometry={GEO.cylinder} material={mat('#8a6a4a')} position={[0, 1.4, 0]} scale={[0.28, 2.8, 0.28]} castShadow />
           {[0, 1, 2, 3, 4].map((k) => (
@@ -336,7 +317,7 @@ function Terrace() {
         )
       })}
       {/* faroles cálidos en el paseo */}
-      {[[-96, -27.2], [-84, -27.2], [-72, -27.2], [-60, -27.2], [-92.4, -22], [-92.4, -12], [-92.4, -2], [-52.5, -24], [-52.5, -12], [-86, 4.2], [-72, 4.2]].map(([x, z], i) => (
+      {[[-80.5, -32.4], [-80.5, -20], [-80.5, -8], [-80.5, 4.2], [-72, 4.2], [-62, 4.2], [-52.5, -33], [-52.5, -22], [-52.5, -11]].map(([x, z], i) => (
         <group key={`f${i}`}>
           <mesh geometry={GEO.cylinder} material={black} position={[x, top + 1.2, z]} scale={[0.08, 2.4, 0.08]} />
           <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, top + 2.5, z]} scale={0.34} />
@@ -604,7 +585,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-7">
+      <Batch version="joyeria-escalera-8">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
@@ -618,9 +599,8 @@ export function JewelryZone() {
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       <pointLight position={[-56, 3.2, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
       <pointLight position={[-70, 9, 0]} color="#ffe2a8" intensity={night ? 18 : 3} distance={15} decay={2} />
-      <pointLight position={[-73, 4.5, -17]} color="#ffe2a8" intensity={night ? 28 : 3} distance={26} decay={2} />
-      <pointLight position={[-78, 8, -30]} color="#ffe2a8" intensity={night ? 18 : 2} distance={16} decay={2} />
-      <pointLight position={[-95, 8, -12]} color="#ffe2a8" intensity={night ? 18 : 2} distance={16} decay={2} />
+      <pointLight position={[-68, 4.5, -18]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
+      <pointLight position={[-68, 8, -4]} color="#ffe2a8" intensity={night ? 16 : 2} distance={14} decay={2} />
       {[-37, -44, -50].map((x) => (
         <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
       ))}
