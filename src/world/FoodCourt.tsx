@@ -114,7 +114,8 @@ function Shell() {
       <mesh geometry={GEO.box} material={wall} position={[0, WALL_H / 2 + 0.2, -H + 0.2]} scale={[2 * H, WALL_H, 0.4]} castShadow />
       <mesh geometry={GEO.box} material={wall} position={[-H + 0.2, WALL_H / 2 + 0.2, 0]} scale={[0.4, WALL_H, 2 * H]} castShadow />
       {/* barandas hacia la plaza; abiertas donde llegan las escaleras */}
-      {railing(H - 0.2, -H + 0.4, H - 0.2, H - ARRIVAL_GAP, 'este')}
+      {railing(H - 0.2, -H + 2.4, H - 0.2, H - ARRIVAL_GAP, 'este')}
+      {railing(H - 0.2, -H + 0.4, H - 0.2, -H + 0.9, 'este-n')}
       {railing(-H + 0.4, H - 0.2, H - ARRIVAL_GAP, H - 0.2, 'frente')}
       {/* arcada bajo los bordes que dan a la plaza: el piso se lee elevado desde la fortaleza */}
       {ARCADE.map(([x, z]) => (
@@ -134,10 +135,57 @@ function Shell() {
         </group>
       ))}
       {JOYERIA && <GlassUnder />}
+      <StairToStadium />
       <Keep />
     </group>
   )
 }
+
+/**
+ * Escalera de piedra (no eléctrica) del piso 2 al estadio: sale por la esquina norte del borde este, baja en dos tramos
+ * en zigzag con un descanso intermedio, y llega a la altura de la muralla de la isla del estadio.
+ */
+function StairToStadium() {
+  const stone = mat(STONE)
+  const dark = mat(STONE_DARK)
+  const N = 10
+  const RISE = 0.3
+  const RUN = 0.5
+  const Z0 = -H + 1.25 // arranque (norte)
+  const XA = H + 0.4 // tramo A (pegado a la losa)
+  const XB = H + 1.9 // tramo B
+  const W = 1.35
+  const topY = 0.2
+  const midY = topY - N * RISE
+  const botY = midY - N * RISE
+  const steps = (x: number, dir: 1 | -1, y0: number, key: string) =>
+    Array.from({ length: N }, (_, i) => {
+      const top = y0 - (i + 1) * RISE
+      const z = dir === 1 ? Z0 + i * RUN + RUN / 2 : Z0 + (N - 1) * RUN + RUN * 1.5 - i * RUN - RUN
+      const bottom = y0 - N * RISE - 0.35
+      return <mesh key={`${key}${i}`} geometry={GEO.box} material={i % 2 ? stone : dark} position={[x, (top + bottom) / 2, z]} scale={[W, top - bottom, RUN]} castShadow receiveShadow />
+    })
+  const zEnd = Z0 + N * RUN
+  return (
+    <group>
+      {/* rellano de salida al nivel de la terraza */}
+      <mesh geometry={GEO.box} material={stone} position={[H + 1.2, topY - 0.15, Z0 - 0.3]} scale={[3.6, 0.3, 1.1]} castShadow />
+      {steps(XA, 1, topY, 'a')}
+      {/* descanso intermedio con su apoyo hasta el mar */}
+      <mesh geometry={GEO.box} material={stone} position={[(XA + XB) / 2, midY - 0.15, zEnd + 0.8]} scale={[XB - XA + W, 0.3, 1.6]} castShadow />
+      <mesh geometry={GEO.box} material={dark} position={[(XA + XB) / 2, midY - 3.9, zEnd + 0.8]} scale={[1.1, 7.2, 1.1]} />
+      {steps(XB, -1, midY, 'b')}
+      {/* llegada a la altura de la muralla de la isla */}
+      <mesh geometry={GEO.box} material={stone} position={[XB + 1.0, botY - 0.15, Z0 - 0.3]} scale={[2.4, 0.3, 1.5]} castShadow />
+      <mesh geometry={GEO.box} material={dark} position={[XB + 1.0, botY - 3.7, Z0 - 0.3]} scale={[1.0, 7, 1.0]} />
+      {/* barandas de piedra y cordón a los lados externos */}
+      {[XB + W / 2 + 0.1, XA - W / 2 - 0.1].map((x, k) => (
+        <mesh key={k} geometry={GEO.box} material={mat(CORDON_STAIR)} position={[x, (topY + botY) / 2 + 0.55, Z0 + (N * RUN) / 2]} rotation={[0, 0, 0]} scale={[0.12, 0.12, N * RUN]} />
+      ))}
+    </group>
+  )
+}
+const CORDON_STAIR = '#e6d2a8'
 
 /** Reflejo falso del cielo sobre el vidrio: degradé frío y destellos diagonales (no hay mapa de entorno en la escena). */
 function makeGlassSky() {
