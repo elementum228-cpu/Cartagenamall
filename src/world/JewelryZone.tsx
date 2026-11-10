@@ -23,6 +23,20 @@ const GOLD = '#d9a441'
 const RED = '#b9242b'
 const WALL_X = -32.1
 
+/** Material de una capa del piso: con desplazamiento de profundidad para que no parpadee al acercar la cámara. */
+const layer = (color: string, n: number, rough = 0.9) => {
+  const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0 })
+  m.polygonOffset = true
+  m.polygonOffsetFactor = -n
+  m.polygonOffsetUnits = -n * 4
+  return m
+}
+const CARPET = layer('#b9242b', 3, 0.97)
+const GOLD_LINE = layer('#d9a441', 4, 0.3)
+const BLACK_INLAY = layer('#17171f', 1, 0.25)
+const MEDAL_GOLD = layer('#d9a441', 6, 0.25)
+const MEDAL_BLACK = layer('#17171f', 7, 0.25)
+
 function useMarble() {
   return useMemo(() => {
     const c = document.createElement('canvas')
@@ -84,6 +98,13 @@ function Patrol({ z, phase }: { z: number; phase: number }) {
 
 function Shell() {
   const marble = useMarble()
+  const marbleInlay = useMemo(() => {
+    const m = marble.clone()
+    m.polygonOffset = true
+    m.polygonOffsetFactor = -2
+    m.polygonOffsetUnits = -8
+    return m
+  }, [marble])
   const strip = glowMat('#ffe2a8', 1.8, { dayGlow: 0.35 })
   const warm = glowMat('#fff0c8', 2.2, { dayGlow: 0.4 })
   const NZ = CZ - D / 2
@@ -97,8 +118,8 @@ function Shell() {
       <mesh geometry={GEO.box} material={mat(CORDON)} position={[CX, Y - 0.04, CZ]} scale={[W + 1.1, 0.12, D + 1.1]} />
       {/* paso completo bajo la puerta: sin hueco de agua entre el mall y la plataforma */}
       <mesh geometry={GEO.box} material={mat(STONE[0])} position={[-31.2, 0.05, 0]} scale={[4.6, 0.3, 5.4]} receiveShadow />
-      <mesh geometry={GEO.box} material={marble} position={[-31.2, 0.21, 0]} scale={[4.6, 0.04, 5.4]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat(RED, { rough: 0.95 })} position={[-31.2, 0.24, 0]} scale={[4.6, 0.03, 2.8]} />
+      <mesh geometry={GEO.box} material={marbleInlay} position={[-31.2, 0.21, 0]} scale={[4.6, 0.04, 5.4]} />
+      <mesh geometry={GEO.box} material={CARPET} position={[-31.2, 0.24, 0]} scale={[4.6, 0.03, 2.8]} />
       {/* mármol, borde dorado y alfombra roja hasta el fondo */}
       <mesh geometry={GEO.box} material={marble} position={[CX, Y + 0.02, CZ]} scale={[W, 0.06, D]} receiveShadow />
       {[
@@ -108,9 +129,9 @@ function Shell() {
       ].map(([x, z, w, d], i) => (
         <mesh key={i} geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[x, Y + 0.06, z]} scale={[w, 0.03, d]} />
       ))}
-      <mesh geometry={GEO.box} material={mat(RED, { rough: 0.95 })} position={[CX + 0.2, Y + 0.115, 0]} scale={[W - 0.6, 0.02, 2.8]} receiveShadow />
+      <mesh geometry={GEO.box} material={CARPET} position={[CX + 0.2, Y + 0.115, 0]} scale={[W - 0.6, 0.02, 2.8]} />
       {[-1.45, 1.45].map((z) => (
-        <mesh key={z} geometry={GEO.box} material={mat(GOLD)} position={[CX + 0.2, Y + 0.14, z]} scale={[W - 0.6, 0.02, 0.07]} />
+        <mesh key={z} geometry={GEO.box} material={GOLD_LINE} position={[CX + 0.2, Y + 0.14, z]} scale={[W - 0.6, 0.02, 0.07]} />
       ))}
       {/* paredes: fondo y norte altas con cornisa dorada; el lado de la cámara es una baranda de vidrio */}
       {[
@@ -139,11 +160,11 @@ function Shell() {
         </group>
       ))}
       {/* incrustación de mármol negro con filete dorado, y medallón central */}
-      <mesh geometry={GEO.box} material={mat('#17171f', { rough: 0.2 })} position={[CX, Y + 0.075, CZ]} scale={[W - 1.2, 0.02, D - 1.2]} />
-      <mesh geometry={GEO.box} material={marble} position={[CX, Y + 0.09, CZ]} scale={[W - 1.5, 0.02, D - 1.5]} />
-      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.15, 0]} scale={[3.4, 0.03, 3.4]} />
-      <mesh geometry={GEO.cylinder} material={mat('#17171f', { rough: 0.2 })} position={[-47.2, Y + 0.17, 0]} scale={[2.9, 0.03, 2.9]} />
-      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.19, 0]} scale={[1.5, 0.03, 1.5]} />
+      <mesh geometry={GEO.box} material={BLACK_INLAY} position={[CX, Y + 0.075, CZ]} scale={[W - 1.2, 0.02, D - 1.2]} />
+      <mesh geometry={GEO.box} material={marbleInlay} position={[CX, Y + 0.09, CZ]} scale={[W - 1.5, 0.02, D - 1.5]} />
+      <mesh geometry={GEO.cylinder} material={MEDAL_GOLD} position={[-47.2, Y + 0.15, 0]} scale={[3.4, 0.03, 3.4]} />
+      <mesh geometry={GEO.cylinder} material={MEDAL_BLACK} position={[-47.2, Y + 0.17, 0]} scale={[2.9, 0.03, 2.9]} />
+      <mesh geometry={GEO.cylinder} material={MEDAL_GOLD} position={[-47.2, Y + 0.19, 0]} scale={[1.5, 0.03, 1.5]} />
       {/* vitrinas de cristal con joyas, contra las paredes laterales */}
       {[-37, -41.5, -46, -50].flatMap((x) => [NZ + 0.95, SZ - 0.95].map((z) => ({ x, z }))).map(({ x, z }, i) => (
         <group key={`v${x}${z}`}>
