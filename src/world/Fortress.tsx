@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
+import { JOYERIA } from '../config/preview'
 import * as THREE from 'three'
 import { FORTRESS, GATE, MALL } from '../config/mall'
 import { cameraState } from './cameraState'
@@ -347,7 +348,14 @@ export function FortressEnvironment({ onEnter, sparse = false }: { onEnter: () =
         <mesh geometry={GEO.box} material={mat(PALETTE.sand)} position={[0, -0.35, 0]} scale={[2 * S - 0.5, 0.7, 2 * S - 0.5]} receiveShadow />
         {/* murallas (las esquinas con baluarte o puerta se resuelven aparte) */}
         <WallRun from={[-S + 3, -S]} to={[S - 3, -S]} outward={[0, -1]} />
-        <WallRun from={[-S, -S + 3]} to={[-S, S - 3]} outward={[-1, 0]} />
+        {JOYERIA ? (
+          <>
+            <WallRun from={[-S, -S + 3]} to={[-S, -2.6]} outward={[-1, 0]} />
+            <WallRun from={[-S, 2.6]} to={[-S, S - 3]} outward={[-1, 0]} />
+          </>
+        ) : (
+          <WallRun from={[-S, -S + 3]} to={[-S, S - 3]} outward={[-1, 0]} />
+        )}
         <WallRun from={[-S + 3, S]} to={[C, S]} outward={[0, 1]} />
         <WallRun from={[S, -S + 3]} to={[S, C]} outward={[1, 0]} />
         {FORTRESS.bastions.map((b) => (

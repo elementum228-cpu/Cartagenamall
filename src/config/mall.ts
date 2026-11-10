@@ -1,5 +1,5 @@
 import { COURT, SPORTS_HALF } from '../football/config'
-import { P2_GROW as G } from './preview'
+import { JOYERIA, P2_GROW as G } from './preview'
 import { ENT_CENTER, ENT_COLOR, ENT_SLOTS, ENT_SUGGESTED, ENT_TRACK, ENT_UNIT } from '../entertainment/config'
 import type { FloorConfig, FloorId, MallConfig, SpaceSlot, SpaceType, SpaceTypeInfo, ZoneConfig, ZoneId } from '../domain/types'
 
@@ -464,7 +464,18 @@ export const FLOORS = MALL.floors
 export const FLOOR_BY_ID: Record<FloorId, FloorConfig> = Object.fromEntries(FLOORS.map((f) => [f.id, f]))
 /** Piso 1 (en cruz): lo usan la estructura, decoración y ambiente específicos de esa planta. */
 export const P1 = FLOORS[0]
-export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES, ...ENTERTAINMENT_SPACES]
+/** Joyería (propuesta): cuatro locales pequeños frente a la alfombra roja, al otro lado de la puerta de la muralla oeste. */
+export const JEWELRY_SPACES: SpaceSlot[] = JOYERIA
+  ? (
+      [
+        [-35.5, -4.6, 0],
+        [-39.5, -4.6, 0],
+        [-35.5, 4.6, Math.PI],
+        [-39.5, 4.6, Math.PI],
+      ] as [number, number, number][]
+    ).map(([x, z, r], i) => ({ id: `P1-J${i + 1}`, floorId: 'P1', zoneId: 'A' as ZoneId, type: 'island' as SpaceType, label: `J-0${i + 1}`, position: [x, z] as [number, number], rotation: r, size: SPACE_TYPES.island.size }))
+  : []
+export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES, ...ENTERTAINMENT_SPACES, ...JEWELRY_SPACES]
 
 /**
  * ¿El punto (x, z) cae dentro de un local o isla (más `margin` alrededor)? Las zonas de locales

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { FLOOR_BY_ID, FOOD_ISLAND_AT, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
-import { P2_GROW as G } from '../config/preview'
+import { JOYERIA, P2_GROW as G } from '../config/preview'
 import { Batch } from './Batch'
 import { helmetColor, useHelmetsOn } from './helmets'
 import { FoodCrowd } from './FlashCrowd'
@@ -133,8 +133,34 @@ function Shell() {
           <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[0, -1.05, 0]} scale={[1.3, 0.3, 1.3]} />
         </group>
       ))}
+      {JOYERIA && <GlassUnder />}
       <Keep />
     </group>
+  )
+}
+
+/** Cristalería (propuesta): cierra con vidrio el hueco bajo la losa, por los dos bordes que dan a la plaza, hasta el torreón. */
+function GlassUnder() {
+  const h = ELEV - 0.9
+  const y = -ELEV / 2 - 0.35
+  const east = 2 * H - CUT - 1
+  const south = 2 * H - CUT - 1
+  const frame = mat('#3a4450')
+  const glass = (len: number, x: number, z: number, rot: number, key: string) => (
+    <group key={key} position={[x, y, z]} rotation={[0, rot, 0]}>
+      <mesh geometry={GEO.box} material={GLASS} scale={[len, h, 0.06]} />
+      <mesh geometry={GEO.box} material={frame} position={[0, h / 2 - 0.03, 0]} scale={[len, 0.08, 0.12]} />
+      <mesh geometry={GEO.box} material={frame} position={[0, -h / 2 + 0.03, 0]} scale={[len, 0.08, 0.12]} />
+      {Array.from({ length: Math.round(len / 3) + 1 }, (_, i) => (
+        <mesh key={i} geometry={GEO.box} material={frame} position={[-len / 2 + (i * len) / Math.round(len / 3), 0, 0]} scale={[0.07, h, 0.12]} />
+      ))}
+    </group>
+  )
+  return (
+    <>
+      {glass(east, H - 0.6, -H + east / 2, Math.PI / 2, 'g-este')}
+      {glass(south, -H + south / 2, H - 0.6, 0, 'g-sur')}
+    </>
   )
 }
 
