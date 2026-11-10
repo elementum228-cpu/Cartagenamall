@@ -72,6 +72,74 @@ function Post({ x, z }: { x: number; z: number }) {
   )
 }
 
+
+const AX = X0 - 0.3 // cara exterior del muro del fondo
+const STAIR_ROOM = { len: 6.4, half: 2.0 }
+
+/** Puerta en la pared del fondo, al final de la alfombra, y el vestíbulo donde arranca la escalera al segundo piso. */
+function StairDoor() {
+  const warm = glowMat('#fff0c8', 2.2, { dayGlow: 0.5 })
+  const strip = glowMat('#ffe2a8', 1.8, { dayGlow: 0.4 })
+  const wall = mat('#f1e9d8')
+  const stone = mat('#efe3cc')
+  const goldM = mat(GOLD, { rough: 0.3 })
+  const x1 = AX - STAIR_ROOM.len
+  const mid = (AX + x1) / 2
+  const steps = 9
+  const run = 4.6
+  const stepL = run / steps
+  const sx0 = AX - 1.0
+  return (
+    <>
+      {/* marco dorado de la puerta */}
+      {[-1, 1].map((sd) => (
+        <mesh key={sd} geometry={GEO.box} material={goldM} position={[X0 - 0.1, 1.6, sd * 1.85]} scale={[0.5, 3.2, 0.3]} castShadow />
+      ))}
+      <mesh geometry={GEO.box} material={goldM} position={[X0 - 0.1, 3.35, 0]} scale={[0.5, 0.35, 4.0]} castShadow />
+      <mesh geometry={GEO.box} material={mat('#7a1620')} position={[X0 + 0.16, 3.1, 0]} scale={[0.06, 0.2, 3.4]} />
+      <mesh geometry={GEO.box} material={wall} position={[X0 - 0.15, 3.5, 0]} scale={[0.3, 0.6, 3.5]} />
+      <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[X0 - 0.15, WH + 0.08, 0]} scale={[0.5, 0.18, 3.5]} />
+      {/* losa de piedra bajo el vestíbulo (sobre el mar) */}
+      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[mid, (Y - 1.5) / 2, 0]} scale={[STAIR_ROOM.len + 0.6, Y + 1.5, STAIR_ROOM.half * 2 + 0.8]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[mid, -0.9, 0]} scale={[STAIR_ROOM.len + 1.2, 1.2, STAIR_ROOM.half * 2 + 1.4]} />
+      <mesh geometry={GEO.box} material={mat('#f1ebdf', { rough: 0.3 })} position={[mid, Y + 0.02, 0]} scale={[STAIR_ROOM.len, 0.06, STAIR_ROOM.half * 2]} receiveShadow />
+      <mesh geometry={GEO.box} material={CARPET} position={[X0 - 1.2, Y + 0.115, 0]} scale={[2.6, 0.02, 2.8]} />
+      {/* paredes del vestíbulo y muro del fondo */}
+      {[-1, 1].map((sd) => (
+        <group key={sd}>
+          <mesh geometry={GEO.box} material={wall} position={[mid, WH / 2, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len, WH, 0.3]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={goldM} position={[mid, WH + 0.08, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len + 0.2, 0.18, 0.5]} />
+          <mesh geometry={GEO.box} material={goldM} position={[mid, 0.3, sd * (STAIR_ROOM.half + 0.15)]} scale={[STAIR_ROOM.len + 0.1, 0.35, 0.42]} />
+          <mesh geometry={GEO.box} material={strip} position={[mid, WH - 0.5, sd * STAIR_ROOM.half]} scale={[STAIR_ROOM.len - 0.4, 0.1, 0.05]} />
+        </group>
+      ))}
+      <mesh geometry={GEO.box} material={wall} position={[x1 - 0.15, WH / 2, 0]} scale={[0.3, WH, STAIR_ROOM.half * 2 + 0.6]} castShadow />
+      <mesh geometry={GEO.box} material={goldM} position={[x1 - 0.15, WH + 0.08, 0]} scale={[0.5, 0.18, STAIR_ROOM.half * 2 + 0.8]} />
+      {/* primeros escalones de piedra que suben hacia el segundo piso, con luz en cada uno */}
+      {Array.from({ length: steps }, (_, i) => {
+        const h = 0.2 * (i + 1)
+        const x = sx0 - (i + 0.5) * stepL
+        return (
+          <group key={i}>
+            <mesh geometry={GEO.box} material={stone} position={[x, Y + h / 2, 0]} scale={[stepL + 0.01, h, STAIR_ROOM.half * 2 - 0.5]} castShadow receiveShadow />
+            <mesh geometry={GEO.box} material={strip} position={[x + stepL / 2 + 0.005, Y + h - 0.07, 0]} scale={[0.02, 0.05, STAIR_ROOM.half * 2 - 0.9]} />
+          </group>
+        )
+      })}
+      {/* baranda de vidrio y metal negro a cada lado */}
+      {[-1, 1].map((sd) => (
+        <group key={`r${sd}`}>
+          <mesh geometry={GEO.box} material={GLASS} position={[sx0 - run / 2, Y + 0.95, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, Math.atan2(0.2 * steps, run)]} scale={[Math.hypot(run, 0.2 * steps), 0.8, 0.04]} />
+          <mesh geometry={GEO.box} material={mat('#1b1d22', { rough: 0.4 })} position={[sx0 - run / 2, Y + 1.4, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, Math.atan2(0.2 * steps, run)]} scale={[Math.hypot(run, 0.2 * steps), 0.05, 0.06]} />
+        </group>
+      ))}
+      {/* fondo luminoso: invita a seguir subiendo */}
+      <mesh geometry={GEO.box} material={warm} position={[x1 + 0.02, 2.3, 0]} scale={[0.05, 2.2, 2.2]} />
+      <mesh geometry={GEO.box} material={goldM} position={[x1 + 0.05, 2.3, 0]} scale={[0.1, 2.5, 2.6]} />
+    </>
+  )
+}
+
 const NAVY = '#1d2b4a'
 
 /** Vigilante que patrulla de la puerta al fondo y regresa, con paso de caminata. */
@@ -135,7 +203,8 @@ function Shell() {
       ))}
       {/* paredes: fondo y norte altas con cornisa dorada; el lado de la cámara es una baranda de vidrio */}
       {[
-        [X0 - 0.15, CZ, 0.3, D + 0.6, WH],
+        [X0 - 0.15, -3.75, 0.3, 3.9, WH],
+        [X0 - 0.15, 3.75, 0.3, 3.9, WH],
         [CX, NZ - 0.15, W + 0.6, 0.3, WH],
       ].map(([x, z, w, d, h], i) => (
         <group key={i}>
@@ -150,8 +219,7 @@ function Shell() {
       {/* luz de cornisa y gran rótulo dorado en el fondo */}
       <mesh geometry={GEO.box} material={strip} position={[X0 + 0.04, WH - 0.5, CZ]} scale={[0.05, 0.12, D - 1]} />
       <mesh geometry={GEO.box} material={strip} position={[CX, WH - 0.5, NZ + 0.04]} scale={[W - 1, 0.12, 0.05]} />
-      <mesh geometry={GEO.box} material={mat('#10183a')} position={[X0 + 0.06, 2.2, CZ]} scale={[0.1, 1.5, 6.4]} />
-      <mesh geometry={GEO.box} material={warm} position={[X0 + 0.14, 2.2, CZ]} scale={[0.05, 1.1, 5.6]} />
+      <StairDoor />
       {/* columnas doradas con luz a lo largo del pasillo */}
       {[-39, -44, -49].flatMap((x) => [NZ + 0.9, SZ - 0.9].map((z) => ({ x, z }))).map(({ x, z }) => (
         <group key={`${x}${z}`}>
@@ -329,7 +397,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-zona-2">
+      <Batch version="joyeria-escalera-1">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
@@ -339,8 +407,9 @@ export function JewelryZone() {
       <AutoDoors />
       <SecurityCam x={-38.5} z={-5.2} base={0} phase={0} />
       <SecurityCam x={-46.5} z={-5.2} base={0} phase={2} />
-      <SecurityCam x={-51.8} z={0} base={Math.PI / 2} phase={4} />
+      <SecurityCam x={-51.8} z={-3.4} base={Math.PI / 2} phase={4} />
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      <pointLight position={[-55, 2.8, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
       {[-37, -44, -50].map((x) => (
         <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
       ))}
