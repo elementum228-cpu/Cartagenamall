@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { Bell, ChevronLeft, ChevronRight, Clock, Heart, Lock, Newspaper, Share2, Star, Ticket, X } from 'lucide-react'
+import { Bell, ChevronDown, ChevronLeft, ChevronRight, Clock, Heart, Lock, Newspaper, Share2, Star, Ticket, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useUI } from '../state/ui'
 import { useEditionData, type EdPromo } from './edition'
@@ -422,7 +422,6 @@ function Reader() {
   const [spread, setSpread] = useState(0)
   const [mobilePage, setMobilePage] = useState(0)
   const [dir, setDir] = useState(1)
-  const scroller = useRef<HTMLDivElement>(null)
   const openEvent = () => {
     close()
     useUI.getState().setFloor('P1')
@@ -449,8 +448,24 @@ function Reader() {
     if (wide) {
       setDir(d)
       setSpread((s) => Math.max(0, Math.min(spreads - 1, s + d)))
-    } else scroller.current?.scrollTo({ left: (mobilePage + d) * (scroller.current?.clientWidth ?? 0), behavior: 'smooth' })
+    } else {
+      setDir(d)
+      setMobilePage((m) => Math.max(0, Math.min(pages.length - 1, m + d)))
+      setHint(true)
+    }
   }
+  // pista de «desliza hacia abajo»: solo mientras la hoja se pueda seguir leyendo hacia abajo
+  const [hint, setHint] = useState(true)
+  const sheetRef = useRef<HTMLDivElement | null>(null)
+  const checkHint = () => {
+    const el = sheetRef.current
+    setHint(!!el && el.scrollHeight > el.clientHeight + 60 && el.scrollTop < 24)
+  }
+  useEffect(() => {
+    const t = setTimeout(checkHint, 900)
+    return () => clearTimeout(t)
+  }, [mobilePage, wide])
+  const touch = useRef<{ x: number; y: number } | null>(null)
   return (
     <motion.div
       className="fixed inset-0 z-[130] flex items-center justify-center bg-[#0b1620]/80 backdrop-blur-sm sm:p-6"
@@ -477,8 +492,8 @@ function Reader() {
           animate={{ clipPath: 'inset(0% 0% 0% 0%)', transition: { delay: 0.5, duration: 1.0, ease: [0.3, 0.7, 0.2, 1] } }}
           exit={{ clipPath: 'inset(0% 0% 50% 0%)', transition: { duration: 0.8, ease: [0.5, 0, 0.7, 0.3] } }}
         >
-          <button onClick={close} aria-label="Cerrar el periódico" className="absolute top-[max(10px,env(safe-area-inset-top))] right-3 z-30 grid size-11 place-items-center rounded-full text-white shadow-lg" style={{ background: INK }}>
-            <X className="size-5" />
+          <button onClick={close} aria-label="Cerrar el periódico" className="absolute top-[max(10px,env(safe-area-inset-top))] right-3 z-30 grid size-10 place-items-center rounded-full border-[1.5px] shadow-sm" style={{ background: PAPER, color: INK, borderColor: INK }}>
+            <X className="size-[18px]" />
           </button>
 
           {wide ? (
@@ -492,26 +507,66 @@ function Reader() {
               </AnimatePresence>
             </div>
           ) : (
-            <div ref={scroller} className="scrollbar-none flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto" onScroll={(e) => setMobilePage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
-              {pages.map((pg, i) => (
-                <div key={i} className="min-h-0 w-full shrink-0 snap-center overflow-y-auto pt-[env(safe-area-inset-top)]">
-                  {pg}
-                </div>
-              ))}
+            <div
+              className="relative min-h-0 flex-1 overflow-hidden"
+              style={{ perspective: 1800 }}
+              onTouchStart={(e) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY })}
+              onTouchEnd={(e) => {
+                const t0 = touch.current
+                touch.current = null
+                if (!t0) return
+                const dx = e.changedTouches[0].clientX - t0.x
+                const dy = e.changedTouches[0].clientY - t0.y
+                if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.6) turn(dx < 0 ? 1 : -1)
+              }}
+            >
+              <AnimatePresence initial={false} custom={dir}>
+                <motion.div
+                  key={mobilePage}
+                  ref={(el: HTMLDivElement | null) => {
+                    sheetRef.current = el
+                  }}
+                  custom={dir}
+                  variants={{
+                    // hacia adelante: la hoja actual se pasa y deja ver la que sigue debajo; hacia atrás: la hoja vuelve encima
+                    enter: (d: number) => (d > 0 ? { rotateY: 0, zIndex: 1 } : { rotateY: -112, zIndex: 3, opacity: 0.4 }),
+                    center: { rotateY: 0, opacity: 1, zIndex: 2, transition: { duration: 0.75, ease: [0.4, 0, 0.2, 1] } },
+                    exit: (d: number) => (d > 0 ? { rotateY: -112, zIndex: 3, opacity: 0.3, transition: { duration: 0.75, ease: [0.4, 0, 0.2, 1] } } : { rotateY: 0, zIndex: 1, transition: { duration: 0.75 } }),
+                  }}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  className="absolute inset-0 overflow-y-auto overscroll-contain pt-[env(safe-area-inset-top)]"
+                  style={{ ...paper, transformOrigin: '0% 50%', boxShadow: '12px 0 40px -12px rgba(0,0,0,.35)' }}
+                  onScroll={checkHint}
+                >
+                  {pages[mobilePage]}
+                </motion.div>
+              </AnimatePresence>
+              {/* pista para seguir leyendo hacia abajo */}
+              <AnimatePresence>
+                {hint && (
+                  <motion.div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 grid place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <motion.div className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-extrabold shadow-md" style={{ background: PAPER, color: INK, border: `1.5px solid ${INK}` }} animate={{ y: [0, 4, 0] }} transition={{ repeat: Infinity, duration: 1.4 }}>
+                      Desliza hacia abajo <ChevronDown className="size-4" />
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
-          {/* controles de página: siempre visibles, por encima de la barra de inicio del teléfono */}
-          <div className="relative z-30 flex items-center justify-between gap-3 border-t-2 px-4 pt-3 pb-[max(14px,env(safe-area-inset-bottom))]" style={{ background: '#efe6d2', borderColor: INK }}>
-            <button onClick={() => turn(-1)} disabled={cur === 0} aria-label="Hoja anterior" className="flex h-12 items-center gap-1 rounded-full border-2 pr-4 pl-2.5 text-[13px] font-extrabold disabled:opacity-30" style={{ borderColor: INK }}>
-              <ChevronLeft className="size-5" /> Anterior
+          {/* controles de página: texto sobre el papel, sin botones rellenos; por encima de la barra de inicio */}
+          <div className="relative z-30 flex items-center justify-between gap-3 border-t px-5 pt-2 pb-[max(14px,env(safe-area-inset-bottom))]" style={{ background: PAPER, borderColor: 'rgba(20,32,46,.35)' }}>
+            <button onClick={() => turn(-1)} disabled={cur === 0} aria-label="Hoja anterior" className="flex h-12 min-w-[92px] items-center gap-1 text-[15px] font-bold transition active:opacity-60 disabled:opacity-0" style={{ color: INK, ...SERIF }}>
+              <ChevronLeft className="size-5" /> Atrás
             </button>
-            <div className="flex items-center gap-1.5" aria-label={`Hoja ${cur + 1} de ${total}`}>
+            <div className="flex items-center gap-2" aria-label={`Hoja ${cur + 1} de ${total}`}>
               {Array.from({ length: total }, (_, i) => (
-                <span key={i} className="h-2 rounded-full transition-all" style={{ width: i === cur ? 26 : 8, background: i === cur ? INK : 'rgba(20,32,46,.28)' }} />
+                <span key={i} className="rounded-full transition-all" style={{ width: i === cur ? 9 : 6, height: i === cur ? 9 : 6, background: i === cur ? CORAL : 'rgba(20,32,46,.3)' }} />
               ))}
             </div>
-            <button onClick={() => turn(1)} disabled={cur >= total - 1} aria-label="Hoja siguiente" className="flex h-12 items-center gap-1 rounded-full pr-2.5 pl-4 text-[13px] font-extrabold text-white disabled:opacity-30" style={{ background: INK }}>
+            <button onClick={() => turn(1)} disabled={cur >= total - 1} aria-label="Hoja siguiente" className="flex h-12 min-w-[92px] items-center justify-end gap-1 text-[15px] font-bold transition active:opacity-60 disabled:opacity-0" style={{ color: INK, ...SERIF }}>
               Siguiente <ChevronRight className="size-5" />
             </button>
           </div>
