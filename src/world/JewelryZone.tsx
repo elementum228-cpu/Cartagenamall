@@ -246,7 +246,7 @@ function Terrace() {
         return (
           <group key={`sw${i}`}>
             <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[(xa + xb) / 2, -0.3, (za + zb) / 2]} scale={[w + 0.5, 1.2, d + 0.5]} />
-            <mesh geometry={GEO.box} material={wallM} position={[(xa + xb) / 2, (top + 0.9) / 2, (za + zb) / 2]} scale={[w, top + 0.9, d]} castShadow receiveShadow />
+            <mesh geometry={GEO.box} material={mat(STONE[i % STONE.length])} position={[(xa + xb) / 2, (top + 0.9) / 2, (za + zb) / 2]} scale={[w, top + 0.9, d]} castShadow receiveShadow />
             <mesh geometry={GEO.box} material={mat(CORDON)} position={[(xa + xb) / 2, top - 0.2, (za + zb) / 2]} scale={[w + 0.12, 0.14, d + 0.12]} />
             <mesh geometry={GEO.box} material={mat(STONE[0])} position={[(xa + xb) / 2, top + 0.4, (za + zb) / 2]} scale={[w, 0.8, d]} castShadow />
             <mesh geometry={GEO.box} material={mat(CORDON)} position={[(xa + xb) / 2, top + 0.85, (za + zb) / 2]} scale={[w + 0.1, 0.1, d + 0.1]} />
@@ -675,7 +675,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-19-${services}`}>
+      <Batch version={`joyeria-escalera-20-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
