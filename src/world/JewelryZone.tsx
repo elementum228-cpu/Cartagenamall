@@ -157,21 +157,53 @@ function Shell() {
 
 const COATS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95']
 
-/** Visitantes que bajan por el pasillo de Lifestyle, cruzan la puerta de la muralla, recorren la alfombra y regresan. */
+/**
+ * Recorrido de los visitantes: bajan por el pasillo de Lifestyle, rodean por el lado el local del fondo (que ocupa
+ * el final del pasillo), pasan por la estrecha franja junto a la muralla, cruzan la puerta y siguen por la alfombra.
+ */
+const ROUTE: [number, number][] = [
+  [-16, 0.5],
+  [-19.5, 2],
+  [-20.5, 6.6],
+  [-29.4, 6.6],
+  [-29.4, 0],
+  [-34, 0],
+  [-50, 0],
+]
+const SEG = ROUTE.slice(1).map((q, i) => {
+  const p = ROUTE[i]
+  return { p, dx: q[0] - p[0], dz: q[1] - p[1], len: Math.hypot(q[0] - p[0], q[1] - p[1]) }
+})
+const ROUTE_LEN = SEG.reduce((a, s) => a + s.len, 0)
+const WALK_SPEED = 1.1
+
+/** Visitantes que recorren esa ruta de ida y vuelta, a paso de caminata normal. */
 function Walkers() {
   const refs = useRef<(THREE.Group | null)[]>([])
-  const people = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ phase: i / 6, lane: (i % 3 - 1) * 0.9, speed: 0.0165 + (i % 3) * 0.002 })), [])
+  const people = useMemo(() => Array.from({ length: 6 }, (_, i) => ({ phase: i / 6, lane: (i % 3 - 1) * 0.8 })), [])
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     people.forEach((p, i) => {
       const el = refs.current[i]
       if (!el) return
-      const u = (((t * p.speed + p.phase) % 1) + 1) % 1
+      const u = (((t * WALK_SPEED) / (2 * ROUTE_LEN) + p.phase) % 1 + 1) % 1
       const going = u < 0.5
-      const f = going ? u * 2 : (1 - u) * 2
-      const x = -16 - f * 33
-      el.position.set(x, 0.2 + Math.abs(Math.sin(t * 4 + i * 2)) * 0.03, p.lane + (going ? 0.4 : -0.4))
-      el.rotation.y = going ? Math.PI / 2 : -Math.PI / 2
+      let d = (going ? u * 2 : (1 - u) * 2) * ROUTE_LEN
+      let seg = SEG[SEG.length - 1]
+      for (const sg of SEG) {
+        if (d <= sg.len) {
+          seg = sg
+          break
+        }
+        d -= sg.len
+      }
+      const f = Math.min(1, d / seg.len)
+      const x = seg.p[0] + seg.dx * f
+      let z = seg.p[1] + seg.dz * f
+      if (x < -33.5) z += p.lane
+      el.position.set(x, 0.2 + Math.abs(Math.sin(t * 4 + i * 2)) * 0.03, z)
+      const sign = going ? 1 : -1
+      el.rotation.y = Math.atan2(seg.dx * sign, seg.dz * sign)
     })
   })
   return (
