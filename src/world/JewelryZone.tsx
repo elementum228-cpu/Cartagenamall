@@ -148,8 +148,8 @@ function StairDoor() {
 
 // Terraza: un gran cuadrado ~2 m más bajo que el piso 2 (se nota el desnivel), con muralla de piedra, muros sólidos en los lados cercanos,
 // locales pegados al muro y un patio hundido muy grande en el centro. Termina en el tercer local del piso 2, antes de su garita.
-const T = { x0: -77, x1: -48, z0: -32, z1: 6.4 }
-const COURT = { x0: -72.5, x1: -54, z0: -26, z1: -5, drop: 4.2 }
+const T = { x0: -79.5, x1: -48, z0: -34, z1: 6.4 }
+const COURT = { x0: -72, x1: -55.5, z0: -26.5, z1: -3, drop: 4.2 }
 const OPEN = 2.3 // media anchura del hueco por donde pasa la escalera
 const WALL_T = 1.0
 
@@ -371,7 +371,7 @@ function Terrace() {
         )
       })}
       {/* faroles cálidos en el paseo */}
-      {[[-77.4, -30], [-77.4, -18], [-77.4, -6], [-77.4, 4.2], [-70, 4.2], [-60, 4.2], [-72, -31], [-60, -31], [-52, -31], [-53.2, -26]].map(([x, z], i) => (
+      {[[-79.9, -31], [-79.9, -18], [-79.9, -6], [-79.9, 4.2], [-70, 4.2], [-60, 4.2], [-72, -33], [-60, -33], [-52, -33], [-53.2, -27]].map(([x, z], i) => (
         <group key={`f${i}`}>
           <mesh geometry={GEO.cylinder} material={black} position={[x, top + 1.2, z]} scale={[0.08, 2.4, 0.08]} />
           <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, top + 2.5, z]} scale={0.34} />
@@ -639,7 +639,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-15">
+      <Batch version="joyeria-escalera-16">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}

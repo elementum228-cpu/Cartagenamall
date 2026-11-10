@@ -482,14 +482,14 @@ export const TERRACE_COURT_ELEVATION = 0.72
 export const TERRACE_SPACES: SpaceSlot[] = JOYERIA
   ? (
       [
-        // paseo de arriba: norte, oeste, este y sur, de cara al patio
-        ...[-74, -68, -62, -56].map((x) => [x, -29.2, 0, TERRACE_ELEVATION]),
-        ...[-23, -17, -11, -5].map((z) => [-74.5, z, Math.PI / 2, TERRACE_ELEVATION]),
-        ...[-22, -16, -10].map((z) => [-50.5, z, -Math.PI / 2, TERRACE_ELEVATION]),
-        ...[-74, -68].map((x) => [x, 3.9, Math.PI, TERRACE_ELEVATION]),
+        // paseo de arriba: norte, oeste, este y sur, de cara al patio, con pasillo para caminar frente a ellos
+        ...[-76, -70, -64, -58].map((x) => [x, -31.5, 0, TERRACE_ELEVATION]),
+        ...[-23, -17, -11, -5].map((z) => [-77, z, Math.PI / 2, TERRACE_ELEVATION]),
+        ...[-25, -19, -13].map((z) => [-50.5, z, -Math.PI / 2, TERRACE_ELEVATION]),
+        ...[-76, -70].map((x) => [x, 3.9, Math.PI, TERRACE_ELEVATION]),
         // patio hundido: pegados a sus muros
-        ...[-67, -61].map((x) => [x, -23.4, 0, TERRACE_COURT_ELEVATION]),
-        ...[-17, -11].map((z) => [-69.3, z, Math.PI / 2, TERRACE_COURT_ELEVATION]),
+        ...[-67, -61].map((x) => [x, -24, 0, TERRACE_COURT_ELEVATION]),
+        ...[-18, -12].map((z) => [-69.5, z, Math.PI / 2, TERRACE_COURT_ELEVATION]),
       ] as [number, number, number, number][]
     ).map(([x, z, r, e], i) => ({
       id: `P1-S${i + 1}`,
