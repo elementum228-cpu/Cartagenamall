@@ -149,7 +149,7 @@ function StairDoor() {
 // Terraza: un gran cuadrado ~2 m más bajo que el piso 2 (se nota el desnivel), con muralla de piedra, muros sólidos en los lados cercanos,
 // locales pegados al muro y un patio hundido muy grande en el centro. Termina en el tercer local del piso 2, antes de su garita.
 const T = { x0: -77, x1: -48, z0: -32, z1: 6.4 }
-const COURT = { x0: -70, x1: -54, z0: -24, z1: -5, drop: 3.6 }
+const COURT = { x0: -72.5, x1: -54, z0: -26, z1: -5, drop: 4.2 }
 const OPEN = 2.3 // media anchura del hueco por donde pasa la escalera
 const WALL_T = 1.0
 
@@ -639,7 +639,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-14">
+      <Batch version="joyeria-escalera-15">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
