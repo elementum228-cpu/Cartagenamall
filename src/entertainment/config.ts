@@ -5,8 +5,8 @@
 
 /** Cara exterior de la muralla oeste: donde arranca el puente (junto a la garita, frente a Planly). */
 export const ENT_WALL_X = -(31 + 1.1)
-export const ENT_BRIDGE_LEN = 22
-export const ENT_BRIDGE_Z = 10
+export const ENT_BRIDGE_LEN = 13.5
+export const ENT_BRIDGE_Z = 16
 /** Semiejes del castillo-isla, radio de las esquinas y media apertura de la puerta (lado este). */
 export const ENT_HX = 15
 export const ENT_HZ = 12
