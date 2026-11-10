@@ -138,6 +138,37 @@ function Shell() {
           <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, 3.5, z]} scale={0.36} />
         </group>
       ))}
+      {/* incrustación de mármol negro con filete dorado, y medallón central */}
+      <mesh geometry={GEO.box} material={mat('#17171f', { rough: 0.2 })} position={[CX, Y + 0.075, CZ]} scale={[W - 1.2, 0.02, D - 1.2]} />
+      <mesh geometry={GEO.box} material={marble} position={[CX, Y + 0.09, CZ]} scale={[W - 1.5, 0.02, D - 1.5]} />
+      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.12, 0]} scale={[3.4, 0.03, 3.4]} />
+      <mesh geometry={GEO.cylinder} material={mat('#17171f', { rough: 0.2 })} position={[-47.2, Y + 0.14, 0]} scale={[2.9, 0.03, 2.9]} />
+      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.16, 0]} scale={[1.5, 0.03, 1.5]} />
+      {/* vitrinas de cristal con joyas, contra las paredes laterales */}
+      {[-37, -41.5, -46, -50].flatMap((x) => [NZ + 0.95, SZ - 0.95].map((z) => ({ x, z }))).map(({ x, z }, i) => (
+        <group key={`v${x}${z}`}>
+          <mesh geometry={GEO.box} material={mat('#17171f', { rough: 0.25 })} position={[x, 0.5, z]} scale={[1.5, 0.85, 0.9]} castShadow />
+          <mesh geometry={GEO.box} material={GLASS} position={[x, 1.15, z]} scale={[1.5, 0.45, 0.9]} />
+          <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.25 })} position={[x, 0.96, z]} scale={[1.56, 0.06, 0.96]} />
+          <mesh geometry={GEO.octa} material={glowMat(['#bff2ff', '#ffd6f0', '#fff3b0', '#d6ffe6'][i % 4], 2.4, { dayGlow: 0.6 })} position={[x - 0.3, 1.1, z]} scale={0.22} />
+          <mesh geometry={GEO.octa} material={glowMat('#ffffff', 2.4, { dayGlow: 0.6 })} position={[x + 0.3, 1.08, z]} scale={0.16} />
+        </group>
+      ))}
+      {/* vigas doradas que cruzan el salón, con arañas de cristal */}
+      {[-37.5, -43.5, -49].map((x) => (
+        <group key={`c${x}`}>
+          <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.25 })} position={[x, WH - 0.1, 0]} scale={[0.3, 0.3, D]} castShadow />
+          <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[x, WH - 0.75, 0]} scale={[0.05, 1.2, 0.05]} />
+          <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, WH - 1.5, 0]} scale={0.7} />
+          {Array.from({ length: 8 }, (_, k) => (
+            <mesh key={k} geometry={GEO.octa} material={glowMat('#ffffff', 2.6, { dayGlow: 0.7 })} position={[x + Math.cos((k / 8) * Math.PI * 2) * 0.55, WH - 1.65, Math.sin((k / 8) * Math.PI * 2) * 0.55]} scale={0.17} />
+          ))}
+        </group>
+      ))}
+      {/* paneles de espejo en las paredes */}
+      {[-39, -44.5, -49.5].map((x) => (
+        <mesh key={`m${x}`} geometry={GEO.box} material={mat('#cfe3ea', { rough: 0.05 })} position={[x, 2.1, NZ + 0.04]} scale={[3.2, 1.6, 0.06]} />
+      ))}
       {/* puerta en la muralla: arco dorado */}
       {[-1, 1].map((s) => (
         <mesh key={s} geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[WALL_X + 0.6, 2.2, s * 2.9]} scale={[1.2, 4.6, 0.7]} castShadow />
@@ -220,7 +251,7 @@ function Walkers() {
 
 export function JewelryZone() {
   const night = useIsNight()
-  const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva · propuesta', dark: night }), [night])
+  const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
       <Batch version="joyeria-zona-2">

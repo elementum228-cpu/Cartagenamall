@@ -2240,3 +2240,84 @@ export function Stadium({ reduceMotion, quality = 'high' }: { reduceMotion: bool
     </group>
   )
 }
+
+
+// ── hinchas que entran corriendo por la escalera del piso 2 ───────────────────────────────────────────────
+/** Recorrido en el mundo (x, y, z): desde la terraza, por la escalera directa, hasta la puerta de la isla del estadio. */
+const FAN_ROUTE: [number, number, number][] = [
+  [-13.5, 7.4, -38.6],
+  [-8.3, 7.4, -39.2],
+  [-8.3, 7.4, -41.4],
+  [-8.3, 1.4, -51.4],
+  [-8.3, 1.4, -52.7],
+  [-5.4, 1.4, -52.7],
+  [-2.8, 1.4, -52.7],
+]
+const FAN_LENS = FAN_ROUTE.slice(1).map((q, i) => Math.hypot(q[0] - FAN_ROUTE[i][0], q[1] - FAN_ROUTE[i][1], q[2] - FAN_ROUTE[i][2]))
+const FAN_TOTAL = FAN_LENS.reduce((a, b) => a + b, 0)
+
+/** Con un partido en marcha, los hinchas suben a toda prisa de la terraza y bajan por la escalera hacia el estadio. */
+export function StairFans({ reduceMotion }: { reduceMotion: boolean }) {
+  const open = useStadiumPhase((st) => st.phase === 'open')
+  const count = 14
+  const bodies = useRef<THREE.InstancedMesh>(null)
+  const heads = useRef<THREE.InstancedMesh>(null)
+  const o = useMemo(() => new THREE.Object3D(), [])
+  const level = useRef(0)
+  useLayoutEffect(() => {
+    const c = new THREE.Color()
+    for (let k = 0; k < count; k++) {
+      bodies.current?.setColorAt(k, c.set(FAN_SHIRTS[k % FAN_SHIRTS.length]))
+      heads.current?.setColorAt(k, c.set(FAN_SKIN[k % FAN_SKIN.length]))
+    }
+    for (const m of [bodies.current, heads.current]) if (m?.instanceColor) m.instanceColor.needsUpdate = true
+  }, [open])
+  useFrame(({ clock }, dt) => {
+    const on = open && actionOn() && !reduceMotion
+    level.current += ((on ? 1 : 0) - level.current) * Math.min(1, dt * 2)
+    const t = clock.elapsedTime
+    for (let k = 0; k < count; k++) {
+      const speed = 3.4 + (k % 4) * 0.25
+      const cycle = FAN_TOTAL / speed + 1.2
+      const age = (t + k * 0.9) % cycle
+      const dist = age * speed
+      const vis = level.current > 0.05 && dist < FAN_TOTAL ? 1 : 0
+      let acc = 0
+      let seg = FAN_LENS.length - 1
+      for (let i = 0; i < FAN_LENS.length; i++) {
+        if (dist <= acc + FAN_LENS[i]) {
+          seg = i
+          break
+        }
+        acc += FAN_LENS[i]
+      }
+      const a = FAN_ROUTE[seg]
+      const b = FAN_ROUTE[seg + 1]
+      const f = Math.min(1, Math.max(0, (dist - acc) / FAN_LENS[seg]))
+      const x = a[0] + (b[0] - a[0]) * f + (((k * 37) % 5) - 2) * 0.12
+      const y = a[1] + (b[1] - a[1]) * f
+      const z = a[2] + (b[2] - a[2]) * f
+      const hd = Math.atan2(b[0] - a[0], b[2] - a[2])
+      const grow = Math.min(1, dist / 1.2, Math.max(0, (FAN_TOTAL - dist) / 1.0))
+      const sc = vis * Math.max(0, grow) * level.current
+      // en la escalera van inclinados hacia adelante, corriendo
+      o.position.set(x, y + 0.2 + 0.43 + Math.abs(Math.sin(t * 11 + k)) * 0.08, z)
+      o.rotation.set(0.18, hd, 0)
+      o.scale.setScalar(sc)
+      o.updateMatrix()
+      bodies.current?.setMatrixAt(k, o.matrix)
+      o.position.y += 0.52
+      o.scale.setScalar(0.36 * sc)
+      o.updateMatrix()
+      heads.current?.setMatrixAt(k, o.matrix)
+    }
+    if (bodies.current) bodies.current.instanceMatrix.needsUpdate = true
+    if (heads.current) heads.current.instanceMatrix.needsUpdate = true
+  })
+  return (
+    <group userData={{ dynamic: true }}>
+      <instancedMesh ref={bodies} args={[GEO.capsule, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />
+      <instancedMesh ref={heads} args={[GEO.sphereSmooth, mat('#ffffff'), count]} frustumCulled={false} raycast={() => null} />
+    </group>
+  )
+}
