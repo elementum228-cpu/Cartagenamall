@@ -108,9 +108,9 @@ function Shell() {
       ].map(([x, z, w, d], i) => (
         <mesh key={i} geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[x, Y + 0.06, z]} scale={[w, 0.03, d]} />
       ))}
-      <mesh geometry={GEO.box} material={mat(RED, { rough: 0.95 })} position={[CX + 0.2, Y + 0.08, 0]} scale={[W - 0.6, 0.04, 2.8]} receiveShadow />
+      <mesh geometry={GEO.box} material={mat(RED, { rough: 0.95 })} position={[CX + 0.2, Y + 0.115, 0]} scale={[W - 0.6, 0.02, 2.8]} receiveShadow />
       {[-1.45, 1.45].map((z) => (
-        <mesh key={z} geometry={GEO.box} material={mat(GOLD)} position={[CX + 0.2, Y + 0.1, z]} scale={[W - 0.6, 0.03, 0.07]} />
+        <mesh key={z} geometry={GEO.box} material={mat(GOLD)} position={[CX + 0.2, Y + 0.14, z]} scale={[W - 0.6, 0.02, 0.07]} />
       ))}
       {/* paredes: fondo y norte altas con cornisa dorada; el lado de la cámara es una baranda de vidrio */}
       {[
@@ -141,9 +141,9 @@ function Shell() {
       {/* incrustación de mármol negro con filete dorado, y medallón central */}
       <mesh geometry={GEO.box} material={mat('#17171f', { rough: 0.2 })} position={[CX, Y + 0.075, CZ]} scale={[W - 1.2, 0.02, D - 1.2]} />
       <mesh geometry={GEO.box} material={marble} position={[CX, Y + 0.09, CZ]} scale={[W - 1.5, 0.02, D - 1.5]} />
-      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.12, 0]} scale={[3.4, 0.03, 3.4]} />
-      <mesh geometry={GEO.cylinder} material={mat('#17171f', { rough: 0.2 })} position={[-47.2, Y + 0.14, 0]} scale={[2.9, 0.03, 2.9]} />
-      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.16, 0]} scale={[1.5, 0.03, 1.5]} />
+      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.15, 0]} scale={[3.4, 0.03, 3.4]} />
+      <mesh geometry={GEO.cylinder} material={mat('#17171f', { rough: 0.2 })} position={[-47.2, Y + 0.17, 0]} scale={[2.9, 0.03, 2.9]} />
+      <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[-47.2, Y + 0.19, 0]} scale={[1.5, 0.03, 1.5]} />
       {/* vitrinas de cristal con joyas, contra las paredes laterales */}
       {[-37, -41.5, -46, -50].flatMap((x) => [NZ + 0.95, SZ - 0.95].map((z) => ({ x, z }))).map(({ x, z }, i) => (
         <group key={`v${x}${z}`}>
@@ -177,6 +177,8 @@ function Shell() {
 
 /** Distancia (a lo largo del recorrido) del visitante más cercano a la puerta: la lee la puerta automática. */
 const door = { near: 99 }
+/** Vidrio tintado de las puertas automáticas: se lee bien también de día. */
+const DOOR_GLASS = new THREE.MeshPhysicalMaterial({ color: '#1f4658', roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.55, clearcoat: 1, depthWrite: false })
 const DOOR_X = -31.2
 
 const COATS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95']
@@ -261,7 +263,7 @@ function AutoDoors() {
   })
   const leaf = (ref: React.RefObject<THREE.Group | null>, z0: number) => (
     <group ref={ref} position={[DOOR_X, 0, z0]} userData={{ dynamic: true }}>
-      <mesh geometry={GEO.box} material={GLASS} position={[0, 1.75, 0]} scale={[0.08, 3.5, 2.6]} />
+      <mesh geometry={GEO.box} material={DOOR_GLASS} position={[0, 1.75, 0]} scale={[0.08, 3.5, 2.6]} />
       <mesh geometry={GEO.box} material={mat('#c9ced4', { rough: 0.2 })} position={[0, 1.75, 1.3]} scale={[0.14, 3.5, 0.1]} />
       <mesh geometry={GEO.box} material={mat('#c9ced4', { rough: 0.2 })} position={[0, 1.75, -1.3]} scale={[0.14, 3.5, 0.1]} />
       <mesh geometry={GEO.box} material={mat('#c9ced4', { rough: 0.2 })} position={[0, 3.45, 0]} scale={[0.14, 0.1, 2.6]} />

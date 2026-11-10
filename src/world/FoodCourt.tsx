@@ -219,7 +219,7 @@ function makeGlassSky() {
   t.colorSpace = THREE.SRGBColorSpace
   return t
 }
-const GLASS_REFL = new THREE.MeshPhysicalMaterial({ color: '#a9d6e6', roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.3, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.DoubleSide })
+const GLASS_REFL = new THREE.MeshPhysicalMaterial({ color: '#4f8ca3', roughness: 0.04, metalness: 0.3, transparent: true, opacity: 0.45, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.DoubleSide })
 let sheen: THREE.MeshBasicMaterial | null = null
 const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
 

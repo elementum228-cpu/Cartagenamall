@@ -2299,14 +2299,14 @@ export function StairFans({ reduceMotion }: { reduceMotion: boolean }) {
       const z = a[2] + (b[2] - a[2]) * f
       const hd = Math.atan2(b[0] - a[0], b[2] - a[2])
       const grow = Math.min(1, dist / 1.2, Math.max(0, (FAN_TOTAL - dist) / 1.0))
-      const sc = vis * Math.max(0, grow) * level.current
+      const sc = vis * Math.max(0, grow) * level.current * S
       // en la escalera van inclinados hacia adelante, corriendo
-      o.position.set(x, y + 0.2 + 0.43 + Math.abs(Math.sin(t * 11 + k)) * 0.08, z)
+      o.position.set(x, y + 0.2 + 0.43 * S + Math.abs(Math.sin(t * 11 + k)) * 0.05, z)
       o.rotation.set(0.18, hd, 0)
       o.scale.setScalar(sc)
       o.updateMatrix()
       bodies.current?.setMatrixAt(k, o.matrix)
-      o.position.y += 0.52
+      o.position.y += 0.52 * S
       o.scale.setScalar(0.36 * sc)
       o.updateMatrix()
       heads.current?.setMatrixAt(k, o.matrix)
