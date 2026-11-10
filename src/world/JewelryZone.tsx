@@ -89,7 +89,7 @@ function StairDoor() {
   const wall = mat('#f1e9d8')
   const stone = mat('#efe3cc')
   const goldM = mat(GOLD, { rough: 0.3 })
-  const black = mat('#1b1d22', { rough: 0.4 })
+  const black = mat('#d6dade', { rough: 0.4 })
   const x1 = AX - STAIR_ROOM.len
   const mid = (AX + x1) / 2
   const tread = 0.3
@@ -173,7 +173,7 @@ function Terrace() {
   const wallM = mat('#a77b52', { rough: 0.7 })
   const baseM = mat('#6f5a3e', { rough: 0.8 })
   const goldM = mat(GOLD, { rough: 0.3 })
-  const black = mat('#1b1d22', { rough: 0.4 })
+  const black = mat('#d6dade', { rough: 0.4 })
   const strip = glowMat('#ffe2a8', 1.8, { dayGlow: 0.35 })
   const warm = glowMat('#fff0c8', 2.2, { dayGlow: 0.5 })
   const cy = top - COURT.drop
@@ -671,7 +671,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-16-${services}`}>
+      <Batch version={`joyeria-escalera-17-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
