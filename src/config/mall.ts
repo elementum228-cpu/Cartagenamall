@@ -541,7 +541,6 @@ export const FORTRESS = {
   garitas: [
     [-34.6, 34.6],
     [34.6, -34.6],
-    [-31, 6],
   ] as [number, number][],
   cannons: [
     [-31.6, 31.6, -Math.PI / 4],
