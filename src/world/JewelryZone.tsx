@@ -277,7 +277,7 @@ function Terrace() {
       <mesh geometry={GEO.box} material={courtM} position={[CX2, cy - 0.17, CZ2]} scale={[COURT.x1 - COURT.x0, 0.34, COURT.z1 - COURT.z0]} receiveShadow />
       {walls.map(([xa, xb, za, zb], i) => (
         <group key={`w${i}`}>
-          <mesh geometry={GEO.box} material={wallM} position={[(xa + xb) / 2, (top + cy) / 2 - 0.17, (za + zb) / 2]} scale={[Math.max(0.3, xb - xa), COURT.drop + 0.34, Math.max(0.3, zb - za)]} castShadow receiveShadow />
+          {Math.max(xb - xa, zb - za) < WIN && <mesh geometry={GEO.box} material={wallM} position={[(xa + xb) / 2, (top + cy) / 2 - 0.17, (za + zb) / 2]} scale={[Math.max(0.3, xb - xa), COURT.drop + 0.34, Math.max(0.3, zb - za)]} castShadow receiveShadow />}
           <mesh geometry={GEO.box} material={goldM} position={[(xa + xb) / 2, top + 0.05, (za + zb) / 2]} scale={[Math.max(0.42, xb - xa + 0.1), 0.1, Math.max(0.42, zb - za + 0.1)]} />
           <ShowcaseWall xa={xa} xb={xb} za={za} zb={zb} cx={CX2} cz={CZ2} y={cy} />
         </group>
@@ -396,7 +396,7 @@ function Window({ i }: { i: number }) {
   const wood = mat('#8a6a4a')
   const dark = mat('#2b2f3a')
   const light = glowMat('#fff0c8', 2, { dayGlow: 0.55 })
-  const H = 3.9
+  const H = 3.75
   const D = 0.85
   const skin = mat('#d9b08c')
   return (
@@ -517,7 +517,7 @@ function ShowcaseWall({ xa, xb, za, zb, cx, cz, y }: { xa: number; xb: number; z
   const rot = vertical ? (dir > 0 ? Math.PI / 2 : -Math.PI / 2) : dir > 0 ? 0 : Math.PI
   const mx = (xa + xb) / 2
   const mz = (za + zb) / 2
-  const off = 0.15
+  const off = 0.12 - 0.85
   const px = vertical ? mx + dir * off : mx
   const pz = vertical ? mz : mz + dir * off
   const step = len / n
@@ -820,7 +820,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-22-${services}`}>
+      <Batch version={`joyeria-escalera-23-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
