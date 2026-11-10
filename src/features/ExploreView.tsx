@@ -85,6 +85,8 @@ import { startTour } from './GuidedTour'
 import { PinchHint } from './PinchHint'
 import { InstallButton } from '../pwa/InstallApp'
 
+import { useHoy } from '../hoy/store'
+
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
 
 /** Modo Explorar: mundo 3D (o plano 2D) con controles superpuestos. Se mantiene montado. */
@@ -96,6 +98,8 @@ export function ExploreView({ active }: { active: boolean }) {
   const peek = useUI((s) => s.peek)
   const harborOpen = useUI((s) => s.harbor !== null || s.showroom !== null || s.shipOpen)
   const night = useIsNight() && use3D
+  // con el periódico abierto el 3D se pausa: la animación de la hoja va fluida en el teléfono
+  const readingHoy = useHoy((s) => s.reader)
   const root = useRef<HTMLDivElement>(null)
 
   // De noche, mientras se explora, las barras y controles pasan a vidrio ahumado (ver index.css).
@@ -131,7 +135,7 @@ export function ExploreView({ active }: { active: boolean }) {
       <div className={`world-night pointer-events-none absolute inset-0 transition-opacity duration-[1200ms] ${night ? 'opacity-100' : 'opacity-0'}`} />
       {use3D ? (
         <Suspense fallback={<Loading />}>
-          <WorldCanvas active={active} night={night} fallback={<Map2D reason="Tu dispositivo no pudo cargar el 3D. Mostramos el plano 2D." />} />
+          <WorldCanvas active={active && !readingHoy} night={night} fallback={<Map2D reason="Tu dispositivo no pudo cargar el 3D. Mostramos el plano 2D." />} />
         </Suspense>
       ) : (
         <Map2D reason={!webgl ? 'Tu navegador no soporta 3D (WebGL). Mostramos el plano 2D con las mismas tiendas.' : undefined} />
