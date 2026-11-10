@@ -153,7 +153,7 @@ function Shell() {
       <mesh geometry={GEO.box} material={mat('#10183a')} position={[X0 + 0.06, 2.2, CZ]} scale={[0.1, 1.5, 6.4]} />
       <mesh geometry={GEO.box} material={warm} position={[X0 + 0.14, 2.2, CZ]} scale={[0.05, 1.1, 5.6]} />
       {/* columnas doradas con luz a lo largo del pasillo */}
-      {[-39, -44, -49].flatMap((x) => [NZ + 0.9, SZ - 0.9].map((z) => ({ x, z }))).map(({ x, z }) => (
+      {[-39, -44, -49].flatMap((x) => [NZ + 0.9, SZ - 0.9].map((z) => ({ x, z }))).filter(({ x, z }) => !(x === -39 && z > 0)).map(({ x, z }) => (
         <group key={`${x}${z}`}>
           <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[x, 1.7, z]} scale={[0.4, 3.4, 0.4]} castShadow />
           <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, 3.5, z]} scale={0.36} />
@@ -166,7 +166,7 @@ function Shell() {
       <mesh geometry={GEO.cylinder} material={MEDAL_BLACK} position={[-47.2, Y + 0.17, 0]} scale={[2.9, 0.03, 2.9]} />
       <mesh geometry={GEO.cylinder} material={MEDAL_GOLD} position={[-47.2, Y + 0.19, 0]} scale={[1.5, 0.03, 1.5]} />
       {/* vitrinas de cristal con joyas, contra las paredes laterales */}
-      {[-37, -41.5, -46, -50].flatMap((x) => [NZ + 0.95, SZ - 0.95].map((z) => ({ x, z }))).map(({ x, z }, i) => (
+      {[-37, -41.5, -46, -50].flatMap((x) => [NZ + 0.95, SZ - 0.95].map((z) => ({ x, z }))).filter(({ x, z }) => !(x > -42 && z > 0)).map(({ x, z }, i) => (
         <group key={`v${x}${z}`}>
           <mesh geometry={GEO.box} material={mat('#17171f', { rough: 0.25 })} position={[x, 0.5, z]} scale={[1.5, 0.85, 0.9]} castShadow />
           <mesh geometry={GEO.box} material={GLASS} position={[x, 1.15, z]} scale={[1.5, 0.45, 0.9]} />
@@ -329,7 +329,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-zona-2">
+      <Batch version="joyeria-zona-3">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}

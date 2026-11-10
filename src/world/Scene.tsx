@@ -1,5 +1,6 @@
 import { openCourtOrClaim, useCourtOperator } from '../football/open'
-import { JOYERIA } from '../config/preview'
+import { JOYERIA, SERVICIOS } from '../config/preview'
+import { ServicesZone } from './ServicesZone'
 import { JewelryZone } from './JewelryZone'
 import { useMemo } from 'react'
 import { COURT_SPACE, FLOORS, FLOOR_BY_ID, FLOOR_OF_ZONE, SPACES, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
@@ -154,6 +155,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
         {JOYERIA && <JewelryZone />}
+        {JOYERIA && SERVICIOS && <ServicesZone reduceMotion={reduceMotion} />}
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
         <Batch version="jardines">
           <Diorama />
