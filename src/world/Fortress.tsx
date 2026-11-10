@@ -265,8 +265,6 @@ function Shore({ sparse }: { sparse: boolean }) {
   const rocksRef = useRef<THREE.InstancedMesh>(null)
   const data = useMemo(() => {
     const palms: [number, number, number][] = [
-      [-40, 26, 3.6],
-      [-30, 37.5, 3.2],
       [40, -26, 3.6],
       [27, -39, 3.0],
       [37, 37, 3.4],
@@ -320,7 +318,6 @@ function Shore({ sparse }: { sparse: boolean }) {
     <group>
       {/* playitas junto a los baluartes y al muelle */}
       {[
-        [-36, 32, 9],
         [36, -32, 9],
         [36, 36, 11],
         [-36, -28, 8],
