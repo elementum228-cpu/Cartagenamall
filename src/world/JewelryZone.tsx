@@ -136,8 +136,8 @@ function StairDoor() {
       {/* baranda de vidrio y metal negro a cada lado */}
       {[-1, 1].map((sd) => (
         <group key={`r${sd}`}>
-          <mesh geometry={GEO.box} material={GLASS} position={[sx0 - run / 2, Y + TOP / 2 + 0.55, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, slope]} scale={[rail, 0.9, 0.04]} />
-          <mesh geometry={GEO.box} material={black} position={[sx0 - run / 2, Y + TOP / 2 + 1.02, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, slope]} scale={[rail, 0.05, 0.06]} />
+          <mesh geometry={GEO.box} material={GLASS} position={[sx0 - run / 2, Y + TOP / 2 + 0.55, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, -slope]} scale={[rail, 0.9, 0.04]} />
+          <mesh geometry={GEO.box} material={black} position={[sx0 - run / 2, Y + TOP / 2 + 1.02, sd * (STAIR_ROOM.half - 0.3)]} rotation={[0, 0, -slope]} scale={[rail, 0.05, 0.06]} />
         </group>
       ))}
       <mesh geometry={GEO.box} material={warm} position={[mid, SW - 0.35, 0]} scale={[STAIR_ROOM.len - 0.6, 0.06, 0.3]} />
@@ -639,7 +639,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-13">
+      <Batch version="joyeria-escalera-14">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
