@@ -34,8 +34,6 @@ const layer = (color: string, n: number, rough = 0.9) => {
 const CARPET = layer('#b9242b', 3, 0.97)
 const GOLD_LINE = layer('#d9a441', 4, 0.3)
 const BLACK_INLAY = layer('#17171f', 1, 0.25)
-const MEDAL_GOLD = layer('#d9a441', 6, 0.25)
-const MEDAL_BLACK = layer('#17171f', 7, 0.25)
 
 function useMarble() {
   return useMemo(() => {
@@ -480,9 +478,6 @@ function Shell({ services }: { services: boolean }) {
       {/* incrustación de mármol negro con filete dorado, y medallón central */}
       <mesh geometry={GEO.box} material={BLACK_INLAY} position={[CX, Y + 0.075, CZ]} scale={[W - 1.2, 0.02, D - 1.2]} />
       <mesh geometry={GEO.box} material={marbleInlay} position={[CX, Y + 0.09, CZ]} scale={[W - 1.5, 0.02, D - 1.5]} />
-      <mesh geometry={GEO.cylinder} material={MEDAL_GOLD} position={[-47.2, Y + 0.15, 0]} scale={[3.4, 0.03, 3.4]} />
-      <mesh geometry={GEO.cylinder} material={MEDAL_BLACK} position={[-47.2, Y + 0.17, 0]} scale={[2.9, 0.03, 2.9]} />
-      <mesh geometry={GEO.cylinder} material={MEDAL_GOLD} position={[-47.2, Y + 0.19, 0]} scale={[1.5, 0.03, 1.5]} />
       {/* vitrinas de cristal con joyas, contra las paredes laterales */}
       {[-37, -41.5, -46, -50].flatMap((x) => [NZ + 0.95, SZ - 0.95].map((z) => ({ x, z }))).map(({ x, z }, i) => (
         <group key={`v${x}${z}`}>
@@ -671,7 +666,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-17-${services}`}>
+      <Batch version={`joyeria-escalera-18-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
