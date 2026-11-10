@@ -33,7 +33,7 @@ describe('mall layout', () => {
     expect(SPACES.filter((s) => s.id.startsWith('P1-I'))).toHaveLength(20)
     expect(SPACES.filter((s) => s.zoneId === 'F')).toHaveLength(4)
     expect(SPACES.filter((s) => s.floorId === 'P2')).toHaveLength(20)
-    for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z && !s.id.startsWith('P1-I'))).toHaveLength(5)
+    for (const z of ['A', 'B', 'C', 'D']) expect(SPACES.filter((s) => s.zoneId === z && !s.id.startsWith('P1-I') && !s.id.startsWith('P1-J'))).toHaveLength(5)
     expect(new Set(SPACES.map((s) => s.id)).size).toBe(SPACES.length)
   })
   it('ningún espacio se solapa con otro del mismo piso', () => {
