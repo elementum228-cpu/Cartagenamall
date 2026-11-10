@@ -154,17 +154,6 @@ function Shell() {
           <mesh geometry={GEO.octa} material={glowMat('#ffffff', 2.4, { dayGlow: 0.6 })} position={[x + 0.3, 1.08, z]} scale={0.16} />
         </group>
       ))}
-      {/* vigas doradas que cruzan el salón, con arañas de cristal */}
-      {[-37.5, -43.5, -49].map((x) => (
-        <group key={`c${x}`}>
-          <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.25 })} position={[x, WH - 0.1, 0]} scale={[0.3, 0.3, D]} castShadow />
-          <mesh geometry={GEO.cylinder} material={mat(GOLD, { rough: 0.25 })} position={[x, WH - 0.75, 0]} scale={[0.05, 1.2, 0.05]} />
-          <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, WH - 1.5, 0]} scale={0.7} />
-          {Array.from({ length: 8 }, (_, k) => (
-            <mesh key={k} geometry={GEO.octa} material={glowMat('#ffffff', 2.6, { dayGlow: 0.7 })} position={[x + Math.cos((k / 8) * Math.PI * 2) * 0.55, WH - 1.65, Math.sin((k / 8) * Math.PI * 2) * 0.55]} scale={0.17} />
-          ))}
-        </group>
-      ))}
       {/* paneles de espejo en las paredes */}
       {[-39, -44.5, -49.5].map((x) => (
         <mesh key={`m${x}`} geometry={GEO.box} material={mat('#cfe3ea', { rough: 0.05 })} position={[x, 2.1, NZ + 0.04]} scale={[3.2, 1.6, 0.06]} />
