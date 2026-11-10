@@ -140,7 +140,7 @@ function Shell() {
 }
 
 /** Reflejo falso del cielo sobre el vidrio: degradé frío y destellos diagonales (no hay mapa de entorno en la escena). */
-const GLASS_SKY = (() => {
+function makeGlassSky() {
   const c = document.createElement('canvas')
   c.width = 512
   c.height = 128
@@ -171,9 +171,10 @@ const GLASS_SKY = (() => {
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   return t
-})()
+}
 const GLASS_REFL = new THREE.MeshPhysicalMaterial({ color: '#a9d6e6', roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.3, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.DoubleSide })
-const GLASS_SHEEN = new THREE.MeshBasicMaterial({ map: GLASS_SKY, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })
+let sheen: THREE.MeshBasicMaterial | null = null
+const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
 
 /** Cristalería (propuesta): cierra con vidrio reflectante el hueco bajo la losa, por los dos bordes que dan a la plaza. */
 function GlassUnder() {
@@ -185,7 +186,7 @@ function GlassUnder() {
   const glass = (len: number, x: number, z: number, rot: number, key: string) => (
     <group key={key} position={[x, y, z]} rotation={[0, rot, 0]}>
       <mesh geometry={GEO.box} material={GLASS_REFL} scale={[len, h, 0.06]} />
-      <mesh geometry={GEO.plane} material={GLASS_SHEEN} position={[0, 0, 0.05]} scale={[len, h, 1]} />
+      <mesh geometry={GEO.plane} material={glassSheen()} position={[0, 0, 0.05]} scale={[len, h, 1]} />
       <mesh geometry={GEO.box} material={frame} position={[0, h / 2 - 0.03, 0]} scale={[len, 0.08, 0.12]} />
       <mesh geometry={GEO.box} material={frame} position={[0, -h / 2 + 0.03, 0]} scale={[len, 0.08, 0.12]} />
       {Array.from({ length: Math.round(len / 3) + 1 }, (_, i) => (
