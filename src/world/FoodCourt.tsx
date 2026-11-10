@@ -234,6 +234,10 @@ function GlassUnder() {
     <group key={key} position={[x, y, z]} rotation={[0, rot, 0]}>
       <mesh geometry={GEO.box} material={GLASS_REFL} scale={[len, h, 0.06]} />
       <mesh geometry={GEO.plane} material={glassSheen()} position={[0, 0, 0.05]} scale={[len, h, 1]} />
+      {/* luz cálida detrás del vidrio: de noche las ventanas se ven encendidas */}
+      <mesh geometry={GEO.plane} material={glowMat('#ffe9c4', 2.6, { opacity: 0.3, dayGlow: 0 })} position={[0, 0, 0.09]} scale={[len, h, 1]} />
+      <mesh geometry={GEO.box} material={glowMat('#ffe2a8', 2.4, { dayGlow: 0.3 })} position={[0, h / 2 - 0.2, -0.2]} scale={[len - 0.2, 0.08, 0.1]} />
+      <mesh geometry={GEO.box} material={glowMat('#ffe2a8', 2.0, { dayGlow: 0.25 })} position={[0, -h / 2 + 0.3, -0.2]} scale={[len - 0.2, 0.06, 0.1]} />
       <mesh geometry={GEO.box} material={frame} position={[0, h / 2 - 0.03, 0]} scale={[len, 0.08, 0.12]} />
       <mesh geometry={GEO.box} material={frame} position={[0, -h / 2 + 0.03, 0]} scale={[len, 0.08, 0.12]} />
       {Array.from({ length: Math.max(1, Math.round(len / 3)) + 1 }, (_, i) => (
@@ -492,7 +496,7 @@ function Furniture({ detail }: { detail: 'high' | 'low' }) {
 /** Estructura estática del piso 2 (también se ve como silueta desde otros pisos). */
 export function FoodCourtShell() {
   return (
-    <Batch version="estructura-p2-fortaleza">
+    <Batch version="estructura-p2-fortaleza-luz2">
       <Shell />
     </Batch>
   )
