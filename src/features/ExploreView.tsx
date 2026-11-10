@@ -1,4 +1,5 @@
 import { openCourtOrClaim } from '../football/open'
+import { HoyPill } from '../hoy/Hoy'
 import { storeCategoryName } from '../lib/storeCategories'
 import { EVENT_KINDS, PHASES, STADIUM, phaseInfo } from '../config/stadium'
 import { cameraState } from '../world/cameraState'
@@ -266,6 +267,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             </span>
             Pasaporte {passportDone}/{stampList.length}
           </Link>
+          <HoyPill />
           {flash && flashEvent && (
             <button
               onClick={() => {

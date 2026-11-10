@@ -10,6 +10,7 @@ import {
   UserRound,
   Zap,
 } from "lucide-react";
+import { HoyHost } from "./hoy/Hoy";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   BrowserRouter,
@@ -268,6 +269,7 @@ function Shell() {
       <AirportLayers />
       <ProductSheet />
       <SecretPromoModal />
+      <HoyHost />
       <Toasts />
       <GuidedTour />
       <InstallLayer />
