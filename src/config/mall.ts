@@ -476,15 +476,22 @@ export const JEWELRY_SPACES: SpaceSlot[] = JOYERIA
     ).map(([x, z, r], i) => ({ id: `P1-J${i + 1}`, floorId: 'P1', zoneId: 'A' as ZoneId, type: 'island' as SpaceType, label: `J-0${i + 1}`, position: [x, z] as [number, number], rotation: r, size: SPACE_TYPES.island.size }))
   : []
 /** Terraza de servicios sobre la joyería (segundo piso nuevo): locales grandes pegados a la muralla, de cara al patio hundido. */
-export const TERRACE_ELEVATION = 1.32
+export const TERRACE_ELEVATION = 4.92
+/** Piso del patio hundido (más abajo): ahí también hay locales. */
+export const TERRACE_COURT_ELEVATION = 1.32
 export const TERRACE_SPACES: SpaceSlot[] = JOYERIA
   ? (
       [
-        ...[-71, -65, -59].map((x) => [x, -28.4, 0]),
-        ...[-25, -19, -13].map((z) => [-77.4, z, Math.PI / 2]),
-        ...[-22, -16].map((z) => [-58.6, z, -Math.PI / 2]),
-      ] as [number, number, number][]
-    ).map(([x, z, r], i) => ({
+        // paseo de arriba: norte, oeste y este, de cara al patio
+        ...[-85, -79, -73, -67, -61, -55].map((x) => [x, -34.2, 0, TERRACE_ELEVATION]),
+        ...[-28, -22, -16, -10, -4].map((z) => [-88, z, Math.PI / 2, TERRACE_ELEVATION]),
+        ...[-26, -20, -14].map((z) => [-50.5, z, -Math.PI / 2, TERRACE_ELEVATION]),
+        // patio hundido: pegados a sus muros
+        ...[-76, -70, -64].map((x) => [x, -25.4, 0, TERRACE_COURT_ELEVATION]),
+        ...[-19, -13].map((z) => [-79.4, z, Math.PI / 2, TERRACE_COURT_ELEVATION]),
+        ...[-19, -13].map((z) => [-56.6, z, -Math.PI / 2, TERRACE_COURT_ELEVATION]),
+      ] as [number, number, number, number][]
+    ).map(([x, z, r, e], i) => ({
       id: `P1-S${i + 1}`,
       floorId: 'P1',
       zoneId: 'F' as ZoneId,
@@ -493,7 +500,7 @@ export const TERRACE_SPACES: SpaceSlot[] = JOYERIA
       position: [x, z] as [number, number],
       rotation: r,
       size: SPACE_TYPES.local.size,
-      elevation: TERRACE_ELEVATION,
+      elevation: e,
     }))
   : []
 export const SPACES: SpaceSlot[] = [...FLOORS.flatMap(generateSpaces), ...DISTRICT_SPACES, ...ISLAND_SPACES, ...ENTERTAINMENT_SPACES, ...JEWELRY_SPACES, ...TERRACE_SPACES]

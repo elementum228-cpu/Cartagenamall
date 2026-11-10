@@ -148,8 +148,8 @@ function StairDoor() {
 
 // Terraza: un gran cuadrado ~2 m más bajo que el piso 2 (se nota el desnivel), con muralla de piedra, muros sólidos en los lados cercanos,
 // locales pegados al muro y un patio hundido muy grande en el centro. Termina en el tercer local del piso 2, antes de su garita.
-const T = { x0: -83, x1: -48, z0: -34, z1: 6.4 }
-const COURT = { x0: -80, x1: -56, z0: -31, z1: -8, drop: 3.6 }
+const T = { x0: -91, x1: -48, z0: -37, z1: 6.4 }
+const COURT = { x0: -82, x1: -54, z0: -28, z1: -8, drop: 3.6 }
 const OPEN = 2.3 // media anchura del hueco por donde pasa la escalera
 const WALL_T = 1.0
 
@@ -277,19 +277,19 @@ function Terrace() {
         <mesh key={`er${sd}`} geometry={GEO.box} material={black} position={[stairX + sd * (gap - 0.1), cy + COURT.drop / 2 + 0.95, COURT.z1 - 0.15 - sRun / 2]} rotation={[Math.atan2(COURT.drop, sRun), 0, 0]} scale={[0.06, 0.06, Math.hypot(sRun, COURT.drop)]} />
       ))}
       {/* patio: espacio abierto en el centro (los locales van pegados a los muros), círculos de piedra, bancas, mesas y palmeras */}
-      <mesh geometry={GEO.cylinder} material={mat('#d9c9a5')} position={[-68, cy + 0.03, -17.5]} scale={[11, 0.04, 11]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={goldM} position={[-68, cy + 0.06, -17.5]} scale={[8.8, 0.03, 8.8]} />
-      <mesh geometry={GEO.cylinder} material={mat('#efe6d2')} position={[-68, cy + 0.09, -17.5]} scale={[8.4, 0.03, 8.4]} />
-      {[[-72, -12], [-64, -12], [-68, -23.5]].map(([x, z], i) => (
+      <mesh geometry={GEO.cylinder} material={mat('#d9c9a5')} position={[-68, cy + 0.03, -15.5]} scale={[10, 0.04, 10]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={goldM} position={[-68, cy + 0.06, -15.5]} scale={[8, 0.03, 8]} />
+      <mesh geometry={GEO.cylinder} material={mat('#efe6d2')} position={[-68, cy + 0.09, -15.5]} scale={[7.6, 0.03, 7.6]} />
+      {[[-72, -9.6], [-64, -9.6]].map(([x, z], i) => (
         <mesh key={`pb${i}`} geometry={GEO.box} material={mat('#8a6a4a')} position={[x, cy + 0.25, z]} scale={[4, 0.45, 0.6]} castShadow />
       ))}
-      {[[-72, -20], [-64, -20], [-68, -17.5]].map(([x, z], i) => (
+      {[[-72, -18], [-64, -18], [-68, -15.5]].map(([x, z], i) => (
         <group key={`mt${i}`}>
           <mesh geometry={GEO.cylinder} material={mat('#8a6a4a')} position={[x, cy + 0.55, z]} scale={[1.3, 0.1, 1.3]} castShadow />
           <mesh geometry={GEO.cylinder} material={black} position={[x, cy + 0.28, z]} scale={[0.1, 0.56, 0.1]} />
         </group>
       ))}
-      {[[-74.5, -25.5], [-61.5, -25.5], [-74.5, -9.5]].map(([x, z], i) => (
+      {[[-74.6, -9.4], [-61.4, -9.4]].map(([x, z], i) => (
         <group key={`pl${i}`} position={[x, cy, z]}>
           <mesh geometry={GEO.cylinder} material={mat('#8a6a4a')} position={[0, 1.4, 0]} scale={[0.28, 2.8, 0.28]} castShadow />
           {[0, 1, 2, 3, 4].map((k) => (
@@ -317,7 +317,7 @@ function Terrace() {
         )
       })}
       {/* faroles cálidos en el paseo */}
-      {[[-80.5, -32.4], [-80.5, -20], [-80.5, -8], [-80.5, 4.2], [-72, 4.2], [-62, 4.2], [-52.5, -33], [-52.5, -22], [-52.5, -11]].map(([x, z], i) => (
+      {[[-91.4, -32], [-91.4, -20], [-91.4, -8], [-91.4, 4.2], [-76, 4.2], [-66, 4.2], [-56, -31], [-66, -29.6], [-78, -29.6], [-53.2, -30], [-53.2, -4]].map(([x, z], i) => (
         <group key={`f${i}`}>
           <mesh geometry={GEO.cylinder} material={black} position={[x, top + 1.2, z]} scale={[0.08, 2.4, 0.08]} />
           <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, top + 2.5, z]} scale={0.34} />
@@ -585,7 +585,7 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-escalera-8">
+      <Batch version="joyeria-escalera-10">
         <Shell />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}
@@ -599,7 +599,8 @@ export function JewelryZone() {
       <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       <pointLight position={[-56, 3.2, 0]} color="#ffd98c" intensity={night ? 18 : 4} distance={9} decay={2} />
       <pointLight position={[-70, 9, 0]} color="#ffe2a8" intensity={night ? 18 : 3} distance={15} decay={2} />
-      <pointLight position={[-68, 4.5, -18]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
+      <pointLight position={[-67, 4.5, -15]} color="#ffe2a8" intensity={night ? 28 : 3} distance={22} decay={2} />
+      <pointLight position={[-75, 8.5, -30]} color="#ffe2a8" intensity={night ? 16 : 2} distance={16} decay={2} />
       <pointLight position={[-68, 8, -4]} color="#ffe2a8" intensity={night ? 16 : 2} distance={14} decay={2} />
       {[-37, -44, -50].map((x) => (
         <pointLight key={x} position={[x, 3.4, 0]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
