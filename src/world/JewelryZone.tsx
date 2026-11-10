@@ -9,6 +9,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, GLASS, mat } from './materials'
 import { glowMat } from './night'
+import { glassSheen } from './FoodCourt'
 
 // Zona de joyería (propuesta): plataforma de mármol al otro lado de una puerta en la muralla oeste, con alfombra roja,
 // cordones, dos vigilantes y cuatro locales pequeños (los reclamables van aparte, ver JEWELRY_SPACES).
@@ -168,7 +169,7 @@ function Terrace() {
   const top = Y + TOP
   const floorM = mat('#f1ebdf', { rough: 0.45 })
   const courtM = mat('#efe6d2', { rough: 0.5 })
-  const wallM = mat('#3a3430', { rough: 0.8 })
+  const wallM = mat('#c9b88f', { rough: 0.8 })
   const baseM = mat('#6f5a3e', { rough: 0.8 })
   const goldM = mat(GOLD, { rough: 0.3 })
   const black = mat('#d6dade', { rough: 0.4 })
@@ -278,14 +279,7 @@ function Terrace() {
         <group key={`w${i}`}>
           <mesh geometry={GEO.box} material={wallM} position={[(xa + xb) / 2, (top + cy) / 2 - 0.17, (za + zb) / 2]} scale={[Math.max(0.3, xb - xa), COURT.drop + 0.34, Math.max(0.3, zb - za)]} castShadow receiveShadow />
           <mesh geometry={GEO.box} material={goldM} position={[(xa + xb) / 2, top + 0.05, (za + zb) / 2]} scale={[Math.max(0.42, xb - xa + 0.1), 0.1, Math.max(0.42, zb - za + 0.1)]} />
-          {/* escaparate: ventanas con productos detrás del vidrio, sobre la cara que mira al patio */}
-          {(() => {
-            const vertical = xa === xb
-            const len = vertical ? zb - za : xb - xa
-            const dir = vertical ? Math.sign(CX2 - xa) : Math.sign(CZ2 - za)
-            const pos: [number, number, number] = vertical ? [xa + dir * 0.17, (top + cy) / 2 - 0.1, (za + zb) / 2] : [(xa + xb) / 2, (top + cy) / 2 - 0.1, za + dir * 0.17]
-            return <mesh geometry={GEO.plane} material={vitrinaMat(len)} position={pos} rotation={[0, vertical ? Math.PI / 2 : 0, 0]} scale={[len, COURT.drop - 0.2, 1]} />
-          })()}
+          <ShowcaseWall xa={xa} xb={xb} za={za} zb={zb} cx={CX2} cz={CZ2} y={cy} />
         </group>
       ))}
       {/* gran escalinata: del paseo al patio, con descanso a media altura, alfombra roja, barandas con luces y arco dorado */}
@@ -388,149 +382,154 @@ function Terrace() {
 
 
 /**
- * Escaparates decorativos: una tira de cinco ventanas con productos pintados detrás del vidrio (ropa, zapatos, gafas, regalos,
- * tecnología), iluminadas por dentro. Se pega en los muros del patio como si fueran vitrinas de un centro comercial.
+ * Escaparates 3D: ventanas de ~3,4 m con objetos reales detrás del vidrio (maniquíes, zapatos, gafas, regalos, tecnología),
+ * una franja de cartel arriba y luz cálida. El vidrio lleva el mismo reflejo de cielo que la fachada del mall.
  */
-const VIT_N = 5
-const VIT_W = 3.4
-let vitBase: THREE.CanvasTexture | null = null
-const vitCache = new Map<number, THREE.MeshBasicMaterial>()
-function makeVitrinas() {
-  const W = 205
-  const H = 256
-  const c = document.createElement('canvas')
-  c.width = W * VIT_N
-  c.height = H
-  const g = c.getContext('2d')!
-  const P = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95', '#2bb3a3', '#f08a4b']
-  const rect = (x: number, y: number, w: number, h: number, f: string | CanvasGradient, r = 0) => {
-    g.fillStyle = f
-    if (r) {
-      g.beginPath()
-      g.roundRect(x, y, w, h, r)
-      g.fill()
-    } else g.fillRect(x, y, w, h)
-  }
-  const circ = (x: number, y: number, r: number, f: string) => {
-    g.fillStyle = f
-    g.beginPath()
-    g.arc(x, y, r, 0, Math.PI * 2)
-    g.fill()
-  }
-  for (let v = 0; v < VIT_N; v++) {
-    const x = v * W
-    // fondo cálido y luz
-    const bg = g.createLinearGradient(0, 0, 0, H)
-    bg.addColorStop(0, '#ffe9bf')
-    bg.addColorStop(1, '#f6b868')
-    rect(x + 8, 8, W - 16, H - 16, bg)
-    // estantes y piso de la vitrina
-    rect(x + 8, H - 40, W - 16, 32, '#c99a62')
-    rect(x + 8, H - 44, W - 16, 5, '#8a6a4a')
-    const pc = (k: number) => P[(k + v * 3) % P.length]
-    if (v % 5 === 0) {
-      // ropa: barra con perchas
-      rect(x + 20, 48, W - 40, 5, '#6b5a3a')
-      for (let k = 0; k < 4; k++) {
-        const cx = x + 44 + k * 40
-        rect(cx - 13, 54, 26, 62, pc(k), 4)
-        rect(cx - 21, 54, 10, 26, pc(k), 3)
-        rect(cx + 11, 54, 10, 26, pc(k), 3)
-        rect(cx - 3, 44, 6, 8, '#6b5a3a')
-      }
-      rect(x + 30, 150, 54, 44, pc(5), 5)
-      rect(x + 96, 150, 54, 44, pc(6), 5)
-      circ(x + 140, 205, 10, '#fff')
-    } else if (v % 5 === 1) {
-      // zapatos en repisas
-      for (let r = 0; r < 3; r++) {
-        rect(x + 14, 70 + r * 52, W - 28, 5, '#8a6a4a')
-        for (let k = 0; k < 3; k++) {
-          const sx = x + 26 + k * 54
-          rect(sx, 46 + r * 52, 38, 17, pc(k + r), 8)
-          rect(sx - 3, 60 + r * 52, 44, 7, '#2b2f3a', 3)
-        }
-      }
-    } else if (v % 5 === 2) {
-      // gafas y espejo
-      for (let r = 0; r < 3; r++) {
-        rect(x + 14, 82 + r * 50, W - 28, 5, '#8a6a4a')
-        for (let k = 0; k < 2; k++) {
-          const gx = x + 56 + k * 82
-          const gy = 66 + r * 50
-          g.strokeStyle = pc(k + r)
-          g.lineWidth = 5
-          g.beginPath()
-          g.arc(gx - 17, gy, 13, 0, Math.PI * 2)
-          g.arc(gx + 17, gy, 13, 0, Math.PI * 2)
-          g.moveTo(gx - 4, gy)
-          g.lineTo(gx + 4, gy)
-          g.stroke()
-        }
-      }
-      circ(x + W / 2, 28, 12, '#d8e9ef')
-    } else if (v % 5 === 3) {
-      // regalos, globos y flores
-      for (let k = 0; k < 4; k++) {
-        const bx = x + 20 + k * 40
-        const bh = 42 + (k % 2) * 22
-        rect(bx, H - 44 - bh, 34, bh, pc(k), 3)
-        rect(bx + 15, H - 44 - bh, 5, bh, '#ffffff')
-      }
-      for (let k = 0; k < 3; k++) {
-        circ(x + 40 + k * 55, 52 + (k % 2) * 16, 20, pc(k + 4))
-        g.strokeStyle = '#6b5a3a'
-        g.lineWidth = 2
-        g.beginPath()
-        g.moveTo(x + 40 + k * 55, 72 + (k % 2) * 16)
-        g.lineTo(x + 46 + k * 52, 128)
-        g.stroke()
-      }
-    } else {
-      // tecnología: pantalla grande, celulares y audífonos
-      rect(x + 24, 32, W - 48, 78, '#1d2433', 5)
-      rect(x + 30, 38, W - 60, 66, pc(2), 3)
-      rect(x + 70, 110, 66, 8, '#6b6f7a', 2)
-      for (let k = 0; k < 4; k++) {
-        rect(x + 26 + k * 40, 140, 26, 50, '#2b2f3a', 4)
-        rect(x + 30 + k * 40, 145, 18, 38, pc(k), 2)
-      }
-      g.strokeStyle = '#2b2f3a'
-      g.lineWidth = 6
-      g.beginPath()
-      g.arc(x + W / 2, 214, 14, Math.PI, 0)
-      g.stroke()
-    }
-    // marco oscuro y reflejos del vidrio
-    g.strokeStyle = '#2b2f3a'
-    g.lineWidth = 10
-    g.strokeRect(x + 4, 4, W - 8, H - 8)
-    g.fillStyle = 'rgba(255,255,255,0.22)'
-    g.beginPath()
-    g.moveTo(x + 40, 8)
-    g.lineTo(x + 78, 8)
-    g.lineTo(x + 30, H - 8)
-    g.lineTo(x - 8, H - 8)
-    g.fill()
-  }
-  const t = new THREE.CanvasTexture(c)
-  t.wrapS = THREE.RepeatWrapping
-  t.colorSpace = THREE.SRGBColorSpace
-  return t
+const WIN = 3.4
+let reflMat: THREE.MeshBasicMaterial | null = null
+const refl = () => (reflMat ??= new THREE.MeshBasicMaterial({ map: glassSheen().map, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
+const SHOW_COLORS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95', '#2bb3a3', '#f08a4b']
+
+function Window({ i }: { i: number }) {
+  const t = i % 5
+  const c = (k: number) => SHOW_COLORS[(k + i * 3) % SHOW_COLORS.length]
+  const wood = mat('#8a6a4a')
+  const dark = mat('#2b2f3a')
+  const light = glowMat('#fff0c8', 2, { dayGlow: 0.55 })
+  const H = 3.9
+  const D = 0.85
+  const skin = mat('#d9b08c')
+  return (
+    <group>
+      {/* fondo cálido, suelo, techo y luz */}
+      <mesh geometry={GEO.box} material={mat('#f4d9a6', { rough: 0.9 })} position={[0, H / 2, 0.04]} scale={[WIN - 0.1, H, 0.06]} />
+      <mesh geometry={GEO.box} material={mat('#c99a62')} position={[0, 0.08, D / 2]} scale={[WIN - 0.1, 0.16, D]} />
+      <mesh geometry={GEO.box} material={light} position={[0, H - 0.18, D / 2]} scale={[WIN - 0.4, 0.06, D - 0.2]} />
+      {/* franja de cartel */}
+      <mesh geometry={GEO.box} material={mat(c(0))} position={[0, H - 0.05, D / 2]} scale={[WIN - 0.1, 0.3, D + 0.1]} />
+      {t === 0 && (
+        <>
+          {/* maniquíes con ropa */}
+          {[-1, 0, 1].map((k) => (
+            <group key={k} position={[k * 0.95, 0.16, 0.5]}>
+              <mesh geometry={GEO.cylinder} material={dark} position={[0, 0.06, 0]} scale={[0.4, 0.05, 0.4]} />
+              <mesh geometry={GEO.cylinder} material={dark} position={[0, 0.55, 0]} scale={[0.05, 1.0, 0.05]} />
+              <mesh geometry={GEO.rounded} material={mat(c(k + 1))} position={[0, 1.2, 0]} scale={[0.5, 0.75, 0.28]} />
+              <mesh geometry={GEO.cylinder} material={mat(c(k + 4))} position={[0, 0.8, 0]} scale={[0.46, 0.45, 0.3]} />
+              <mesh geometry={GEO.sphereSmooth} material={skin} position={[0, 1.78, 0]} scale={0.26} />
+            </group>
+          ))}
+          <mesh geometry={GEO.box} material={wood} position={[0, 2.85, 0.25]} scale={[WIN - 0.5, 0.05, 0.05]} />
+          {[-1.2, -0.6, 0, 0.6, 1.2].map((x, k) => (
+            <mesh key={k} geometry={GEO.rounded} material={mat(c(k))} position={[x, 2.45, 0.25]} scale={[0.36, 0.7, 0.08]} />
+          ))}
+        </>
+      )}
+      {t === 1 && (
+        <>
+          {[0, 1, 2].map((r) => (
+            <group key={r} position={[0, 0.16 + r * 1.05, 0]}>
+              <mesh geometry={GEO.box} material={wood} position={[0, 0.7, 0.4]} scale={[WIN - 0.4, 0.06, 0.6]} />
+              {[-1.1, -0.45, 0.2, 0.85].map((x, k) => (
+                <group key={k} position={[x, 0.78, 0.4]}>
+                  <mesh geometry={GEO.rounded} material={mat(c(k + r))} position={[0, 0.12, 0]} scale={[0.5, 0.22, 0.2]} />
+                  <mesh geometry={GEO.box} material={dark} position={[0, 0.02, 0]} scale={[0.52, 0.05, 0.22]} />
+                </group>
+              ))}
+            </group>
+          ))}
+        </>
+      )}
+      {t === 2 && (
+        <>
+          {[0, 1, 2].map((r) => (
+            <group key={r} position={[0, 0.16 + r * 1.05, 0]}>
+              <mesh geometry={GEO.box} material={wood} position={[0, 0.7, 0.4]} scale={[WIN - 0.4, 0.06, 0.6]} />
+              {[-0.9, 0.2, 1.1].map((x, k) => (
+                <group key={k} position={[x, 0.9, 0.4]}>
+                  <mesh geometry={GEO.torus} material={mat(c(k + r))} position={[-0.17, 0, 0]} scale={0.14} />
+                  <mesh geometry={GEO.torus} material={mat(c(k + r))} position={[0.17, 0, 0]} scale={0.14} />
+                  <mesh geometry={GEO.box} material={mat(c(k + r))} position={[0, 0.02, 0]} scale={[0.08, 0.03, 0.03]} />
+                </group>
+              ))}
+            </group>
+          ))}
+        </>
+      )}
+      {t === 3 && (
+        <>
+          {[-1.1, -0.35, 0.4, 1.05].map((x, k) => {
+            const h = 0.45 + (k % 2) * 0.35
+            return (
+              <group key={k} position={[x, 0.16, 0.45]}>
+                <mesh geometry={GEO.box} material={mat(c(k))} position={[0, h / 2, 0]} scale={[0.6, h, 0.6]} castShadow />
+                <mesh geometry={GEO.box} material={mat('#ffffff')} position={[0, h / 2, 0]} scale={[0.1, h + 0.01, 0.62]} />
+                <mesh geometry={GEO.box} material={mat('#ffffff')} position={[0, h / 2, 0]} scale={[0.62, h + 0.01, 0.1]} />
+              </group>
+            )
+          })}
+          {[-0.9, 0.1, 1.0].map((x, k) => (
+            <group key={`b${k}`} position={[x, 0, 0.35]}>
+              <mesh geometry={GEO.cylinder} material={wood} position={[0, 1.5, 0]} scale={[0.02, 2.4, 0.02]} />
+              <mesh geometry={GEO.sphereSmooth} material={mat(c(k + 4), { rough: 0.3 })} position={[0, 2.8 - (k % 2) * 0.4, 0]} scale={[0.55, 0.65, 0.55]} />
+            </group>
+          ))}
+        </>
+      )}
+      {t === 4 && (
+        <>
+          <mesh geometry={GEO.box} material={dark} position={[0, 2.1, 0.25]} scale={[2.0, 1.15, 0.1]} />
+          <mesh geometry={GEO.box} material={glowMat(c(2), 1.6, { dayGlow: 0.6 })} position={[0, 2.1, 0.31]} scale={[1.9, 1.05, 0.02]} />
+          <mesh geometry={GEO.box} material={wood} position={[0, 1.2, 0.4]} scale={[WIN - 0.4, 0.06, 0.6]} />
+          {[-1.1, -0.55, 0, 0.55, 1.1].map((x, k) => (
+            <group key={k} position={[x, 1.38, 0.4]}>
+              <mesh geometry={GEO.rounded} material={dark} scale={[0.26, 0.34, 0.04]} />
+              <mesh geometry={GEO.box} material={glowMat(c(k), 1.4, { dayGlow: 0.5 })} position={[0, 0, 0.025]} scale={[0.22, 0.28, 0.01]} />
+            </group>
+          ))}
+          {[-0.8, 0, 0.8].map((x, k) => (
+            <group key={`h${k}`} position={[x, 0.45, 0.5]}>
+              <mesh geometry={GEO.cylinder} material={mat(c(k + 3))} position={[-0.13, 0.12, 0]} scale={[0.18, 0.08, 0.18]} />
+              <mesh geometry={GEO.cylinder} material={mat(c(k + 3))} position={[0.13, 0.12, 0]} scale={[0.18, 0.08, 0.18]} />
+              <mesh geometry={GEO.box} material={dark} position={[0, 0.28, 0]} scale={[0.3, 0.04, 0.04]} />
+            </group>
+          ))}
+        </>
+      )}
+      {/* vidrio con reflejo, en el frente */}
+      <mesh geometry={GEO.box} material={GLASS} position={[0, H / 2, D]} scale={[WIN - 0.1, H, 0.04]} />
+      <mesh geometry={GEO.plane} material={refl()} position={[0, H / 2, D + 0.03]} scale={[WIN - 0.1, H, 1]} />
+      {/* marcos */}
+      {[-1, 1].map((sd) => (
+        <mesh key={sd} geometry={GEO.box} material={mat('#d6dade')} position={[sd * (WIN / 2 - 0.05), H / 2, D / 2]} scale={[0.1, H, D]} />
+      ))}
+    </group>
+  )
 }
-/** Material de escaparates para un muro de `len` metros: repite la tira para que cada ventana mida ~3,4 m. */
-function vitrinaMat(len: number) {
-  const key = Math.round(len * 4)
-  let m = vitCache.get(key)
-  if (!m) {
-    vitBase ??= makeVitrinas()
-    const t = vitBase.clone()
-    t.needsUpdate = true
-    t.repeat.set(len / (VIT_N * VIT_W), 1)
-    m = new THREE.MeshBasicMaterial({ map: t, toneMapped: false, side: THREE.DoubleSide })
-    vitCache.set(key, m)
-  }
-  return m
+
+/** Tira de escaparates 3D para un muro: de (xa,za) a (xb,zb) con la cara hacia (CX2, CZ2). */
+function ShowcaseWall({ xa, xb, za, zb, cx, cz, y }: { xa: number; xb: number; za: number; zb: number; cx: number; cz: number; y: number }) {
+  const vertical = xa === xb
+  const len = vertical ? zb - za : xb - xa
+  const n = Math.floor(len / WIN)
+  if (n < 1) return null
+  const dir = vertical ? Math.sign(cx - xa) : Math.sign(cz - za)
+  const rot = vertical ? (dir > 0 ? Math.PI / 2 : -Math.PI / 2) : dir > 0 ? 0 : Math.PI
+  const mx = (xa + xb) / 2
+  const mz = (za + zb) / 2
+  const off = 0.15
+  const px = vertical ? mx + dir * off : mx
+  const pz = vertical ? mz : mz + dir * off
+  const step = len / n
+  return (
+    <group position={[px, y, pz]} rotation={[0, rot, 0]}>
+      {Array.from({ length: n }, (_, k) => (
+        <group key={k} position={[-(len - step) / 2 + k * step, 0, 0]}>
+          <Window i={k + Math.round(len)} />
+        </group>
+      ))}
+    </group>
+  )
 }
 
 const NAVY = '#1d2b4a'
@@ -821,7 +820,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-21-${services}`}>
+      <Batch version={`joyeria-escalera-22-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}

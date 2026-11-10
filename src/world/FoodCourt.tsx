@@ -221,7 +221,7 @@ function makeGlassSky() {
 }
 const GLASS_REFL = new THREE.MeshPhysicalMaterial({ color: '#4f8ca3', roughness: 0.04, metalness: 0.3, transparent: true, opacity: 0.45, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.DoubleSide })
 let sheen: THREE.MeshBasicMaterial | null = null
-const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
+export const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
 
 /** Cristalería (propuesta): cierra con vidrio reflectante el hueco bajo la losa, por los dos bordes que dan a la plaza. */
 function GlassUnder() {
