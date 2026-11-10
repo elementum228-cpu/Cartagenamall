@@ -114,8 +114,8 @@ function Shell() {
       <mesh geometry={GEO.box} material={wall} position={[0, WALL_H / 2 + 0.2, -H + 0.2]} scale={[2 * H, WALL_H, 0.4]} castShadow />
       <mesh geometry={GEO.box} material={wall} position={[-H + 0.2, WALL_H / 2 + 0.2, 0]} scale={[0.4, WALL_H, 2 * H]} castShadow />
       {/* barandas hacia la plaza; abiertas donde llegan las escaleras */}
-      {railing(H - 0.2, -H + 2.4, H - 0.2, H - ARRIVAL_GAP, 'este')}
-      {railing(H - 0.2, -H + 0.4, H - 0.2, -H + 0.9, 'este-n')}
+      {railing(H - 0.2, -9.9, H - 0.2, H - ARRIVAL_GAP, 'este')}
+      {railing(H - 0.2, -H + 0.4, H - 0.2, -12.6, 'este-n')}
       {railing(-H + 0.4, H - 0.2, H - ARRIVAL_GAP, H - 0.2, 'frente')}
       {/* arcada bajo los bordes que dan a la plaza: el piso se lee elevado desde la fortaleza */}
       {ARCADE.map(([x, z]) => (
@@ -142,46 +142,45 @@ function Shell() {
 }
 
 /**
- * Escalera de piedra (no eléctrica) del piso 2 al estadio: sale por la esquina norte del borde este, baja en dos tramos
- * en zigzag con un descanso intermedio, y llega a la altura de la muralla de la isla del estadio.
+ * Escalera de piedra (no eléctrica), directa: sale del borde este del piso 2 y baja en línea recta hacia el norte, a lo
+ * largo de la isla del estadio, hasta una plataforma con puerta de entrada al estadio a la altura de su muralla.
  */
 function StairToStadium() {
   const stone = mat(STONE)
   const dark = mat(STONE_DARK)
-  const N = 10
+  const gold = mat('#d9a441', { rough: 0.3 })
+  const N = 20
   const RISE = 0.3
   const RUN = 0.5
-  const Z0 = -H + 1.25 // arranque (norte)
-  const XA = H + 0.4 // tramo A (pegado a la losa)
-  const XB = H + 1.9 // tramo B
-  const W = 1.35
+  const X = H + 1.45 // eje de la escalera
+  const W = 1.8
   const topY = 0.2
-  const midY = topY - N * RISE
-  const botY = midY - N * RISE
-  const steps = (x: number, dir: 1 | -1, y0: number, key: string) =>
-    Array.from({ length: N }, (_, i) => {
-      const top = y0 - (i + 1) * RISE
-      const z = dir === 1 ? Z0 + i * RUN + RUN / 2 : Z0 + (N - 1) * RUN + RUN * 1.5 - i * RUN - RUN
-      const bottom = y0 - N * RISE - 0.35
-      return <mesh key={`${key}${i}`} geometry={GEO.box} material={i % 2 ? stone : dark} position={[x, (top + bottom) / 2, z]} scale={[W, top - bottom, RUN]} castShadow receiveShadow />
-    })
-  const zEnd = Z0 + N * RUN
+  const zTop = -11.25 // arranque (junto a la losa)
+  const zBot = zTop - 1.35 - N * RUN // pie de la escalera
+  const botY = topY - N * RISE
+  const bottom = botY - 0.4
+  const zLand = zBot - 1.3
   return (
     <group>
       {/* rellano de salida al nivel de la terraza */}
-      <mesh geometry={GEO.box} material={stone} position={[H + 1.2, topY - 0.15, Z0 - 0.3]} scale={[3.6, 0.3, 1.1]} castShadow />
-      {steps(XA, 1, topY, 'a')}
-      {/* descanso intermedio con su apoyo hasta el mar */}
-      <mesh geometry={GEO.box} material={stone} position={[(XA + XB) / 2, midY - 0.15, zEnd + 0.8]} scale={[XB - XA + W, 0.3, 1.6]} castShadow />
-      <mesh geometry={GEO.box} material={dark} position={[(XA + XB) / 2, midY - 3.9, zEnd + 0.8]} scale={[1.1, 7.2, 1.1]} />
-      {steps(XB, -1, midY, 'b')}
-      {/* llegada a la altura de la muralla de la isla */}
-      <mesh geometry={GEO.box} material={stone} position={[XB + 1.0, botY - 0.15, Z0 - 0.3]} scale={[2.4, 0.3, 1.5]} castShadow />
-      <mesh geometry={GEO.box} material={dark} position={[XB + 1.0, botY - 3.7, Z0 - 0.3]} scale={[1.0, 7, 1.0]} />
-      {/* barandas de piedra y cordón a los lados externos */}
-      {[XB + W / 2 + 0.1, XA - W / 2 - 0.1].map((x, k) => (
-        <mesh key={k} geometry={GEO.box} material={mat(CORDON_STAIR)} position={[x, (topY + botY) / 2 + 0.55, Z0 + (N * RUN) / 2]} rotation={[0, 0, 0]} scale={[0.12, 0.12, N * RUN]} />
+      <mesh geometry={GEO.box} material={stone} position={[H + 1.45, topY - 0.15, zTop - 0.65]} scale={[2.4, 0.3, 1.35]} castShadow />
+      {/* peldaños macizos */}
+      {Array.from({ length: N }, (_, i) => {
+        const top = topY - (i + 1) * RISE
+        return <mesh key={i} geometry={GEO.box} material={i % 2 ? stone : dark} position={[X, (top + bottom) / 2, zTop - 1.35 - i * RUN - RUN / 2]} scale={[W, top - bottom, RUN]} castShadow receiveShadow />
+      })}
+      {/* barandas laterales de piedra */}
+      {[X - W / 2 - 0.08, X + W / 2 + 0.08].map((x) => (
+        <mesh key={x} geometry={GEO.box} material={mat(CORDON_STAIR)} position={[x, (topY + botY) / 2 + 0.55, zTop - 1.35 - (N * RUN) / 2]} rotation={[-Math.atan2(RISE, RUN), 0, 0]} scale={[0.14, 0.14, Math.hypot(N * RUN, N * RISE)]} />
       ))}
+      {/* plataforma de llegada que entra en la isla y puerta del estadio */}
+      <mesh geometry={GEO.box} material={stone} position={[X + 1.2, botY - 0.15, zLand + 0.05]} scale={[5.2, 0.3, 2.6]} castShadow />
+      <mesh geometry={GEO.box} material={dark} position={[X, botY - 3.9, zLand]} scale={[1.1, 7.2, 1.1]} />
+      {[-1.5, 1.5].map((dz) => (
+        <mesh key={dz} geometry={GEO.box} material={gold} position={[X + 2.6, botY + 1.2, zLand + dz]} scale={[0.5, 2.4, 0.5]} castShadow />
+      ))}
+      <mesh geometry={GEO.box} material={gold} position={[X + 2.6, botY + 2.55, zLand]} scale={[0.6, 0.45, 3.9]} castShadow />
+      <mesh geometry={GEO.box} material={mat('#0f5a3a')} position={[X + 2.3, botY + 2.55, zLand]} scale={[0.06, 0.3, 3.2]} />
     </group>
   )
 }
