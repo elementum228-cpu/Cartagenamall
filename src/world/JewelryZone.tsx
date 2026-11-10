@@ -9,6 +9,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, GLASS, mat } from './materials'
 import { glowMat } from './night'
+import { glassSheen } from './FoodCourt'
 
 // Zona de joyería (propuesta): plataforma de mármol al otro lado de una puerta en la muralla oeste, con alfombra roja,
 // cordones, dos vigilantes y cuatro locales pequeños (los reclamables van aparte, ver JEWELRY_SPACES).
@@ -168,7 +169,7 @@ function Terrace() {
   const top = Y + TOP
   const floorM = mat('#f1ebdf', { rough: 0.45 })
   const courtM = mat('#efe6d2', { rough: 0.5 })
-  const wallM = mat('#a77b52', { rough: 0.7 })
+  const wallM = mat('#c3d9e2', { rough: 0.05 })
   const baseM = mat('#6f5a3e', { rough: 0.8 })
   const goldM = mat(GOLD, { rough: 0.3 })
   const black = mat('#d6dade', { rough: 0.4 })
@@ -278,6 +279,14 @@ function Terrace() {
         <group key={`w${i}`}>
           <mesh geometry={GEO.box} material={wallM} position={[(xa + xb) / 2, (top + cy) / 2 - 0.17, (za + zb) / 2]} scale={[Math.max(0.3, xb - xa), COURT.drop + 0.34, Math.max(0.3, zb - za)]} castShadow receiveShadow />
           <mesh geometry={GEO.box} material={goldM} position={[(xa + xb) / 2, top + 0.05, (za + zb) / 2]} scale={[Math.max(0.42, xb - xa + 0.1), 0.1, Math.max(0.42, zb - za + 0.1)]} />
+          {/* espejo: reflejo de cielo sobre la cara que mira al patio */}
+          {(() => {
+            const vertical = xa === xb
+            const len = vertical ? zb - za : xb - xa
+            const dir = vertical ? Math.sign(CX2 - xa) : Math.sign(CZ2 - za)
+            const pos: [number, number, number] = vertical ? [xa + dir * 0.17, (top + cy) / 2 - 0.1, (za + zb) / 2] : [(xa + xb) / 2, (top + cy) / 2 - 0.1, za + dir * 0.17]
+            return <mesh geometry={GEO.plane} material={glassSheen()} position={pos} rotation={[0, vertical ? Math.PI / 2 : 0, 0]} scale={[len, COURT.drop - 0.2, 1]} />
+          })()}
         </group>
       ))}
       {/* gran escalinata: del paseo al patio, con descanso a media altura, alfombra roja, barandas con luces y arco dorado */}
@@ -666,7 +675,7 @@ export function JewelryZone({ services = true }: { services?: boolean }) {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva', dark: night }), [night])
   return (
     <group>
-      <Batch version={`joyeria-escalera-18-${services}`}>
+      <Batch version={`joyeria-escalera-19-${services}`}>
         <Shell services={services} />
       </Batch>
       {/* dos vigilantes que patrullan la alfombra */}

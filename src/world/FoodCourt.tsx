@@ -221,7 +221,7 @@ function makeGlassSky() {
 }
 const GLASS_REFL = new THREE.MeshPhysicalMaterial({ color: '#4f8ca3', roughness: 0.04, metalness: 0.3, transparent: true, opacity: 0.45, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.DoubleSide })
 let sheen: THREE.MeshBasicMaterial | null = null
-const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
+export const glassSheen = () => (sheen ??= new THREE.MeshBasicMaterial({ map: makeGlassSky(), transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }))
 
 /** Cristalería (propuesta): cierra con vidrio reflectante el hueco bajo la losa, por los dos bordes que dan a la plaza. */
 function GlassUnder() {
@@ -270,7 +270,7 @@ function Keep() {
   const GAL = JOYERIA ? 5 : 0
   const parts: { x: number; z: number; w: number; d: number }[] = [
     { x: (-E + wall) / 2, z: -GAL / 2, w: wall + E, d: 2 * E - GAL },
-    { x: (wall + E) / 2, z: (-E + wall) / 2, w: E - wall, d: wall + E },
+    { x: (wall + E - GAL) / 2, z: (-E + wall) / 2, w: E - wall - GAL, d: wall + E },
   ]
   return (
     <group>
@@ -283,6 +283,10 @@ function Keep() {
       ))}
       {JOYERIA ? (
         <>
+          {/* lado este: la fachada de vidrio sigue también delante del macizo del fondo, con su base de piedra */}
+          <mesh geometry={GEO.box} material={stone} position={[E - GAL / 2, (bottom - ELEV + 0.1) / 2, (-E + wall) / 2]} scale={[GAL, -ELEV + 0.1 - bottom, wall + E]} receiveShadow />
+          <mesh geometry={GEO.box} material={dark} position={[E - GAL / 2, bottom + 0.9, (-E + wall) / 2]} scale={[GAL + 0.5, 1.8, wall + E + 0.5]} />
+          <mesh geometry={GEO.box} material={cordon} position={[E - GAL / 2, -ELEV + 0.05, (-E + wall) / 2]} scale={[GAL + 0.12, 0.1, wall + E + 0.12]} />
           {/* piso de piedra bajo la fachada de vidrio, a la altura de la fortaleza */}
           <mesh geometry={GEO.box} material={stone} position={[(-E + wall) / 2, (bottom - ELEV + 0.1) / 2, E - GAL / 2]} scale={[wall + E, -ELEV + 0.1 - bottom, GAL]} receiveShadow />
           <mesh geometry={GEO.box} material={dark} position={[(-E + wall) / 2, bottom + 0.9, E - GAL / 2]} scale={[wall + E + 0.5, 1.8, GAL + 0.5]} />
