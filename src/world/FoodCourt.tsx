@@ -139,7 +139,43 @@ function Shell() {
   )
 }
 
-/** Cristalería (propuesta): cierra con vidrio el hueco bajo la losa, por los dos bordes que dan a la plaza, hasta el torreón. */
+/** Reflejo falso del cielo sobre el vidrio: degradé frío y destellos diagonales (no hay mapa de entorno en la escena). */
+const GLASS_SKY = (() => {
+  const c = document.createElement('canvas')
+  c.width = 512
+  c.height = 128
+  const g = c.getContext('2d')!
+  const grad = g.createLinearGradient(0, 0, 0, 128)
+  grad.addColorStop(0, 'rgba(210,238,255,0.55)')
+  grad.addColorStop(0.55, 'rgba(150,200,225,0.18)')
+  grad.addColorStop(1, 'rgba(255,255,255,0.05)')
+  g.fillStyle = grad
+  g.fillRect(0, 0, 512, 128)
+  for (const [x, w, a] of [
+    [70, 26, 0.5],
+    [120, 8, 0.4],
+    [300, 40, 0.38],
+    [370, 10, 0.5],
+    [450, 22, 0.3],
+  ]) {
+    const sg = g.createLinearGradient(x, 0, x + w, 0)
+    sg.addColorStop(0, 'rgba(255,255,255,0)')
+    sg.addColorStop(0.5, `rgba(255,255,255,${a})`)
+    sg.addColorStop(1, 'rgba(255,255,255,0)')
+    g.save()
+    g.transform(1, 0, -0.45, 1, 40, 0)
+    g.fillStyle = sg
+    g.fillRect(x, 0, w, 128)
+    g.restore()
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+})()
+const GLASS_REFL = new THREE.MeshPhysicalMaterial({ color: '#a9d6e6', roughness: 0.04, metalness: 0.25, transparent: true, opacity: 0.3, clearcoat: 1, clearcoatRoughness: 0.02, depthWrite: false, side: THREE.DoubleSide })
+const GLASS_SHEEN = new THREE.MeshBasicMaterial({ map: GLASS_SKY, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })
+
+/** Cristalería (propuesta): cierra con vidrio reflectante el hueco bajo la losa, por los dos bordes que dan a la plaza. */
 function GlassUnder() {
   const h = ELEV - 0.9
   const y = -ELEV / 2 - 0.35
@@ -148,7 +184,8 @@ function GlassUnder() {
   const frame = mat('#3a4450')
   const glass = (len: number, x: number, z: number, rot: number, key: string) => (
     <group key={key} position={[x, y, z]} rotation={[0, rot, 0]}>
-      <mesh geometry={GEO.box} material={GLASS} scale={[len, h, 0.06]} />
+      <mesh geometry={GEO.box} material={GLASS_REFL} scale={[len, h, 0.06]} />
+      <mesh geometry={GEO.plane} material={GLASS_SHEEN} position={[0, 0, 0.05]} scale={[len, h, 1]} />
       <mesh geometry={GEO.box} material={frame} position={[0, h / 2 - 0.03, 0]} scale={[len, 0.08, 0.12]} />
       <mesh geometry={GEO.box} material={frame} position={[0, -h / 2 + 0.03, 0]} scale={[len, 0.08, 0.12]} />
       {Array.from({ length: Math.round(len / 3) + 1 }, (_, i) => (

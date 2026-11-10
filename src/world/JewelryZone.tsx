@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
@@ -6,14 +7,17 @@ import { ScreenLabel } from './Billboard'
 import { CORDON, STONE, STONE_DARK } from './Fortress'
 import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
-import { GEO, mat } from './materials'
+import { GEO, GLASS, mat } from './materials'
+import { glowMat } from './night'
 
 // Zona de joyería (propuesta): plataforma de mármol al otro lado de una puerta en la muralla oeste, con alfombra roja,
 // cordones, dos vigilantes y cuatro locales pequeños (los reclamables van aparte, ver JEWELRY_SPACES).
-const CX = -37.8
+const CX = -42.4
 const CZ = -0.5
-const W = 11
-const D = 15
+const W = 19.6
+const D = 15.4
+const X0 = CX - W / 2
+const WH = 3.8
 const Y = 0.12
 const GOLD = '#d9a441'
 const RED = '#b9242b'
@@ -44,16 +48,6 @@ function useMarble() {
   }, [])
 }
 
-function Guard({ x, z, rot }: { x: number; z: number; rot: number }) {
-  return (
-    <group position={[x, Y, z]} rotation={[0, rot, 0]} scale={1.75}>
-      <mesh geometry={GEO.capsule} material={mat('#1d2b4a')} position={[0, 0.43, 0]} castShadow />
-      <mesh geometry={GEO.sphereSmooth} material={mat('#e0b08a')} position={[0, 0.95, 0]} scale={0.36} castShadow />
-      <mesh geometry={GEO.cylinder} material={mat('#10172b')} position={[0, 1.15, 0]} scale={[0.3, 0.1, 0.3]} />
-    </group>
-  )
-}
-
 function Post({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, Y, z]}>
@@ -64,40 +58,95 @@ function Post({ x, z }: { x: number; z: number }) {
   )
 }
 
+const NAVY = '#1d2b4a'
+
+/** Vigilante que patrulla de la puerta al fondo y regresa, con paso de caminata. */
+function Patrol({ z, phase }: { z: number; phase: number }) {
+  const g = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    const el = g.current
+    if (!el) return
+    const L = 14.5
+    const t = ((clock.elapsedTime * 0.35 + phase) % 2 + 2) % 2
+    const u = t < 1 ? t : 2 - t
+    el.position.set(-34.6 - u * L, Y + Math.abs(Math.sin(clock.elapsedTime * 6 + phase * 5)) * 0.05, z)
+    el.rotation.y = t < 1 ? Math.PI / 2 : -Math.PI / 2
+  })
+  return (
+    <group ref={g} scale={1.75} userData={{ dynamic: true }}>
+      <mesh geometry={GEO.capsule} material={mat(NAVY)} position={[0, 0.43, 0]} castShadow />
+      <mesh geometry={GEO.box} material={mat(GOLD)} position={[0, 0.5, 0.2]} scale={[0.34, 0.05, 0.02]} />
+      <mesh geometry={GEO.sphereSmooth} material={mat('#e0b08a')} position={[0, 0.95, 0]} scale={0.36} castShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#10172b')} position={[0, 1.15, 0]} scale={[0.3, 0.1, 0.3]} />
+    </group>
+  )
+}
+
 function Shell() {
   const marble = useMarble()
-  const ropes = [-1, 1].flatMap((side) => [0, 1, 2, 3, 4].map((i) => ({ x: -34.4 - i * 1.9, z: side * 1.9, side, i })))
+  const strip = glowMat('#ffe2a8', 1.8, { dayGlow: 0.35 })
+  const warm = glowMat('#fff0c8', 2.2, { dayGlow: 0.4 })
+  const NZ = CZ - D / 2
+  const SZ = CZ + D / 2
+  const ropes = [-1, 1].flatMap((side) => Array.from({ length: 8 }, (_, i) => ({ x: -34.4 - i * 1.95, z: side * 1.9, side, i })))
   return (
     <>
+      {/* losa de piedra sobre el mar */}
       <mesh geometry={GEO.box} material={mat(STONE[0])} position={[CX, (Y - 1.5) / 2, CZ]} scale={[W + 1, Y + 1.5, D + 1]} castShadow receiveShadow />
       <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[CX, -0.9, CZ]} scale={[W + 1.6, 1.2, D + 1.6]} />
       <mesh geometry={GEO.box} material={mat(CORDON)} position={[CX, Y - 0.04, CZ]} scale={[W + 1.1, 0.12, D + 1.1]} />
+      {/* mármol, borde dorado y alfombra roja hasta el fondo */}
       <mesh geometry={GEO.box} material={marble} position={[CX, Y + 0.02, CZ]} scale={[W, 0.06, D]} receiveShadow />
       {[
-        [CX, CZ - D / 2 + 0.2, W, 0.3],
-        [CX, CZ + D / 2 - 0.2, W, 0.3],
-        [CX - W / 2 + 0.2, CZ, 0.3, D],
+        [CX, NZ + 0.3, W, 0.3],
+        [CX, SZ - 0.3, W, 0.3],
+        [X0 + 0.3, CZ, 0.3, D],
       ].map(([x, z, w, d], i) => (
         <mesh key={i} geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[x, Y + 0.06, z]} scale={[w, 0.03, d]} />
       ))}
-      {/* alfombra roja desde la puerta */}
-      <mesh geometry={GEO.box} material={mat(RED, { rough: 0.95 })} position={[-37.4, Y + 0.08, 0]} scale={[10.4, 0.04, 2.8]} receiveShadow />
-      {/* puerta en la muralla: arco dorado con luz */}
+      <mesh geometry={GEO.box} material={mat(RED, { rough: 0.95 })} position={[CX + 0.2, Y + 0.08, 0]} scale={[W - 0.6, 0.04, 2.8]} receiveShadow />
+      {[-1.45, 1.45].map((z) => (
+        <mesh key={z} geometry={GEO.box} material={mat(GOLD)} position={[CX + 0.2, Y + 0.1, z]} scale={[W - 0.6, 0.03, 0.07]} />
+      ))}
+      {/* paredes: fondo y norte altas con cornisa dorada; el lado de la cámara es una baranda de vidrio */}
+      {[
+        [X0 - 0.15, CZ, 0.3, D + 0.6, WH],
+        [CX, NZ - 0.15, W + 0.6, 0.3, WH],
+      ].map(([x, z, w, d, h], i) => (
+        <group key={i}>
+          <mesh geometry={GEO.box} material={mat('#f1e9d8')} position={[x, h / 2, z]} scale={[w, h, d]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[x, h + 0.08, z]} scale={[w + 0.2, 0.18, d + 0.2]} />
+          <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[x, 0.3, z]} scale={[w + 0.12, 0.35, d + 0.12]} />
+        </group>
+      ))}
+      <mesh geometry={GEO.box} material={mat(STONE[1])} position={[CX, 0.55, SZ + 0.15]} scale={[W + 0.6, 0.9, 0.3]} castShadow />
+      <mesh geometry={GEO.box} material={GLASS} position={[CX, 1.55, SZ + 0.15]} scale={[W + 0.6, 1.1, 0.06]} />
+      <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[CX, 2.15, SZ + 0.15]} scale={[W + 0.6, 0.1, 0.14]} />
+      {/* luz de cornisa y gran rótulo dorado en el fondo */}
+      <mesh geometry={GEO.box} material={strip} position={[X0 + 0.04, WH - 0.5, CZ]} scale={[0.05, 0.12, D - 1]} />
+      <mesh geometry={GEO.box} material={strip} position={[CX, WH - 0.5, NZ + 0.04]} scale={[W - 1, 0.12, 0.05]} />
+      <mesh geometry={GEO.box} material={mat('#10183a')} position={[X0 + 0.06, 2.2, CZ]} scale={[0.1, 1.5, 6.4]} />
+      <mesh geometry={GEO.box} material={warm} position={[X0 + 0.14, 2.2, CZ]} scale={[0.05, 1.1, 5.6]} />
+      {/* columnas doradas con luz a lo largo del pasillo */}
+      {[-39, -44, -49].flatMap((x) => [NZ + 0.9, SZ - 0.9].map((z) => ({ x, z }))).map(({ x, z }) => (
+        <group key={`${x}${z}`}>
+          <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[x, 1.7, z]} scale={[0.4, 3.4, 0.4]} castShadow />
+          <mesh geometry={GEO.sphereSmooth} material={warm} position={[x, 3.5, z]} scale={0.36} />
+        </group>
+      ))}
+      {/* puerta en la muralla: arco dorado */}
       {[-1, 1].map((s) => (
         <mesh key={s} geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[WALL_X + 0.6, 2.2, s * 2.9]} scale={[1.2, 4.6, 0.7]} castShadow />
       ))}
       <mesh geometry={GEO.box} material={mat(GOLD, { rough: 0.3 })} position={[WALL_X + 0.6, 4.7, 0]} scale={[1.3, 0.55, 6.5]} castShadow />
       <mesh geometry={GEO.box} material={mat('#7a1620')} position={[WALL_X - 0.05, 4.7, 0]} scale={[0.06, 0.32, 5.6]} />
-      {/* cordones rojos y postes dorados */}
+      {/* cordones rojos y postes dorados a lo largo de la alfombra */}
       {ropes.map((r) => (
         <group key={`${r.side}${r.i}`}>
           <Post x={r.x} z={r.z} />
-          {r.i < 4 && <mesh geometry={GEO.box} material={mat(RED)} position={[r.x - 0.95, Y + 0.72, r.z]} scale={[1.9, 0.07, 0.07]} />}
+          {r.i < 7 && <mesh geometry={GEO.box} material={mat(RED)} position={[r.x - 0.975, Y + 0.72, r.z]} scale={[1.95, 0.07, 0.07]} />}
         </group>
       ))}
-      {/* vigilantes a los lados de la entrada */}
-      <Guard x={-33.4} z={-2.3} rot={-Math.PI / 2} />
-      <Guard x={-33.4} z={2.3} rot={-Math.PI / 2} />
     </>
   )
 }
@@ -107,11 +156,16 @@ export function JewelryZone() {
   const title = useMemo(() => getGlassPill('Joyería', { dot: GOLD, sub: 'Zona exclusiva · propuesta', dark: night }), [night])
   return (
     <group>
-      <Batch version="joyeria-zona">
+      <Batch version="joyeria-zona-2">
         <Shell />
       </Batch>
-      <ScreenLabel label={title} position={[-38, 5.4, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
-      <pointLight position={[-37.5, 4.2, 0]} color="#ffd98c" intensity={night ? 30 : 8} distance={18} decay={2} />
+      {/* dos vigilantes que patrullan la alfombra */}
+      <Patrol z={-2.3} phase={0} />
+      <Patrol z={2.3} phase={1} />
+      <ScreenLabel label={title} position={[CX, 6.2, 0]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      {[-37, -44, -50].map((x) => (
+        <pointLight key={x} position={[x, 3.4, CZ]} color="#ffd98c" intensity={night ? 26 : 7} distance={14} decay={2} />
+      ))}
     </group>
   )
 }
