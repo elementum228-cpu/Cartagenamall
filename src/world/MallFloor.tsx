@@ -1,3 +1,4 @@
+import { BatchScope } from './Batch'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
@@ -45,9 +46,9 @@ export function MallFloor({ floor, mode, overview, shell, detail }: { floor: Flo
 
   return (
     <group ref={group} visible={mode !== 'hidden'} userData={{ audit: `piso-${floor.id}` }}>
-      {shell}
+      <BatchScope>{shell}</BatchScope>
       <group ref={detailGroup} visible={mode === 'full'}>
-        {detail}
+        <BatchScope>{detail}</BatchScope>
       </group>
     </group>
   )

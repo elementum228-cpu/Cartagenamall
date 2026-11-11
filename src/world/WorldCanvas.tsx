@@ -54,9 +54,11 @@ export default function WorldCanvas({ active, fallback, night }: { active: boole
         // Si la vista no está activa (modo Comprar, carrito…) el render se detiene: cero batería.
         frameloop={active ? 'always' : 'never'}
         camera={{ position: ISO_DIR.clone().multiplyScalar(CAMERA_DISTANCE).toArray(), zoom: 1, near: -400, far: 800 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-        onCreated={({ gl, raycaster }) => {
+        // En pantallas densas (2× o más) el suavizado de bordes casi no se nota y cuesta mucho relleno: se omite.
+        gl={{ antialias: (window.devicePixelRatio || 1) < 2, alpha: true, powerPreference: 'high-performance' }}
+        onCreated={({ gl, raycaster, scene, camera }) => {
           gl.setClearColor(0x000000, 0)
+          if (import.meta.env.DEV) Object.assign(window, { __cmGl: gl, __cmScene: scene, __cmCam: camera })
           // Las mallas fusionadas por <Batch> dejan sus originales en PICK_LAYER solo para los toques.
           raycaster.layers.enable(PICK_LAYER)
         }}

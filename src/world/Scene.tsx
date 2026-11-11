@@ -13,7 +13,7 @@ import { useClaims } from '../state/claims'
 import { usePersonal } from '../state/personal'
 import { usePrefs, useUI, type Quality } from '../state/ui'
 import { CrossAmbient, GlobalAmbient } from './Ambient'
-import { Batch } from './Batch'
+import { Batch, BatchScope } from './Batch'
 import { CameraRig } from './CameraRig'
 import { Decor } from './Decor'
 import { Escalators } from './Escalator'
@@ -146,6 +146,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
       <Lighting night={night} shadows={shadows} quality={quality} />
       <CameraRig />
       <group dispose={null}>
+        <BatchScope>
         <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
         <Harbor reduceMotion={reduceMotion} />
         {entOn && <Entertainment reduceMotion={reduceMotion} />}
@@ -248,6 +249,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
             />
           )
         })}
+        </BatchScope>
       </group>
     </>
   )

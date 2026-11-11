@@ -50,6 +50,8 @@ export function mat(color: string, opts: { opacity?: number; emissive?: number; 
       emissiveIntensity: opts.emissive ?? 0,
       depthWrite: !(opts.opacity !== undefined && opts.opacity < 1),
     })
+    // opaco y sin brillo propio: <Batch> puede hornear su color en los vértices y compartir un solo material
+    if (!m.transparent && !opts.emissive) m.userData.bake = true
     cache.set(key, m)
   }
   return m

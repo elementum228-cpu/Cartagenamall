@@ -7,6 +7,8 @@ import { watchAppHeight } from './lib/appHeight'
 // La condición se resuelve al compilar: cada build solo incluye la que le toca.
 async function boot(): Promise<ComponentType> {
   if (import.meta.env.VITE_DEMO === '1') return (await import('./demo/DemoApp')).default
+  // El mundo 3D es lo primero que se ve: su código empieza a bajar ya, en paralelo, en vez de esperar a que la app lo pida.
+  if (!/^\/(admin|negocio|mi-negocio|mercader)/.test(window.location.pathname)) void import('./world/WorldCanvas')
   const [{ default: App }, { startRemoteSync }, { setupInstall }, { startPassport }] = await Promise.all([
     import('./App'),
     import('./remote/sync'),

@@ -1,4 +1,4 @@
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { applyNight, nightState } from './night'
@@ -49,7 +49,24 @@ export function Lighting({ shadows, quality }: { night?: boolean; shadows: boole
     first.current = false
   }, [sky.night, sky.warm])
 
+  // La sombra casi no cambia entre cuadros (el sol no se mueve; solo caminan figuras pequeñas): se redibuja a ~12 Hz en
+  // vez de en cada cuadro, lo que ahorra cientos de llamadas de dibujo por cuadro sin que se note.
+  const gl = useThree((st) => st.gl)
+  const shadowAcc = useRef(1)
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false
+    gl.shadowMap.needsUpdate = true
+    return () => {
+      gl.shadowMap.autoUpdate = true
+    }
+  }, [gl, shadows])
+
   useFrame((_, dt) => {
+    shadowAcc.current += dt
+    if (shadowAcc.current > 0.08) {
+      shadowAcc.current = 0
+      gl.shadowMap.needsUpdate = true
+    }
     const s = nightState
     s.t += (s.target - s.t) * Math.min(1, dt * 2.5)
     s.warm += (s.warmTarget - s.warm) * Math.min(1, dt * 2.5)
@@ -59,6 +76,7 @@ export function Lighting({ shadows, quality }: { night?: boolean; shadows: boole
     if (key === last.current && !dirty.current) return
     dirty.current = false
     last.current = key
+    gl.shadowMap.needsUpdate = true
     const t = s.t
     const w = s.warm
     if (hemi.current) {
