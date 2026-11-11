@@ -56,8 +56,16 @@ export default function WorldCanvas({ active, fallback, night }: { active: boole
         camera={{ position: ISO_DIR.clone().multiplyScalar(CAMERA_DISTANCE).toArray(), zoom: 1, near: -400, far: 800 }}
         // En pantallas densas (2× o más) el suavizado de bordes casi no se nota y cuesta mucho relleno: se omite.
         gl={{ antialias: (window.devicePixelRatio || 1) < 2, alpha: true, powerPreference: 'high-performance' }}
-        onCreated={({ gl, raycaster, scene, camera }) => {
+        onCreated={({ gl, raycaster, scene, camera, invalidate }) => {
           gl.setClearColor(0x000000, 0)
+          // Si el navegador reclama la memoria gráfica (iPhone con muchas pestañas, volver de otra app), el mundo se
+          // recupera solo en vez de quedar en blanco: se evita el aborto por defecto y se redibuja al volver.
+          const canvas = gl.domElement
+          canvas.addEventListener('webglcontextlost', (e) => e.preventDefault())
+          canvas.addEventListener('webglcontextrestored', () => {
+            gl.shadowMap.needsUpdate = true
+            invalidate()
+          })
           if (import.meta.env.DEV) Object.assign(window, { __cmGl: gl, __cmScene: scene, __cmCam: camera })
           // Las mallas fusionadas por <Batch> dejan sus originales en PICK_LAYER solo para los toques.
           raycaster.layers.enable(PICK_LAYER)
