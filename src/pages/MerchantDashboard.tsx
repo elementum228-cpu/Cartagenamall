@@ -69,8 +69,18 @@ export function MerchantDashboard({ store, goTab }: { store: Store; goTab: (t: '
       return { t, online: sum(online), manual: sum(manual), count: inDay.length }
     })
     const byProduct = new Map<string, { name: string; qty: number; revenue: number }>()
+    // Ganancia real: solo de lo vendido cuyo costo el negocio ya registró en el artículo.
+    const costOf = new Map(products.filter((p) => p.storeId === store.id && p.cost).map((p) => [p.id, p.cost as number]))
+    let profit = 0
+    let costedRevenue = 0
+    let uncosted = 0
     for (const x of cur)
       for (const l of x.sub.lines) {
+        const c = costOf.get(l.productId)
+        if (c !== undefined) {
+          profit += l.lineTotal - c * l.qty
+          costedRevenue += l.lineTotal
+        } else uncosted += l.lineTotal
         const e = byProduct.get(l.productId) ?? { name: l.name, qty: 0, revenue: 0 }
         e.qty += l.qty
         e.revenue += l.lineTotal
@@ -79,6 +89,9 @@ export function MerchantDashboard({ store, goTab }: { store: Store; goTab: (t: '
     const revenue = sum(cur)
     return {
       revenue,
+      profit,
+      costedRevenue,
+      uncosted,
       prevRevenue: sum(prev),
       count: cur.length,
       prevCount: prev.length,
@@ -91,7 +104,7 @@ export function MerchantDashboard({ store, goTab }: { store: Store; goTab: (t: '
       pending: sales.filter((x) => PENDING.includes(x.sub.status)).length,
       total: sold.length,
     }
-  }, [sales, days])
+  }, [sales, days, products, store.id])
 
   const low = useMemo(
     () => (service ? [] : products.filter((p) => p.storeId === store.id && p.active && totalStock(p) <= 3).sort((a, b) => totalStock(a) - totalStock(b)).slice(0, 4)),
@@ -128,6 +141,22 @@ export function MerchantDashboard({ store, goTab }: { store: Store; goTab: (t: '
       </div>
 
       {/* indicadores */}
+      {data.costedRevenue > 0 ? (
+        <div className={`rounded-3xl border p-4 ${data.profit <= 0 ? 'border-red-300 bg-red-50' : data.profit / data.costedRevenue < 0.2 ? 'border-red-300 bg-red-50' : data.profit / data.costedRevenue < 0.35 ? 'border-amber-300 bg-amber-50' : 'border-emerald-300 bg-emerald-50'}`}>
+          <p className="text-[12px] font-bold text-ink-soft">Lo que realmente te quedó</p>
+          <p className="mt-1 text-3xl font-extrabold tracking-tight">{data.profit < 0 ? '−' : ''}{formatCOP(Math.abs(data.profit))}</p>
+          <p className="mt-0.5 text-[13px] font-semibold text-ink-soft">
+            De {formatCOP(data.costedRevenue)} vendidos, te quedó el {Math.round((data.profit / data.costedRevenue) * 100)}% después de lo que te costaron los artículos.
+          </p>
+          {data.uncosted > 0 && <p className="mt-1 text-[11px] text-ink-soft">No incluye {formatCOP(data.uncosted)} de artículos sin costo. Agrégalo al editarlos para ver la ganancia completa.</p>}
+        </div>
+      ) : (
+        data.revenue > 0 && (
+          <p className="rounded-2xl bg-sand px-3 py-2.5 text-[12px] text-ink-soft">
+            Para ver cuánto te queda de cada venta, agrega «¿Cuánto te cuesta?» a tus artículos (en Artículos → Editar).
+          </p>
+        )
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi icon={<Wallet className="size-[18px]" />} label="Ventas" value={formatCOP(data.revenue)} delta={dRev} color={store.brandColor} />
         <Kpi icon={<Receipt className="size-[18px]" />} label="Pedidos" value={String(data.count)} delta={dCount} color={store.brandColor} />

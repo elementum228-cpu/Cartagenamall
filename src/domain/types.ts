@@ -168,6 +168,8 @@ export interface Product {
   description: string
   /** Precio en COP, sin decimales. */
   price: number
+  /** Cuánto le cuesta al negocio cada unidad (COP). Opcional: con él se calcula la ganancia. */
+  cost?: number
   /** Foto real (URL o data URL subida desde Mi negocio). null mientras se usa el placeholder ilustrado. */
   image: string | null
   /** Foto original sin tratar y recorte (PNG) del producto, para volver atrás o reaplicar el fondo de la tienda. */

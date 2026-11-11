@@ -40,6 +40,7 @@ import { formatCOP, formatDateTime } from '../lib/format'
 import { readImageFile, storedBytes } from '../lib/image'
 import { uploadStorePhoto } from '../remote/photos'
 import { stockKey, totalStock } from '../lib/inventory'
+import { MARGIN_GOOD, MARGIN_LOW, marginOf, priceForMargin } from '../lib/margin'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
@@ -370,6 +371,47 @@ function Header({ store, onSwitch }: { store: Store; onSwitch: () => void }) {
           <span className="hidden sm:inline">Cambiar</span>
         </button>
       </div>
+    </div>
+  )
+}
+
+const LEVELS = {
+  loss: { name: 'Estás perdiendo dinero', tone: 'border-red-300 bg-red-50 text-red-800', bar: 'bg-red-500', dot: 'bg-red-500' },
+  low: { name: 'Ganancia baja', tone: 'border-red-300 bg-red-50 text-red-800', bar: 'bg-red-500', dot: 'bg-red-500' },
+  ok: { name: 'Ganancia aceptable', tone: 'border-amber-300 bg-amber-50 text-amber-900', bar: 'bg-amber-400', dot: 'bg-amber-400' },
+  good: { name: '¡Buena ganancia!', tone: 'border-emerald-300 bg-emerald-50 text-emerald-900', bar: 'bg-emerald-500', dot: 'bg-emerald-500' },
+} as const
+
+/** Semáforo de ganancia en vivo: rojo si deja poco, amarillo si es regular y verde si es buena. */
+function MarginMeter({ cost, price }: { cost: number; price: number }) {
+  const m = marginOf(cost, price)
+  if (!cost || !price || !m) {
+    return <p className="rounded-2xl bg-sand px-3 py-2.5 text-[12px] text-ink-soft">Escribe cuánto te cuesta y en cuánto lo vendes: aquí verás al instante si es buena ganancia.</p>
+  }
+  const L = LEVELS[m.level]
+  const fill = Math.max(4, Math.min(100, (m.pct / 60) * 100))
+  const lowPrice = priceForMargin(cost, MARGIN_LOW)
+  const goodPrice = priceForMargin(cost, MARGIN_GOOD)
+  return (
+    <div className={`rounded-2xl border p-3 ${L.tone}`} role="status" aria-live="polite">
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-sm font-extrabold">
+          <span className={`size-3 rounded-full ${L.dot}`} /> {L.name}
+        </p>
+        <p className="text-sm font-extrabold">{m.profit >= 0 ? '+' : '−'}{formatCOP(Math.abs(m.profit))} <span className="font-semibold opacity-75">por unidad</span></p>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/10">
+        <div className={`h-full rounded-full transition-all duration-300 ${L.bar}`} style={{ width: `${fill}%` }} />
+      </div>
+      <p className="mt-2 text-[12px] font-semibold">
+        De cada {formatCOP(price)} que cobras, {m.profit > 0 ? `te quedan ${Math.round(m.pct)}%` : 'no te queda nada'}.
+        {m.times > 0 && ` Lo vendes a ${m.times.toFixed(1).replace('.0', '')}× lo que te cuesta.`}
+      </p>
+      {m.level !== 'good' && (
+        <p className="mt-1 text-[12px]">
+          {m.level === 'ok' ? `Para ganancia buena, véndelo desde ${formatCOP(goodPrice)}.` : `Para una ganancia aceptable, véndelo desde ${formatCOP(lowPrice)}.`}
+        </p>
+      )}
     </div>
   )
 }
@@ -831,6 +873,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
   const isCopy = !product && !!seed?.name
   const [name, setName] = useState(isCopy ? `${seed!.name} (copia)` : (product?.name ?? ''))
   const [price, setPrice] = useState(base?.price ? String(base.price) : '')
+  const [cost, setCost] = useState(base?.cost ? String(base.cost) : '')
   const [description, setDescription] = useState(base?.description === 'Sin descripción.' ? '' : (base?.description ?? ''))
   const [categoryId, setCategoryId] = useState(base?.categoryId ?? store.categoryId)
   const [shopCategory, setShopCategory] = useState(base?.shopCategory ?? '')
@@ -892,6 +935,7 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
       name: name.trim(),
       description: description.trim(),
       price: Math.round(Number(price)),
+      cost: Number(cost) > 0 ? Math.round(Number(cost)) : undefined,
       image: photos.image,
       photoOriginal: photos.original,
       cutout: photos.cutout,
@@ -955,6 +999,12 @@ function ProductEditor({ store, product, seed, onDone, onAnother }: { store: Sto
             placeholder="45.000"
           />
         </Field>
+        <Field label="¿Cuánto te cuesta? (COP)" hint="Lo que pagas por cada unidad. Solo lo ves tú.">
+          <input className={input} inputMode="numeric" value={withThousands(cost)} onChange={(e) => setCost(e.target.value.replace(/\D/g, '').slice(0, 9))} placeholder="20.000" />
+        </Field>
+        <div className="sm:col-span-2">
+          <MarginMeter cost={Number(cost)} price={Number(price)} />
+        </div>
         <Field label="Descripción (opcional)" wide>
           <textarea className={`${input} min-h-20`} value={description} maxLength={300} onChange={(e) => setDescription(e.target.value)} />
         </Field>
