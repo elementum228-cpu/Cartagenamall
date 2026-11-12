@@ -2,6 +2,8 @@ import { openCourtOrClaim, useCourtOperator } from '../football/open'
 import { JOYERIA } from '../config/preview'
 import { JewelryZone } from './JewelryZone'
 import { isServicesSpace, useServicesFeature } from '../state/servicesFeature'
+import { useCine } from '../state/cine'
+import { Cinema } from './Cinema'
 import { useMemo } from 'react'
 import { COURT_SPACE, FLOORS, FLOOR_BY_ID, FLOOR_OF_ZONE, SPACES, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import type { FloorConfig, Product, SpaceSlot } from '../domain/types'
@@ -58,6 +60,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
   const airportOn = useAirportFeature((s) => s.enabled)
   const entOn = useEntertainmentFeature((s) => s.enabled)
   const svcOn = useServicesFeature((s) => s.enabled)
+  const cineOn = useCine((s) => s.enabled)
   const assignments = useCatalog((s) => s.assignments)
   const products = useCatalog((s) => s.products)
   const promotions = useCatalog((s) => s.promotions)
@@ -157,6 +160,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         {airportOn && <Island reduceMotion={reduceMotion} />}
         <District reduceMotion={reduceMotion} />
         {JOYERIA && <JewelryZone services={svcOn} />}
+        {cineOn && <Cinema />}
         {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
         <Batch version="jardines">
           <Diorama />
