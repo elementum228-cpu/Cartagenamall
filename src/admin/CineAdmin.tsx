@@ -59,7 +59,7 @@ function Photo({ value, onChange, label, tall = false }: { value: string | null;
 /** Cine: la administración lo enciende o apaga y cambia la pantalla exterior y las dos carteleras. */
 export function CineAdmin() {
   const on = useCine((s) => s.enabled)
-  const screen = useCine((s) => s.screen)
+  const screens = useCine((s) => s.screens)
   const posters = useCine((s) => s.posters)
   const set = useCine((s) => s.set)
   return (
@@ -70,7 +70,7 @@ export function CineAdmin() {
             <p className="flex items-center gap-2 font-bold">
               <Clapperboard className="size-4" /> Cine
             </p>
-            <p className="mt-1 text-xs text-ink-soft">Isla del cine al norte del piso de comida: el edificio con marquesina, la plazoleta y el cine al aire libre.</p>
+            <p className="mt-1 text-xs text-ink-soft">Isla del cine al norte del piso de comida: el edificio con marquesina, la plazoleta y la cartelera de tres pantallas.</p>
           </div>
           <button
             role="switch"
@@ -87,10 +87,12 @@ export function CineAdmin() {
 
       <div className="space-y-4 rounded-3xl border border-line bg-card p-4">
         <div>
-          <p className="font-bold">Pantalla al aire libre</p>
-          <p className="text-xs text-ink-soft">La película de moda o la publicidad que quieras mostrar. Mejor una imagen horizontal (16:9).</p>
+          <p className="font-bold">Cartelera del frente (3 pantallas)</p>
+          <p className="text-xs text-ink-soft">Las películas de moda o la publicidad que quieras mostrar. Mejor imágenes verticales (2:3).</p>
         </div>
-        <Photo label="Imagen de la pantalla" value={screen} onChange={(v) => set({ screen: v })} />
+        {(['Pantalla izquierda', 'Pantalla central', 'Pantalla derecha'] as const).map((label, i) => (
+          <Photo key={label} tall label={label} value={screens[i]} onChange={(v) => set({ screens: screens.map((x, k) => (k === i ? v : x)) as [string | null, string | null, string | null] })} />
+        ))}
       </div>
 
       <div className="space-y-4 rounded-3xl border border-line bg-card p-4">

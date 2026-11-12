@@ -8,20 +8,20 @@ import { safeStorage } from './storage'
  */
 export interface CineState {
   enabled: boolean
-  /** Imagen de la pantalla al aire libre (la película de moda, publicidad…). null = arte por defecto. */
-  screen: string | null
+  /** Las tres pantallas de la cartelera del frente (la película de moda, publicidad…). null = arte por defecto. */
+  screens: [string | null, string | null, string | null]
   /** Carteleras a los lados de la puerta. */
   posters: [string | null, string | null]
 }
 
-export const emptyCine = (): CineState => ({ enabled: true, screen: null, posters: [null, null] })
+export const emptyCine = (): CineState => ({ enabled: true, screens: [null, null, null], posters: [null, null] })
 
 export const cleanCine = (v: unknown): CineState => {
-  const o = (v ?? {}) as Partial<CineState>
+  const o = (v ?? {}) as Partial<CineState> & { screen?: unknown }
   const s = (x: unknown) => (typeof x === 'string' && x ? x : null)
-  return { enabled: o.enabled !== false, screen: s(o.screen), posters: [s(o.posters?.[0]), s(o.posters?.[1])] }
+  return { enabled: o.enabled !== false, screens: [s(o.screens?.[0] ?? o.screen), s(o.screens?.[1]), s(o.screens?.[2])], posters: [s(o.posters?.[0]), s(o.posters?.[1])] }
 }
 
 export const useCine = create<CineState & { set: (patch: Partial<CineState>) => void }>()(
-  persist((set) => ({ ...emptyCine(), set: (patch) => set(patch) }), { name: 'cm:cine:v1', storage: safeStorage }),
+  persist((set) => ({ ...emptyCine(), set: (patch) => set(patch) }), { name: 'cm:cine:v2', storage: safeStorage }),
 )

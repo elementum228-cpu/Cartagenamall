@@ -22,9 +22,11 @@ const SAND = '#e6c08a'
 const SAND_LIGHT = '#f1d5a6'
 const TERRA = '#c8693c'
 const NAVY = '#1b2247'
-const BX = -33.5 // centro del edificio
-const BZ = -73
-const SCREEN = { x: -19.5, z: -77.2, w: 8, h: 4.5, y: DECK + 4.2 }
+const BX = -28.5 // centro del edificio
+const BZ = -72
+const FZ = BZ + 4.5 // cara de la fachada (mira al sur)
+/** Cartelera del frente: tres pantallas en abanico, de cara a la plaza. */
+const CART = { x: -21.5, z: -57.5, rot: Math.PI / 4 }
 
 /** Textura de lienzo que muestra una imagen recortada a su caja; sin imagen, pinta el arte por defecto. */
 function useImageTexture(url: string | null, w: number, h: number, fallback: (g: CanvasRenderingContext2D, w: number, h: number) => void) {
@@ -53,33 +55,6 @@ function useImageTexture(url: string | null, w: number, h: number, fallback: (g:
   return tex
 }
 
-/** Arte por defecto de la pantalla: atardecer con montañas y «Hoy en cartelera». */
-const paintScreen = (g: CanvasRenderingContext2D, w: number, h: number) => {
-  const sky = g.createLinearGradient(0, 0, 0, h)
-  sky.addColorStop(0, '#2a1e5c')
-  sky.addColorStop(0.55, '#c2477a')
-  sky.addColorStop(1, '#f6a25a')
-  g.fillStyle = sky
-  g.fillRect(0, 0, w, h)
-  g.fillStyle = '#ffe9a8'
-  g.beginPath()
-  g.arc(w * 0.68, h * 0.5, h * 0.13, 0, Math.PI * 2)
-  g.fill()
-  const hill = (c: string, y0: number, amp: number, ph: number) => {
-    g.fillStyle = c
-    g.beginPath()
-    g.moveTo(0, h)
-    for (let x = 0; x <= w; x += 8) g.lineTo(x, h * y0 - Math.abs(Math.sin(x * 0.012 + ph)) * h * amp)
-    g.lineTo(w, h)
-    g.fill()
-  }
-  hill('#5b2a6e', 0.78, 0.3, 0.4)
-  hill('#2a1746', 0.92, 0.22, 2.1)
-  g.fillStyle = '#ffffff'
-  g.textAlign = 'center'
-  g.font = `800 ${Math.round(h * 0.12)}px "Plus Jakarta Sans", system-ui, sans-serif`
-  g.fillText('HOY EN CARTELERA', w / 2, h * 0.2)
-}
 /** Arte por defecto de una cartelera vertical. */
 const paintPoster = (hue: string) => (g: CanvasRenderingContext2D, w: number, h: number) => {
   const bg = g.createLinearGradient(0, 0, 0, h)
@@ -99,6 +74,7 @@ const paintPoster = (hue: string) => (g: CanvasRenderingContext2D, w: number, h:
 }
 const POSTER_A = paintPoster('#7a4bd6')
 const POSTER_B = paintPoster('#d6533f')
+const POSTER_C = paintPoster('#1f9d8f')
 
 /** Letrero de neón «CINE» con marco de bombillos. */
 function useMarquee() {
@@ -169,78 +145,112 @@ function Island() {
       <Garita x={CX - HALF + 0.3} z={CZ - HALF + 0.3} y={DECK + 0.5} />
       <Garita x={CX - HALF + 0.3} z={CZ + HALF - 0.3} y={DECK + 0.5} />
       {/* plazoleta: círculos de piedra frente a la entrada */}
-      <mesh geometry={GEO.cylinder} material={mat('#dcbf8f')} position={[-28, DECK + 0.07, -61.5]} scale={[10, 0.04, 10]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={mat('#f1dcb6')} position={[-28, DECK + 0.1, -61.5]} scale={[7.4, 0.04, 7.4]} />
-      <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[-28, DECK + 0.13, -61.5]} scale={[2.4, 0.04, 2.4]} />
+      <mesh geometry={GEO.cylinder} material={mat('#dcbf8f')} position={[BX, DECK + 0.07, -60.5]} scale={[10, 0.04, 10]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#f1dcb6')} position={[BX, DECK + 0.1, -60.5]} scale={[7.4, 0.04, 7.4]} />
+      <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[BX, DECK + 0.13, -60.5]} scale={[2.4, 0.04, 2.4]} />
     </>
   )
 }
 
-/** Edificio del cine: fachada escalonada, pilastras, puertas con luz y marco de carteleras. */
+/** Edificio del cine: sala alta al fondo, cuerpo con alas y torreones redondos, torre escalonada con aguja y gran marquesina. */
 function Building() {
   const y = DECK
   const warm = glowMat('#ffd9a0', 1.8, { dayGlow: 0.45 })
   const neon = glowMat('#ff5fa8', 2.2, { dayGlow: 0.5 })
+  const cyan = glowMat('#5fe0ff', 2.0, { dayGlow: 0.45 })
   const bulb = glowMat('#ffe9a8', 2.4, { dayGlow: 0.6 })
   const sand = mat(SAND)
   const light = mat(SAND_LIGHT)
-  const fz = BZ + 4 // cara de la fachada (mira al sur)
+  const terra = mat(TERRA)
+  const navy = mat(NAVY)
   return (
     <>
-      {/* cuerpo y alas */}
-      <mesh geometry={GEO.box} material={sand} position={[BX, y + 3, BZ]} scale={[12, 6, 8]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={light} position={[BX, y + 6.1, BZ]} scale={[12.4, 0.3, 8.4]} />
-      {/* torre central escalonada */}
-      <mesh geometry={GEO.box} material={sand} position={[BX, y + 4.4, fz - 0.4]} scale={[6, 8.8, 1.6]} castShadow />
-      <mesh geometry={GEO.box} material={light} position={[BX, y + 9.1, fz - 0.4]} scale={[4.4, 1.2, 1.4]} castShadow />
-      <mesh geometry={GEO.box} material={mat(TERRA)} position={[BX, y + 10, fz - 0.4]} scale={[2.6, 0.9, 1.2]} castShadow />
-      <mesh geometry={GEO.box} material={light} position={[BX, y + 10.8, fz - 0.4]} scale={[1.1, 0.9, 0.9]} />
-      {/* pilastras con filete de neón */}
-      {[-2.6, -1.3, 1.3, 2.6].map((dx) => (
+      {/* sala grande al fondo (el volumen de las salas), con cornisa y franjas */}
+      <mesh geometry={GEO.box} material={sand} position={[BX, y + 4.6, BZ - 2.2]} scale={[19, 9.2, 6.4]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={light} position={[BX, y + 9.35, BZ - 2.2]} scale={[19.5, 0.35, 6.9]} />
+      <mesh geometry={GEO.box} material={terra} position={[BX, y + 8.4, BZ - 2.2]} scale={[19.1, 0.3, 6.5]} />
+      <mesh geometry={GEO.box} material={terra} position={[BX, y + 7.7, BZ - 2.2]} scale={[19.1, 0.12, 6.5]} />
+      {/* cuerpo delantero más bajo */}
+      <mesh geometry={GEO.box} material={light} position={[BX, y + 3, BZ + 2.5]} scale={[15, 6, 4]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={terra} position={[BX, y + 6.1, BZ + 2.5]} scale={[15.4, 0.3, 4.4]} />
+      {/* torreones redondos en las esquinas, con cúpula */}
+      {[-1, 1].map((sd) => (
+        <group key={`t${sd}`} position={[BX + sd * 7.6, y, BZ + 3.2]}>
+          <mesh geometry={GEO.cylinder} material={sand} position={[0, 3.8, 0]} scale={[3.6, 7.6, 3.6]} castShadow />
+          <mesh geometry={GEO.cylinder} material={terra} position={[0, 7.7, 0]} scale={[4, 0.3, 4]} />
+          <mesh geometry={GEO.sphereSmooth} material={terra} position={[0, 7.8, 0]} scale={[3.4, 2.6, 3.4]} castShadow />
+          <mesh geometry={GEO.cylinder} material={bulb} position={[0, 9.4, 0]} scale={[0.14, 1, 0.14]} />
+          {[2.2, 4.4].map((h) => (
+            <mesh key={h} geometry={GEO.cylinder} material={warm} position={[0, h, 0]} scale={[3.66, 1.1, 3.66]} />
+          ))}
+          <mesh geometry={GEO.cylinder} material={sand} position={[0, 3.3, 0]} scale={[3.7, 0.9, 3.7]} />
+          <mesh geometry={GEO.cylinder} material={sand} position={[0, 1, 0]} scale={[3.7, 1.4, 3.7]} />
+        </group>
+      ))}
+      {/* torre central escalonada con aguja */}
+      <mesh geometry={GEO.box} material={sand} position={[BX, y + 5.6, FZ - 0.5]} scale={[7, 11.2, 2]} castShadow />
+      <mesh geometry={GEO.box} material={light} position={[BX, y + 11.8, FZ - 0.5]} scale={[5.2, 1.3, 1.7]} castShadow />
+      <mesh geometry={GEO.box} material={terra} position={[BX, y + 12.9, FZ - 0.5]} scale={[3.4, 1, 1.4]} castShadow />
+      <mesh geometry={GEO.box} material={light} position={[BX, y + 13.8, FZ - 0.5]} scale={[1.8, 0.9, 1.1]} />
+      <mesh geometry={GEO.cylinder} material={bulb} position={[BX, y + 15.4, FZ - 0.5]} scale={[0.16, 2.4, 0.16]} />
+      <mesh geometry={GEO.sphereSmooth} material={neon} position={[BX, y + 16.7, FZ - 0.5]} scale={0.5} />
+      {/* pilastras con filetes de neón */}
+      {[-3.1, -1.9, 1.9, 3.1].map((dx, i) => (
         <group key={dx}>
-          <mesh geometry={GEO.box} material={light} position={[BX + dx, y + 4.6, fz + 0.45]} scale={[0.45, 8.6, 0.3]} />
-          <mesh geometry={GEO.box} material={neon} position={[BX + dx, y + 4.6, fz + 0.62]} scale={[0.08, 8.2, 0.05]} />
+          <mesh geometry={GEO.box} material={light} position={[BX + dx, y + 5.8, FZ + 0.55]} scale={[0.5, 10.8, 0.3]} />
+          <mesh geometry={GEO.box} material={i % 2 ? cyan : neon} position={[BX + dx, y + 5.8, FZ + 0.72]} scale={[0.09, 10.4, 0.05]} />
         </group>
       ))}
-      {/* marquesina sobre la entrada, con bombillos */}
-      <mesh geometry={GEO.box} material={mat(NAVY)} position={[BX, y + 3.5, fz + 1.2]} scale={[6.6, 0.5, 2.2]} castShadow />
-      <mesh geometry={GEO.box} material={mat(TERRA)} position={[BX, y + 3.82, fz + 1.2]} scale={[6.8, 0.14, 2.4]} />
-      {Array.from({ length: 12 }, (_, i) => (
-        <mesh key={`b${i}`} geometry={GEO.sphereSmooth} material={bulb} position={[BX - 3 + i * 0.545, y + 3.22, fz + 2.2]} scale={0.2} />
+      {/* ventanas iluminadas del cuerpo delantero */}
+      {[-6, -4.6, 4.6, 6].map((dx) => (
+        <mesh key={`w${dx}`} geometry={GEO.box} material={warm} position={[BX + dx, y + 4.3, BZ + 4.52]} scale={[0.8, 1.6, 0.05]} />
       ))}
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.9)} rotation={[-Math.PI / 2, 0, 0]} position={[BX, y + 0.16, fz + 2.6]} scale={[9, 6, 1]} />
-      {/* dos puertas dobles con arco y luz cálida */}
-      {[-1.3, 1.3].map((dx) => (
+      {/* gran marquesina curva con doble fila de bombillos */}
+      <mesh geometry={GEO.cylinder} material={navy} position={[BX, y + 3.6, FZ + 0.6]} scale={[9.6, 0.6, 5.2]} castShadow />
+      <mesh geometry={GEO.cylinder} material={terra} position={[BX, y + 3.95, FZ + 0.6]} scale={[9.9, 0.14, 5.5]} />
+      {Array.from({ length: 15 }, (_, i) => {
+        const a = (-70 + i * 10) * (Math.PI / 180)
+        return <mesh key={`b${i}`} geometry={GEO.sphereSmooth} material={bulb} position={[BX + Math.sin(a) * 4.75, y + 3.3, FZ + 0.6 + Math.cos(a) * 2.55]} scale={0.22} />
+      })}
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.95)} rotation={[-Math.PI / 2, 0, 0]} position={[BX, y + 0.16, FZ + 3]} scale={[12, 7, 1]} />
+      {/* tres puertas dobles con luz cálida */}
+      {[-2.3, 0, 2.3].map((dx) => (
         <group key={`d${dx}`}>
-          <mesh geometry={GEO.box} material={mat('#5a2f1c')} position={[BX + dx, y + 1.45, fz + 0.42]} scale={[1.9, 2.9, 0.2]} />
-          <mesh geometry={GEO.box} material={warm} position={[BX + dx - 0.45, y + 1.5, fz + 0.54]} scale={[0.7, 2.2, 0.04]} />
-          <mesh geometry={GEO.box} material={warm} position={[BX + dx + 0.45, y + 1.5, fz + 0.54]} scale={[0.7, 2.2, 0.04]} />
-          <mesh geometry={GEO.cylinder} material={mat('#5a2f1c')} position={[BX + dx, y + 2.9, fz + 0.42]} rotation={[Math.PI / 2, 0, 0]} scale={[1.9, 0.2, 1.1]} />
+          <mesh geometry={GEO.box} material={mat('#5a2f1c')} position={[BX + dx, y + 1.45, FZ + 0.52]} scale={[1.9, 2.9, 0.2]} />
+          <mesh geometry={GEO.box} material={warm} position={[BX + dx - 0.45, y + 1.5, FZ + 0.64]} scale={[0.7, 2.3, 0.04]} />
+          <mesh geometry={GEO.box} material={warm} position={[BX + dx + 0.45, y + 1.5, FZ + 0.64]} scale={[0.7, 2.3, 0.04]} />
         </group>
       ))}
-      {/* marcos de las carteleras (las imágenes van aparte) */}
-      {[-4.5, 4.5].map((dx) => (
+      {/* marcos de las carteleras de la fachada (las imágenes van aparte) */}
+      {[-5.3, 5.3].map((dx) => (
         <group key={`p${dx}`}>
-          <mesh geometry={GEO.box} material={mat(NAVY)} position={[BX + dx, y + 2.3, fz + 0.1]} scale={[2.3, 3.3, 0.2]} />
-          <mesh geometry={GEO.box} material={bulb} position={[BX + dx, y + 4.05, fz + 0.2]} scale={[2.3, 0.1, 0.08]} />
+          <mesh geometry={GEO.box} material={navy} position={[BX + dx, y + 2.2, BZ + 4.6]} scale={[2.3, 3.3, 0.2]} />
+          <mesh geometry={GEO.box} material={bulb} position={[BX + dx, y + 3.95, BZ + 4.7]} scale={[2.3, 0.1, 0.08]} />
         </group>
       ))}
-      {/* escalinata de entrada */}
-      {[0, 1].map((i) => (
-        <mesh key={`s${i}`} geometry={GEO.box} material={light} position={[BX, y + 0.1 + i * 0.12, fz + 1.4 - i * 0.3]} scale={[7.4 - i * 0.6, 0.14, 2.4 - i * 0.6]} receiveShadow />
+      {/* escalinata ancha de entrada con alfombra */}
+      {[0, 1, 2].map((i) => (
+        <mesh key={`s${i}`} geometry={GEO.box} material={light} position={[BX, y + 0.08 + i * 0.12, FZ + 2.2 - i * 0.35]} scale={[12 - i * 0.8, 0.14, 4 - i * 0.7]} receiveShadow />
       ))}
-      {/* jardineras y faroles a los lados */}
-      {[-6.6, 6.6].map((dx) => (
-        <group key={`j${dx}`}>
-          <mesh geometry={GEO.box} material={mat(TERRA)} position={[BX + dx, y + 0.35, fz + 1.4]} scale={[1.3, 0.7, 1.3]} castShadow />
-          <mesh geometry={GEO.sphere} material={mat('#4da862')} position={[BX + dx, y + 1.05, fz + 1.4]} scale={1.2} castShadow />
+      <mesh geometry={GEO.box} material={mat('#b9242b')} position={[BX, y + 0.42, FZ + 2.4]} scale={[3, 0.04, 4.6]} />
+      {/* palmeras y faroles */}
+      {[
+        [-37.5, -62],
+        [-19.5, -66.5],
+        [-37.5, -56],
+      ].map(([x, z]) => (
+        <group key={`pm${x}${z}`} position={[x, y, z]}>
+          <mesh geometry={GEO.cylinder} material={mat('#8a6a4a')} position={[0, 1.8, 0]} scale={[0.3, 3.6, 0.3]} castShadow />
+          {[0, 1, 2, 3, 4].map((k) => (
+            <mesh key={k} geometry={GEO.box} material={mat('#3f9e57')} position={[Math.cos((k / 5) * Math.PI * 2) * 0.9, 3.6, Math.sin((k / 5) * Math.PI * 2) * 0.9]} rotation={[0, -(k / 5) * Math.PI * 2, 0.35]} scale={[2, 0.09, 0.6]} castShadow />
+          ))}
         </group>
       ))}
       {[
-        [-31, -64.5],
-        [-25, -64.5],
-        [-31, -58.5],
-        [-25, -58.5],
+        [-33.5, -64],
+        [-23.5, -64],
+        [-33.5, -57.5],
+        [-25, -56],
       ].map(([x, z]) => (
         <group key={`l${x}${z}`}>
           <mesh geometry={GEO.cylinder} material={mat('#2a3038')} position={[x, y + 1.3, z]} scale={[0.1, 2.6, 0.1]} />
@@ -252,55 +262,26 @@ function Building() {
   )
 }
 
-/** Cine al aire libre: marco de la pantalla, sillas en gradas bajas y guirnaldas de luces. */
-function OpenAir() {
-  const y = DECK
+/** Cartelera del frente: base de piedra, rótulo y tres marcos en abanico (las imágenes van aparte). */
+function Cartelera() {
   const bulb = glowMat('#ffe9a8', 2.4, { dayGlow: 0.6 })
-  const dark = mat('#2a3038')
-  const seats = []
-  for (let r = 0; r < 3; r++)
-    for (let c = 0; c < 5; c++) {
-      const x = SCREEN.x - 3.2 + c * 1.6
-      const z = SCREEN.z + 4.2 + r * 1.7
-      seats.push(
-        <group key={`${r}${c}`} position={[x, y + 0.1, z]}>
-          <mesh geometry={GEO.box} material={mat('#b8483c')} position={[0, 0.3, 0]} scale={[1.1, 0.25, 0.8]} castShadow />
-          <mesh geometry={GEO.box} material={mat('#9c3a30')} position={[0, 0.7, 0.36]} scale={[1.1, 0.7, 0.14]} castShadow />
-        </group>,
-      )
-    }
-  const posts: [number, number][] = [
-    [SCREEN.x - 5, SCREEN.z + 0.4],
-    [SCREEN.x + 5, SCREEN.z + 0.4],
-    [SCREEN.x - 5, SCREEN.z + 9.4],
-    [SCREEN.x + 5, SCREEN.z + 9.4],
-  ]
-  const lights = []
-  for (const [a, b] of [
-    [0, 1],
-    [0, 2],
-    [1, 3],
-    [2, 3],
-  ])
-    for (let i = 1; i < 9; i++) {
-      const t = i / 9
-      const sag = Math.sin(t * Math.PI) * 0.7
-      lights.push(<mesh key={`${a}${b}${i}`} geometry={GEO.sphereSmooth} material={bulb} position={[posts[a][0] + (posts[b][0] - posts[a][0]) * t, y + 4.6 - sag, posts[a][1] + (posts[b][1] - posts[a][1]) * t]} scale={0.2} />)
-    }
+  const neon = glowMat('#ff5fa8', 2.2, { dayGlow: 0.5 })
+  const navy = mat(NAVY)
   return (
-    <>
-      {/* marco y patas de la pantalla */}
-      <mesh geometry={GEO.box} material={dark} position={[SCREEN.x, SCREEN.y, SCREEN.z - 0.12]} scale={[SCREEN.w + 0.6, SCREEN.h + 0.6, 0.3]} castShadow />
-      {[-1, 1].map((s) => (
-        <mesh key={s} geometry={GEO.box} material={dark} position={[SCREEN.x + s * (SCREEN.w / 2 - 0.4), y + (SCREEN.y - SCREEN.h / 2 - y) / 2, SCREEN.z - 0.12]} scale={[0.3, SCREEN.y - SCREEN.h / 2 - y, 0.3]} />
+    <group position={[CART.x, DECK, CART.z]} rotation={[0, CART.rot, 0]}>
+      <mesh geometry={GEO.box} material={mat(TERRA)} position={[0, 0.3, 0]} scale={[8.4, 0.6, 1.2]} castShadow />
+      {[-2.7, 0, 2.7].map((dx, i) => (
+        <group key={dx} position={[dx, 0, dx === 0 ? 0 : 0.25]} rotation={[0, -Math.sign(dx) * 0.28, 0]}>
+          <mesh geometry={GEO.box} material={navy} position={[0, 2.45, -0.08]} scale={[2.5, 3.7, 0.25]} castShadow />
+          <mesh geometry={GEO.box} material={i === 1 ? neon : bulb} position={[0, 4.36, -0.02]} scale={[2.5, 0.1, 0.1]} />
+        </group>
       ))}
-      {posts.map(([x, z]) => (
-        <mesh key={`${x}${z}`} geometry={GEO.cylinder} material={dark} position={[x, y + 2.3, z]} scale={[0.1, 4.6, 0.1]} />
+      <mesh geometry={GEO.box} material={navy} position={[0, 5.05, -0.1]} scale={[5, 0.9, 0.25]} />
+      {Array.from({ length: 11 }, (_, i) => (
+        <mesh key={i} geometry={GEO.sphereSmooth} material={bulb} position={[-2.3 + i * 0.46, 5.6, -0.02]} scale={0.16} />
       ))}
-      {lights}
-      {seats}
-      <mesh geometry={GEO.box} material={mat('#e3c697')} position={[SCREEN.x, y + 0.08, SCREEN.z + 5.6]} scale={[9.6, 0.06, 6.4]} receiveShadow />
-    </>
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffb6d9', 0.7)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.17, 2]} scale={[9, 5, 1]} />
+    </group>
   )
 }
 
@@ -332,24 +313,53 @@ function Access() {
   )
 }
 
-/** Pantalla exterior y carteleras: imágenes que la administración cambia (fuera del Batch: se actualizan solas). */
+/** Rótulo «CARTELERA» de la cartelera del frente. */
+function useCartelSign() {
+  return useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 96
+    const g = c.getContext('2d')!
+    g.fillStyle = '#141a3a'
+    g.fillRect(0, 0, 512, 96)
+    g.font = '900 58px "Plus Jakarta Sans", system-ui, sans-serif'
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    g.shadowColor = '#ffd27a'
+    g.shadowBlur = 18
+    g.fillStyle = '#fff3c4'
+    g.fillText('CARTELERA', 256, 52)
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    return new THREE.MeshBasicMaterial({ map: t, toneMapped: false })
+  }, [])
+}
+
+/** Cartelera y afiches: imágenes que la administración cambia (fuera del Batch: se actualizan solas). */
 function Screens() {
-  const screen = useCine((s) => s.screen)
+  const screens = useCine((s) => s.screens)
   const posters = useCine((s) => s.posters)
   const marquee = useMarquee()
-  const texS = useImageTexture(screen, 1024, 576, paintScreen)
-  const texA = useImageTexture(posters[0], 320, 480, POSTER_A)
-  const texB = useImageTexture(posters[1], 320, 480, POSTER_B)
-  const mS = useMemo(() => new THREE.MeshBasicMaterial({ map: texS, toneMapped: false }), [texS])
-  const mA = useMemo(() => new THREE.MeshBasicMaterial({ map: texA, toneMapped: false }), [texA])
-  const mB = useMemo(() => new THREE.MeshBasicMaterial({ map: texB, toneMapped: false }), [texB])
-  const fz = BZ + 4
+  const sign = useCartelSign()
+  const t0 = useImageTexture(screens[0], 320, 480, POSTER_A)
+  const t1 = useImageTexture(screens[1], 320, 480, POSTER_C)
+  const t2 = useImageTexture(screens[2], 320, 480, POSTER_B)
+  const texA = useImageTexture(posters[0], 320, 480, POSTER_B)
+  const texB = useImageTexture(posters[1], 320, 480, POSTER_A)
+  const mats = useMemo(() => [t0, t1, t2, texA, texB].map((map) => new THREE.MeshBasicMaterial({ map, toneMapped: false })), [t0, t1, t2, texA, texB])
   return (
     <group userData={{ dynamic: true }}>
-      <mesh geometry={GEO.plane} material={mS} position={[SCREEN.x, SCREEN.y, SCREEN.z + 0.05]} scale={[SCREEN.w, SCREEN.h, 1]} />
-      <mesh geometry={GEO.plane} material={mA} position={[BX - 4.5, DECK + 2.3, fz + 0.22]} scale={[2, 3, 1]} />
-      <mesh geometry={GEO.plane} material={mB} position={[BX + 4.5, DECK + 2.3, fz + 0.22]} scale={[2, 3, 1]} />
-      <mesh geometry={GEO.plane} material={marquee} position={[BX, DECK + 6.3, fz + 0.75]} scale={[5.4, 2.7, 1]} />
+      <group position={[CART.x, DECK, CART.z]} rotation={[0, CART.rot, 0]}>
+        {[-2.7, 0, 2.7].map((dx, i) => (
+          <group key={dx} position={[dx, 0, dx === 0 ? 0 : 0.25]} rotation={[0, -Math.sign(dx) * 0.28, 0]}>
+            <mesh geometry={GEO.plane} material={mats[i]} position={[0, 2.45, 0.06]} scale={[2.2, 3.3, 1]} />
+          </group>
+        ))}
+        <mesh geometry={GEO.plane} material={sign} position={[0, 5.05, 0.04]} scale={[4.8, 0.8, 1]} />
+      </group>
+      <mesh geometry={GEO.plane} material={mats[3]} position={[BX - 5.3, DECK + 2.2, BZ + 4.72]} scale={[2, 3, 1]} />
+      <mesh geometry={GEO.plane} material={mats[4]} position={[BX + 5.3, DECK + 2.2, BZ + 4.72]} scale={[2, 3, 1]} />
+      <mesh geometry={GEO.plane} material={marquee} position={[BX, DECK + 7.6, FZ + 0.85]} scale={[6.4, 3.2, 1]} />
     </group>
   )
 }
@@ -359,16 +369,16 @@ export function Cinema() {
   const label = useMemo(() => getGlassPill('Cine', { dot: '#ff5fa8', sub: 'Próximamente', dark: night }), [night])
   return (
     <group>
-      <Batch version="cine-2">
+      <Batch version="cine-4">
         <Island />
         <Building />
-        <OpenAir />
+        <Cartelera />
         <Access />
       </Batch>
       <Screens />
-      <ScreenLabel label={label} position={[BX, DECK + 13, BZ + 3]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
-      <pointLight position={[BX, DECK + 3, BZ + 7.5]} color="#ffd9a0" intensity={night ? 30 : 0} distance={14} decay={2} />
-      <pointLight position={[SCREEN.x, DECK + 3, SCREEN.z + 4]} color="#ffb6d9" intensity={night ? 18 : 0} distance={12} decay={2} />
+      <ScreenLabel label={label} position={[BX, DECK + 19, BZ + 3]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      <pointLight position={[BX, DECK + 3, FZ + 3.5]} color="#ffd9a0" intensity={night ? 34 : 0} distance={16} decay={2} />
+      <pointLight position={[CART.x - 1.5, DECK + 3, CART.z + 1.5]} color="#ffb6d9" intensity={night ? 18 : 0} distance={10} decay={2} />
     </group>
   )
 }

@@ -629,7 +629,7 @@ export function startRemoteSync() {
     pushFeatures()
   })
   useCine.subscribe((next, prev) => {
-    if (applying || !useSession.getState().isAdmin || (next.enabled === prev.enabled && next.screen === prev.screen && next.posters === prev.posters)) return
+    if (applying || !useSession.getState().isAdmin || (next.enabled === prev.enabled && next.screens === prev.screens && next.posters === prev.posters)) return
     pushFeatures()
   })
   useServicesFeature.subscribe((next, prev) => {
