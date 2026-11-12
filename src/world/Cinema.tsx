@@ -324,6 +324,40 @@ function Cartelera() {
   )
 }
 
+const IRON = '#2f3438'
+/** Puente de piedra de la plaza del cine al estadio (a lo largo de x), con el estilo de los demás puentes del mall. */
+function Causeway({ x0, x1, z }: { x0: number; x1: number; z: number }) {
+  const len = x1 - x0
+  const mid = (x0 + x1) / 2
+  const bw = 3
+  const top = 0.3
+  const baluster = Math.round(len / 1.2)
+  const lamps = [x0 + 0.6, mid, x1 - 0.6]
+  return (
+    <>
+      <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[mid, 0, z]} scale={[len, 0.5, bw + 0.3]} castShadow />
+      <mesh geometry={GEO.box} material={mat(STONE[2])} position={[mid, top - 0.1, z]} scale={[len, 0.2, bw]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat('#e6d3ad')} position={[mid, top + 0.01, z]} scale={[len, 0.03, bw - 0.7]} receiveShadow />
+      <mesh geometry={GEO.box} material={glowMat('#ffcf8a', 1.4, { dayGlow: 0 })} position={[mid, top + 0.035, z]} scale={[len - 0.6, 0.01, 0.12]} />
+      {[-1, 1].map((sd) => (
+        <group key={sd}>
+          <mesh geometry={GEO.box} material={mat(CORDON)} position={[mid, top + 0.72, z + sd * (bw / 2 - 0.12)]} scale={[len, 0.1, 0.2]} />
+          {Array.from({ length: baluster + 1 }, (_, k) => (
+            <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[x0 + (k * len) / baluster, top + 0.45, z + sd * (bw / 2 - 0.12)]} scale={[0.16, 0.55, 0.16]} />
+          ))}
+          {lamps.map((lx) => (
+            <group key={lx} position={[lx, top, z + sd * (bw / 2 - 0.12)]}>
+              <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.1, 0]} scale={[0.09, 1.9, 0.09]} />
+              <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 2.15, 0]} scale={0.34} />
+              <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.8)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, -sd * 0.9]} scale={[3, 3, 1]} />
+            </group>
+          ))}
+        </group>
+      ))}
+    </>
+  )
+}
+
 /** Escalinata del lado este que baja a un puente hacia la isla del estadio. */
 function Access() {
   const steps = 10
@@ -343,11 +377,9 @@ function Access() {
         <mesh key={dz} geometry={GEO.box} material={mat(TERRA)} position={[x0 - 0.3, DECK + 1.6, z + dz]} scale={[0.5, 3.2, 0.5]} castShadow />
       ))}
       <mesh geometry={GEO.box} material={mat(TERRA)} position={[x0 - 0.3, DECK + 3.35, z]} scale={[0.6, 0.45, 4.2]} castShadow />
-      {/* puente de piedra hasta la isla del estadio */}
-      <mesh geometry={GEO.box} material={mat(STONE[0])} position={[(endX + toX) / 2, 0.1, z]} scale={[toX - endX + 0.4, 0.4, 3]} receiveShadow />
-      {[-1.5, 1.5].map((dz) => (
-        <mesh key={`r${dz}`} geometry={GEO.box} material={mat(STONE[1])} position={[(endX + toX) / 2, 0.55, z + dz]} scale={[toX - endX, 0.5, 0.25]} />
-      ))}
+      {/* puente de piedra hasta la isla del estadio: mismo estilo que los puentes del mall (zócalo, tablero claro,
+          franja de luz cálida, balaustres con pasamanos de cordón y faroles de hierro) */}
+      <Causeway x0={endX - 0.2} x1={toX + 0.2} z={z} />
     </>
   )
 }
@@ -408,7 +440,7 @@ export function Cinema() {
   const label = useMemo(() => getGlassPill('Cine', { dot: '#ff5fa8', sub: 'Próximamente', dark: night }), [night])
   return (
     <group position={[DX, 0, 0]}>
-      <Batch version="cine-6">
+      <Batch version="cine-7">
         <Island />
         <Building />
         <Cartelera />
