@@ -111,7 +111,17 @@ function Shell() {
         <mesh key={z} geometry={GEO.box} material={wood} position={[(T.x0 + T.x1) / 2 + 0.2, 2.95, z]} scale={[T.x1 - T.x0 - 0.6, 0.18, 0.18]} />
       ))}
       {/* muros bajos detrás de los locales (bordes del fondo) */}
-      <mesh geometry={GEO.box} material={wall} position={[0, WALL_H / 2 + 0.2, -H + 0.2]} scale={[2 * H, WALL_H, 0.4]} castShadow />
+      {/* muro del fondo, abierto donde baja la escalera al cine (rincón noroeste) */}
+      {(() => {
+        const g0 = -17.2
+        const g1 = -12.8
+        return (
+          <>
+            <mesh geometry={GEO.box} material={wall} position={[(-H + g0) / 2, WALL_H / 2 + 0.2, -H + 0.2]} scale={[g0 + H, WALL_H, 0.4]} castShadow />
+            <mesh geometry={GEO.box} material={wall} position={[(g1 + H) / 2, WALL_H / 2 + 0.2, -H + 0.2]} scale={[H - g1, WALL_H, 0.4]} castShadow />
+          </>
+        )
+      })()}
       <mesh geometry={GEO.box} material={wall} position={[-H + 0.2, WALL_H / 2 + 0.2, 0]} scale={[0.4, WALL_H, 2 * H]} castShadow />
       {/* barandas hacia la plaza; abiertas donde llegan las escaleras */}
       {railing(H - 0.2, -9.9, H - 0.2, H - ARRIVAL_GAP, 'este')}
@@ -496,7 +506,7 @@ function Furniture({ detail }: { detail: 'high' | 'low' }) {
 /** Estructura estática del piso 2 (también se ve como silueta desde otros pisos). */
 export function FoodCourtShell() {
   return (
-    <Batch version="estructura-p2-fortaleza-luz2">
+    <Batch version="estructura-p2-fortaleza-luz3">
       <Shell />
     </Batch>
   )

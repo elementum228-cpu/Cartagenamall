@@ -26,7 +26,11 @@ const BX = -28.5 // centro del edificio
 const BZ = -72
 const FZ = BZ + 4.5 // cara de la fachada (mira al sur)
 /** Cartelera del frente: tres pantallas en abanico, de cara a la plaza. */
-const CART = { x: -21.5, z: -57.5, rot: Math.PI / 4 }
+const CART = { x: -26, z: -57.4, rot: 0 }
+/** La isla se corre al oeste para que su escalera caiga justo en el rincón libre del piso de comida. */
+const DX = -9
+/** Escalera: de la plaza del cine (nivel de la isla) al borde norte del piso de comida. */
+const STAIR = { x: -34.75, w: 3.6, zTop: -47.6, zBot: -56.4, yTop: 7.4 }
 
 /** Textura de lienzo que muestra una imagen recortada a su caja; sin imagen, pinta el arte por defecto. */
 function useImageTexture(url: string | null, w: number, h: number, fallback: (g: CanvasRenderingContext2D, w: number, h: number) => void) {
@@ -123,7 +127,7 @@ function Island() {
   for (let i = 0; i <= 15; i++) {
     const t = -HALF + 0.9 + (i * (w - 1.8)) / 15
     merlons.push(merlon(CX + t, CZ - HALF + 0.4, `n${i}`), merlon(CX - HALF + 0.4, CZ + t, `w${i}`))
-    if (i < 6 || i > 10) merlons.push(merlon(CX + t, CZ + HALF - 0.4, `s${i}`))
+    if (i < 1 || i > 10) merlons.push(merlon(CX + t, CZ + HALF - 0.4, `s${i}`))
     if (i < 9 || i > 12) merlons.push(merlon(CX + HALF - 0.4, CZ + t, `e${i}`))
   }
   return (
@@ -262,6 +266,49 @@ function Building() {
   )
 }
 
+/** Escalera ancha de piedra, del piso de comida bajando directo a la plaza del cine, con balaustradas y faroles. */
+function GrandStair() {
+  const { x, w, zTop, zBot, yTop } = STAIR
+  const y0 = DECK + 0.07
+  const n = 26
+  const rise = (yTop - y0) / n
+  const run = (zTop - zBot) / n
+  const stone = mat('#efe3cc')
+  const light = glowMat('#ffe2a8', 1.8, { dayGlow: 0.3 })
+  const bulb = glowMat('#ffe9a8', 2.4, { dayGlow: 0.6 })
+  const len = Math.hypot(zTop - zBot, yTop - y0)
+  const slope = Math.atan2(yTop - y0, zTop - zBot)
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => {
+        const h = y0 + rise * (i + 1)
+        const z = zBot + run * (i + 0.5)
+        return (
+          <group key={i}>
+            <mesh geometry={GEO.box} material={stone} position={[x, h / 2, z]} scale={[w, h, run + 0.01]} castShadow receiveShadow />
+            <mesh geometry={GEO.box} material={light} position={[x, h - 0.06, z - run / 2 - 0.005]} scale={[w - 0.5, 0.05, 0.02]} />
+          </group>
+        )
+      })}
+      {[-1, 1].map((sd) => (
+        <group key={sd}>
+          <mesh geometry={GEO.box} material={mat(STONE[0])} position={[x + sd * (w / 2 + 0.25), (y0 + yTop) / 2 + 0.45, (zTop + zBot) / 2]} rotation={[-slope, 0, 0]} scale={[0.5, 0.9, len]} castShadow />
+          {[0.15, 0.5, 0.85].map((t) => (
+            <group key={t}>
+              <mesh geometry={GEO.sphereSmooth} material={bulb} position={[x + sd * (w / 2 + 0.25), y0 + (yTop - y0) * t + 1.25, zBot + (zTop - zBot) * t]} scale={0.4} />
+            </group>
+          ))}
+        </group>
+      ))}
+      {/* arco de entrada abajo, frente a la plaza */}
+      {[-1, 1].map((sd) => (
+        <mesh key={`a${sd}`} geometry={GEO.box} material={mat(TERRA)} position={[x + sd * (w / 2 + 0.3), y0 + 1.7, zBot - 0.5]} scale={[0.5, 3.4, 0.5]} castShadow />
+      ))}
+      <mesh geometry={GEO.box} material={mat(TERRA)} position={[x, y0 + 3.6, zBot - 0.5]} scale={[w + 1.4, 0.45, 0.6]} castShadow />
+    </>
+  )
+}
+
 /** Cartelera del frente: base de piedra, rótulo y tres marcos en abanico (las imágenes van aparte). */
 function Cartelera() {
   const bulb = glowMat('#ffe9a8', 2.4, { dayGlow: 0.6 })
@@ -292,7 +339,7 @@ function Access() {
   const x0 = CX + HALF
   const stone = mat('#efe3cc')
   const endX = x0 + steps * 0.45
-  const toX = STADIUM.center[0] - 13.5
+  const toX = STADIUM.center[0] - 13.5 - DX
   return (
     <>
       {Array.from({ length: steps }, (_, i) => {
@@ -368,11 +415,12 @@ export function Cinema() {
   const night = useIsNight()
   const label = useMemo(() => getGlassPill('Cine', { dot: '#ff5fa8', sub: 'Próximamente', dark: night }), [night])
   return (
-    <group>
-      <Batch version="cine-4">
+    <group position={[DX, 0, 0]}>
+      <Batch version="cine-5">
         <Island />
         <Building />
         <Cartelera />
+        <GrandStair />
         <Access />
       </Batch>
       <Screens />
