@@ -313,9 +313,9 @@ function DockPeople({ reduceMotion }: { reduceMotion: boolean }) {
   const walkers = useRef<(THREE.Group | null)[]>([])
   const routes = useMemo(
     () => [
-      { x: EAST_X + 0.7, speed: 0.045, phase: 0 },
-      { x: EAST_X + 0.1, speed: 0.035, phase: 0.9 },
-      { x: WEST_X - 0.9, speed: 0.04, phase: 1.5 },
+      { x: EAST_X + 0.7, speed: 0.085, phase: 0 },
+      { x: EAST_X + 0.1, speed: 0.07, phase: 0.9 },
+      { x: WEST_X - 0.9, speed: 0.075, phase: 1.5 },
     ],
     [],
   )

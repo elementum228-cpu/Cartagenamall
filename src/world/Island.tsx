@@ -395,7 +395,7 @@ function Strollers({ reduceMotion }: { reduceMotion: boolean }) {
       ['#e07a5f', '#3d7ea6', '#f2cc8f', '#2a9d8f', '#9b5de5', '#f15bb5'].map((c, i) => ({
         c,
         r: 4.6 + (i % 2) * 1.2,
-        speed: (0.06 + (i % 3) * 0.015) * (i % 2 ? 1 : -1),
+        speed: (0.2 + (i % 3) * 0.04) * (i % 2 ? 1 : -1),
         phase: (i / 6) * Math.PI * 2,
       })),
     [],

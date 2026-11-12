@@ -167,7 +167,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         </Batch>
         <GlobalAmbient detail={quality === 'high' ? 'high' : 'low'} />
         {/* visitantes que recorren ambos pisos y usan las escaleras (fuera de MallFloor: cambian de piso) */}
-        {quality !== 'low' && <Travelers count={quality === 'high' ? 14 : 6} />}
+        {quality !== 'low' && <Travelers count={quality === 'high' ? 22 : 10} />}
         {FLOORS.map((floor) => {
           const mode = modeFor(floor, active, overview)
           const interactive = mode === 'full'

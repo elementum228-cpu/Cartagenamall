@@ -8,6 +8,7 @@ import { usePromoEvents } from '../promotions/store'
 import { BOATS, BOAT_OF_STORE, HARBOR, PIRATE_BERTH } from '../tourism/config'
 import { helmetColor, useHelmetsOn } from './helmets'
 import { GEO, mat } from './materials'
+import { MAX_DT } from './simTime'
 
 // Visitantes que acuden a una oferta relámpago donde no hay pasillos con carriles: la terraza de
 // comida (piso 2) y el muelle. Salen del punto de llegada (escaleras o puerta de la muralla), caminan por
@@ -27,7 +28,7 @@ export interface CrowdTarget {
 }
 
 const COLORS = ['#e0735f', '#3b82a6', '#f5b544', '#5f9a6e', '#c2607f', '#6b5b95', '#2f3e4e', '#f4f1ea']
-const WALK = 1.9
+const WALK = 2.6
 const BACK = 1.6
 const DWELL = 38
 const TURN = 6
@@ -75,7 +76,7 @@ export function FlashCrowd({ match, resolve, y, count = 6 }: { match: (e: Promot
   }, [walkers, helmets])
 
   useFrame((_, rawDt) => {
-    const dt = Math.min(rawDt, 0.1)
+    const dt = Math.min(rawDt, MAX_DT)
     simT.current += dt
     const t = simT.current
     const events = usePromoEvents.getState().events

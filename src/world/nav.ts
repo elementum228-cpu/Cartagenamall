@@ -3,6 +3,7 @@ import type { FloorId } from '../domain/types'
 import { DECOR_FOOTPRINTS } from './Decor'
 import { FOOD_FOOTPRINTS } from './FoodCourt'
 import { techKioskFootprints } from './TechDistrict'
+import { BX, CART, DECK, DX, STAIR } from './cinemaLayout'
 
 // Navegación de los visitantes que recorren los dos pisos: una cuadrícula de celdas libres por piso,
 // construida a partir de los obstáculos reales de la escena (bancas, palmeras, faroles, islas, fuente,
@@ -67,21 +68,77 @@ const P2_EXTRAS: Circle[] = SPACES.filter((s) => s.floorId === 'P2' && s.type !=
     const lz = d / 2 + 1.4
     const c = Math.cos(s.rotation)
     const sn = Math.sin(s.rotation)
-    return { x: s.position[0] + lx * c + lz * sn, z: s.position[1] - lx * sn + lz * c, r: 0.85 }
+    return { x: s.position[0] + lx * c + lz * sn, z: s.position[1] - lx * sn + lz * c, r: 0.7 }
   })
 })
 const P2_ISLANDS: Circle[] = SPACES.filter((s) => s.floorId === 'P2' && s.type === 'island').map((s) => ({ x: s.position[0], z: s.position[1], r: 1.95 }))
 
+/** Restaurantes de las filas del piso 2 (rectángulos girados): no se pisan. */
+const P2_ROWS = SPACES.filter((s) => s.floorId === 'P2' && s.type !== 'island')
+function inRow(sp: (typeof P2_ROWS)[number], x: number, z: number, m: number): boolean {
+  const dx = x - sp.position[0]
+  const dz = z - sp.position[1]
+  const c = Math.cos(sp.rotation)
+  const sn = Math.sin(sp.rotation)
+  const lx = dx * c - dz * sn
+  const lz = dx * sn + dz * c
+  return Math.abs(lx) < sp.size[0] / 2 + m && Math.abs(lz) < sp.size[1] / 2 + m
+}
+
+/** Escalera al cine: baja desde el muro norte del piso 2 (hueco del rincón noroeste) hasta la plaza del cine. */
+const P2_OFFSET = FLOORS.find((f) => f.id === 'P2')!.offset
+export const CINE_STAIR = (() => {
+  const wx = STAIR.x + DX
+  return {
+    /** Mundo: x de la escalera, z de arriba y de abajo, alturas de cada extremo. */
+    x: wx,
+    zTop: STAIR.zTop,
+    zBot: STAIR.zBot,
+    yTop: STAIR.yTop,
+    yBot: DECK + 0.1,
+    /** Piso 2 (coordenadas del piso): a un paso de la escalera. */
+    p2Entry: [wx - P2_OFFSET[0], STAIR.zTop - P2_OFFSET[1] + 0.8] as Point,
+    p2Top: [wx - P2_OFFSET[0], STAIR.zTop - P2_OFFSET[1]] as Point,
+    /** Plaza del cine (mundo): a un paso del pie de la escalera. */
+    plazaEntry: [wx, STAIR.zBot - 1.4] as Point,
+    plazaBot: [wx, STAIR.zBot] as Point,
+  }
+})()
+const NW_GAP_X = CINE_STAIR.p2Top[0]
+
 function p2Free(x: number, z: number): boolean {
   const r = AGENT_RADIUS
   const H = FOOD_LAYOUT.half - 0.6
-  if (Math.abs(x) > H - r || Math.abs(z) > H - r) return false
+  if (Math.abs(x) > H - r) return false
+  // muro norte: solo se cruza por el hueco de la escalera al cine
+  const inGap = Math.abs(x - NW_GAP_X) < 1.4 && z > -H - 0.4
+  if (!inGap && Math.abs(z) > H - r) return false
   // esquina recortada donde llegan las escaleras
   if (x + z > 2 * FOOD_LAYOUT.half - FOOD_LAYOUT.arrivalCut - 0.4 - r) return false
-  // fila de restaurantes del fondo y del costado (y la terraza en la esquina)
-  if (z < -8.8 + r || x < -8.8 + r) return false
+  if (P2_ROWS.some((s) => inRow(s, x, z, r))) return false
   const hit = (c: Circle) => Math.hypot(x - c.x, z - c.z) < c.r + r
   return !(P2_EXTRAS.some(hit) || P2_ISLANDS.some(hit) || FOOD_FOOTPRINTS.some(hit))
+}
+
+/** Plaza del cine (coordenadas del mundo): isla con el edificio al norte, cartelera al sur y la escalera al piso 2. */
+const CINE_BOUNDS = { x0: -48.2, x1: -24.6, z0: -77.5, z1: -53.8 }
+const CINE_CIRCLES: Circle[] = [
+  [-46.5, -62],
+  [-28.5, -66.5],
+  [-46.5, -56],
+].map(([x, z]) => ({ x, z, r: 0.5 }))
+function cineFree(x: number, z: number): boolean {
+  const r = AGENT_RADIUS
+  const b = CINE_BOUNDS
+  if (x < b.x0 + r || x > b.x1 - r || z < b.z0 + r || z > b.z1 - r) return false
+  // el edificio con su marquesina y la escalinata de entrada
+  if (x > BX + DX - 9.7 - r && x < BX + DX + 9.7 + r && z < -63.0 + r) return false
+  // cuerpo de la escalera (su pie queda al sur de la plaza)
+  if (Math.abs(x - CINE_STAIR.x) < STAIR.w / 2 + 0.6 + r && z > STAIR.zBot - 0.8) return false
+  // cartelera del frente
+  const cx = CART.x + DX
+  if (Math.abs(x - cx) < 4.4 + r && z > CART.z - 1 - r && z < CART.z + 0.9 + r) return false
+  return !CINE_CIRCLES.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + r)
 }
 
 /** Montículo binario mínimo (índice de celda, prioridad) para A*. */
@@ -266,6 +323,13 @@ export function navGrids(): Record<FloorId, NavGrid> {
   return grids
 }
 
+let cineGridCache: NavGrid | null = null
+/** Cuadrícula de la plaza del cine (mundo). */
+export function cinemaGrid(): NavGrid {
+  if (!cineGridCache) cineGridCache = new NavGrid(CINE_BOUNDS.x0, CINE_BOUNDS.z0, CINE_BOUNDS.x1, CINE_BOUNDS.z1, cineFree, 0.3)
+  return cineGridCache
+}
+
 export interface Poi {
   floorId: FloorId
   point: Point
@@ -310,4 +374,30 @@ export function pointsOfInterest(): Poi[] {
   }
   poiCache = out
   return out
+}
+
+let cinePoiCache: Poi[] | null = null
+/** Lugares de la plaza del cine donde los visitantes se detienen: la cartelera, la entrada y las palmeras. */
+export function cinemaPois(): Poi[] {
+  if (cinePoiCache) return cinePoiCache
+  const grid = cinemaGrid()
+  const board: Point = [CART.x + DX, CART.z]
+  const door: Point = [BX + DX, -68]
+  const spots: [Point, Point][] = [
+    [[-38.5, -55.1], board],
+    [[-35, -55.1], board],
+    [[-31.5, -55.1], board],
+    [[-40, -61.6], door],
+    [[-37.5, -61.8], door],
+    [[-35, -61.6], door],
+    [[-45.5, -59], [-47.5, -59]],
+    [[-30, -60.5], [-24, -60.5]],
+    [[-27, -64], [-24, -66]],
+    [[-44.5, -64.3], door],
+  ]
+  cinePoiCache = spots.flatMap(([p, look]) => {
+    const q = grid.snap(p)
+    return q && grid.path(CINE_STAIR.plazaEntry, q) ? [{ floorId: 'P1' as FloorId, point: q, look }] : []
+  })
+  return cinePoiCache
 }

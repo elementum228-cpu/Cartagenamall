@@ -2,11 +2,11 @@ import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { ESCALATOR, ESCALATOR_FRAME, ESCALATOR_STEP_RATE, ESCALATOR_STEPS, FLOOR_BY_ID, escToWorld } from '../config/mall'
-import type { FloorId } from '../domain/types'
 import { useUI } from '../state/ui'
 import { helmetColor, useHelmetsOn } from './helmets'
 import { GEO, mat } from './materials'
-import { ESCALATOR_ENDS, navGrids, pointsOfInterest, type Poi, type Point } from './nav'
+import { CINE_STAIR, cinemaGrid, cinemaPois, ESCALATOR_ENDS, navGrids, pointsOfInterest, type NavGrid, type Poi, type Point } from './nav'
+import { MAX_DT } from './simTime'
 
 // Visitantes que recorren los dos pisos: caminan entre vitrinas, restaurantes, bancas y miradores
 // por rutas que esquivan todo (nav.ts), se detienen a mirar y, de vez en cuando, suben al piso 2 o
@@ -19,11 +19,21 @@ const FLOOR_TOP = 0.2
 const TURN = 6
 /** Probabilidad de cambiar de piso al terminar una parada. */
 const FLOOR_CHANGE = 0.35
+/** Probabilidad de ir al cine (por la escalera del rincón) desde el piso 2, y de volver a subir desde la plaza. */
+const CINE_GO = 0.3
+const CINE_BACK = 0.4
+/** Marcha en la escalera del cine (unidades por segundo a lo largo de la rampa). */
+const STAIR_SPEED = 1.1
+const STAIR_LEN = Math.hypot(CINE_STAIR.zTop - CINE_STAIR.zBot, CINE_STAIR.yTop - CINE_STAIR.yBot)
+/** El cine es la plaza de la isla (coordenadas del mundo); los pisos usan las suyas. */
+type Level = 'P1' | 'P2' | 'C'
 
 type State = 'walking' | 'pausing' | 'toEscalator' | 'stepOn' | 'riding' | 'stepOff'
 
 interface Traveler {
-  floor: FloorId
+  floor: Level
+  /** Por dónde cambia de nivel: escalera eléctrica o escalera del cine. */
+  via: 'esc' | 'stair'
   x: number
   z: number
   heading: number
@@ -81,9 +91,9 @@ export function Travelers({ count }: { count: number }) {
   const heads = useRef<THREE.InstancedMesh>(null)
   const hats = useRef<THREE.InstancedMesh>(null)
   const helmets = useHelmetsOn()
-  const grids = useMemo(() => navGrids(), [])
+  const grids = useMemo<Record<Level, NavGrid>>(() => ({ ...navGrids(), C: cinemaGrid() }) as Record<Level, NavGrid>, [])
   const pois = useMemo(() => pointsOfInterest(), [])
-  const byFloor = useMemo<Record<string, Poi[]>>(() => ({ P1: pois.filter((p) => p.floorId === 'P1'), P2: pois.filter((p) => p.floorId === 'P2') }), [pois])
+  const byFloor = useMemo<Record<string, Poi[]>>(() => ({ P1: pois.filter((p) => p.floorId === 'P1'), P2: pois.filter((p) => p.floorId === 'P2'), C: cinemaPois() }), [pois])
   const rise = FLOOR_BY_ID.P2.elevation
   const p2 = FLOOR_BY_ID.P2.offset
   const run = ESCALATOR.bottomZ - ESCALATOR.topZ
@@ -93,11 +103,11 @@ export function Travelers({ count }: { count: number }) {
   const travelers = useMemo<Traveler[]>(
     () =>
       Array.from({ length: count }, (_, i) => {
-        const floor: FloorId = i % 2 ? 'P2' : 'P1'
+        const floor: Level = i % 4 === 3 ? 'C' : i % 2 ? 'P2' : 'P1'
         const rnd = mulberry(1234 + i * 97)
         const list = byFloor[floor]
         const poi = list[Math.floor(rnd() * list.length)]
-        return { floor, x: poi.point[0], z: poi.point[1], heading: rnd() * 6.28, state: 'pausing', path: [], next: 0, timer: 1 + rnd() * 4, look: poi.look, dir: 'up', u: 0, speed: 1 + rnd() * 0.3, rnd }
+        return { floor, via: 'esc' as const, x: poi.point[0], z: poi.point[1], heading: rnd() * 6.28, state: 'pausing', path: [], next: 0, timer: 1 + rnd() * 4, look: poi.look, dir: 'up', u: 0, speed: 1.55 + rnd() * 0.4, rnd }
       }),
     [count, byFloor],
   )
@@ -115,13 +125,27 @@ export function Travelers({ count }: { count: number }) {
   /** Elige qué hacer después de una parada: otro lugar del piso o cambiar de piso por la escalera. */
   const decide = (a: Traveler) => {
     const grid = grids[a.floor]
-    if (a.rnd() < FLOOR_CHANGE) {
+    // Cine: del piso 2 bajan por la escalera del rincón; de la plaza vuelven a subir por ella.
+    if ((a.floor === 'P2' && a.rnd() < CINE_GO) || (a.floor === 'C' && a.rnd() < CINE_BACK)) {
+      const target = a.floor === 'P2' ? CINE_STAIR.p2Entry : CINE_STAIR.plazaEntry
+      const path = grid.path([a.x, a.z], target)
+      if (path) {
+        a.path = path
+        a.next = 1
+        a.state = 'toEscalator'
+        a.via = 'stair'
+        a.dir = a.floor === 'P2' ? 'down' : 'up'
+        return
+      }
+    }
+    if (a.floor !== 'C' && a.rnd() < FLOOR_CHANGE) {
       const target = a.floor === 'P1' ? ESCALATOR_ENDS.upStart : ESCALATOR_ENDS.downStart
       const path = grid.path([a.x, a.z], target)
       if (path) {
         a.path = path
         a.next = 1
         a.state = 'toEscalator'
+        a.via = 'esc'
         a.dir = a.floor === 'P1' ? 'up' : 'down'
         return
       }
@@ -144,7 +168,7 @@ export function Travelers({ count }: { count: number }) {
 
   const o = useMemo(() => new THREE.Object3D(), [])
   useFrame(({ clock }, rawDt) => {
-    const dt = Math.min(rawDt, 0.1)
+    const dt = Math.min(rawDt, MAX_DT)
     const t = clock.elapsedTime
     const { activeFloor, overview } = useUI.getState()
     const lane = (dir: 'up' | 'down') => (dir === 'up' ? ESCALATOR.lanesX[0] : ESCALATOR.lanesX[1])
@@ -172,6 +196,13 @@ export function Travelers({ count }: { count: number }) {
         case 'toEscalator': {
           bob = Math.abs(Math.sin(t * 6 + i)) * 0.05
           if (follow(a, dt, a.speed)) {
+            if (a.via === 'stair') {
+              // último tramo hasta el extremo de la escalera del cine
+              a.path = [[a.x, a.z], a.floor === 'P2' ? CINE_STAIR.p2Top : CINE_STAIR.plazaBot]
+              a.next = 1
+              a.state = 'stepOn'
+              break
+            }
             // al pie del carril (en coordenadas del piso donde está)
             const [ex, ez] = escToWorld(lane(a.dir), a.dir === 'up' ? ESCALATOR.bottomZ : ESCALATOR.topZ)
             const x = ex - (a.floor === 'P2' ? p2[0] : 0)
@@ -191,6 +222,23 @@ export function Travelers({ count }: { count: number }) {
           break
         }
         case 'riding': {
+          if (a.via === 'stair') {
+            bob = Math.abs(Math.sin(t * 6 + i)) * 0.03
+            a.u += (STAIR_SPEED / STAIR_LEN) * dt
+            if (a.u >= 1) {
+              const down = a.dir === 'down'
+              a.floor = down ? 'C' : 'P2'
+              const from = down ? CINE_STAIR.plazaBot : CINE_STAIR.p2Top
+              const to = down ? CINE_STAIR.plazaEntry : CINE_STAIR.p2Entry
+              a.x = from[0]
+              a.z = from[1]
+              a.path = [from, to]
+              a.next = 1
+              a.state = 'stepOff'
+            }
+            onEscalator = true
+            break
+          }
           a.u += rideSpeed * dt
           if (a.u >= 1) {
             // baja de la escalera: queda en el otro piso, a un paso del carril
@@ -213,18 +261,29 @@ export function Travelers({ count }: { count: number }) {
           if (follow(a, dt, a.speed * 0.8)) {
             a.state = 'pausing'
             a.timer = 0.8 + a.rnd() * 1.5
-            a.look = a.floor === 'P2' ? [3, 3] : [0, 0]
+            a.look = a.floor === 'C' ? [-37.5, -68] : a.floor === 'P2' ? [3, 3] : [0, 0]
           }
           break
         }
       }
 
-      if (a.state === 'riding' || onEscalator) {
+      if (a.state === 'riding' && a.via === 'stair') {
+        // rampa de la escalera del cine (coordenadas del mundo)
+        const u = a.dir === 'down' ? a.u : 1 - a.u
+        wx = CINE_STAIR.x
+        wz = CINE_STAIR.zTop + (CINE_STAIR.zBot - CINE_STAIR.zTop) * u
+        wy = CINE_STAIR.yTop + (CINE_STAIR.yBot - CINE_STAIR.yTop) * u
+        a.heading = turnTowards(a.heading, a.dir === 'down' ? Math.PI : 0, TURN * dt)
+      } else if (a.state === 'riding' || onEscalator) {
         // sobre el escalón: coordenadas del piso 1
         const u = a.dir === 'up' ? a.u : 1 - a.u
         ;[wx, wz] = escToWorld(lane(a.dir), ESCALATOR.bottomZ - run * u)
         wy = FLOOR_TOP + rise * u + 0.23
         a.heading = turnTowards(a.heading, (a.dir === 'up' ? Math.PI : 0) + ESCALATOR_FRAME.angle, TURN * dt)
+      } else if (a.floor === 'C') {
+        wx = a.x
+        wz = a.z
+        wy = CINE_STAIR.yBot
       } else if (a.floor === 'P2') {
         wx = a.x + p2[0]
         wz = a.z + p2[1]
@@ -234,7 +293,7 @@ export function Travelers({ count }: { count: number }) {
         wz = a.z
         wy = FLOOR_TOP
       }
-      const visible = a.state === 'riding' || overview || a.floor === activeFloor
+      const visible = a.state === 'riding' || overview || a.floor === 'C' || a.floor === activeFloor
       o.position.set(wx, wy + 0.43 + bob, wz)
       o.rotation.set(0, a.heading, 0)
       o.scale.setScalar(visible ? 1 : 0)

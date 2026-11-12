@@ -382,10 +382,10 @@ function Strollers({ reduceMotion }: { reduceMotion: boolean }) {
   const walkers = useRef<(THREE.Group | null)[]>([])
   const people = useMemo(
     () => [
-      { r: 4.3, speed: 0.18, phase: 0, color: '#3d7ea6', skin: '#8d5a3b' },
-      { r: 4.3, speed: 0.18, phase: 2.1, color: '#e07a5f', skin: '#e5b48f' },
-      { r: 4.6, speed: -0.14, phase: 1.2, color: '#81b29a', skin: '#c58c64' },
-      { r: 4.6, speed: -0.14, phase: 4, color: '#f2cc8f', skin: '#8d5a3b' },
+      { r: 4.3, speed: 0.3, phase: 0, color: '#3d7ea6', skin: '#8d5a3b' },
+      { r: 4.3, speed: 0.3, phase: 2.1, color: '#e07a5f', skin: '#e5b48f' },
+      { r: 4.6, speed: -0.24, phase: 1.2, color: '#81b29a', skin: '#c58c64' },
+      { r: 4.6, speed: -0.24, phase: 4, color: '#f2cc8f', skin: '#8d5a3b' },
     ],
     [],
   )

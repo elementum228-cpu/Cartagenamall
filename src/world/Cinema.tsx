@@ -11,26 +11,14 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
+import { BUILD_H, BX, BZ, CART, CX, CZ, DECK, DX, FZ, HALF, STAIR } from './cinemaLayout'
 
 // Cine: isla de piedra al norte del piso de comida, con el edificio (fachada art déco, marquesina y carteleras),
 // una plazoleta y un cine al aire libre con pantalla. Las imágenes de la pantalla y las carteleras las cambia la administración.
-const CX = -27
-const CZ = -66
-const HALF = 13
-const DECK = 2.2 // altura de la plataforma sobre el mar
 const SAND = '#e6c08a'
 const SAND_LIGHT = '#f1d5a6'
 const TERRA = '#c8693c'
 const NAVY = '#1b2247'
-const BX = -28.5 // centro del edificio
-const BZ = -72
-const FZ = BZ + 4.5 // cara de la fachada (mira al sur)
-/** Cartelera del frente: tres pantallas en abanico, de cara a la plaza. */
-const CART = { x: -26, z: -57.4, rot: 0 }
-/** La isla se corre al oeste para que su escalera caiga justo en el rincón libre del piso de comida. */
-const DX = -9
-/** Escalera: de la plaza del cine (nivel de la isla) al borde norte del piso de comida. */
-const STAIR = { x: -34.75, w: 3.6, zTop: -47.6, zBot: -56.4, yTop: 7.4 }
 
 /** Textura de lienzo que muestra una imagen recortada a su caja; sin imagen, pinta el arte por defecto. */
 function useImageTexture(url: string | null, w: number, h: number, fallback: (g: CanvasRenderingContext2D, w: number, h: number) => void) {
@@ -158,7 +146,7 @@ function Island() {
 
 /** Edificio del cine: sala alta al fondo, cuerpo con alas y torreones redondos, torre escalonada con aguja y gran marquesina. */
 function Building() {
-  const y = DECK
+  const y = 0
   const warm = glowMat('#ffd9a0', 1.8, { dayGlow: 0.45 })
   const neon = glowMat('#ff5fa8', 2.2, { dayGlow: 0.5 })
   const cyan = glowMat('#5fe0ff', 2.0, { dayGlow: 0.45 })
@@ -169,6 +157,7 @@ function Building() {
   const navy = mat(NAVY)
   return (
     <>
+      <group position={[0, DECK, 0]} scale={[1, BUILD_H, 1]}>
       {/* sala grande al fondo (el volumen de las salas), con cornisa y franjas */}
       <mesh geometry={GEO.box} material={sand} position={[BX, y + 4.6, BZ - 2.2]} scale={[19, 9.2, 6.4]} castShadow receiveShadow />
       <mesh geometry={GEO.box} material={light} position={[BX, y + 9.35, BZ - 2.2]} scale={[19.5, 0.35, 6.9]} />
@@ -237,6 +226,8 @@ function Building() {
         <mesh key={`s${i}`} geometry={GEO.box} material={light} position={[BX, y + 0.08 + i * 0.12, FZ + 2.2 - i * 0.35]} scale={[12 - i * 0.8, 0.14, 4 - i * 0.7]} receiveShadow />
       ))}
       <mesh geometry={GEO.box} material={mat('#b9242b')} position={[BX, y + 0.42, FZ + 2.4]} scale={[3, 0.04, 4.6]} />
+      </group>
+      <group position={[0, DECK, 0]}>
       {/* palmeras y faroles */}
       {[
         [-37.5, -62],
@@ -262,6 +253,7 @@ function Building() {
           <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.6)} rotation={[-Math.PI / 2, 0, 0]} position={[x, y + 0.17, z]} scale={[4, 4, 1]} />
         </group>
       ))}
+      </group>
     </>
   )
 }
@@ -404,9 +396,9 @@ function Screens() {
         ))}
         <mesh geometry={GEO.plane} material={sign} position={[0, 5.05, 0.04]} scale={[4.8, 0.8, 1]} />
       </group>
-      <mesh geometry={GEO.plane} material={mats[3]} position={[BX - 5.3, DECK + 2.2, BZ + 4.72]} scale={[2, 3, 1]} />
-      <mesh geometry={GEO.plane} material={mats[4]} position={[BX + 5.3, DECK + 2.2, BZ + 4.72]} scale={[2, 3, 1]} />
-      <mesh geometry={GEO.plane} material={marquee} position={[BX, DECK + 7.6, FZ + 0.85]} scale={[6.4, 3.2, 1]} />
+      <mesh geometry={GEO.plane} material={mats[3]} position={[BX - 5.3, DECK + 2.2 * BUILD_H, BZ + 4.72]} scale={[2, 3 * BUILD_H, 1]} />
+      <mesh geometry={GEO.plane} material={mats[4]} position={[BX + 5.3, DECK + 2.2 * BUILD_H, BZ + 4.72]} scale={[2, 3 * BUILD_H, 1]} />
+      <mesh geometry={GEO.plane} material={marquee} position={[BX, DECK + 7.6 * BUILD_H, FZ + 0.85]} scale={[6.4, 3.2 * BUILD_H, 1]} />
     </group>
   )
 }
@@ -416,7 +408,7 @@ export function Cinema() {
   const label = useMemo(() => getGlassPill('Cine', { dot: '#ff5fa8', sub: 'Próximamente', dark: night }), [night])
   return (
     <group position={[DX, 0, 0]}>
-      <Batch version="cine-5">
+      <Batch version="cine-6">
         <Island />
         <Building />
         <Cartelera />
@@ -424,7 +416,7 @@ export function Cinema() {
         <Access />
       </Batch>
       <Screens />
-      <ScreenLabel label={label} position={[BX, DECK + 19, BZ + 3]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      <ScreenLabel label={label} position={[BX, DECK + 19 * BUILD_H + 0.8, BZ + 3]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
       <pointLight position={[BX, DECK + 3, FZ + 3.5]} color="#ffd9a0" intensity={night ? 34 : 0} distance={16} decay={2} />
       <pointLight position={[CART.x - 1.5, DECK + 3, CART.z + 1.5]} color="#ffb6d9" intensity={night ? 18 : 0} distance={10} decay={2} />
     </group>

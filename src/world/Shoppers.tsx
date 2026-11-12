@@ -7,6 +7,7 @@ import { interiorCapacity, planStoreVisit, planVisit, type Point } from '../prom
 import { usePromoEvents } from '../promotions/store'
 import { helmetColor, useHelmetsOn } from './helmets'
 import { GEO, mat } from './materials'
+import { MAX_DT } from './simTime'
 
 // Visitantes en miniatura que caminan por la plaza y los pasillos (dos InstancedMesh, sin sombras).
 // Cuando una oferta relámpago se presenta en el piso, hasta `maxReacting` visitantes del mismo
@@ -59,15 +60,15 @@ interface Group {
 }
 
 /** A la vitrina van de prisa; la vuelta también es ágil. */
-const HURRY_SPEED = 2.1
-const RETURN_SPEED = 1.7
+const HURRY_SPEED = 2.9
+const RETURN_SPEED = 2.4
 /** Visitantes por pasillo (los que pueden acudir a una oferta de ese pasillo). */
 const PER_WING = 16
 const TURN = 6 // rad/s de suavizado del giro
 /** Cuánto se queda el grupo frente a la vitrina una vez completo. */
 const DWELL = 40
 /** Paso dentro del local (tranquilo) y tiempo de compra de cada turno. */
-const SHOP_SPEED = 1.6
+const SHOP_SPEED = 2.1
 const SHOP_TIME = [5, 7] as const
 
 function routePose(r: Route, t: number): { x: number; z: number; heading: number } {
@@ -126,7 +127,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
   const helmets = useHelmetsOn()
   const agents = useMemo<Agent[]>(() => {
     const routes: Route[] = []
-    for (let i = 0; i < 5; i++) routes.push({ kind: 'circle', r: 3.6 + (i % 2) * 0.6, speed: (i % 2 ? 1 : -1) * 0.22, phase: i * 1.3 })
+    for (let i = 0; i < 5; i++) routes.push({ kind: 'circle', r: 3.6 + (i % 2) * 0.6, speed: (i % 2 ? 1 : -1) * 0.36, phase: i * 1.3 })
     P1.zones.forEach((z, zi) => {
       for (let i = 0; i < PER_WING; i++)
         routes.push({
@@ -135,7 +136,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
           x: (i % 2 ? -1 : 1) * (WALK_LANES.x + LANE_SPREAD[(i >> 1) % LANE_SPREAD.length]),
           z0: WALK_LANES.z0,
           z1: 21,
-          speed: 0.05 + (i % 5) * 0.012,
+          speed: 0.2 + (i % 5) * 0.035,
           phase: zi + i * 0.83,
         })
     })
@@ -165,7 +166,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
 
   const o = useMemo(() => new THREE.Object3D(), [])
   useFrame((_, rawDt) => {
-    const dt = Math.min(rawDt, 0.1) // al volver de otra pestaña no hay saltos
+    const dt = Math.min(rawDt, MAX_DT) // al volver de otra pestaña no hay saltos
     // Reloj de la simulación (avanza con el mismo dt que los pasos): en un equipo lento, estadía,
     // turnos y caminatas se estiran juntos y la escena se ve igual, solo más despacio.
     simT.current += dt

@@ -35,7 +35,9 @@ function useFontsReady() {
 
 export default function WorldCanvas({ active, fallback, night }: { active: boolean; fallback: ReactNode; night: boolean }) {
   const quality = usePrefs((s) => s.quality)
-  const [dpr, setDpr] = useState(() => Math.min(window.devicePixelRatio || 1, 2))
+  // La resolución sigue a la calidad: es lo que más cuesta en pantallas densas. Nunca baja de 1,5× hasta el modo bajo.
+  const native = window.devicePixelRatio || 1
+  const dpr = quality === 'low' ? Math.min(native, 1.25) : quality === 'medium' ? Math.min(native, 1.5) : Math.min(native, 2)
   const fontsReady = useFontsReady()
   useEffect(() => {
     cameraState.active = active
@@ -75,8 +77,6 @@ export default function WorldCanvas({ active, fallback, night }: { active: boole
       >
         <PerformanceMonitor
           onDecline={() => {
-            // Nunca por debajo de 1,5× en pantallas densas: a 1× textos y letreros se ven borrosos.
-            setDpr(Math.min(window.devicePixelRatio || 1, 1.5))
             usePrefs.getState().stepDownQuality()
           }}
           flipflops={2}

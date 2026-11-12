@@ -366,8 +366,8 @@ function Travelers({ reduceMotion }: { reduceMotion: boolean }) {
   const fx = TERMINAL.x + TERMINAL.w / 2
   const routes = useMemo(
     () => [
-      { from: [fx + 1.4, TERMINAL.z - 4] as const, to: [fx + 1.4, TERMINAL.z + 4] as const, speed: 0.06, phase: 0, c: '#e07a5f', bag: TEAL },
-      { from: [fx + 2.2, TERMINAL.z + 4.5] as const, to: [fx + 2.2, TERMINAL.z - 4.5] as const, speed: 0.05, phase: 0.7, c: '#3d7ea6', bag: '#f2cc8f' },
+      { from: [fx + 1.4, TERMINAL.z - 4] as const, to: [fx + 1.4, TERMINAL.z + 4] as const, speed: 0.13, phase: 0, c: '#e07a5f', bag: TEAL },
+      { from: [fx + 2.2, TERMINAL.z + 4.5] as const, to: [fx + 2.2, TERMINAL.z - 4.5] as const, speed: 0.11, phase: 0.7, c: '#3d7ea6', bag: '#f2cc8f' },
     ],
     [fx],
   )
