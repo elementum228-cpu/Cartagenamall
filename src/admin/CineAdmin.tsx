@@ -1,10 +1,12 @@
-import { Clapperboard, Copy, ImagePlus, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Clapperboard, Copy, ImagePlus, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { readImageFile } from '../lib/image'
 import { remoteEnabled } from '../remote/client'
+import { runCineSync } from '../remote/sync'
 import { uploadStadiumImage } from '../remote/photos'
-import { CHAINS, MAX_MOVIES, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineMovie, type CineShow, type ChainId } from '../state/cine'
+import { CHAINS, MAX_MOVIES, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
 import { exampleCine } from '../state/cineExample'
+import { useCineFeed } from '../state/cineFeed'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
 
@@ -110,6 +112,73 @@ function ShowsInput({ movie, chain, day, shows, onChange }: { movie: CineMovie; 
   )
 }
 
+/** «hace 5 min», «hace 2 h», «hace 3 días». */
+function ago(iso: string | null): string {
+  if (!iso) return 'nunca'
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))
+  if (min < 1) return 'hace un momento'
+  if (min < 60) return `hace ${min} min`
+  if (min < 1440) return `hace ${Math.round(min / 60)} h`
+  return `hace ${Math.round(min / 1440)} días`
+}
+
+/** Interruptor Manual / Automático de una cadena y el estado de su última lectura. */
+function ModeSwitch({ chain, onChange }: { chain: CineChain; onChange: (m: ChainMode) => void }) {
+  const feed = useCineFeed((s) => s.doc?.chains[chain.id])
+  const opt = (m: ChainMode, label: string) => (
+    <button key={m} type="button" aria-pressed={chain.mode === m} onClick={() => onChange(m)} className={`flex-1 rounded-full px-3 py-1.5 text-xs font-bold ${chain.mode === m ? 'bg-ink text-white' : 'text-ink-soft'}`}>
+      {label}
+    </button>
+  )
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="flex gap-1 rounded-full bg-sand p-1" role="group" aria-label="Cómo se llena la programación">
+        {opt('manual', 'Manual')}
+        {opt('auto', 'Automático')}
+      </div>
+      {chain.mode === 'auto' && (
+        <p className={`text-[11px] ${feed?.ok ? 'text-emerald-700' : 'text-amber-800'}`}>
+          {!feed ? 'Aún sin lecturas: toca «Sincronizar ahora».' : feed.ok ? `Leída ${ago(feed.at)} · ${feed.message}` : `${feed.message}${feed.at ? ` Últimos datos buenos: ${ago(feed.at)}.` : ''}`}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Lectura automática: pide a la función `cine-sync` leer las cadenas ahora. */
+function AutoTools() {
+  const toast = useUI((s) => s.toast)
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="space-y-2 rounded-2xl bg-sand p-3">
+      <p className="flex items-center gap-2 text-sm font-bold">
+        <RefreshCw className="size-4" /> Programación automática
+      </p>
+      <p className="text-xs text-ink-soft">Con una cadena en «Automático», sus funciones se leen de su sitio (solo Cartagena) y se actualizan solas; lo que cargues a mano para esa cadena queda guardado pero no se muestra. Si la lectura falla, se conservan los últimos datos buenos.</p>
+      <button
+        type="button"
+        className={btn.secondary}
+        disabled={busy || !remoteEnabled()}
+        onClick={async () => {
+          setBusy(true)
+          try {
+            const r = await runCineSync()
+            const ok = r.chains.filter((c) => c.ok).length
+            toast(`${ok} de ${r.chains.length} cadenas leídas.${r.chains.find((c) => !c.ok) ? ' ' + r.chains.find((c) => !c.ok)!.message : ''}`, ok === r.chains.length ? 'success' : 'error')
+          } catch (e) {
+            toast(e instanceof Error ? e.message : 'No se pudo sincronizar.', 'error')
+          } finally {
+            setBusy(false)
+          }
+        }}
+      >
+        <RefreshCw className={`size-4 ${busy ? 'animate-spin' : ''}`} /> {busy ? 'Leyendo…' : 'Sincronizar ahora'}
+      </button>
+      {!remoteEnabled() && <p className="text-[11px] text-ink-soft">Necesita la base de datos conectada.</p>}
+    </div>
+  )
+}
+
 /** Para probar sin cargar nada a mano: un ejemplo completo (películas inventadas, 4 carteles y una semana de funciones) y volver a vaciar. */
 function ExampleTools() {
   const movies = useCine((s) => s.movies)
@@ -185,7 +254,9 @@ function ShowsAdmin() {
         ))}
       </div>
       {!chains.find((c) => c.id === chain)?.enabled && <p className="rounded-xl bg-amber/20 p-2 text-xs">Esta cadena está oculta: sus funciones no se ven en el cine.</p>}
-      {movies.length === 0 ? (
+      {chains.find((c) => c.id === chain)?.mode === 'auto' ? (
+        <p className="rounded-2xl bg-sand p-3 text-sm text-ink-soft">{info.name} está en «Automático»: sus funciones se leen de su sitio. Cámbiala a «Manual» (arriba, en Cadenas) para cargarlas aquí.</p>
+      ) : movies.length === 0 ? (
         <p className="rounded-2xl bg-sand p-3 text-sm text-ink-soft">Primero agrega películas al catálogo (arriba).</p>
       ) : (
         <div className="space-y-3">
@@ -260,17 +331,22 @@ export function CineAdmin() {
           <Switch on={lobbyOn} label="Habilitar la entrada al cine" onChange={(v) => set({ lobbyOn: v })} />
         </div>
 
+        <AutoTools />
+
         <div className="space-y-2">
           <p className="text-sm font-bold">Cadenas</p>
           {chains.map((c) => {
             const meta = CHAINS.find((x) => x.id === c.id)!
             return (
-              <div key={c.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line px-3 py-2">
-                <span className="flex items-center gap-2 text-sm font-bold">
-                  <span className="size-3 rounded-full" style={{ background: meta.color }} /> {meta.name}
-                  <span className="text-xs font-normal text-ink-soft">{c.enabled ? 'visible' : 'oculta'}</span>
-                </span>
-                <Switch on={c.enabled} label={`Mostrar ${meta.name}`} onChange={(enabled) => set({ chains: chains.map((x) => (x.id === c.id ? { ...x, enabled } : x)) })} />
+              <div key={c.id} className="rounded-2xl border border-line px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-sm font-bold">
+                    <span className="size-3 rounded-full" style={{ background: meta.color }} /> {meta.name}
+                    <span className="text-xs font-normal text-ink-soft">{c.enabled ? 'visible' : 'oculta'}</span>
+                  </span>
+                  <Switch on={c.enabled} label={`Mostrar ${meta.name}`} onChange={(enabled) => set({ chains: chains.map((x) => (x.id === c.id ? { ...x, enabled } : x)) })} />
+                </div>
+                <ModeSwitch chain={c} onChange={(mode) => set({ chains: chains.map((x) => (x.id === c.id ? { ...x, mode } : x)) })} />
               </div>
             )
           })}

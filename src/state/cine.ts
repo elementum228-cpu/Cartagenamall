@@ -56,10 +56,14 @@ export interface CineShow {
   lang: ShowLang
 }
 
+/** Cómo se llena la programación de una cadena: a mano (Administración) o leída automáticamente de su sitio. */
+export type ChainMode = 'manual' | 'auto'
+
 export interface CineChain {
   id: ChainId
   /** Si se apaga, la cadena no aparece dentro del cine. */
   enabled: boolean
+  mode: ChainMode
 }
 
 export interface CineState {
@@ -84,7 +88,7 @@ export const MAX_PER_DAY = 8
 export const DAYS_AHEAD = 7
 
 const emptyPoster = (): CinePoster => ({ title: '', image: null })
-export const emptyChains = (): CineChain[] => CHAINS.map((c) => ({ id: c.id, enabled: true }))
+export const emptyChains = (): CineChain[] => CHAINS.map((c) => ({ id: c.id, enabled: true, mode: 'manual' as ChainMode }))
 export const emptyCine = (): CineState => ({
   enabled: true,
   boardOn: true,
@@ -228,8 +232,11 @@ export const cleanCine = (v: unknown, now = new Date()): CineState => {
   const rawPosters: unknown[] = Array.isArray(old.posters) && old.posters.some((p) => p && typeof p === 'object') ? old.posters : [old.screens?.[0] ?? old.screen, old.screens?.[1], old.screens?.[2], old.posters?.[0]]
   const poster = (p: unknown): CinePoster => (p && typeof p === 'object' ? { title: str((p as CinePoster).title, 60), image: img((p as CinePoster).image) } : { title: '', image: img(p) })
   const p = [0, 1, 2, 3].map((i) => poster(rawPosters[i])) as CineState['posters']
-  const rawChains = Array.isArray(o.chains) ? (o.chains as { id?: string; enabled?: boolean; movies?: unknown[] }[]) : []
-  const chains = CHAINS.map((c) => ({ id: c.id, enabled: rawChains.find((x) => x?.id === c.id)?.enabled !== false }))
+  const rawChains = Array.isArray(o.chains) ? (o.chains as { id?: string; enabled?: boolean; mode?: string; movies?: unknown[] }[]) : []
+  const chains = CHAINS.map((c) => {
+    const saved = rawChains.find((x) => x?.id === c.id)
+    return { id: c.id, enabled: saved?.enabled !== false, mode: (saved?.mode === 'auto' ? 'auto' : 'manual') as ChainMode }
+  })
   let movies: CineMovie[]
   let shows: CineShow[]
   if (Array.isArray(o.movies)) {

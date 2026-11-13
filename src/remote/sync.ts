@@ -15,6 +15,7 @@ import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useServicesFeature } from '../state/servicesFeature'
 import { cleanCine, useCine } from '../state/cine'
+import { cleanFeed, useCineFeed } from '../state/cineFeed'
 import { useStadiumEvent, useStadiumPhase, useStadiumSong } from '../state/stadium'
 import type { StadiumPhase } from '../config/stadium'
 import { useRemoteSold, useStadiumBoard, useStadiumConfig, useStadiumEvents, useStadiumMatch, useTickets } from '../state/stadiumEvents'
@@ -461,6 +462,30 @@ export async function loadFeatures() {
   })
 }
 
+/** Programación leída automáticamente de las cadenas de cine, en mall_settings «cine_feed» (la escribe la función `cine-sync`). */
+export async function loadCineFeed() {
+  if (!supabase) return
+  const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'cine_feed').maybeSingle()
+  if (error) return
+  useCineFeed.getState().set(cleanFeed((data as Doc<unknown> | null)?.doc))
+}
+
+/** Resultado de pedirle a la función `cine-sync` que lea las cadenas ahora (solo administradores). */
+export interface CineSyncReport {
+  ok: boolean
+  /** Por cadena: si se pudo leer, qué pasó y cuánto se leyó. */
+  chains: { id: string; ok: boolean; message: string; movies: number; shows: number }[]
+}
+
+/** Pide a la función `cine-sync` que lea la programación de las cadenas ahora y la deja guardada para todos. */
+export async function runCineSync(): Promise<CineSyncReport> {
+  if (!supabase) throw new Error('Sin conexión a la base de datos.')
+  const { data, error } = await supabase.functions.invoke('cine-sync', { body: {} })
+  if (error) throw new Error('No se pudo ejecutar cine-sync. ¿Está desplegada la función? (' + error.message + ')')
+  await loadCineFeed()
+  return data as CineSyncReport
+}
+
 /** Marcador en vivo del partido, en mall_settings «match». */
 export async function loadMatch() {
   if (!supabase) return
@@ -599,6 +624,7 @@ export function startRemoteSync() {
   void loadSeason()
   void loadHoy()
   void loadFeatures()
+  void loadCineFeed()
   void loadMatch()
   void loadShip()
   void loadStadium()
@@ -725,6 +751,7 @@ export function startRemoteSync() {
       void loadSeason()
       void loadHoy()
       void loadFeatures()
+      void loadCineFeed()
       void loadMatch()
       void loadShip()
     })

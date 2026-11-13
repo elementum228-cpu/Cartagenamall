@@ -30,3 +30,10 @@ Etapa 1 = exterior; etapa 2 = interior (pendiente); además debe poder reclamars
 - Zona de servicios: escalera que baja a la plaza, paso a la zona de comida, gente caminando hacia los locales de la terraza.
 - Calidad «baja» del 3D casi no reduce trabajo (≈1.430 llamadas vs 1.440 en alta).
 - Personas: las multitudes ya son instancias; quedan ~40 figuras sueltas (puerto, barcos, isla).
+
+## Cine: programación automática (función `cine-sync`)
+- Cada cadena (Cine Colombia, Royal Films, Procinal) tiene modo **Manual** (lo carga la administración) o **Automático** (se lee de su sitio, solo Cartagena). Por defecto, manual. Interruptor en Administración → Cine → Cadenas.
+- Lógica compartida (app y función): `supabase/functions/_shared/cine/` (tipos, normalización de títulos/horas/formatos, `mergeFeed` que une la misma película entre cadenas). En la app: `src/state/cineFeed.ts` (`effectiveCine` mezcla manual + automático; `useEffectiveCine`).
+- La función `supabase/functions/cine-sync/` lee cada cadena por separado y guarda en `mall_settings` «cine_feed». Si una cadena falla o devuelve cero funciones, conserva sus últimos datos buenos y lo avisa. **Los lectores por cadena van en `cine-sync/providers.ts` (hoy vacío: faltan, hay que escribirlos contra las respuestas reales de cada sitio).** Sin lector, la cadena sale como «lector aún no disponible» y sigue en manual.
+- Despliegue (una vez): `supabase functions deploy cine-sync` y `supabase secrets set CINE_SYNC_SECRET=<secreto largo>`. Para que se actualice sola, programar la llamada (pg_cron + pg_net o el programador de Supabase) cada ~30 min con el encabezado `x-cron-secret`. El botón «Sincronizar ahora» la llama con la sesión del administrador.
+- Los sitios son de terceros: leer con pocas consultas (`politeFetch`), respetar sus condiciones de uso y preferir una API oficial si la ofrecen.

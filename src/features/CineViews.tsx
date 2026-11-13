@@ -3,6 +3,7 @@ import { ArrowRight, ChevronDown, ChevronLeft, Clapperboard, Clock, Film, X } fr
 import { useEffect, useState, type CSSProperties } from 'react'
 import { CHAINS, dayLabel, isoDay, nextDays, showsOf, useCine, DAYS_AHEAD, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
+import { useEffectiveCine } from '../state/cineFeed'
 
 // Las dos interacciones del cine. «Cartelera»: al tocar los carteles del frente se abre una vista tipo sala (cortinas,
 // foco de luz) con los cuatro carteles. «Entrar al cine»: al tocar el edificio las puertas se abren y se ven las tres
@@ -387,6 +388,11 @@ function Detail({ movie, shows, chains, pick, onPick, onBack, now, days }: { mov
               <div key={chain.id} className="rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10">
                 <p className="flex items-center gap-2 text-[14px] font-extrabold">
                   <span className="size-2.5 rounded-full" style={{ background: info.color }} /> {info.name}
+                  {chain.mode === 'auto' && (
+                    <span className="ml-auto flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                      <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" /> En vivo
+                    </span>
+                  )}
                 </p>
                 {list.length ? (
                   <div className="mt-2.5 flex flex-wrap gap-2">
@@ -408,8 +414,7 @@ function Detail({ movie, shows, chains, pick, onPick, onBack, now, days }: { mov
 
 function Lobby() {
   const chains = useCine((s) => s.chains)
-  const movies = useCine((s) => s.movies)
-  const shows = useCine((s) => s.shows)
+  const { movies, shows } = useEffectiveCine()
   const [phase, setPhase] = useState<'closed' | 'open'>(reduceMotion() ? 'open' : 'closed')
   const [openId, setOpenId] = useState<string | null>(null)
   const [pick, setPick] = useState<Pick>('all')
