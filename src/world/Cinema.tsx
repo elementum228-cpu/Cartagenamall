@@ -109,35 +109,58 @@ function useMarquee() {
   }, [])
 }
 
-/** Isla: plataforma de piedra con talud, cordón, parapeto almenado y garitas. */
+/** Alturas de la muralla de la isla sobre la plataforma: norte y oeste (al fondo) más altas; sur y este, más bajas para no tapar la plaza. */
+const WALL_TALL = 1.9
+const WALL_LOW = 1.1
+const WALL_T = 0.8
+
+/** Tramo de muralla de la isla (paralelo a x o a z): cuerpo de piedra, cordón, parapeto exterior y almenas, como el castillo. */
+function WallRun({ axis, fixed, a, b, h, out, i }: { axis: 'x' | 'z'; fixed: number; a: number; b: number; h: number; out: 1 | -1; i: number }) {
+  const len = b - a
+  const mid = (a + b) / 2
+  const n = Math.max(1, Math.floor(len / 1.6))
+  const stone = mat(STONE[i % STONE.length])
+  const at = (along: number, across: number, y: number): [number, number, number] => (axis === 'x' ? [along, y, fixed + across] : [fixed + across, y, along])
+  const size = (alongLen: number, acrossLen: number, y: number): [number, number, number] => (axis === 'x' ? [alongLen, y, acrossLen] : [acrossLen, y, alongLen])
+  const ox = out * (WALL_T / 2 - 0.25)
+  return (
+    <>
+      <mesh geometry={GEO.box} material={stone} position={at(mid, 0, DECK + (h - 0.3) / 2)} scale={size(len, WALL_T, h + 0.3)} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(CORDON)} position={at(mid, 0, DECK + h - 0.3)} scale={size(len, WALL_T + 0.16, 0.16)} />
+      <mesh geometry={GEO.box} material={mat(STONE[1])} position={at(mid, ox, DECK + h + 0.18)} scale={size(len, 0.5, 0.36)} castShadow />
+      {Array.from({ length: n }, (_, k) => (
+        <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={at(mid + (k - (n - 1) / 2) * 1.6, ox, DECK + h + 0.66)} scale={size(0.9, 0.5, 0.6)} castShadow />
+      ))}
+    </>
+  )
+}
+
+/** Isla: plataforma de piedra con talud, cordón y una muralla almenada con garitas en las esquinas (huecos: la escalera al sur y el acceso al puente al este). */
 function Island() {
   const w = HALF * 2
-  const merlon = (x: number, z: number, k: string) => <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[x, DECK + 0.75, z]} scale={[0.8, 0.5, 0.8]} castShadow />
-  const merlons = []
-  for (let i = 0; i <= 15; i++) {
-    const t = -HALF + 0.9 + (i * (w - 1.8)) / 15
-    merlons.push(merlon(CX + t, CZ - HALF + 0.4, `n${i}`), merlon(CX - HALF + 0.4, CZ + t, `w${i}`))
-    if (i < 1 || i > 10) merlons.push(merlon(CX + t, CZ + HALF - 0.4, `s${i}`))
-    if (i < 9 || i > 12) merlons.push(merlon(CX + HALF - 0.4, CZ + t, `e${i}`))
-  }
+  const x0 = CX - HALF
+  const x1 = CX + HALF
+  const z0 = CZ - HALF
+  const z1 = CZ + HALF
+  const gapS = [STAIR.x - 2.6, STAIR.x + 2.6]
+  const gapE = [-60.7, -56.3]
   return (
     <>
       <mesh geometry={GEO.box} material={mat(STONE_DARK)} position={[CX, -0.6, CZ]} scale={[w + 1.2, 1.6, w + 1.2]} />
       <mesh geometry={GEO.box} material={mat(STONE[0])} position={[CX, (DECK - 0.4) / 2, CZ]} scale={[w, DECK + 0.4, w]} castShadow receiveShadow />
       <mesh geometry={GEO.box} material={mat(CORDON)} position={[CX, DECK - 0.35, CZ]} scale={[w + 0.2, 0.18, w + 0.2]} />
       <mesh geometry={GEO.box} material={mat('#efd9b4')} position={[CX, DECK + 0.02, CZ]} scale={[w - 1.4, 0.06, w - 1.4]} receiveShadow />
-      {/* parapeto */}
-      {(
-        [
-          [CX, CZ - HALF + 0.4, w, 0.8],
-          [CX - HALF + 0.4, CZ, 0.8, w],
-        ] as [number, number, number, number][]
-      ).map(([x, z, sx, sz], i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(STONE[1])} position={[x, DECK + 0.25, z]} scale={[sx, 0.5, sz]} castShadow />
-      ))}
-      {merlons}
-      <Garita x={CX - HALF + 0.3} z={CZ - HALF + 0.3} y={DECK + 0.5} />
-      <Garita x={CX - HALF + 0.3} z={CZ + HALF - 0.3} y={DECK + 0.5} />
+      {/* muralla: norte y oeste altos; sur y este bajos, con sus huecos */}
+      <WallRun axis="x" fixed={z0 + 0.4} a={x0} b={x1} h={WALL_TALL} out={-1} i={0} />
+      <WallRun axis="z" fixed={x0 + 0.4} a={z0} b={z1} h={WALL_TALL} out={-1} i={1} />
+      <WallRun axis="x" fixed={z1 - 0.4} a={x0} b={gapS[0]} h={WALL_LOW} out={1} i={2} />
+      <WallRun axis="x" fixed={z1 - 0.4} a={gapS[1]} b={x1} h={WALL_LOW} out={1} i={0} />
+      <WallRun axis="z" fixed={x1 - 0.4} a={z0} b={gapE[0]} h={WALL_LOW} out={1} i={1} />
+      <WallRun axis="z" fixed={x1 - 0.4} a={gapE[1]} b={z1} h={WALL_LOW} out={1} i={2} />
+      <Garita x={x0 + 0.3} z={z0 + 0.3} y={DECK + WALL_TALL} />
+      <Garita x={x0 + 0.3} z={z1 - 0.3} y={DECK + WALL_LOW + 0.1} />
+      <Garita x={x1 - 0.3} z={z0 + 0.3} y={DECK + WALL_TALL} />
+      <Garita x={x1 - 0.3} z={z1 - 0.3} y={DECK + WALL_LOW + 0.1} />
       {/* plazoleta: círculos de piedra frente a la entrada */}
       <mesh geometry={GEO.cylinder} material={mat('#dcbf8f')} position={[BX, DECK + 0.07, -60.5]} scale={[10, 0.04, 10]} receiveShadow />
       <mesh geometry={GEO.cylinder} material={mat('#f1dcb6')} position={[BX, DECK + 0.1, -60.5]} scale={[7.4, 0.04, 7.4]} />
@@ -333,7 +356,8 @@ function Causeway({ x0, x1, z }: { x0: number; x1: number; z: number }) {
   const mid = (x0 + x1) / 2
   const bw = 3
   const top = 0.3
-  const baluster = Math.round(len / 1.2)
+  const wallH = 1.25
+  const merlons = Math.max(2, Math.floor(len / 1.6))
   const lamps = [x0 + 0.6, mid, x1 - 0.6]
   return (
     <>
@@ -343,14 +367,16 @@ function Causeway({ x0, x1, z }: { x0: number; x1: number; z: number }) {
       <mesh geometry={GEO.box} material={glowMat('#ffcf8a', 1.4, { dayGlow: 0 })} position={[mid, top + 0.035, z]} scale={[len - 0.6, 0.01, 0.12]} />
       {[-1, 1].map((sd) => (
         <group key={sd}>
-          <mesh geometry={GEO.box} material={mat(CORDON)} position={[mid, top + 0.72, z + sd * (bw / 2 - 0.12)]} scale={[len, 0.1, 0.2]} />
-          {Array.from({ length: baluster + 1 }, (_, k) => (
-            <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[x0 + (k * len) / baluster, top + 0.45, z + sd * (bw / 2 - 0.12)]} scale={[0.16, 0.55, 0.16]} />
+          {/* muro del puente: cuerpo de piedra, cordón, parapeto y almenas, como la muralla del castillo */}
+          <mesh geometry={GEO.box} material={mat(STONE[1])} position={[mid, top + wallH / 2, z + sd * (bw / 2 - 0.2)]} scale={[len, wallH, 0.4]} castShadow receiveShadow />
+          <mesh geometry={GEO.box} material={mat(CORDON)} position={[mid, top + wallH - 0.1, z + sd * (bw / 2 - 0.2)]} scale={[len, 0.14, 0.56]} />
+          {Array.from({ length: merlons }, (_, k) => (
+            <mesh key={k} geometry={GEO.box} material={mat(STONE[2])} position={[x0 + 0.5 + k * ((len - 1) / Math.max(1, merlons - 1)), top + wallH + 0.28, z + sd * (bw / 2 - 0.2)]} scale={[0.8, 0.56, 0.4]} castShadow />
           ))}
           {lamps.map((lx) => (
-            <group key={lx} position={[lx, top, z + sd * (bw / 2 - 0.12)]}>
-              <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 1.1, 0]} scale={[0.09, 1.9, 0.09]} />
-              <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, 2.15, 0]} scale={0.34} />
+            <group key={lx} position={[lx, top, z + sd * (bw / 2 - 0.2)]}>
+              <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, wallH + 0.9, 0]} scale={[0.09, 1.8, 0.09]} />
+              <mesh geometry={GEO.sphereSmooth} material={glowMat('#ffd58a', 2.6, { dayGlow: 0.5 })} position={[0, wallH + 1.9, 0]} scale={0.34} />
               <mesh geometry={GEO.plane} material={lightPoolMat('#ffcf8a', 0.8)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, -sd * 0.9]} scale={[3, 3, 1]} />
             </group>
           ))}
@@ -470,7 +496,7 @@ export function Cinema() {
   const boardLabel = useMemo(() => getGlassPill('Cartelera', { dot: '#ffb454', sub: 'Toca para ver', dark: night }), [night])
   return (
     <group position={[DX, 0, 0]}>
-      <Batch version="cine-8">
+      <Batch version="cine-9">
         <Island />
         <Building />
         <Cartelera />
