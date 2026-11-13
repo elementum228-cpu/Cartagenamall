@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { mergeFeed } from '../../supabase/functions/_shared/cine/merge'
 import { normalizeTitle } from '../../supabase/functions/_shared/cine/normalize'
 import { CHAIN_IDS, type FeedChainDoc, type FeedDoc, type ProviderMovie, type ProviderShow } from '../../supabase/functions/_shared/cine/types'
-import { useCine, type CineState, type CineChain, type CineMovie, type CineShow, type ChainId } from './cine'
+import { isoDay, useCine, type CineState, type CineChain, type CineMovie, type CineShow, type ChainId } from './cine'
 import { exampleCine } from './cineExample'
 
 /**
@@ -67,7 +67,7 @@ export function effectiveCine(cine: { chains: CineChain[]; movies: CineMovie[]; 
       const i = movies.findIndex((x) => x.id === own.id)
       movies[i] = { ...own, image: own.image || m.image, genre: own.genre || m.genre, minutes: own.minutes ?? m.minutes, rating: own.rating || m.rating, synopsis: own.synopsis || m.synopsis }
     } else {
-      movies.push({ id: m.id, title: m.title, image: m.image, genre: m.genre, minutes: m.minutes, rating: m.rating, synopsis: m.synopsis, links: {}, soon: false, isNew: false })
+      movies.push({ id: m.id, title: m.title, image: m.image, genre: m.genre, minutes: m.minutes, rating: m.rating, synopsis: m.synopsis, links: {}, release: '', soon: false, isNew: false })
     }
   }
   const liveShows: CineShow[] = merged.shows.map((s) => {
@@ -78,17 +78,19 @@ export function effectiveCine(cine: { chains: CineChain[]; movies: CineMovie[]; 
 }
 
 /**
- * Reparte las películas entre «Cartelera» y «Pronto». Una película está en cartelera salvo que se marque «Próximamente»: no
+ * Reparte las películas entre «Cartelera» y «Pronto». Una película está en cartelera salvo que se marque «Próximamente» o su
+ * fecha de estreno sea futura (el día del estreno pasa sola a cartelera): no
  * hace falta cargar horarios (el botón lleva al sitio oficial). Con una cadena elegida, se muestran las que tienen funciones
  * o enlace en esa cadena y las que no se sabe en cuál están (sin funciones ni enlaces). Estrenos primero, luego por título.
  */
-export function partitionMovies(movies: CineMovie[], shows: CineShow[], visible: ChainId[], pick: ChainId | 'all'): { nowPlaying: CineMovie[]; soon: CineMovie[] } {
+export function partitionMovies(movies: CineMovie[], shows: CineShow[], visible: ChainId[], pick: ChainId | 'all', today = isoDay(new Date())): { nowPlaying: CineMovie[]; soon: CineMovie[] } {
+  const upcoming = (m: CineMovie) => m.soon || (m.release !== '' && m.release > today)
   const shown = pick === 'all' ? visible : visible.filter((c) => c === pick)
   const inChain = (m: CineMovie, ids: ChainId[]) => shows.some((s) => s.movieId === m.id && ids.includes(s.chain)) || ids.some((c) => !!m.links[c])
   const order = (a: CineMovie, b: CineMovie) => Number(b.isNew) - Number(a.isNew) || a.title.localeCompare(b.title)
   return {
-    nowPlaying: movies.filter((m) => !m.soon && (inChain(m, shown) || !inChain(m, visible))).sort(order),
-    soon: movies.filter((m) => m.soon).sort(order),
+    nowPlaying: movies.filter((m) => !upcoming(m) && (inChain(m, shown) || !inChain(m, visible))).sort(order),
+    soon: movies.filter(upcoming).sort((a, b) => (a.release || '9').localeCompare(b.release || '9') || order(a, b)),
   }
 }
 

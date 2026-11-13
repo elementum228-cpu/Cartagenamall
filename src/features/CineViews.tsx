@@ -195,6 +195,9 @@ function ShowChip({ show, color, past, next }: { show: CineShow; color: string; 
   )
 }
 
+/** «2026-11-19» → «19 nov». */
+const releaseText = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }).replace('.', '')
+
 /** «12+» → «Recomendada para mayores de 12 años». */
 function ageText(rating: string) {
   const n = parseInt(rating, 10)
@@ -332,7 +335,7 @@ function Home({ movies, shows, soon, pick, chains, demo, onPick, onOpen }: { mov
                     {tab === 'soon' && <span className="absolute right-2 bottom-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold">Pronto</span>}
                   </div>
                   <p className="mt-2 line-clamp-2 text-[14px] leading-tight font-extrabold">{m.title}</p>
-                  <p className="mt-0.5 text-[11px] text-white/55">{tab === 'now' ? (todayCount(m.id) ? `${todayCount(m.id)} funciones hoy` : 'Funciones próximos días') : [m.genre, m.rating].filter(Boolean).join(' · ')}</p>
+                  <p className="mt-0.5 text-[11px] text-white/55">{tab === 'now' ? (todayCount(m.id) ? `${todayCount(m.id)} funciones hoy` : [m.genre, m.rating].filter(Boolean).join(' · ')) : m.release ? `Estreno: ${releaseText(m.release)}` : [m.genre, m.rating].filter(Boolean).join(' · ')}</p>
                 </button>
               </li>
             ))}

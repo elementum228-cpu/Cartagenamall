@@ -56,6 +56,8 @@ export interface CineMovie {
   synopsis: string
   /** Enlace oficial de esta película en el sitio de cada cadena (opcional). Sin él, el botón lleva a la cartelera de la cadena en Cartagena. */
   links: Partial<Record<ChainId, string>>
+  /** Fecha de estreno («AAAA-MM-DD», o '' si no se sabe). Antes de esa fecha la película va a «Pronto» sola; el día del estreno pasa a «Cartelera». */
+  release: string
   /** Próximamente: aún no está en cartelera (va a la pestaña «Pronto»). Sin marcar, la película está en cartelera aunque no tenga horarios cargados. */
   soon: boolean
   /** Estreno: sale primero en el cine y lleva la etiqueta «Estreno». */
@@ -104,7 +106,7 @@ export interface CineState {
   demo: boolean
 }
 
-export const MAX_MOVIES = 20
+export const MAX_MOVIES = 60
 export const MAX_SHOWS = 600
 /** Funciones por película, cadena y día. */
 export const MAX_PER_DAY = 8
@@ -124,7 +126,7 @@ export const emptyCine = (): CineState => ({
   demo: true,
 })
 
-export const newMovie = (): CineMovie => ({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: '', image: null, genre: '', minutes: null, rating: '', synopsis: '', links: {}, soon: false, isNew: false })
+export const newMovie = (): CineMovie => ({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: '', image: null, genre: '', minutes: null, rating: '', synopsis: '', links: {}, release: '', soon: false, isNew: false })
 
 // ── días y horas ──────────────────────────────────────────────────────────────────────────────────
 
@@ -222,10 +224,10 @@ function cleanLinks(v: unknown): Partial<Record<ChainId, string>> {
   return out
 }
 
-const cleanMovie = (v: unknown, i: number): CineMovie => {
+export const cleanMovie = (v: unknown, i: number): CineMovie => {
   const o = (v ?? {}) as Partial<CineMovie>
   const minutes = typeof o.minutes === 'number' && Number.isFinite(o.minutes) && o.minutes > 0 ? Math.round(o.minutes) : null
-  return { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400), links: cleanLinks(o.links), soon: o.soon === true, isNew: o.isNew === true }
+  return { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400), links: cleanLinks(o.links), release: typeof o.release === 'string' && DAY_RE.test(o.release) ? o.release : '', soon: o.soon === true, isNew: o.isNew === true }
 }
 
 const cleanShow = (v: unknown): CineShow | null => {

@@ -1,10 +1,12 @@
-import { Clapperboard, Copy, ImagePlus, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
+import { Clapperboard, Copy, Download, ImagePlus, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { readImageFile } from '../lib/image'
 import { remoteEnabled } from '../remote/client'
 import { runCineSync } from '../remote/sync'
 import { uploadStadiumImage } from '../remote/photos'
 import { CHAINS, MAX_MOVIES, OFFICIAL_HOSTS, isOfficialLink, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
+import { CINE_COLOMBIA_SNAPSHOT, CINE_COLOMBIA_SNAPSHOT_DATE } from '../cinema/cineColombiaSnapshot'
+import { importMovies, parseMovieList } from '../state/cineImport'
 import { exampleCine } from '../state/cineExample'
 import { useCineFeed } from '../state/cineFeed'
 import { useUI } from '../state/ui'
@@ -115,6 +117,11 @@ function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange
           <LinkInput key={c.id} chain={c.id} name={c.name} value={movie.links[c.id] ?? ''} onChange={(v) => onChange({ ...movie, links: v ? { ...movie.links, [c.id]: v } : Object.fromEntries(Object.entries(movie.links).filter(([k]) => k !== c.id)) })} />
         ))}
       </div>
+      <label className="block text-xs font-bold">
+        Fecha de estreno (opcional)
+        <input type="date" className={`${input} mt-0.5 font-normal`} value={movie.release} onChange={(e) => onChange({ ...movie, release: e.target.value })} />
+        <span className="font-normal text-ink-soft">Antes de esa fecha la película va sola a «Pronto»; el día del estreno pasa a «Cartelera».</span>
+      </label>
       <label className="flex items-center gap-2 text-sm font-semibold">
         <input type="checkbox" checked={movie.soon} onChange={(e) => onChange({ ...movie, soon: e.target.checked })} /> Próximamente (aún no está en cartelera: va a «Pronto»)
       </label>
@@ -209,6 +216,52 @@ function AutoTools() {
         <RefreshCw className={`size-4 ${busy ? 'animate-spin' : ''}`} /> {busy ? 'Leyendo…' : 'Sincronizar ahora'}
       </button>
       {!remoteEnabled() && <p className="text-[11px] text-ink-soft">Necesita la base de datos conectada.</p>}
+    </div>
+  )
+}
+
+/** Carga rápida de películas: la cartelera de Cine Colombia de hoy, o una lista que se pega (JSON o líneas con «|»). */
+function ImportTools() {
+  const movies = useCine((s) => s.movies)
+  const set = useCine((s) => s.set)
+  const toast = useUI((s) => s.toast)
+  const [text, setText] = useState('')
+  const run = (items: Partial<CineMovie>[], errors: string[] = []) => {
+    const r = importMovies(movies, items)
+    set({ movies: r.movies })
+    const all = [...errors, ...r.errors]
+    toast(`${r.added} nuevas, ${r.updated} actualizadas${r.skipped ? `, ${r.skipped} omitidas` : ''}.${all.length ? ' ' + all[0] : ''}`, r.added + r.updated > 0 && !all.length ? 'success' : 'error')
+    return r
+  }
+  return (
+    <div className="space-y-2 rounded-2xl bg-sand p-3">
+      <p className="flex items-center gap-2 text-sm font-bold">
+        <Download className="size-4" /> Cargar películas reales
+      </p>
+      <p className="text-xs text-ink-soft">
+        Con un toque se cargan las películas que Cine Colombia tiene hoy en cartelera y preventa en Cartagena ({CINE_COLOMBIA_SNAPSHOT.length}), con título, géneros, duración, clasificación, estreno, sinopsis y enlace oficial. Sin carteles: súbelos en cada película. Las que ya tengas se completan sin borrar lo que escribiste. Es una foto del {CINE_COLOMBIA_SNAPSHOT_DATE}.
+      </p>
+      <button type="button" className={btn.secondary} onClick={() => run(CINE_COLOMBIA_SNAPSHOT)}>
+        <Download className="size-4" /> Cargar cartelera de Cine Colombia
+      </button>
+      <details className="rounded-xl border border-line p-2">
+        <summary className="cursor-pointer text-xs font-bold">Pegar una lista de películas</summary>
+        <p className="mt-2 text-[11px] text-ink-soft">Una por línea: <code>Título | Género | Minutos | Clasificación | Estreno (sí/no) | Fecha AAAA-MM-DD | Enlace Cine Colombia | Enlace Royal Films | Enlace Procinal</code>. Solo el título es obligatorio. También acepta una lista JSON.</p>
+        <textarea className={`${input} mt-2 min-h-28 font-mono text-xs`} placeholder={'Avengers: Doomsday | Acción | 166 | 12+ | no | 2026-12-17'} value={text} onChange={(e) => setText(e.target.value)} />
+        <button
+          type="button"
+          className={`${btn.secondary} mt-2`}
+          disabled={!text.trim()}
+          onClick={() => {
+            const p = parseMovieList(text)
+            if (!p.items.length) return toast(p.errors[0] ?? 'No encontré películas en el texto.', 'error')
+            run(p.items, p.errors)
+            setText('')
+          }}
+        >
+          Importar
+        </button>
+      </details>
     </div>
   )
 }
@@ -394,6 +447,8 @@ export function CineAdmin() {
             )
           })}
         </div>
+
+        <ImportTools />
 
         <ExampleTools />
 
