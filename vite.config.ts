@@ -27,6 +27,26 @@ function noInstall(): Plugin {
   }
 }
 
+/**
+ * Precarga la tipografía principal (Manrope, latín) desde el index.html: el navegador empieza a bajarla junto con el CSS en vez de
+ * esperar a que el CSS se analice y el texto se pinte. Solo en el build (necesita el nombre con hash del archivo).
+ */
+function preloadMainFont(): Plugin {
+  return {
+    name: 'mallplay-preload-main-font',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const file = Object.keys(ctx.bundle ?? {}).find((f) => /manrope-latin-wght-normal-.*\.woff2$/.test(f))
+        if (!file) return html
+        const base = process.env.VITE_BASE ?? '/'
+        return html.replace('</head>', `    <link rel="preload" href="${base}${file}" as="font" type="font/woff2" crossorigin />\n  </head>`)
+      },
+    },
+  }
+}
+
 /** onnxruntime-web deja una copia del motor (15 MB) en assets/ que nunca se usa: el recorte de fotos lo carga de ort/. */
 function dropUnusedWasm(): Plugin {
   let outDir = ''
@@ -48,7 +68,7 @@ function dropUnusedWasm(): Plugin {
 // VITE_BASE permite publicar en una subcarpeta (p. ej. /cartagena-mall/). Por defecto, raíz.
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
-  plugins: [react(), tailwindcss(), dropUnusedWasm(), ...(process.env.VITE_DEMO === '1' ? [noInstall()] : [])],
+  plugins: [react(), tailwindcss(), preloadMainFont(), dropUnusedWasm(), ...(process.env.VITE_DEMO === '1' ? [noInstall()] : [])],
   // three + R3F viven en el chunk perezoso de WorldCanvas: Comprar y /admin no los esperan.
   build: {
     chunkSizeWarningLimit: 1100,
@@ -56,12 +76,16 @@ export default defineConfig({
       output: {
         // Las librerías cambian poco y la app cambia en cada publicación: en archivos aparte, quien ya visitó solo
         // descarga el código nuevo y reutiliza three, React y el resto desde su caché.
-        manualChunks(id: string) {
-          if (!id.includes('node_modules')) return undefined
-          if (/node_modules\/(three|@react-three|three-stdlib|meshline|camera-controls|maath|detect-gpu|troika)/.test(id)) return 'three'
-          if (/node_modules\/(react|react-dom|scheduler|zustand|motion|framer-motion|motion-dom|motion-utils)\//.test(id)) return 'vendor'
-          if (/node_modules\/(@supabase|supabase)/.test(id)) return 'supabase'
-          return undefined
+        //
+        // `vendor` (React y lo que usa TODA la app) debe poder cargarse sin `three`. Con `manualChunks`, este empaquetador
+        // (rolldown) dejaba react, scheduler y use-sync-external-store dentro de `three` y `vendor` terminaba importando los
+        // 905 KB de three en cada visita, incluso en 2D. Con grupos y prioridad explícita, el núcleo de React gana siempre.
+        codeSplitting: {
+          groups: [
+            { name: 'vendor', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store|motion|framer-motion|motion-dom|motion-utils)[\\/]/, priority: 30 },
+            { name: 'three', test: /node_modules[\\/](three|@react-three|three-stdlib|meshline|camera-controls|maath|detect-gpu|troika|its-fine|suspend-react|react-use-measure|react-reconciler|@babel[\\/]runtime)/, priority: 20 },
+            { name: 'supabase', test: /node_modules[\\/](@supabase|supabase)/, priority: 10 },
+          ],
         },
       },
     },

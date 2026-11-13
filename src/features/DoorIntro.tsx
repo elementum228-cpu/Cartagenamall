@@ -3,9 +3,10 @@ import { animate, motion, useMotionValue, useTransform, type MotionValue } from 
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { doorSoundOn, playCartagena, playKnockOnce, playOpen, setDoorSound, stopCartagena, unlockDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
+import { useEntry } from '../state/entry'
 import { useUI } from '../state/ui'
 import { useSeason } from '../state/season'
-import { startTour, tourDone } from './GuidedTour'
+import { startTour, tourDone } from './tourState'
 
 // Portón de bienvenida: antes de ver el mall aparece la puerta colonial de la fortaleza. Hay que
 // tocarla tres veces (cada toque suena, la puerta tiembla y se cuela más luz); al tercero las hojas
@@ -150,6 +151,11 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
+
+  // El resto de la app (p. ej. el aviso del periódico) espera a que la entrada termine.
+  useEffect(() => {
+    useEntry.getState().setDoorDone(phase === 'done')
+  }, [phase])
 
   if (phase === 'done') return null
   const opened = phase === 'open' || phase === 'through'

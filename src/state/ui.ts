@@ -1,3 +1,4 @@
+import { detectProfile } from '../lib/deviceProfile'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { FloorId, ZoneId } from '../domain/types'
@@ -197,6 +198,8 @@ export const useUI = create<UIState>()((set, get) => ({
 export type TimeMode = 'auto' | 'day' | 'dusk' | 'night'
 
 export type Quality = 'high' | 'medium' | 'low'
+/** Cómo se elige la calidad: automática (según el dispositivo y los FPS reales) o fija. */
+export type QualityMode = 'auto' | Quality
 
 interface PrefsState {
   timeMode: TimeMode
@@ -207,11 +210,17 @@ interface PrefsState {
   quality: Quality
   /** La persona eligió la calidad a mano: el ajuste automático ya no la cambia. */
   qualityLocked: boolean
+  /** «Auto» (por defecto) o el nivel fijo que eligió la persona. */
+  qualityMode: QualityMode
+  /** La persona pidió la vista 3D de forma explícita (en un dispositivo donde el arranque automático elige el plano 2D). */
+  prefer3D: boolean
+  setPrefer3D: (v: boolean) => void
   setForce2D: (v: boolean) => void
   setHintSeen: () => void
   /** Ajuste automático (rendimiento): no actúa si la persona eligió a mano. */
   stepDownQuality: () => void
-  chooseQuality: (q: Quality) => void
+  /** Fija un nivel, o vuelve a «auto» (recalcula el nivel según el dispositivo). */
+  chooseQuality: (q: QualityMode) => void
 }
 
 export const usePrefs = create<PrefsState>()(
@@ -221,21 +230,30 @@ export const usePrefs = create<PrefsState>()(
       setTimeMode: (timeMode) => set({ timeMode }),
       force2D: false,
       hintSeen: false,
-      quality: 'high',
+      // El primer nivel sale del dispositivo (ver lib/deviceProfile.ts); después, el monitor de FPS solo puede bajarlo.
+      quality: detectProfile().tier,
       qualityLocked: false,
+      qualityMode: 'auto',
+      prefer3D: false,
+      setPrefer3D: (prefer3D) => set({ prefer3D }),
       setForce2D: (force2D) => set({ force2D }),
       setHintSeen: () => set({ hintSeen: true }),
       stepDownQuality: () => set((s) => (s.qualityLocked ? s : { quality: s.quality === 'high' ? 'medium' : 'low' })),
-      chooseQuality: (quality) => set({ quality, qualityLocked: true }),
+      chooseQuality: (q) => set(q === 'auto' ? { qualityMode: 'auto', qualityLocked: false, quality: detectProfile().tier } : { qualityMode: q, quality: q, qualityLocked: true }),
     }),
     {
       name: 'cm:prefs:v1',
       storage: safeStorage,
-      version: 1,
-      // v0 guardaba `lowQuality: boolean`; se traduce a los tres niveles.
+      version: 2,
       migrate: (old, version) => {
-        const o = old as Partial<PrefsState> & { lowQuality?: boolean }
-        if (version < 1) return { ...o, quality: o.lowQuality ? 'low' : 'high' } as PrefsState
+        let o = old as Partial<PrefsState> & { lowQuality?: boolean }
+        // v0 guardaba `lowQuality: boolean`; se traduce a los tres niveles.
+        if (version < 1) o = { ...o, quality: o.lowQuality ? 'low' : 'high' }
+        // v2: modo «Auto». Quien eligió a mano conserva su nivel; el resto pasa a automático con el nivel de su dispositivo.
+        if (version < 2) {
+          const locked = o.qualityLocked === true
+          o = { ...o, qualityMode: locked ? (o.quality ?? 'high') : 'auto', quality: locked ? o.quality : detectProfile().tier, prefer3D: false }
+        }
         return o as PrefsState
       },
     },

@@ -11,6 +11,12 @@ const TEAL = '#0f9e94'
 const CORAL = '#e8613c'
 const MUSTARD = '#e2a72e'
 const DEEP = '#123a5e'
+// Tipografía del periódico: solo se descarga con él (latín; pesos 600, 800, 900 y cursiva 700).
+import '@fontsource/fraunces/latin-600.css'
+import '@fontsource/fraunces/latin-800.css'
+import '@fontsource/fraunces/latin-900.css'
+import '@fontsource/fraunces/latin-700-italic.css'
+
 const SERIF: CSSProperties = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" }
 const GRAIN =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .18  0 0 0 .09 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>\")"
@@ -637,29 +643,9 @@ function Notice() {
   )
 }
 
-/** Botón para abrir la edición desde el mapa. */
-export function HoyPill() {
-  const read = useHoy((s) => s.read)
-  return (
-    <button onClick={read} className="flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-bold shadow-sm" style={{ background: INK, color: '#fff' }} aria-label="Abrir MallPlay Hoy, el periódico del día">
-      <span className="grid size-5 place-items-center rounded-full" style={{ background: MUSTARD, color: INK }}>
-        <Newspaper className="size-3" strokeWidth={2.4} />
-      </span>
-      Hoy
-    </button>
-  )
-}
-
-/** Monta el aviso y el lector; el aviso llega solo una vez al día. */
+/** Monta el aviso y el lector (el aviso lo programa HoyScheduler, después de la puerta; llega una vez al día). */
 export function HoyHost() {
   const reader = useHoy((s) => s.reader)
-  useEffect(() => {
-    const q = new URLSearchParams(location.search).get('hoy')
-    if (q === 'leer') useHoy.setState({ reader: true })
-    const t = setTimeout(() => useHoy.getState().showNotice(), q === 'aviso' ? 800 : 4500)
-    if (q === 'aviso') try { localStorage.removeItem('cm:hoy-seen') } catch { /* nada */ }
-    return () => clearTimeout(t)
-  }, [])
   return (
     <>
       <Notice />

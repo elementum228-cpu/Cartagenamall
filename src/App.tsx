@@ -10,8 +10,7 @@ import {
   UserRound,
   Zap,
 } from "lucide-react";
-import { HoyHost } from "./hoy/Hoy";
-import { Suspense, useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import {
   BrowserRouter,
   Link,
@@ -24,55 +23,22 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { DoorIntro } from "./features/DoorIntro";
-import { GuidedTour } from "./features/GuidedTour";
+import { HoyScheduler } from "./hoy/HoyScheduler";
+import { useHoy } from "./hoy/store";
+import { useFlight } from "./airport/flight";
+import { useCineUi } from "./state/cineUi";
+import { lazyWhen, prefetchIdle } from "./ui/lazyWhen";
+import { RouteFallback } from "./ui/RouteFallback";
+import { useEntry } from "./state/entry";
+import { tourDone } from "./features/tourState";
 import { ExploreView } from "./features/ExploreView";
-import { ProductSheet } from "./features/ProductSheet";
-import { SecretPromoModal } from "./features/SecretPromoModal";
-import { SpaceSheet } from "./features/SpaceSheet";
-import { FootballCourtInfoPanel } from "./features/FootballCourtInfoPanel";
-import { KartTrackPanel } from "./features/KartTrackPanel";
-import { StadiumPanel } from "./stadium/StadiumPanel";
-import { StoreInterior } from "./immersive/StoreInterior";
 import { RouteGuard, lazyPage } from "./ui/RouteGuard";
-import { StoreSheet } from "./features/StoreSheet";
-import { HarborSheet } from "./features/HarborSheet";
-import { CineHost } from "./features/CineViews";
-import { ShowroomSheet } from "./features/ShowroomSheet";
 import { ShipLayer } from "./ship/ShipLayer";
-import { FlyInvite } from "./airport/FlyInvite";
-import { FlightLayer } from "./airport/FlightLayer";
 import { useAirportFeature } from "./state/airportFeature";
 
-/** Invitación y pantallas de vuelo: solo con el aeropuerto habilitado. */
-function AirportLayers() {
-  const on = useAirportFeature((s) => s.enabled);
-  if (!on) return null;
-  return (
-    <>
-      <FlyInvite />
-      <FlightLayer />
-    </>
-  );
-}
-import { CartPage } from "./pages/CartPage";
-import { CheckoutPage } from "./pages/CheckoutPage";
 import { FEATURES } from "./config/features";
-import { ComparePage } from "./pages/ComparePage";
-import { FavoritesPage } from "./pages/FavoritesPage";
-import { LoginPage } from "./pages/LoginPage";
-import { MyAccountPage } from "./pages/MyAccountPage";
 import { LocalLink } from "./pages/LocalLink";
-import {
-  AuthLoginPage,
-  ForgotPasswordPage,
-  RegisterPage,
-  ResetPasswordPage,
-} from "./pages/AuthPages";
-import { OffersPage } from "./pages/OffersPage";
-import { PassportPage } from "./pages/PassportPage";
 import { ClueModal, StampToast } from "./features/passport/PassportOverlays";
-import { OrderDetailPage, OrdersPage } from "./pages/OrdersPage";
-import { ShopPage } from "./pages/ShopPage";
 import { remoteEnabled } from "./remote/client";
 import { useProfile } from "./remote/profile";
 import { useCatalog } from "./state/catalog";
@@ -94,6 +60,56 @@ import { ApprovalWatcher } from "./notifications/ApprovalWatcher";
 const AdminRequestsPage = lazyPage(() => import("./pages/AdminRequestsPage"));
 const AdminPage = lazyPage(() => import("./admin/AdminPage"));
 const MerchantPage = lazyPage(() => import("./pages/MerchantPage"));
+
+// Páginas y paneles secundarios: cada uno se descarga solo cuando se necesita (y los más probables, en reposo después de entrar:
+// ver `prefetchIdle` más abajo). El primer pintado solo carga la entrada, el mapa y la barra.
+const named = <T extends ComponentType<any>>(load: () => Promise<Record<string, any>>, name: string) => {
+  const C = lazyPage(() => load().then((m) => ({ default: m[name] as T })));
+  return Object.assign(C, { preload: () => void load().catch(() => {}) });
+};
+const ShopPage = named(() => import("./pages/ShopPage"), "ShopPage");
+const CartPage = named(() => import("./pages/CartPage"), "CartPage");
+const CheckoutPage = named(() => import("./pages/CheckoutPage"), "CheckoutPage");
+const ComparePage = named(() => import("./pages/ComparePage"), "ComparePage");
+const FavoritesPage = named(() => import("./pages/FavoritesPage"), "FavoritesPage");
+const LoginPage = named(() => import("./pages/LoginPage"), "LoginPage");
+const MyAccountPage = named(() => import("./pages/MyAccountPage"), "MyAccountPage");
+const OffersPage = named(() => import("./pages/OffersPage"), "OffersPage");
+const PassportPage = named(() => import("./pages/PassportPage"), "PassportPage");
+const OrdersPage = named(() => import("./pages/OrdersPage"), "OrdersPage");
+const OrderDetailPage = named(() => import("./pages/OrdersPage"), "OrderDetailPage");
+const AuthLoginPage = named(() => import("./pages/AuthPages"), "AuthLoginPage");
+const RegisterPage = named(() => import("./pages/AuthPages"), "RegisterPage");
+const ForgotPasswordPage = named(() => import("./pages/AuthPages"), "ForgotPasswordPage");
+const ResetPasswordPage = named(() => import("./pages/AuthPages"), "ResetPasswordPage");
+
+const StoreSheet = lazyWhen(() => import("./features/StoreSheet").then((m) => ({ default: m.StoreSheet })), () => useUI((s) => s.openStoreId !== null || s.selectedSpaceId !== null));
+const SpaceSheet = lazyWhen(() => import("./features/SpaceSheet").then((m) => ({ default: m.SpaceSheet })), () => useUI((s) => s.selectedSpaceId !== null));
+const ProductSheet = lazyWhen(() => import("./features/ProductSheet").then((m) => ({ default: m.ProductSheet })), () => useUI((s) => s.productSheetId !== null));
+const SecretPromoModal = lazyWhen(() => import("./features/SecretPromoModal").then((m) => ({ default: m.SecretPromoModal })), () => useUI((s) => s.secretPromoId !== null));
+const FootballCourtInfoPanel = lazyWhen(() => import("./features/FootballCourtInfoPanel").then((m) => ({ default: m.FootballCourtInfoPanel })), () => useUI((s) => s.courtOpen));
+const KartTrackPanel = lazyWhen(() => import("./features/KartTrackPanel").then((m) => ({ default: m.KartTrackPanel })), () => useUI((s) => s.trackOpen));
+const StadiumPanel = lazyWhen(() => import("./stadium/StadiumPanel").then((m) => ({ default: m.StadiumPanel })), () => useUI((s) => s.stadiumOpen));
+const StoreInterior = lazyWhen(() => import("./immersive/StoreInterior").then((m) => ({ default: m.StoreInterior })), () => useUI((s) => s.interiorStoreId !== null));
+const HarborSheet = lazyWhen(() => import("./features/HarborSheet").then((m) => ({ default: m.HarborSheet })), () => useUI((s) => s.harbor !== null));
+const ShowroomSheet = lazyWhen(() => import("./features/ShowroomSheet").then((m) => ({ default: m.ShowroomSheet })), () => useUI((s) => s.showroom !== null));
+const CineHost = lazyWhen(() => import("./features/CineViews").then((m) => ({ default: m.CineHost })), () => useCineUi((s) => s.view !== null));
+const HoyHost = lazyWhen(() => import("./hoy/Hoy").then((m) => ({ default: m.HoyHost })), () => useHoy((s) => s.notice || s.reader));
+const GuidedTour = lazyWhen(() => import("./features/GuidedTour").then((m) => ({ default: m.GuidedTour })), () => useUI((s) => s.tourStep !== null));
+const FlyInvite = lazyWhen(() => import("./airport/FlyInvite").then((m) => ({ default: m.FlyInvite })), () => useUI((s) => s.airportOpen));
+const FlightLayer = lazyWhen(() => import("./airport/FlightLayer").then((m) => ({ default: m.FlightLayer })), () => useFlight((s) => s.step !== null || s.world !== "mall" || s.returnOpen));
+
+/** Invitación y pantallas de vuelo: solo con el aeropuerto habilitado (y su código, solo al usarlos). */
+function AirportLayers() {
+  const on = useAirportFeature((s) => s.enabled);
+  if (!on) return null;
+  return (
+    <>
+      <FlyInvite />
+      <FlightLayer />
+    </>
+  );
+}
 
 /**
  * VITE_ROUTER=memory: para entornos sin rutas reales (vista previa embebida). El panel se abre con
@@ -162,6 +178,23 @@ function Shell() {
   // El portón de bienvenida solo al abrir el mall en la portada (no en enlaces directos a otras páginas).
   const [startedAtHome] = useState(exploring);
 
+  // Cuando el portón termina (o si no hay), el navegador va trayendo en reposo lo que la persona probablemente abrirá: las
+  // fichas de tienda y los espacios, el periódico, el recorrido (solo la primera vez) y las páginas de compra.
+  const doorDone = useEntry((s) => s.doorDone);
+  useEffect(() => {
+    if (!doorDone) return;
+    return prefetchIdle([
+      StoreSheet.preload,
+      SpaceSheet.preload,
+      ...(tourDone() ? [] : [GuidedTour.preload]),
+      HoyHost.preload,
+      ShopPage.preload,
+      ProductSheet.preload,
+      OffersPage.preload,
+      CartPage.preload,
+    ]);
+  }, [doorDone]);
+
   // Al salir del mapa se cierra la selección de espacio (las fichas abiertas desde Comprar se mantienen).
   useEffect(() => {
     if (!exploring) {
@@ -202,6 +235,7 @@ function Shell() {
                 elementos «sticky» y quedaría un hueco) */}
             <div className="h-[var(--chrome-top)]" aria-hidden />
             <RouteGuard resetKey={location.pathname}>
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/local/:code" element={<LocalLink by="local" />} />
                 <Route
@@ -246,6 +280,7 @@ function Shell() {
                 />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </RouteGuard>
           </div>
         )}
@@ -271,6 +306,7 @@ function Shell() {
       <AirportLayers />
       <ProductSheet />
       <SecretPromoModal />
+      <HoyScheduler />
       <HoyHost />
       <Toasts />
       <GuidedTour />

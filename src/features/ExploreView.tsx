@@ -1,5 +1,5 @@
 import { openCourtOrClaim } from '../football/open'
-import { HoyPill } from '../hoy/Hoy'
+import { HoyPill } from '../hoy/HoyPill'
 import { storeCategoryName } from '../lib/storeCategories'
 import { EVENT_KINDS, PHASES, STADIUM, phaseInfo } from '../config/stadium'
 import { cameraState } from '../world/cameraState'
@@ -63,6 +63,7 @@ import { useSpacePrice } from '../state/spacePricing'
 import type { ZoneId } from '../domain/types'
 import { isPromotionLive } from '../lib/pricing'
 import { useNow } from '../lib/useNow'
+import { detectProfile } from '../lib/deviceProfile'
 import { hasWebGL } from '../lib/webgl'
 import { useIsNight } from '../lib/useIsNight'
 import { useIsDesktop } from '../lib/useMedia'
@@ -83,7 +84,7 @@ import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useServicesFeature } from '../state/servicesFeature'
 import { useFlight } from '../airport/flight'
 import { BOATS, BOAT_IDS } from '../tourism/config'
-import { startTour } from './GuidedTour'
+import { startTour } from './tourState'
 import { PinchHint } from './PinchHint'
 import { InstallButton } from '../pwa/InstallApp'
 
@@ -94,8 +95,13 @@ const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
 /** Modo Explorar: mundo 3D (o plano 2D) con controles superpuestos. Se mantiene montado. */
 export function ExploreView({ active }: { active: boolean }) {
   const force2D = usePrefs((s) => s.force2D)
+  const prefer3D = usePrefs((s) => s.prefer3D)
   const webgl = useMemo(hasWebGL, [])
-  const use3D = webgl && !force2D
+  const profile = useMemo(detectProfile, [])
+  // Arranque automático: en dispositivos básicos (poca memoria, ahorro de datos, red lenta, sin WebGL) se abre el plano 2D, que
+  // tiene todo lo mismo; la persona pasa a la vista 3D cuando quiera con «Vista 3D».
+  const autoPlano = webgl && !force2D && !prefer3D && !profile.start3D
+  const use3D = webgl && !force2D && (profile.start3D || prefer3D)
   const selectedSpaceId = useUI((s) => s.selectedSpaceId)
   const peek = useUI((s) => s.peek)
   const harborOpen = useUI((s) => s.harbor !== null || s.showroom !== null || s.shipOpen)
@@ -140,7 +146,7 @@ export function ExploreView({ active }: { active: boolean }) {
           <WorldCanvas active={active && !readingHoy} night={night} fallback={<Map2D reason="Tu dispositivo no pudo cargar el 3D. Mostramos el plano 2D." />} />
         </Suspense>
       ) : (
-        <Map2D reason={!webgl ? 'Tu navegador no soporta 3D (WebGL). Mostramos el plano 2D con las mismas tiendas.' : undefined} />
+        <Map2D reason={!webgl ? 'Tu navegador no soporta 3D (WebGL). Mostramos el plano 2D con las mismas tiendas.' : autoPlano ? 'Abrimos el plano 2D para que MallPlay vaya fluido en tu dispositivo. Tiene las mismas tiendas; puedes pasar a Vista 3D en Opciones.' : undefined} />
       )}
       {use3D && <div className="world-vignette pointer-events-none absolute inset-0" aria-hidden />}
       {active && <Hud use3D={use3D} webgl={webgl} dimmed={(!!selectedSpaceId && !peek) || harborOpen} />}
@@ -503,7 +509,8 @@ function PrimaryCta({ onClick, icon, label }: { onClick: () => void; icon: React
 }
 
 const QUALITY_LABEL = { high: 'alta', medium: 'media', low: 'baja' } as const
-const NEXT_QUALITY = { high: 'medium', medium: 'low', low: 'high' } as const
+/** Ciclo del botón de calidad: Auto → Alta → Media → Baja → Auto. */
+const NEXT_QUALITY_MODE = { auto: 'high', high: 'medium', medium: 'low', low: 'auto' } as const
 
 const TIME_LABEL = { auto: 'Hora real', day: 'Día', dusk: 'Atardecer', night: 'Noche' } as const
 const NEXT_MODE = { auto: 'day', day: 'dusk', dusk: 'night', night: 'auto' } as const
@@ -556,7 +563,9 @@ function ControlsLegend() {
 function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean; desktop: boolean }) {
   const setForce2D = usePrefs((s) => s.setForce2D)
   const quality = usePrefs((s) => s.quality)
+  const qualityMode = usePrefs((s) => s.qualityMode)
   const chooseQuality = usePrefs((s) => s.chooseQuality)
+  const setPrefer3D = usePrefs((s) => s.setPrefer3D)
   const [open, setOpen] = useState(false)
   // el cliente ve Plano 2D, día/noche/hora real, instalar, recorrido guiado y calidad; las herramientas de prueba y de guía son del administrador
   const canAdmin = useCanAdmin()
@@ -569,7 +578,12 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
         <button
           className={item}
           onClick={() => {
-            setForce2D(use3D)
+            // pasar a 3D lo pide la persona de forma explícita (aunque el arranque automático haya elegido el plano)
+            if (use3D) setForce2D(true)
+            else {
+              setForce2D(false)
+              setPrefer3D(true)
+            }
             setOpen(false)
           }}
           aria-label={use3D ? 'Cambiar a plano 2D' : 'Cambiar a vista 3D'}
@@ -579,16 +593,14 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
       )}
       {use3D && <TimeToggle />}
       <InstallButton className={item} onDone={() => setOpen(false)} />
-      {use3D && (
-        <button
-          className={`${item} ${quality !== 'high' ? '!bg-deep/85 !text-white' : ''}`}
-          onClick={() => chooseQuality(NEXT_QUALITY[quality])}
-          aria-label={`Calidad gráfica: ${QUALITY_LABEL[quality]}. Toca para cambiar`}
-          title="Alta: sombras y más personas en el mall. Media: sin sombras y menos personas. Baja: sin personas y menos decoración (las tiendas no cambian)."
-        >
-          <Layers className="size-4" /> Calidad {QUALITY_LABEL[quality]}
-        </button>
-      )}
+      <button
+        className={`${item} ${qualityMode !== 'auto' ? '!bg-deep/85 !text-white' : ''}`}
+        onClick={() => chooseQuality(NEXT_QUALITY_MODE[qualityMode])}
+        aria-label={`Calidad gráfica: ${qualityMode === 'auto' ? `automática, ahora ${QUALITY_LABEL[quality]}` : QUALITY_LABEL[qualityMode]}. Toca para cambiar`}
+        title="Auto: se ajusta a tu dispositivo y a la fluidez. Alta: sombras y más personas en el mall. Media: sin sombras y menos personas. Baja: sin personas, sin desenfoques y menos decoración (las tiendas no cambian)."
+      >
+        <Layers className="size-4" /> Calidad {qualityMode === 'auto' ? `auto (${QUALITY_LABEL[quality]})` : QUALITY_LABEL[qualityMode]}
+      </button>
       {use3D && (
         <button
           className={item}

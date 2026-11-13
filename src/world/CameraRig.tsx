@@ -13,7 +13,8 @@ import { AIRPORT_FOCUS } from '../airport/config'
 import { useFlight } from '../airport/flight'
 import { ISLAND, ISLAND_RUNWAY } from '../config/mall'
 import { SHOWROOMS } from '../district/showrooms'
-import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR, cameraState } from './cameraState'
+import { cameraState } from './cameraState'
+import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR } from './cameraIso'
 
 interface Goal {
   target: THREE.Vector3

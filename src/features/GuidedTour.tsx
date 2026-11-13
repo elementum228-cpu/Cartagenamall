@@ -13,6 +13,7 @@ import { ENT_COLOR } from '../entertainment/config'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { spacePrice, useSpacePricing } from '../state/spacePricing'
 import { useUI } from '../state/ui'
+import { markDone } from './tourState'
 
 // Recorrido guiado, al estilo de las historias: la primera vez que alguien entra (después del
 // portón) la cámara vuela por lo que tiene el mall — plaza, pasillos con sus tiendas, cancha, zona de
@@ -20,27 +21,9 @@ import { useUI } from '../state/ui'
 // para avanzar o volver. Termina en la vista «Fortaleza» con todo el mall. Se puede repetir desde
 // «Recorrido guiado» en las opciones del mapa.
 
-const DONE_KEY = 'cm:tour-done'
 const STEP_MS = 5200
 
-export function tourDone() {
-  try {
-    return localStorage.getItem(DONE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-function markDone() {
-  try {
-    localStorage.setItem(DONE_KEY, '1')
-  } catch {
-    /* sin almacenamiento: se ofrece de nuevo la próxima vez */
-  }
-}
-
-export function startTour() {
-  useUI.getState().setTourStep(0)
-}
+export { startTour, tourDone } from './tourState'
 
 interface Step {
   key: string
