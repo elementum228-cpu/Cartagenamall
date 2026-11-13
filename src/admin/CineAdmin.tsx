@@ -81,6 +81,10 @@ function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange
         <input className={input} placeholder="Minutos" inputMode="numeric" value={movie.minutes ?? ''} onChange={(e) => onChange({ ...movie, minutes: Number(e.target.value.replace(/\D/g, '')) || null })} />
         <input className={input} placeholder="Clasif. (12+)" maxLength={8} value={movie.rating} onChange={(e) => onChange({ ...movie, rating: e.target.value })} />
       </div>
+      <textarea className={`${input} min-h-20`} placeholder="Sinopsis (se ve en la pantalla de la película)" maxLength={400} value={movie.synopsis} onChange={(e) => onChange({ ...movie, synopsis: e.target.value })} />
+      <label className="flex items-center gap-2 text-sm font-semibold">
+        <input type="checkbox" checked={movie.isNew} onChange={(e) => onChange({ ...movie, isNew: e.target.checked })} /> Estreno (sale primero y lleva la etiqueta «Estreno»)
+      </label>
     </div>
   )
 }

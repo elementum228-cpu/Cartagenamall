@@ -14,6 +14,13 @@ describe('ejemplo del cine', () => {
     for (const d of days) expect(ex.shows.some((s) => s.day === d)).toBe(true)
   })
 
+  it('las películas traen cartel, sinopsis y algunas son estreno', () => {
+    expect(ex.movies.every((m) => m.image?.startsWith('data:image/svg+xml') && m.synopsis.length > 20)).toBe(true)
+    expect(ex.movies.some((m) => m.isNew)).toBe(true)
+    expect(ex.movies.some((m) => !m.isNew)).toBe(true)
+    expect(ex.posters.every((p, i) => p.image === ex.movies[i].image)).toBe(true)
+  })
+
   it('cada cadena tiene funciones cada día y varias películas comparten cadenas distintas', () => {
     for (const c of CHAINS) for (const d of days) expect(ex.shows.filter((s) => s.chain === c.id && s.day === d).length).toBeGreaterThan(3)
     const multi = ex.movies.filter((m) => CHAINS.filter((c) => showsOf(ex.shows, m.id, c.id, days[0]).length).length >= 2)

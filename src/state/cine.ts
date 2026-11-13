@@ -36,6 +36,8 @@ export interface CineMovie {
   /** Clasificación: «7+», «12+», «15+»… */
   rating: string
   synopsis: string
+  /** Estreno: sale primero en el cine y lleva la etiqueta «Estreno». */
+  isNew: boolean
 }
 
 export type ShowFormat = '' | '2D' | '3D' | 'VIP'
@@ -93,7 +95,7 @@ export const emptyCine = (): CineState => ({
   shows: [],
 })
 
-export const newMovie = (): CineMovie => ({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: '', image: null, genre: '', minutes: null, rating: '', synopsis: '' })
+export const newMovie = (): CineMovie => ({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: '', image: null, genre: '', minutes: null, rating: '', synopsis: '', isNew: false })
 
 // ── días y horas ──────────────────────────────────────────────────────────────────────────────────
 
@@ -183,7 +185,7 @@ const img = (x: unknown) => (typeof x === 'string' && x ? x : null)
 const cleanMovie = (v: unknown, i: number): CineMovie => {
   const o = (v ?? {}) as Partial<CineMovie>
   const minutes = typeof o.minutes === 'number' && Number.isFinite(o.minutes) && o.minutes > 0 ? Math.round(o.minutes) : null
-  return { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400) }
+  return { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400), isNew: o.isNew === true }
 }
 
 const cleanShow = (v: unknown): CineShow | null => {

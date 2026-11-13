@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { ChevronLeft, Clapperboard, Clock, Film, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronLeft, Clapperboard, Clock, Film, X } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { CHAINS, dayLabel, isoDay, nextDays, showsOf, useCine, DAYS_AHEAD, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
@@ -51,10 +51,10 @@ function Bulbs({ n = 14 }: { n?: number }) {
 }
 
 /** Escenario de sala: fondo oscuro, foco de luz y cortinas de terciopelo a los lados. */
-function Theatre({ children, onClose, label }: { children: React.ReactNode; onClose: () => void; label: string }) {
-  const stage: CSSProperties = {
-    background: 'radial-gradient(90% 55% at 50% 0%, rgba(255,214,150,0.32), transparent 62%), linear-gradient(180deg,#1b0f1d 0%,#0b0710 100%)',
-  }
+function Theatre({ children, onClose, label, bare = false }: { children: React.ReactNode; onClose: () => void; label: string; bare?: boolean }) {
+  const stage: CSSProperties = bare
+    ? { background: 'radial-gradient(120% 40% at 50% 100%, rgba(30,120,80,0.22), transparent 70%), #050507' }
+    : { background: 'radial-gradient(90% 55% at 50% 0%, rgba(255,214,150,0.32), transparent 62%), linear-gradient(180deg,#1b0f1d 0%,#0b0710 100%)' }
   return (
     <motion.div
       role="dialog"
@@ -67,13 +67,17 @@ function Theatre({ children, onClose, label }: { children: React.ReactNode; onCl
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
     >
+      {!bare && (
+        <>
       <div className="pointer-events-none absolute inset-y-0 left-0 w-[7%] min-w-[18px] md:w-[11%]" style={{ background: VELVET, boxShadow: '12px 0 28px rgba(0,0,0,.55)' }} aria-hidden />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-[7%] min-w-[18px] md:w-[11%]" style={{ background: VELVET, boxShadow: '-12px 0 28px rgba(0,0,0,.55)' }} aria-hidden />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-6" style={{ background: 'linear-gradient(#4a0a14,#7a1020)', boxShadow: '0 8px 20px rgba(0,0,0,.5)' }} aria-hidden />
+        </>
+      )}
       <button onClick={onClose} aria-label="Cerrar" className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-10 grid size-11 place-items-center rounded-full bg-black/55 text-white backdrop-blur transition active:scale-95">
         <X className="size-5" />
       </button>
-      <div className="relative mx-auto min-h-full w-full max-w-4xl px-[calc(9%+4px)] pt-[max(3.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] md:px-[14%]">{children}</div>
+      <div className={bare ? 'relative mx-auto min-h-full w-full max-w-md' : 'relative mx-auto min-h-full w-full max-w-4xl px-[calc(9%+4px)] pt-[max(3.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] md:px-[14%]'}>{children}</div>
     </motion.div>
   )
 }
@@ -153,7 +157,7 @@ function Doors({ open }: { open: boolean }) {
     borderLeft: side === 'r' ? '3px solid #2a0508' : undefined,
   })
   return (
-    <motion.div className="pointer-events-none absolute inset-0 z-20" style={{ perspective: 1500 }} initial={false} animate={{ opacity: open ? 0 : 1 }} transition={{ duration: 0.5, delay: open ? dur * 0.85 : 0 }} aria-hidden>
+    <motion.div className="pointer-events-none fixed inset-0 z-20" style={{ perspective: 1500 }} initial={false} animate={{ opacity: open ? 0 : 1 }} transition={{ duration: 0.5, delay: open ? dur * 0.85 : 0 }} aria-hidden>
       {(['l', 'r'] as const).map((side) => (
         <motion.div key={side} style={leaf(side)} initial={false} animate={{ rotateY: open ? (side === 'l' ? -104 : 104) : 0 }} transition={{ duration: dur, ease: EASE }}>
           <span className="absolute top-1/2 h-24 w-2.5 -translate-y-1/2 rounded-full" style={{ [side === 'l' ? 'right' : 'left']: 14, background: `linear-gradient(90deg,#fbe39a,${GOLD},#b98a2c)`, boxShadow: '0 2px 6px rgba(0,0,0,.5)' }} />
@@ -177,7 +181,7 @@ const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.g
 function ShowChip({ show, color, past, next }: { show: CineShow; color: string; past: boolean; next: boolean }) {
   return (
     <span
-      className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold text-white ${past ? 'line-through opacity-40' : ''}`}
+      className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-bold text-white ${past ? 'line-through opacity-40' : ''}`}
       style={{ background: `color-mix(in srgb, ${color} 70%, #000)`, boxShadow: next ? `0 0 0 2px ${GOLD}` : undefined }}
       aria-label={`${show.time}${show.format ? `, ${show.format}` : ''}${show.lang === 'DOB' ? ', doblada' : show.lang === 'SUB' ? ', subtitulada' : ''}${past ? ', ya pasó' : next ? ', próxima función' : ''}`}
     >
@@ -187,60 +191,229 @@ function ShowChip({ show, color, past, next }: { show: CineShow; color: string; 
   )
 }
 
-const meta = (m: CineMovie) => [m.genre, m.minutes ? `${m.minutes} min` : '', m.rating].filter(Boolean).join(' · ')
+/** «12+» → «Recomendada para mayores de 12 años». */
+function ageText(rating: string) {
+  const n = parseInt(rating, 10)
+  return n > 0 ? `Recomendada para mayores de ${n} años` : rating ? `Clasificación: ${rating}` : ''
+}
 
-/** Película con sus horarios en cada cadena del día elegido (o solo en una cadena). */
-function FilmCard({ movie, chains, shows, day, now, onlyChain }: { movie: CineMovie; chains: CineChain[]; shows: CineShow[]; day: string; now: string; onlyChain?: ChainId }) {
-  const today = day === isoDay(new Date())
-  const rows = chains.filter((c) => !onlyChain || c.id === onlyChain).map((c) => ({ chain: c, list: showsOf(shows, movie.id, c.id, day) }))
-  // la próxima función de la película en el día (entre las cadenas que se ven)
-  const upcoming = today ? rows.flatMap((r) => r.list).filter((x) => x.time >= now).sort((x, y) => x.time.localeCompare(y.time))[0] : undefined
+type Pick = ChainId | 'all'
+
+/** Selector de cine (píldora con lista): cambia las cadenas cuyas funciones se ven. */
+function CinemaPicker({ value, chains, onChange }: { value: Pick; chains: CineChain[]; onChange: (v: Pick) => void }) {
+  const [open, setOpen] = useState(false)
+  const cur = CHAINS.find((c) => c.id === value)
+  const options: { id: Pick; name: string; color?: string }[] = [{ id: 'all', name: 'Todos los cines' }, ...chains.map((c) => ({ id: c.id as Pick, name: CHAINS.find((x) => x.id === c.id)!.name, color: CHAINS.find((x) => x.id === c.id)!.color }))]
   return (
-    <li className="flex gap-3 rounded-2xl bg-white/[0.06] p-3 ring-1 ring-white/10">
-      <div className="aspect-[2/3] w-20 shrink-0 self-start overflow-hidden rounded-md" style={{ boxShadow: `0 0 0 2px ${GOLD}` }}>
-        <Poster image={movie.image} title={movie.title} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-extrabold leading-tight">{movie.title || 'Sin título'}</p>
-        {meta(movie) && <p className="mt-1 text-xs text-white/65">{meta(movie)}</p>}
-        <div className="mt-2.5 space-y-2">
-          {rows.map(({ chain, list }) => {
-            const info = CHAINS.find((x) => x.id === chain.id)!
-            return (
-              <div key={chain.id}>
-                <p className="flex items-center gap-1.5 text-[11px] font-bold text-white/80">
-                  <span className="size-2 rounded-full" style={{ background: info.color }} /> {info.name}
+    <div className="relative">
+      <button onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open} className="flex items-center gap-2 rounded-full border border-white/25 bg-black/45 py-2 pr-3 pl-4 text-[14px] font-bold backdrop-blur transition active:scale-95">
+        {cur && <span className="size-2.5 rounded-full" style={{ background: cur.color }} />}
+        {cur?.name ?? 'Todos los cines'}
+        <ChevronDown className={`size-4 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <ul role="listbox" className="absolute left-1/2 z-30 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-white/15 bg-[#14141a]/95 p-1 shadow-2xl backdrop-blur">
+          {options.map((o) => (
+            <li key={o.id} role="option" aria-selected={o.id === value}>
+              <button
+                onClick={() => {
+                  onChange(o.id)
+                  setOpen(false)
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[14px] font-semibold ${o.id === value ? 'bg-white/12' : ''}`}
+              >
+                <span className="size-2.5 rounded-full" style={{ background: o.color ?? '#fff' }} /> {o.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** Fondo de cartel a todo el ancho que se funde a negro por abajo. */
+function Hero({ movie, className = '' }: { movie: CineMovie; className?: string }) {
+  return (
+    <div className={`absolute inset-0 ${className}`} aria-hidden>
+      {movie.image ? <img src={movie.image} alt="" className="size-full object-cover" draggable={false} /> : <PosterArt title={movie.title} hue={movie.title.length} />}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #050507 2%, rgba(5,5,7,.55) 38%, rgba(5,5,7,0) 62%), linear-gradient(to bottom, rgba(5,5,7,.55), rgba(5,5,7,0) 22%)' }} />
+    </div>
+  )
+}
+
+/** Inicio: película destacada a pantalla completa (se desliza), pestañas Cartelera / Pronto y la lista de carteles. */
+function Home({ movies, shows, soon, pick, chains, onPick, onOpen }: { movies: CineMovie[]; shows: CineShow[]; soon: CineMovie[]; pick: Pick; chains: CineChain[]; onPick: (v: Pick) => void; onOpen: (id: string) => void }) {
+  const [tab, setTab] = useState<'now' | 'soon'>('now')
+  const [slide, setSlide] = useState(0)
+  const today = isoDay(new Date())
+  const featured = movies.slice(0, 5)
+  const list = tab === 'now' ? movies : soon
+  const todayCount = (id: string) => shows.filter((x) => x.movieId === id && x.day === today).length
+  const tabBtn = (t: 'now' | 'soon', label: string) => (
+    <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t} className={`rounded-full px-4 py-2 text-[13px] font-bold transition ${tab === t ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}>
+      {label}
+    </button>
+  )
+  return (
+    <div>
+      {featured.length > 0 && (
+        <section className="relative h-[68dvh] min-h-[420px]" aria-label="Destacadas">
+          <div
+            className="flex h-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onScroll={(e) => setSlide(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+          >
+            {featured.map((m) => (
+              <article key={m.id} className="relative h-full min-w-full snap-center">
+                <Hero movie={m} />
+                <div className="absolute inset-x-0 bottom-0 px-5 pb-5">
+                  {m.isNew && <span className="rounded-md bg-white px-2.5 py-1 text-[12px] font-extrabold text-black">Estreno</span>}
+                  <h2 className="mt-2 text-[34px] leading-[1.02] font-black tracking-tight uppercase">{m.title}</h2>
+                  <p className="mt-2 line-clamp-3 text-[13px] leading-snug text-white/80">{m.synopsis || [m.genre, m.minutes ? `${m.minutes} min` : '', m.rating].filter(Boolean).join(' · ')}</p>
+                  <button onClick={() => onOpen(m.id)} className="mt-4 flex items-center gap-2 rounded-full px-5 py-3 text-[15px] font-extrabold text-[#2a1405] shadow-lg transition active:scale-95" style={{ background: `linear-gradient(180deg,#ffe19a,${GOLD})` }}>
+                    Ver horarios <ArrowRight className="size-4" />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="absolute inset-x-0 top-[max(0.9rem,env(safe-area-inset-top))] flex justify-center">
+            <CinemaPicker value={pick} chains={chains} onChange={onPick} />
+          </div>
+          {featured.length > 1 && (
+            <div className="pointer-events-none absolute inset-x-0 top-[calc(max(0.9rem,env(safe-area-inset-top))+3.4rem)] flex justify-center gap-1.5" aria-hidden>
+              {featured.map((m, i) => (
+                <span key={m.id} className={`h-1.5 rounded-full transition-all ${i === slide ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}`} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      {featured.length === 0 && (
+        <div className="px-5 pt-[max(4rem,env(safe-area-inset-top))]">
+          <div className="flex justify-center">
+            <CinemaPicker value={pick} chains={chains} onChange={onPick} />
+          </div>
+        </div>
+      )}
+      <section className="px-5 pt-4 pb-10">
+        <div className="flex gap-2" role="group" aria-label="Ver">
+          {tabBtn('now', 'Cartelera')}
+          {tabBtn('soon', 'Pronto')}
+        </div>
+        {list.length ? (
+          <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-5">
+            {list.map((m) => (
+              <li key={m.id}>
+                <button onClick={() => onOpen(m.id)} className="block w-full text-left transition active:scale-[0.97]" aria-label={`Ver ${m.title}`}>
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-2xl ring-1 ring-white/15">
+                    <Poster image={m.image} title={m.title} hue={m.title.length} />
+                    {m.isNew && <span className="absolute top-2 left-2 rounded-md bg-white px-2 py-0.5 text-[10px] font-extrabold text-black">Estreno</span>}
+                    {tab === 'soon' && <span className="absolute right-2 bottom-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold">Pronto</span>}
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-[14px] leading-tight font-extrabold">{m.title}</p>
+                  <p className="mt-0.5 text-[11px] text-white/55">{tab === 'now' ? (todayCount(m.id) ? `${todayCount(m.id)} funciones hoy` : 'Funciones próximos días') : [m.genre, m.rating].filter(Boolean).join(' · ')}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-6 rounded-2xl bg-white/[0.06] p-5 text-center text-sm text-white/70">{tab === 'now' ? 'Aún no hay funciones en este cine.' : 'No hay películas por estrenar por ahora.'}</p>
+        )}
+      </section>
+    </div>
+  )
+}
+
+/** Detalle: cartel grande, sinopsis, género y duración, fichas de fecha y las funciones de cada cine ese día. */
+function Detail({ movie, shows, chains, pick, onPick, onBack, now, days }: { movie: CineMovie; shows: CineShow[]; chains: CineChain[]; pick: Pick; onPick: (v: Pick) => void; onBack: () => void; now: string; days: string[] }) {
+  const [day, setDay] = useState(days[0])
+  const today = day === days[0]
+  const shown = chains.filter((c) => pick === 'all' || c.id === pick)
+  const rows = shown.map((c) => ({ chain: c, info: CHAINS.find((x) => x.id === c.id)!, list: showsOf(shows, movie.id, c.id, day) }))
+  const upcoming = today ? rows.flatMap((r) => r.list).filter((x) => x.time >= now).sort((x, y) => x.time.localeCompare(y.time))[0] : undefined
+  const hasShows = (d: string) => shown.some((c) => showsOf(shows, movie.id, c.id, d).length > 0)
+  const age = ageText(movie.rating)
+  const pills: { id: Pick; label: string; color?: string }[] = [{ id: 'all', label: 'Todos' }, ...chains.map((c) => ({ id: c.id as Pick, label: CHAINS.find((x) => x.id === c.id)!.name, color: CHAINS.find((x) => x.id === c.id)!.color }))]
+  return (
+    <div>
+      <section className="relative h-[52dvh] min-h-[340px]">
+        <Hero movie={movie} />
+        <button onClick={onBack} aria-label="Volver" className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 grid size-11 place-items-center rounded-full bg-black/55 backdrop-blur transition active:scale-95">
+          <ChevronLeft className="size-5" />
+        </button>
+      </section>
+      <section className="-mt-16 px-5 pb-12">
+        <div className="relative">
+          {movie.isNew && <span className="rounded-md bg-white px-2.5 py-1 text-[12px] font-extrabold text-black">Estreno</span>}
+          <h2 className="mt-2 text-[32px] leading-[1.02] font-black tracking-tight uppercase">{movie.title}</h2>
+          {movie.synopsis && <p className="mt-3 text-[13px] leading-relaxed text-white/75">{movie.synopsis}</p>}
+          <dl className="mt-4 grid grid-cols-2 gap-4 text-[15px]">
+            <div>
+              <dt className="text-[13px] text-white/50">Género</dt>
+              <dd className="font-semibold">{movie.genre || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] text-white/50">Duración</dt>
+              <dd className="font-semibold">{movie.minutes ? `${movie.minutes} min` : '—'}</dd>
+            </div>
+          </dl>
+          {age && <p className="mt-3 text-[13px] text-white/55">{age}</p>}
+
+          <div className="mt-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Día">
+            {days.map((d, i) => {
+              const [y, m, dd] = d.split('-').map(Number)
+              const wk = i === 0 ? 'Hoy' : new Date(y, m - 1, dd).toLocaleDateString('es-CO', { weekday: 'short' }).replace('.', '')
+              return (
+                <button key={d} onClick={() => setDay(d)} aria-pressed={day === d} aria-label={dayLabel(d, days[0])} className={`relative flex h-[76px] w-[62px] shrink-0 flex-col items-center justify-center rounded-2xl border text-center transition ${day === d ? 'border-white bg-white/10' : 'border-white/10 bg-white/[0.06]'} ${hasShows(d) ? '' : 'opacity-45'}`}>
+                  <span className="text-[13px] text-white/70 capitalize">{wk}</span>
+                  <span className="text-[24px] leading-none font-bold">{dd}</span>
+                  {hasShows(d) && <span className="absolute bottom-1.5 size-1 rounded-full" style={{ background: GOLD }} />}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Cine">
+            {pills.map((p) => (
+              <button key={p.id} onClick={() => onPick(p.id)} aria-pressed={pick === p.id} className={`flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-bold transition ${pick === p.id ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}>
+                {p.color && <span className="size-2 rounded-full" style={{ background: p.color }} />} {p.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {rows.map(({ chain, info, list }) => (
+              <div key={chain.id} className="rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10">
+                <p className="flex items-center gap-2 text-[14px] font-extrabold">
+                  <span className="size-2.5 rounded-full" style={{ background: info.color }} /> {info.name}
                 </p>
                 {list.length ? (
-                  <div className="mt-1 flex flex-wrap gap-1.5">
+                  <div className="mt-2.5 flex flex-wrap gap-2">
                     {list.map((x) => (
                       <ShowChip key={x.id} show={x} color={info.color} past={today && x.time < now} next={upcoming?.id === x.id} />
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-0.5 text-[11px] text-white/40">Sin funciones este día</p>
+                  <p className="mt-1.5 text-[12px] text-white/45">Sin funciones este día</p>
                 )}
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
-      </div>
-    </li>
+      </section>
+    </div>
   )
 }
-
-type Mode = 'film' | 'chain'
 
 function Lobby() {
   const chains = useCine((s) => s.chains)
   const movies = useCine((s) => s.movies)
   const shows = useCine((s) => s.shows)
   const [phase, setPhase] = useState<'closed' | 'open'>(reduceMotion() ? 'open' : 'closed')
-  const [mode, setMode] = useState<Mode>('film')
-  const [chainId, setChainId] = useState<ChainId | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [pick, setPick] = useState<Pick>('all')
   const [clock, setClock] = useState(() => new Date())
-  const days = nextDays(DAYS_AHEAD, clock)
-  const [day, setDay] = useState(days[0])
   const close = () => useCineUi.getState().close()
   useEscape(true, close)
   useEffect(() => {
@@ -253,104 +426,32 @@ function Lobby() {
     const t = window.setInterval(() => setClock(new Date()), 60_000)
     return () => clearInterval(t)
   }, [])
-  const now = hhmm(clock)
+  const days = nextDays(DAYS_AHEAD, clock)
   const visible = chains.filter((c) => c.enabled)
   const visibleIds = new Set(visible.map((c) => c.id))
-  /** Películas con al menos una función ese día en las cadenas que se ven (y en la elegida, si se mira un solo cine). */
-  const playing = (only?: ChainId) => movies.filter((m) => shows.some((x) => x.movieId === m.id && x.day === day && (only ? x.chain === only : visibleIds.has(x.chain))))
-  const info = CHAINS.find((c) => c.id === chainId)
-  const tab = (m: Mode, label: string) => (
-    <button
-      key={m}
-      onClick={() => {
-        setMode(m)
-        setChainId(null)
-      }}
-      aria-pressed={mode === m}
-      className={`flex-1 rounded-full py-2 text-[13px] font-extrabold transition ${mode === m ? 'text-[#2a1405]' : 'text-white/75'}`}
-      style={mode === m ? { background: `linear-gradient(180deg,#ffe19a,${GOLD})` } : undefined}
-    >
-      {label}
-    </button>
-  )
-  const empty = (text: string) => <p className="mt-6 rounded-2xl bg-white/[0.06] p-5 text-center text-sm text-white/70">{text}</p>
+  const shownIds = new Set(pick === 'all' ? visibleIds : [pick].filter((id) => visibleIds.has(id)))
+  // si se oculta la cadena elegida, se vuelve a «todos»
+  useEffect(() => {
+    if (pick !== 'all' && !visibleIds.has(pick)) setPick('all')
+  }, [pick, visibleIds])
+  const inShown = shows.filter((x) => shownIds.has(x.chain))
+  const playingIds = new Set(inShown.map((x) => x.movieId))
+  const anyIds = new Set(shows.filter((x) => visibleIds.has(x.chain)).map((x) => x.movieId))
+  // estrenos primero, luego por título
+  const order = (a: CineMovie, b: CineMovie) => Number(b.isNew) - Number(a.isNew) || a.title.localeCompare(b.title)
+  const nowPlaying = movies.filter((m) => playingIds.has(m.id)).sort(order)
+  const soon = movies.filter((m) => !anyIds.has(m.id)).sort(order)
+  const movie = movies.find((m) => m.id === openId)
   return (
-    <Theatre onClose={close} label="Dentro del cine">
+    <Theatre onClose={close} label="Dentro del cine" bare>
       <Doors open={phase === 'open'} />
       <motion.div initial={false} animate={{ opacity: phase === 'open' ? 1 : 0, y: phase === 'open' ? 0 : 14 }} transition={{ duration: 0.6, delay: phase === 'open' && !reduceMotion() ? 1.1 : 0 }}>
-        <Title sub="Horarios en todos los cines">CARTELERA</Title>
         {visible.length === 0 ? (
-          empty('El cine está cerrado por ahora.')
+          <p className="mx-5 mt-24 rounded-2xl bg-white/[0.06] p-5 text-center text-sm text-white/70">El cine está cerrado por ahora.</p>
+        ) : movie ? (
+          <Detail key={movie.id} movie={movie} shows={shows} chains={visible} pick={pick} onPick={setPick} onBack={() => setOpenId(null)} now={hhmm(clock)} days={days} />
         ) : (
-          <>
-            <div className="mt-5 flex gap-1 rounded-full bg-white/10 p-1" role="group" aria-label="Ver por">
-              {tab('film', 'Por película')}
-              {tab('chain', 'Por cine')}
-            </div>
-            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Día">
-              {days.map((d) => (
-                <button key={d} onClick={() => setDay(d)} aria-pressed={day === d} className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-bold capitalize transition ${day === d ? 'bg-white text-[#2a1405]' : 'bg-white/10 text-white/80'}`}>
-                  {dayLabel(d, days[0])}
-                </button>
-              ))}
-            </div>
-
-            {mode === 'film' ? (
-              playing().length ? (
-                <ul className="mt-4 space-y-3">
-                  {playing().map((m) => (
-                    <FilmCard key={m.id} movie={m} chains={visible} shows={shows} day={day} now={now} />
-                  ))}
-                </ul>
-              ) : (
-                empty('Aún no hay funciones para este día. Prueba con otro día.')
-              )
-            ) : chainId && info ? (
-              <>
-                <button onClick={() => setChainId(null)} className="mt-4 flex items-center gap-1 rounded-full bg-white/10 py-2 pr-4 pl-2 text-[13px] font-bold transition active:scale-95">
-                  <ChevronLeft className="size-4" /> Cines
-                </button>
-                <div className="mt-3 text-center">
-                  <h3 className="text-xl font-black" style={{ textShadow: `0 0 16px ${info.color}` }}>
-                    {info.name}
-                  </h3>
-                  <p className="text-[13px] text-white/65">{info.tagline}</p>
-                </div>
-                {playing(info.id).length ? (
-                  <ul className="mt-4 space-y-3">
-                    {playing(info.id).map((m) => (
-                      <FilmCard key={m.id} movie={m} chains={visible} shows={shows} day={day} now={now} onlyChain={info.id} />
-                    ))}
-                  </ul>
-                ) : (
-                  empty('Esta cadena no tiene funciones este día.')
-                )}
-              </>
-            ) : (
-              <ul className="mt-4 space-y-3.5">
-                {visible.map((c) => {
-                  const meta = CHAINS.find((x) => x.id === c.id)!
-                  const count = playing(c.id).length
-                  return (
-                    <li key={c.id}>
-                      <button onClick={() => setChainId(c.id)} className="flex w-full items-center gap-4 rounded-2xl bg-white/[0.07] p-4 text-left ring-1 ring-white/10 transition active:scale-[0.98]">
-                        <span className="grid size-14 shrink-0 place-items-center rounded-2xl text-white shadow-lg" style={{ background: `linear-gradient(145deg, ${meta.color}, color-mix(in srgb, ${meta.color} 55%, #000))` }}>
-                          <Clapperboard className="size-7" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[17px] font-extrabold">{meta.name}</span>
-                          <span className="block text-xs text-white/65">{meta.tagline}</span>
-                          <span className="mt-1 block text-xs font-bold" style={{ color: GOLD }}>
-                            {count ? `${count} ${count === 1 ? 'película' : 'películas'} este día` : 'Sin funciones este día'}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </>
+          <Home movies={nowPlaying} shows={inShown} soon={soon} pick={pick} chains={visible} onPick={setPick} onOpen={setOpenId} />
         )}
       </motion.div>
     </Theatre>

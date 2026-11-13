@@ -48,6 +48,12 @@ describe('estado del cine', () => {
     expect(c.shows.map((s) => s.time)).toEqual(['09:05'])
   })
 
+  it('conserva la marca de estreno y la sinopsis de cada película', () => {
+    const c = cleanCine({ movies: [{ id: 'a', title: 'A', isNew: true, synopsis: '  Hola  ' }, { id: 'b', title: 'B', isNew: 'sí' }] }, NOW)
+    expect(c.movies[0]).toMatchObject({ isNew: true, synopsis: 'Hola' })
+    expect(c.movies[1].isNew).toBe(false)
+  })
+
   it('respeta los interruptores apagados y limita el catálogo', () => {
     const many = Array.from({ length: MAX_MOVIES + 5 }, (_, i) => ({ id: `m${i}`, title: `P${i}` }))
     const c = cleanCine({ boardOn: false, lobbyOn: false, enabled: false, movies: many, chains: [{ id: 'procinal', enabled: false }] }, NOW)
