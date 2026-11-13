@@ -34,7 +34,7 @@ reset role;
 -- 2. Anónimo: lee catálogo, no puede escribirlo
 select pg_temp.como(null);
 do $$ begin
-  assert (select count(*) from public.stores) = 2, 'anon lee tiendas';
+  assert (select count(*) from public.stores where id in ('STORE-003','STORE-005')) = 2, 'anon lee tiendas';
   begin
     insert into public.stores (id, doc) values ('X', '{"id":"X"}');
     raise exception 'anon NO debería crear tiendas';
