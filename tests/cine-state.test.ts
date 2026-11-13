@@ -12,6 +12,9 @@ describe('estado del cine', () => {
     expect(c.movies).toEqual([])
     expect(c.shows).toEqual([])
     expect(c.boardOn && c.lobbyOn && c.enabled).toBe(true)
+    expect(c.demo).toBe(true)
+    expect(cleanCine({ demo: false }, NOW).demo).toBe(false)
+    expect(cleanCine({}, NOW).demo).toBe(true)
   })
 
   it('convierte lo guardado antes (tres pantallas + dos afiches) en cuatro carteles', () => {

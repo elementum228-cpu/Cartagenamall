@@ -289,6 +289,7 @@ export function CineAdmin() {
   const chains = useCine((s) => s.chains)
   const movies = useCine((s) => s.movies)
   const shows = useCine((s) => s.shows)
+  const demo = useCine((s) => s.demo)
   const set = useCine((s) => s.set)
   return (
     <div className="space-y-4">
@@ -329,6 +330,14 @@ export function CineAdmin() {
             <p className="text-xs text-ink-soft">Al tocar el cine se abren las puertas: el visitante elige el día y ve cada película con sus horarios en cada cadena (o entra por cine). Más adelante vendrán de una API en tiempo real; por ahora se cargan aquí.</p>
           </div>
           <Switch on={lobbyOn} label="Habilitar la entrada al cine" onChange={(v) => set({ lobbyOn: v })} />
+        </div>
+
+        <div className="flex items-start justify-between gap-3 rounded-2xl bg-sand p-3">
+          <div>
+            <p className="text-sm font-bold">Mostrar el ejemplo mientras no haya datos</p>
+            <p className="text-xs text-ink-soft">Si no cargas películas (ni hay lectura automática), el cine y la cartelera muestran la programación de ejemplo con un aviso. Se apaga solo cuando cargas datos reales; apágalo aquí para no mostrar nada.</p>
+          </div>
+          <Switch on={demo} label="Mostrar el ejemplo mientras no haya datos" onChange={(v) => set({ demo: v })} />
         </div>
 
         <AutoTools />

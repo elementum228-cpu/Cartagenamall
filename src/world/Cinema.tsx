@@ -14,6 +14,7 @@ import { glowMat, lightPoolMat } from './night'
 import { BUILD_H, BX, BZ, CART, CART_DX, CART_W, CX, CZ, DECK, DX, FZ, HALF, STAIR } from './cinemaLayout'
 import { cameraState } from './cameraState'
 import { useCineUi } from '../state/cineUi'
+import { useEffectivePosters } from '../state/cineFeed'
 
 // Cine: isla de piedra al norte del piso de comida, con el edificio (fachada art déco, marquesina y carteleras),
 // una plazoleta y un cine al aire libre con pantalla. Las imágenes de la pantalla y las carteleras las cambia la administración.
@@ -450,7 +451,7 @@ function useCartelSign() {
 
 /** Cartelera y afiches: imágenes que la administración cambia (fuera del Batch: se actualizan solas). */
 function Screens() {
-  const posters = useCine((s) => s.posters)
+  const posters = useEffectivePosters()
   const marquee = useMarquee()
   const sign = useCartelSign()
   const fallbacks = useMemo(() => posters.map((p, i) => paintPoster(POSTER_HUES[i], p.title)), [posters])

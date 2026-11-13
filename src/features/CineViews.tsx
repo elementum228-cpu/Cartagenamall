@@ -3,7 +3,7 @@ import { ArrowRight, ChevronDown, ChevronLeft, Clapperboard, Clock, Film, X } fr
 import { useEffect, useState, type CSSProperties } from 'react'
 import { CHAINS, dayLabel, isoDay, nextDays, showsOf, useCine, DAYS_AHEAD, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
-import { useEffectiveCine } from '../state/cineFeed'
+import { useEffectiveCine, useEffectivePosters } from '../state/cineFeed'
 
 // Las dos interacciones del cine. «Cartelera»: al tocar los carteles del frente se abre una vista tipo sala (cortinas,
 // foco de luz) con los cuatro carteles. «Entrar al cine»: al tocar el edificio las puertas se abren y se ven las tres
@@ -98,7 +98,7 @@ function Title({ children, sub }: { children: React.ReactNode; sub?: string }) {
 // ── Interacción 1: la cartelera ───────────────────────────────────────────────────────────────────
 
 function Board() {
-  const posters = useCine((s) => s.posters)
+  const posters = useEffectivePosters()
   const lobbyOn = useCine((s) => s.lobbyOn)
   const [zoom, setZoom] = useState<number | null>(null)
   const close = () => useCineUi.getState().close()
@@ -198,6 +198,15 @@ function ageText(rating: string) {
   return n > 0 ? `Recomendada para mayores de ${n} años` : rating ? `Clasificación: ${rating}` : ''
 }
 
+/** Aviso de que lo que se ve es de ejemplo (la programación real aún no está cargada). */
+function DemoNote() {
+  return (
+    <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-[12px] leading-snug text-amber-100">
+      <strong>Programación de ejemplo.</strong> Las películas y horarios son de muestra; la cartelera real llegará pronto.
+    </p>
+  )
+}
+
 type Pick = ChainId | 'all'
 
 /** Selector de cine (píldora con lista): cambia las cadenas cuyas funciones se ven. */
@@ -244,7 +253,7 @@ function Hero({ movie, className = '' }: { movie: CineMovie; className?: string 
 }
 
 /** Inicio: película destacada a pantalla completa (se desliza), pestañas Cartelera / Pronto y la lista de carteles. */
-function Home({ movies, shows, soon, pick, chains, onPick, onOpen }: { movies: CineMovie[]; shows: CineShow[]; soon: CineMovie[]; pick: Pick; chains: CineChain[]; onPick: (v: Pick) => void; onOpen: (id: string) => void }) {
+function Home({ movies, shows, soon, pick, chains, demo, onPick, onOpen }: { movies: CineMovie[]; shows: CineShow[]; soon: CineMovie[]; pick: Pick; chains: CineChain[]; demo: boolean; onPick: (v: Pick) => void; onOpen: (id: string) => void }) {
   const [tab, setTab] = useState<'now' | 'soon'>('now')
   const [slide, setSlide] = useState(0)
   const today = isoDay(new Date())
@@ -298,6 +307,7 @@ function Home({ movies, shows, soon, pick, chains, onPick, onOpen }: { movies: C
         </div>
       )}
       <section className="px-5 pt-4 pb-10">
+        {demo && <div className="mb-3"><DemoNote /></div>}
         <div className="flex gap-2" role="group" aria-label="Ver">
           {tabBtn('now', 'Cartelera')}
           {tabBtn('soon', 'Pronto')}
@@ -327,7 +337,7 @@ function Home({ movies, shows, soon, pick, chains, onPick, onOpen }: { movies: C
 }
 
 /** Detalle: cartel grande, sinopsis, género y duración, fichas de fecha y las funciones de cada cine ese día. */
-function Detail({ movie, shows, chains, pick, onPick, onBack, now, days }: { movie: CineMovie; shows: CineShow[]; chains: CineChain[]; pick: Pick; onPick: (v: Pick) => void; onBack: () => void; now: string; days: string[] }) {
+function Detail({ movie, shows, chains, pick, demo, onPick, onBack, now, days }: { movie: CineMovie; shows: CineShow[]; chains: CineChain[]; pick: Pick; demo: boolean; onPick: (v: Pick) => void; onBack: () => void; now: string; days: string[] }) {
   const [day, setDay] = useState(days[0])
   const today = day === days[0]
   const shown = chains.filter((c) => pick === 'all' || c.id === pick)
@@ -360,6 +370,7 @@ function Detail({ movie, shows, chains, pick, onPick, onBack, now, days }: { mov
             </div>
           </dl>
           {age && <p className="mt-3 text-[13px] text-white/55">{age}</p>}
+          {demo && <div className="mt-4"><DemoNote /></div>}
 
           <div className="mt-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Día">
             {days.map((d, i) => {
@@ -414,7 +425,7 @@ function Detail({ movie, shows, chains, pick, onPick, onBack, now, days }: { mov
 
 function Lobby() {
   const chains = useCine((s) => s.chains)
-  const { movies, shows } = useEffectiveCine()
+  const { movies, shows, demo } = useEffectiveCine()
   const [phase, setPhase] = useState<'closed' | 'open'>(reduceMotion() ? 'open' : 'closed')
   const [openId, setOpenId] = useState<string | null>(null)
   const [pick, setPick] = useState<Pick>('all')
@@ -454,9 +465,9 @@ function Lobby() {
         {visible.length === 0 ? (
           <p className="mx-5 mt-24 rounded-2xl bg-white/[0.06] p-5 text-center text-sm text-white/70">El cine está cerrado por ahora.</p>
         ) : movie ? (
-          <Detail key={movie.id} movie={movie} shows={shows} chains={visible} pick={pick} onPick={setPick} onBack={() => setOpenId(null)} now={hhmm(clock)} days={days} />
+          <Detail key={movie.id} movie={movie} shows={shows} chains={visible} pick={pick} demo={demo} onPick={setPick} onBack={() => setOpenId(null)} now={hhmm(clock)} days={days} />
         ) : (
-          <Home movies={nowPlaying} shows={inShown} soon={soon} pick={pick} chains={visible} onPick={setPick} onOpen={setOpenId} />
+          <Home movies={nowPlaying} shows={inShown} soon={soon} pick={pick} chains={visible} demo={demo} onPick={setPick} onOpen={setOpenId} />
         )}
       </motion.div>
     </Theatre>

@@ -78,6 +78,8 @@ export interface CineState {
   chains: CineChain[]
   movies: CineMovie[]
   shows: CineShow[]
+  /** Mientras no haya programación cargada (ni leída), se muestra el ejemplo, avisando que lo es. */
+  demo: boolean
 }
 
 export const MAX_MOVIES = 20
@@ -97,6 +99,7 @@ export const emptyCine = (): CineState => ({
   chains: emptyChains(),
   movies: [],
   shows: [],
+  demo: true,
 })
 
 export const newMovie = (): CineMovie => ({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: '', image: null, genre: '', minutes: null, rating: '', synopsis: '', isNew: false })
@@ -248,7 +251,7 @@ export const cleanCine = (v: unknown, now = new Date()): CineState => {
       .filter((s): s is CineShow => !!s && s.day >= today && ids.has(s.movieId) && !seen.has(s.id) && !!seen.add(s.id))
       .slice(0, MAX_SHOWS)
   } else ({ movies, shows } = fromLegacyChains(rawChains, today))
-  return { enabled: o.enabled !== false, boardOn: o.boardOn !== false, lobbyOn: o.lobbyOn !== false, posters: p, chains, movies, shows }
+  return { enabled: o.enabled !== false, boardOn: o.boardOn !== false, lobbyOn: o.lobbyOn !== false, posters: p, chains, movies, shows, demo: o.demo !== false }
 }
 
 export const useCine = create<CineState & { set: (patch: Partial<CineState>) => void }>()(

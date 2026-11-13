@@ -3,7 +3,8 @@ import { create } from 'zustand'
 import { mergeFeed } from '../../supabase/functions/_shared/cine/merge'
 import { normalizeTitle } from '../../supabase/functions/_shared/cine/normalize'
 import { CHAIN_IDS, type FeedChainDoc, type FeedDoc, type ProviderMovie, type ProviderShow } from '../../supabase/functions/_shared/cine/types'
-import { useCine, type CineChain, type CineMovie, type CineShow, type ChainId } from './cine'
+import { useCine, type CineState, type CineChain, type CineMovie, type CineShow, type ChainId } from './cine'
+import { exampleCine } from './cineExample'
 
 /**
  * Programación leída automáticamente de los sitios de las cadenas (la escribe la función `cine-sync` en mall_settings
@@ -76,11 +77,34 @@ export function effectiveCine(cine: { chains: CineChain[]; movies: CineMovie[]; 
   return { movies, shows: [...manualShows, ...liveShows] }
 }
 
-/** Catálogo y funciones tal como se ven en la app (manual + automático). */
+/**
+ * Si no hay nada que mostrar (ni catálogo manual ni lectura automática) y la administración dejó el ejemplo encendido, se
+ * muestra la programación de ejemplo (siempre de hoy en adelante). `demo` avisa a la interfaz para rotularlo.
+ */
+export function withDemo(demoOn: boolean, base: { movies: CineMovie[]; shows: CineShow[] }, now = new Date()): { movies: CineMovie[]; shows: CineShow[]; demo: boolean } {
+  if (!demoOn || base.movies.length > 0) return { ...base, demo: false }
+  const ex = exampleCine(now)
+  return { movies: ex.movies, shows: ex.shows, demo: true }
+}
+
+/** Carteles de la cartelera: si no se cargó ninguno y el ejemplo está encendido, los del ejemplo. */
+export function withDemoPosters(demoOn: boolean, posters: CineState['posters'], now = new Date()): CineState['posters'] {
+  return demoOn && posters.every((p) => !p.image && !p.title) ? exampleCine(now).posters : posters
+}
+
+/** Catálogo y funciones tal como se ven en la app (manual + automático, o el ejemplo si no hay nada). */
 export function useEffectiveCine() {
   const chains = useCine((s) => s.chains)
   const movies = useCine((s) => s.movies)
   const shows = useCine((s) => s.shows)
+  const demo = useCine((s) => s.demo)
   const feed = useCineFeed((s) => s.doc)
-  return useMemo(() => effectiveCine({ chains, movies, shows }, feed), [chains, movies, shows, feed])
+  return useMemo(() => withDemo(demo, effectiveCine({ chains, movies, shows }, feed)), [chains, movies, shows, feed, demo])
+}
+
+/** Los cuatro carteles que se ven (los cargados, o los del ejemplo). */
+export function useEffectivePosters(): CineState['posters'] {
+  const posters = useCine((s) => s.posters)
+  const demo = useCine((s) => s.demo)
+  return useMemo(() => withDemoPosters(demo, posters), [posters, demo])
 }

@@ -655,7 +655,7 @@ export function startRemoteSync() {
     pushFeatures()
   })
   useCine.subscribe((next, prev) => {
-    if (applying || !useSession.getState().isAdmin || (next.enabled === prev.enabled && next.boardOn === prev.boardOn && next.lobbyOn === prev.lobbyOn && next.posters === prev.posters && next.chains === prev.chains && next.movies === prev.movies && next.shows === prev.shows)) return
+    if (applying || !useSession.getState().isAdmin || (next.enabled === prev.enabled && next.boardOn === prev.boardOn && next.lobbyOn === prev.lobbyOn && next.posters === prev.posters && next.chains === prev.chains && next.movies === prev.movies && next.shows === prev.shows && next.demo === prev.demo)) return
     pushFeatures()
   })
   useServicesFeature.subscribe((next, prev) => {
