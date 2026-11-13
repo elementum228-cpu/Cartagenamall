@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { CHAINS, dayLabel, isoDay, nextDays, showsOf, useCine, DAYS_AHEAD, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
 import { useEffectiveCine, useEffectivePosters } from '../state/cineFeed'
+import { LiveShowtimes } from '../cinema/LiveShowtimes'
 
 // Las dos interacciones del cine. «Cartelera»: al tocar los carteles del frente se abre una vista tipo sala (cortinas,
 // foco de luz) con los cuatro carteles. «Entrar al cine»: al tocar el edificio las puertas se abren y se ven las tres
@@ -254,13 +255,13 @@ function Hero({ movie, className = '' }: { movie: CineMovie; className?: string 
 
 /** Inicio: película destacada a pantalla completa (se desliza), pestañas Cartelera / Pronto y la lista de carteles. */
 function Home({ movies, shows, soon, pick, chains, demo, onPick, onOpen }: { movies: CineMovie[]; shows: CineShow[]; soon: CineMovie[]; pick: Pick; chains: CineChain[]; demo: boolean; onPick: (v: Pick) => void; onOpen: (id: string) => void }) {
-  const [tab, setTab] = useState<'now' | 'soon'>('now')
+  const [tab, setTab] = useState<'now' | 'soon' | 'live'>('now')
   const [slide, setSlide] = useState(0)
   const today = isoDay(new Date())
   const featured = movies.slice(0, 5)
   const list = tab === 'now' ? movies : soon
   const todayCount = (id: string) => shows.filter((x) => x.movieId === id && x.day === today).length
-  const tabBtn = (t: 'now' | 'soon', label: string) => (
+  const tabBtn = (t: 'now' | 'soon' | 'live', label: string) => (
     <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t} className={`rounded-full px-4 py-2 text-[13px] font-bold transition ${tab === t ? 'bg-white text-black' : 'bg-white/10 text-white/80'}`}>
       {label}
     </button>
@@ -307,12 +308,17 @@ function Home({ movies, shows, soon, pick, chains, demo, onPick, onOpen }: { mov
         </div>
       )}
       <section className="px-5 pt-4 pb-10">
-        {demo && <div className="mb-3"><DemoNote /></div>}
+        {demo && tab !== 'live' && <div className="mb-3"><DemoNote /></div>}
         <div className="flex gap-2" role="group" aria-label="Ver">
           {tabBtn('now', 'Cartelera')}
           {tabBtn('soon', 'Pronto')}
+          {tabBtn('live', 'Salas en Cartagena')}
         </div>
-        {list.length ? (
+        {tab === 'live' ? (
+          <div className="mt-4">
+            <LiveShowtimes />
+          </div>
+        ) : list.length ? (
           <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-5">
             {list.map((m) => (
               <li key={m.id}>

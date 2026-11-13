@@ -89,7 +89,8 @@ export interface Provider {
   fetchShowtimes(ctx: ProviderContext): Promise<ProviderData>
 }
 
-export type ProviderErrorCode = 'timeout' | 'http_error' | 'network' | 'invalid_response' | 'not_configured'
+/** `blocked`: la página no deja leerla (robots.txt, verificación anti-bots, 403/429): no se insiste. */
+export type ProviderErrorCode = 'timeout' | 'http_error' | 'network' | 'invalid_response' | 'not_configured' | 'blocked'
 
 /** Error de una fuente. `detail` es para los registros del servidor y nunca se muestra al usuario. */
 export class ProviderError extends Error {

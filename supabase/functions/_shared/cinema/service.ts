@@ -6,6 +6,8 @@ export interface ServiceConfig {
   ttlMs: number
   /** Tras un fallo, cuánto se espera para reintentar (por defecto, 5 minutos): no se martilla una fuente caída. */
   errorBackoffMs: number
+  /** Si una página bloquea la lectura (robots.txt, verificación, 403/429): cuánto se espera antes de volver a mirar (por defecto, 60 minutos). */
+  blockedBackoffMs: number
   /** Tiempo máximo por cadena. */
   timeoutMs: number
 }
@@ -15,11 +17,12 @@ const num = (raw: string | undefined, def: number, min: number, max: number) => 
   return Number.isFinite(n) && n >= min && n <= max ? n : def
 }
 
-/** Lee la configuración de las variables CINEMA_CACHE_TTL_MINUTES, CINEMA_ERROR_BACKOFF_MINUTES y CINEMA_PROVIDER_TIMEOUT_SECONDS. */
+/** Lee la configuración de las variables CINEMA_CACHE_TTL_MINUTES, CINEMA_ERROR_BACKOFF_MINUTES, CINEMA_BLOCKED_BACKOFF_MINUTES y CINEMA_PROVIDER_TIMEOUT_SECONDS. */
 export function readConfig(env: (k: string) => string | undefined): ServiceConfig {
   return {
     ttlMs: num(env('CINEMA_CACHE_TTL_MINUTES'), 20, 1, 24 * 60) * 60_000,
     errorBackoffMs: num(env('CINEMA_ERROR_BACKOFF_MINUTES'), 5, 1, 24 * 60) * 60_000,
+    blockedBackoffMs: num(env('CINEMA_BLOCKED_BACKOFF_MINUTES'), 60, 5, 24 * 60) * 60_000,
     timeoutMs: num(env('CINEMA_PROVIDER_TIMEOUT_SECONDS'), 20, 3, 60) * 1000,
   }
 }
@@ -119,7 +122,7 @@ export function createShowtimesService(deps: ServiceDeps) {
     const stale = (): ProviderBlock => (entry?.fetchedAt ? fromEntry(entry, false) : unavailable())
 
     if (entry?.fetchedAt && ageMs(entry.fetchedAt) < cfg.ttlMs) return fromEntry(entry, true)
-    if (entry?.lastErrorCode && ageMs(entry.lastAttemptAt) < cfg.errorBackoffMs) return stale()
+    if (entry?.lastErrorCode && ageMs(entry.lastAttemptAt) < (entry.lastErrorCode === 'blocked' ? cfg.blockedBackoffMs : cfg.errorBackoffMs)) return stale()
 
     const started = deps.now().getTime()
     const nowIso = deps.now().toISOString()

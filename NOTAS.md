@@ -40,6 +40,7 @@ Etapa 1 = exterior; etapa 2 = interior (pendiente); además debe poder reclamars
 
 ## Horarios de cine por ciudad (API `cinema-showtimes`)
 - Endpoint = función de Supabase `supabase/functions/cinema-showtimes` (el sitio es estático, no hay `/api`): `GET ...?city=cartagena&date=AAAA-MM-DD`. Núcleo en `supabase/functions/_shared/cinema/` (tipos, normalizador, servicio con caché, proveedores). Cliente en `src/cinema/`. Guía completa (fuentes, variables, cómo añadir una cadena) en el README, sección «Horarios de cine».
-- **Sin feed autorizado una cadena sale «Horarios no disponibles temporalmente» con su enlace oficial**; no hay scraping ni datos de ejemplo en esta API. Falta conseguir los accesos autorizados de cada cadena (ver README).
-- Independiente del modo «Automático» (`cine-sync`) de arriba; queda como base para reemplazarlo. Aún no hay pantalla que consuma `src/cinema/api.ts`.
+- **Decisión del dueño: los horarios se toman de lo que cada cadena publica ese día en su página pública y se refrescan durante el día** (`providers/page.ts`: respeta robots.txt, espacia consultas, no insiste si bloquea). **Falta escribir el `parse` de cada cadena y no se ha podido: desde el entorno de desarrollo no se alcanzan sus páginas** (el permiso de red no se pudo pedir desde el celular; hay que hacerlo desde un computador o pegar el HTML de cada página). Mientras no haya lector, cada cadena sale «Horarios no disponibles temporalmente» con su enlace oficial; no hay datos de ejemplo en esta API.
+- Pantalla: pestaña «Salas en Cartagena» en el interior del cine (`src/cinema/LiveShowtimes.tsx`).
+- Independiente del modo «Automático» (`cine-sync`) de arriba; queda como base para reemplazarlo. 
 - Pruebas: `npx vitest run tests/cinema-*.test.ts` y `PGPASSWORD=postgres supabase/tests/cinema.sh` (reglas de acceso de la migración 0025). OJO: `supabase/tests/run.sh` falla desde antes en la migración 0020 (el stub no trae `storage.foldername`).
