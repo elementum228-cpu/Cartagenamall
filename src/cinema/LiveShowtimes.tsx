@@ -89,7 +89,7 @@ function ProviderNotice({ p, now }: { p: ProviderBlock; now: Date }) {
   )
 }
 
-export function LiveShowtimes() {
+export function LiveShowtimes({ hideWhenEmpty = false }: { hideWhenEmpty?: boolean } = {}) {
   const days = useMemo(() => cinemaDays(), [])
   const [day, setDay] = useState(days[0])
   const [state, setState] = useState<State>({ kind: 'loading' })
@@ -128,6 +128,9 @@ export function LiveShowtimes() {
   const noData = data?.providers.filter((p) => p.status === 'unavailable') ?? []
   const partial = data?.providers.filter((p) => p.status === 'partial') ?? []
   const lastUpdate = data ? data.providers.map((p) => p.lastUpdatedAt).filter((x): x is string => !!x).sort().pop() ?? null : null
+
+  // Modo «solo si hay datos»: mientras carga, si falla o si ninguna cadena tiene horarios, no se muestra nada (la guía de salas ya cubre ese caso).
+  if (hideWhenEmpty && (state.kind !== 'ok' || withData.length === 0)) return null
 
   return (
     <section aria-label="Horarios de las salas de cine de Cartagena" className="mt-1">

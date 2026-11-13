@@ -1,10 +1,12 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, ChevronDown, ChevronLeft, Clapperboard, Clock, Film, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronLeft, Clapperboard, Clock, ExternalLink, Film, X } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { CHAINS, dayLabel, isoDay, nextDays, showsOf, useCine, DAYS_AHEAD, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
-import { useEffectiveCine, useEffectivePosters } from '../state/cineFeed'
+import { partitionMovies, useEffectiveCine, useEffectivePosters } from '../state/cineFeed'
+import { Directory } from '../cinema/Directory'
 import { LiveShowtimes } from '../cinema/LiveShowtimes'
+import { movieLink } from '../cinema/venues'
 
 // Las dos interacciones del cine. «Cartelera»: al tocar los carteles del frente se abre una vista tipo sala (cortinas,
 // foco de luz) con los cuatro carteles. «Entrar al cine»: al tocar el edificio las puertas se abren y se ven las tres
@@ -315,8 +317,9 @@ function Home({ movies, shows, soon, pick, chains, demo, onPick, onOpen }: { mov
           {tabBtn('live', 'Salas en Cartagena')}
         </div>
         {tab === 'live' ? (
-          <div className="mt-4">
-            <LiveShowtimes />
+          <div className="mt-4 space-y-6">
+            <LiveShowtimes hideWhenEmpty />
+            <Directory chains={chains} />
           </div>
         ) : list.length ? (
           <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-5">
@@ -351,6 +354,8 @@ function Detail({ movie, shows, chains, pick, demo, onPick, onBack, now, days }:
   const upcoming = today ? rows.flatMap((r) => r.list).filter((x) => x.time >= now).sort((x, y) => x.time.localeCompare(y.time))[0] : undefined
   const hasShows = (d: string) => shown.some((c) => showsOf(shows, movie.id, c.id, d).length > 0)
   const age = ageText(movie.rating)
+  // sin funciones cargadas en toda la semana, las fechas no sirven: solo se ven los botones al sitio oficial
+  const anyShows = days.some((d) => hasShows(d))
   const pills: { id: Pick; label: string; color?: string }[] = [{ id: 'all', label: 'Todos' }, ...chains.map((c) => ({ id: c.id as Pick, label: CHAINS.find((x) => x.id === c.id)!.name, color: CHAINS.find((x) => x.id === c.id)!.color }))]
   return (
     <div>
@@ -378,6 +383,7 @@ function Detail({ movie, shows, chains, pick, demo, onPick, onBack, now, days }:
           {age && <p className="mt-3 text-[13px] text-white/55">{age}</p>}
           {demo && <div className="mt-4"><DemoNote /></div>}
 
+          {anyShows && (
           <div className="mt-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Día">
             {days.map((d, i) => {
               const [y, m, dd] = d.split('-').map(Number)
@@ -391,6 +397,7 @@ function Detail({ movie, shows, chains, pick, demo, onPick, onBack, now, days }:
               )
             })}
           </div>
+          )}
 
           <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Cine">
             {pills.map((p) => (
@@ -418,8 +425,16 @@ function Detail({ movie, shows, chains, pick, demo, onPick, onBack, now, days }:
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-1.5 text-[12px] text-white/45">Sin funciones este día</p>
+                  <p className="mt-1.5 text-[12px] text-white/50">Mira los horarios de hoy en el sitio oficial.</p>
                 )}
+                {(() => {
+                  const l = movieLink(chain.id, movie.links)
+                  return (
+                    <a href={l.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-extrabold text-white transition active:scale-95" style={{ background: `color-mix(in srgb, ${info.color} 75%, #000)` }}>
+                      {l.direct ? 'Ver horarios y comprar' : 'Ver horarios'} en {info.name} <ExternalLink className="size-3.5 opacity-80" aria-hidden />
+                    </a>
+                  )
+                })()}
               </div>
             ))}
           </div>
@@ -457,12 +472,7 @@ function Lobby() {
     if (pick !== 'all' && !visibleIds.has(pick)) setPick('all')
   }, [pick, visibleIds])
   const inShown = shows.filter((x) => shownIds.has(x.chain))
-  const playingIds = new Set(inShown.map((x) => x.movieId))
-  const anyIds = new Set(shows.filter((x) => visibleIds.has(x.chain)).map((x) => x.movieId))
-  // estrenos primero, luego por título
-  const order = (a: CineMovie, b: CineMovie) => Number(b.isNew) - Number(a.isNew) || a.title.localeCompare(b.title)
-  const nowPlaying = movies.filter((m) => playingIds.has(m.id)).sort(order)
-  const soon = movies.filter((m) => !anyIds.has(m.id)).sort(order)
+  const { nowPlaying, soon } = partitionMovies(movies, shows, visible.map((c) => c.id), pick)
   const movie = movies.find((m) => m.id === openId)
   return (
     <Theatre onClose={close} label="Dentro del cine" bare>

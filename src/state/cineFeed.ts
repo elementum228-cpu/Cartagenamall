@@ -67,7 +67,7 @@ export function effectiveCine(cine: { chains: CineChain[]; movies: CineMovie[]; 
       const i = movies.findIndex((x) => x.id === own.id)
       movies[i] = { ...own, image: own.image || m.image, genre: own.genre || m.genre, minutes: own.minutes ?? m.minutes, rating: own.rating || m.rating, synopsis: own.synopsis || m.synopsis }
     } else {
-      movies.push({ id: m.id, title: m.title, image: m.image, genre: m.genre, minutes: m.minutes, rating: m.rating, synopsis: m.synopsis, isNew: false })
+      movies.push({ id: m.id, title: m.title, image: m.image, genre: m.genre, minutes: m.minutes, rating: m.rating, synopsis: m.synopsis, links: {}, soon: false, isNew: false })
     }
   }
   const liveShows: CineShow[] = merged.shows.map((s) => {
@@ -75,6 +75,21 @@ export function effectiveCine(cine: { chains: CineChain[]; movies: CineMovie[]; 
     return { ...s, movieId, id: `${movieId}|${s.chain}|${s.day}|${s.time}|${s.format}|${s.lang}` }
   })
   return { movies, shows: [...manualShows, ...liveShows] }
+}
+
+/**
+ * Reparte las películas entre «Cartelera» y «Pronto». Una película está en cartelera salvo que se marque «Próximamente»: no
+ * hace falta cargar horarios (el botón lleva al sitio oficial). Con una cadena elegida, se muestran las que tienen funciones
+ * o enlace en esa cadena y las que no se sabe en cuál están (sin funciones ni enlaces). Estrenos primero, luego por título.
+ */
+export function partitionMovies(movies: CineMovie[], shows: CineShow[], visible: ChainId[], pick: ChainId | 'all'): { nowPlaying: CineMovie[]; soon: CineMovie[] } {
+  const shown = pick === 'all' ? visible : visible.filter((c) => c === pick)
+  const inChain = (m: CineMovie, ids: ChainId[]) => shows.some((s) => s.movieId === m.id && ids.includes(s.chain)) || ids.some((c) => !!m.links[c])
+  const order = (a: CineMovie, b: CineMovie) => Number(b.isNew) - Number(a.isNew) || a.title.localeCompare(b.title)
+  return {
+    nowPlaying: movies.filter((m) => !m.soon && (inChain(m, shown) || !inChain(m, visible))).sort(order),
+    soon: movies.filter((m) => m.soon).sort(order),
+  }
 }
 
 /**

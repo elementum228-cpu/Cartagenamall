@@ -4,7 +4,7 @@ import { readImageFile } from '../lib/image'
 import { remoteEnabled } from '../remote/client'
 import { runCineSync } from '../remote/sync'
 import { uploadStadiumImage } from '../remote/photos'
-import { CHAINS, MAX_MOVIES, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
+import { CHAINS, MAX_MOVIES, OFFICIAL_HOSTS, isOfficialLink, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
 import { exampleCine } from '../state/cineExample'
 import { useCineFeed } from '../state/cineFeed'
 import { useUI } from '../state/ui'
@@ -67,6 +67,30 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
   )
 }
 
+/** Enlace oficial de una película en una cadena: solo se acepta https de los dominios oficiales de esa cadena. */
+function LinkInput({ chain, name, value, onChange }: { chain: ChainId; name: string; value: string; onChange: (v: string) => void }) {
+  const [text, setText] = useState(value)
+  const bad = text.trim() !== '' && !isOfficialLink(chain, text)
+  return (
+    <label className="block">
+      <span className="text-[11px] font-bold">{name}</span>
+      <input
+        className={`${input} mt-0.5 ${bad ? 'border-red-400' : ''}`}
+        inputMode="url"
+        placeholder={`https://… (sitio de ${name})`}
+        value={text}
+        aria-invalid={bad}
+        onChange={(e) => {
+          setText(e.target.value)
+          // solo se guarda lo válido (o vacío, para quitarlo)
+          if (!e.target.value.trim() || isOfficialLink(chain, e.target.value)) onChange(e.target.value.trim())
+        }}
+      />
+      {bad && <span className="text-[11px] text-red-600">Debe ser un enlace https de {OFFICIAL_HOSTS[chain][0]}.</span>}
+    </label>
+  )
+}
+
 /** Una película del catálogo: cartel, título, género, duración, clasificación y sinopsis. */
 function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange: (m: CineMovie) => void; onRemove: () => void }) {
   return (
@@ -84,6 +108,16 @@ function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange
         <input className={input} placeholder="Clasif. (12+)" maxLength={8} value={movie.rating} onChange={(e) => onChange({ ...movie, rating: e.target.value })} />
       </div>
       <textarea className={`${input} min-h-20`} placeholder="Sinopsis (se ve en la pantalla de la película)" maxLength={400} value={movie.synopsis} onChange={(e) => onChange({ ...movie, synopsis: e.target.value })} />
+      <div className="space-y-2 rounded-xl border border-line p-2.5">
+        <p className="text-xs font-bold">Enlaces oficiales de esta película (opcional)</p>
+        <p className="text-[11px] text-ink-soft">Pega el enlace de la película en el sitio de cada cine: el botón «Ver horarios» lleva directo ahí. Sin enlace, lleva a la cartelera del cine en Cartagena.</p>
+        {CHAINS.map((c) => (
+          <LinkInput key={c.id} chain={c.id} name={c.name} value={movie.links[c.id] ?? ''} onChange={(v) => onChange({ ...movie, links: v ? { ...movie.links, [c.id]: v } : Object.fromEntries(Object.entries(movie.links).filter(([k]) => k !== c.id)) })} />
+        ))}
+      </div>
+      <label className="flex items-center gap-2 text-sm font-semibold">
+        <input type="checkbox" checked={movie.soon} onChange={(e) => onChange({ ...movie, soon: e.target.checked })} /> Próximamente (aún no está en cartelera: va a «Pronto»)
+      </label>
       <label className="flex items-center gap-2 text-sm font-semibold">
         <input type="checkbox" checked={movie.isNew} onChange={(e) => onChange({ ...movie, isNew: e.target.checked })} /> Estreno (sale primero y lleva la etiqueta «Estreno»)
       </label>

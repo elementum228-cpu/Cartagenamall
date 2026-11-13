@@ -60,7 +60,7 @@ function hash(s: string): number {
 
 /** Películas, carteles y funciones de ejemplo: de hoy a los próximos seis días, con variedad entre cadenas. */
 export function exampleCine(now = new Date()): { movies: CineMovie[]; posters: [CinePoster, CinePoster, CinePoster, CinePoster]; shows: CineShow[] } {
-  const movies: CineMovie[] = MOVIES.map((m) => ({ id: m.id, title: m.title, genre: m.genre, minutes: m.minutes, rating: m.rating, synopsis: m.synopsis, isNew: m.isNew, image: poster(m) }))
+  const movies: CineMovie[] = MOVIES.map((m) => ({ id: m.id, title: m.title, genre: m.genre, minutes: m.minutes, rating: m.rating, synopsis: m.synopsis, links: {}, soon: false, isNew: m.isNew, image: poster(m) }))
   let shows: CineShow[] = []
   nextDays(DAYS_AHEAD, now).forEach((day, di) => {
     CHAINS.forEach((chain, ci) => {

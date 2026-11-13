@@ -19,6 +19,24 @@ export const CHAINS: { id: ChainId; name: string; color: string; tagline: string
   { id: 'procinal', name: 'Procinal', color: '#0f9d8a', tagline: 'Tu cine en la ciudad' },
 ]
 
+/** Dominios oficiales de cada cadena: un enlace de película o de sala solo vale si es https de uno de ellos. */
+export const OFFICIAL_HOSTS: Record<ChainId, string[]> = {
+  'cine-colombia': ['cinecolombia.com'],
+  'royal-films': ['cinemasroyal.com', 'cinemasroyalfilms.com', 'royal-films.com'],
+  procinal: ['procinal.com.co'],
+}
+
+/** ¿Es un enlace https, sin credenciales, de un dominio oficial de esa cadena (o subdominio)? */
+export function isOfficialLink(chain: ChainId, url: string): boolean {
+  try {
+    const u = new URL(url.trim())
+    const h = u.hostname.toLowerCase()
+    return u.protocol === 'https:' && !u.username && !u.password && OFFICIAL_HOSTS[chain].some((o) => h === o || h.endsWith('.' + o))
+  } catch {
+    return false
+  }
+}
+
 export interface CinePoster {
   title: string
   /** null = arte por defecto «Próximo estreno». */
@@ -36,6 +54,10 @@ export interface CineMovie {
   /** Clasificación: «7+», «12+», «15+»… */
   rating: string
   synopsis: string
+  /** Enlace oficial de esta película en el sitio de cada cadena (opcional). Sin él, el botón lleva a la cartelera de la cadena en Cartagena. */
+  links: Partial<Record<ChainId, string>>
+  /** Próximamente: aún no está en cartelera (va a la pestaña «Pronto»). Sin marcar, la película está en cartelera aunque no tenga horarios cargados. */
+  soon: boolean
   /** Estreno: sale primero en el cine y lleva la etiqueta «Estreno». */
   isNew: boolean
 }
@@ -102,7 +124,7 @@ export const emptyCine = (): CineState => ({
   demo: true,
 })
 
-export const newMovie = (): CineMovie => ({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: '', image: null, genre: '', minutes: null, rating: '', synopsis: '', isNew: false })
+export const newMovie = (): CineMovie => ({ id: `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, title: '', image: null, genre: '', minutes: null, rating: '', synopsis: '', links: {}, soon: false, isNew: false })
 
 // ── días y horas ──────────────────────────────────────────────────────────────────────────────────
 
@@ -189,10 +211,21 @@ export function repeatWeek(shows: CineShow[], chain: ChainId, from: string, days
 const str = (x: unknown, max = 120) => (typeof x === 'string' ? x.trim().slice(0, max) : '')
 const img = (x: unknown) => (typeof x === 'string' && x ? x : null)
 
+/** Solo se guardan enlaces oficiales (https de los dominios de la cadena); el resto se descarta. */
+function cleanLinks(v: unknown): Partial<Record<ChainId, string>> {
+  const o = (v ?? {}) as Record<string, unknown>
+  const out: Partial<Record<ChainId, string>> = {}
+  for (const c of CHAINS) {
+    const raw = typeof o[c.id] === 'string' ? (o[c.id] as string).trim().slice(0, 400) : ''
+    if (raw && isOfficialLink(c.id, raw)) out[c.id] = raw
+  }
+  return out
+}
+
 const cleanMovie = (v: unknown, i: number): CineMovie => {
   const o = (v ?? {}) as Partial<CineMovie>
   const minutes = typeof o.minutes === 'number' && Number.isFinite(o.minutes) && o.minutes > 0 ? Math.round(o.minutes) : null
-  return { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400), isNew: o.isNew === true }
+  return { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400), links: cleanLinks(o.links), soon: o.soon === true, isNew: o.isNew === true }
 }
 
 const cleanShow = (v: unknown): CineShow | null => {

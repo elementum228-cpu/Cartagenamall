@@ -184,6 +184,14 @@ si todo falla: `503` con un mensaje genérico (el detalle técnico queda solo en
 - `bookingUrl` siempre es https de un dominio oficial de la cadena; si la fuente no trae uno válido, se usa la cartelera oficial. La compra debe abrirse en una pestaña nueva (`target="_blank" rel="noopener noreferrer"`).
 - Cliente de la app: `src/cinema/api.ts` (consulta y validación), `src/cinema/filters.ts` (filtros por cadena/formato/idioma y agrupación por película y sede).
 
+### Alternativa rápida: enlaces al sitio oficial (la que se usa mientras no haya lectores)
+
+No hace falta leer horarios para que los usuarios los vean rápido: la app los lleva al sitio oficial de cada cine.
+- **Cartelera manual:** en Administración → Cine se cargan las películas con su cartel (y se marcan «Estreno» o «Próximamente»). Sin horarios cargados, la película está en cartelera.
+- **Botón por cadena en cada película:** «Ver horarios en [cadena]» abre en pestaña nueva el enlace oficial de esa película si la administración lo pegó (campo «Enlaces oficiales de esta película», solo https de los dominios de la cadena) o, si no, la cartelera de la cadena en Cartagena.
+- **Pestaña «Salas en Cartagena»:** por cadena, el botón a su cartelera y, donde se pudo verificar en su sitio oficial, cada sala con su dirección y enlace (hoy: las tres salas de Cine Colombia; datos en `src/cinema/venues.ts`, verificados el 13-nov-2026). Si algún día la API trae horarios reales, aparecen arriba de la guía.
+- Si Cine Colombia, Royal Films o Procinal piden otros enlaces o salas nuevas, se cambian en `src/cinema/venues.ts` y `src/state/cine.ts` (`OFFICIAL_HOSTS`).
+
 ### Qué usa cada cadena
 
 | Cadena | Adaptador | Fuente prevista | Hoy | Cartelera oficial (Cartagena) |
