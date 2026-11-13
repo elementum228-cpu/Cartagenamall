@@ -3,7 +3,7 @@ import type { FloorId } from '../domain/types'
 import { DECOR_FOOTPRINTS } from './Decor'
 import { FOOD_FOOTPRINTS } from './FoodCourt'
 import { techKioskFootprints } from './TechDistrict'
-import { BX, CART, DECK, DX, STAIR } from './cinemaLayout'
+import { BX, CART, CART_W, DECK, DX, STAIR } from './cinemaLayout'
 
 // Navegación de los visitantes que recorren los dos pisos: una cuadrícula de celdas libres por piso,
 // construida a partir de los obstáculos reales de la escena (bancas, palmeras, faroles, islas, fuente,
@@ -137,7 +137,7 @@ function cineFree(x: number, z: number): boolean {
   if (Math.abs(x - CINE_STAIR.x) < STAIR.w / 2 + 0.6 + r && z > STAIR.zBot - 0.8) return false
   // cartelera del frente
   const cx = CART.x + DX
-  if (Math.abs(x - cx) < 4.4 + r && z > CART.z - 1 - r && z < CART.z + 0.9 + r) return false
+  if (Math.abs(x - cx) < CART_W / 2 + 0.2 + r && z > CART.z - 1 - r && z < CART.z + 0.9 + r) return false
   return !CINE_CIRCLES.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + r)
 }
 

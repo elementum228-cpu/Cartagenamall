@@ -9,6 +9,9 @@ export const BZ = -72
 export const FZ = BZ + 4.5 // cara de la fachada (mira al sur)
 /** Cartelera del frente: tres pantallas en abanico, de cara a la plaza. */
 export const CART = { x: -26, z: -57.4, rot: 0 }
+/** Cartelera de cuatro carteles: ancho de la base y posición (x) de cada marco. */
+export const CART_W = 11.2
+export const CART_DX = [-4.05, -1.35, 1.35, 4.05]
 /** La isla se corre al oeste para que su escalera caiga justo en el rincón libre del piso de comida. */
 export const DX = -9
 /** Escalera: de la plaza del cine (nivel de la isla) al borde norte del piso de comida. */

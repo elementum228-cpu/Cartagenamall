@@ -11,7 +11,9 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
-import { BUILD_H, BX, BZ, CART, CX, CZ, DECK, DX, FZ, HALF, STAIR } from './cinemaLayout'
+import { BUILD_H, BX, BZ, CART, CART_DX, CART_W, CX, CZ, DECK, DX, FZ, HALF, STAIR } from './cinemaLayout'
+import { cameraState } from './cameraState'
+import { useCineUi } from '../state/cineUi'
 
 // Cine: isla de piedra al norte del piso de comida, con el edificio (fachada art déco, marquesina y carteleras),
 // una plazoleta y un cine al aire libre con pantalla. Las imágenes de la pantalla y las carteleras las cambia la administración.
@@ -301,25 +303,25 @@ function GrandStair() {
   )
 }
 
-/** Cartelera del frente: base de piedra, rótulo y tres marcos en abanico (las imágenes van aparte). */
+/** Cartelera del frente: base de piedra, rótulo y cuatro marcos en abanico (las imágenes van aparte). */
 function Cartelera() {
   const bulb = glowMat('#ffe9a8', 2.4, { dayGlow: 0.6 })
   const neon = glowMat('#ff5fa8', 2.2, { dayGlow: 0.5 })
   const navy = mat(NAVY)
   return (
     <group position={[CART.x, DECK, CART.z]} rotation={[0, CART.rot, 0]}>
-      <mesh geometry={GEO.box} material={mat(TERRA)} position={[0, 0.3, 0]} scale={[8.4, 0.6, 1.2]} castShadow />
-      {[-2.7, 0, 2.7].map((dx, i) => (
-        <group key={dx} position={[dx, 0, dx === 0 ? 0 : 0.25]} rotation={[0, -Math.sign(dx) * 0.28, 0]}>
+      <mesh geometry={GEO.box} material={mat(TERRA)} position={[0, 0.3, 0]} scale={[CART_W, 0.6, 1.2]} castShadow />
+      {CART_DX.map((dx, i) => (
+        <group key={dx} position={[dx, 0, Math.abs(dx) > 3 ? 0.3 : 0.05]} rotation={[0, -dx * 0.075, 0]}>
           <mesh geometry={GEO.box} material={navy} position={[0, 2.45, -0.08]} scale={[2.5, 3.7, 0.25]} castShadow />
-          <mesh geometry={GEO.box} material={i === 1 ? neon : bulb} position={[0, 4.36, -0.02]} scale={[2.5, 0.1, 0.1]} />
+          <mesh geometry={GEO.box} material={i === 1 || i === 2 ? neon : bulb} position={[0, 4.36, -0.02]} scale={[2.5, 0.1, 0.1]} />
         </group>
       ))}
-      <mesh geometry={GEO.box} material={navy} position={[0, 5.05, -0.1]} scale={[5, 0.9, 0.25]} />
-      {Array.from({ length: 11 }, (_, i) => (
-        <mesh key={i} geometry={GEO.sphereSmooth} material={bulb} position={[-2.3 + i * 0.46, 5.6, -0.02]} scale={0.16} />
+      <mesh geometry={GEO.box} material={navy} position={[0, 5.05, -0.1]} scale={[6.6, 0.9, 0.25]} />
+      {Array.from({ length: 14 }, (_, i) => (
+        <mesh key={i} geometry={GEO.sphereSmooth} material={bulb} position={[-3.0 + i * 0.46, 5.6, -0.02]} scale={0.16} />
       ))}
-      <mesh geometry={GEO.plane} material={lightPoolMat('#ffb6d9', 0.7)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.17, 2]} scale={[9, 5, 1]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#ffb6d9', 0.7)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.17, 2]} scale={[12.5, 5, 1]} />
     </group>
   )
 }
@@ -408,39 +410,67 @@ function useCartelSign() {
 
 /** Cartelera y afiches: imágenes que la administración cambia (fuera del Batch: se actualizan solas). */
 function Screens() {
-  const screens = useCine((s) => s.screens)
   const posters = useCine((s) => s.posters)
   const marquee = useMarquee()
   const sign = useCartelSign()
-  const t0 = useImageTexture(screens[0], 320, 480, POSTER_A)
-  const t1 = useImageTexture(screens[1], 320, 480, POSTER_C)
-  const t2 = useImageTexture(screens[2], 320, 480, POSTER_B)
-  const texA = useImageTexture(posters[0], 320, 480, POSTER_B)
-  const texB = useImageTexture(posters[1], 320, 480, POSTER_A)
-  const mats = useMemo(() => [t0, t1, t2, texA, texB].map((map) => new THREE.MeshBasicMaterial({ map, toneMapped: false })), [t0, t1, t2, texA, texB])
+  const t0 = useImageTexture(posters[0].image, 320, 480, POSTER_A)
+  const t1 = useImageTexture(posters[1].image, 320, 480, POSTER_C)
+  const t2 = useImageTexture(posters[2].image, 320, 480, POSTER_B)
+  const t3 = useImageTexture(posters[3].image, 320, 480, POSTER_A)
+  const mats = useMemo(() => [t0, t1, t2, t3].map((map) => new THREE.MeshBasicMaterial({ map, toneMapped: false })), [t0, t1, t2, t3])
   return (
     <group userData={{ dynamic: true }}>
       <group position={[CART.x, DECK, CART.z]} rotation={[0, CART.rot, 0]}>
-        {[-2.7, 0, 2.7].map((dx, i) => (
-          <group key={dx} position={[dx, 0, dx === 0 ? 0 : 0.25]} rotation={[0, -Math.sign(dx) * 0.28, 0]}>
+        {CART_DX.map((dx, i) => (
+          <group key={dx} position={[dx, 0, Math.abs(dx) > 3 ? 0.3 : 0.05]} rotation={[0, -dx * 0.075, 0]}>
             <mesh geometry={GEO.plane} material={mats[i]} position={[0, 2.45, 0.06]} scale={[2.2, 3.3, 1]} />
           </group>
         ))}
-        <mesh geometry={GEO.plane} material={sign} position={[0, 5.05, 0.04]} scale={[4.8, 0.8, 1]} />
+        <mesh geometry={GEO.plane} material={sign} position={[0, 5.05, 0.04]} scale={[6.2, 0.8, 1]} />
       </group>
-      <mesh geometry={GEO.plane} material={mats[3]} position={[BX - 5.3, DECK + 2.2 * BUILD_H, BZ + 4.72]} scale={[2, 3 * BUILD_H, 1]} />
-      <mesh geometry={GEO.plane} material={mats[4]} position={[BX + 5.3, DECK + 2.2 * BUILD_H, BZ + 4.72]} scale={[2, 3 * BUILD_H, 1]} />
+      {/* los dos afiches de la fachada repiten los dos primeros carteles */}
+      <mesh geometry={GEO.plane} material={mats[0]} position={[BX - 5.3, DECK + 2.2 * BUILD_H, BZ + 4.72]} scale={[2, 3 * BUILD_H, 1]} />
+      <mesh geometry={GEO.plane} material={mats[1]} position={[BX + 5.3, DECK + 2.2 * BUILD_H, BZ + 4.72]} scale={[2, 3 * BUILD_H, 1]} />
       <mesh geometry={GEO.plane} material={marquee} position={[BX, DECK + 7.6 * BUILD_H, FZ + 0.85]} scale={[6.4, 3.2 * BUILD_H, 1]} />
     </group>
   )
 }
 
+/** Zona táctil invisible: la cartelera y la entrada del cine abren sus vistas. */
+function Hit({ position, scale, onOpen }: { position: [number, number, number]; scale: [number, number, number]; onOpen: () => void }) {
+  return (
+    <mesh
+      geometry={GEO.box}
+      position={position}
+      scale={scale}
+      onClick={(e) => {
+        if (cameraState.handMode || e.delta > 8) return
+        e.stopPropagation()
+        onOpen()
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        document.body.style.cursor = 'pointer'
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = ''
+      }}
+    >
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+    </mesh>
+  )
+}
+
 export function Cinema() {
   const night = useIsNight()
-  const label = useMemo(() => getGlassPill('Cine', { dot: '#ff5fa8', sub: 'Próximamente', dark: night }), [night])
+  const boardOn = useCine((s) => s.boardOn)
+  const lobbyOn = useCine((s) => s.lobbyOn)
+  const openView = useCineUi((s) => s.open)
+  const label = useMemo(() => getGlassPill('Cine', { dot: '#ff5fa8', sub: lobbyOn ? 'Toca para entrar' : 'Próximamente', dark: night }), [night, lobbyOn])
+  const boardLabel = useMemo(() => getGlassPill('Cartelera', { dot: '#ffb454', sub: 'Toca para ver', dark: night }), [night])
   return (
     <group position={[DX, 0, 0]}>
-      <Batch version="cine-7">
+      <Batch version="cine-8">
         <Island />
         <Building />
         <Cartelera />
@@ -448,7 +478,10 @@ export function Cinema() {
         <Access />
       </Batch>
       <Screens />
-      <ScreenLabel label={label} position={[BX, DECK + 19 * BUILD_H + 0.8, BZ + 3]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} />
+      {boardOn && <Hit position={[CART.x, DECK + 2.8, CART.z + 0.3]} scale={[CART_W + 0.6, 6, 2.2]} onOpen={() => openView('board')} />}
+      {lobbyOn && <Hit position={[BX, DECK + 1.9, FZ + 1.8]} scale={[9.6, 3.8, 4]} onOpen={() => openView('lobby')} />}
+      <ScreenLabel label={label} position={[BX, DECK + 19 * BUILD_H + 0.8, BZ + 3]} pixelHeight={30} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} onClick={lobbyOn ? () => openView('lobby') : undefined} />
+      {boardOn && <ScreenLabel label={boardLabel} position={[CART.x, DECK + 6.9, CART.z + 0.4]} pixelHeight={24} maxZoomRatio={3.2} priority={LABEL_PRIORITY.floorSign} onClick={() => openView('board')} />}
       <pointLight position={[BX, DECK + 3, FZ + 3.5]} color="#ffd9a0" intensity={night ? 34 : 0} distance={16} decay={2} />
       <pointLight position={[CART.x - 1.5, DECK + 3, CART.z + 1.5]} color="#ffb6d9" intensity={night ? 18 : 0} distance={10} decay={2} />
     </group>

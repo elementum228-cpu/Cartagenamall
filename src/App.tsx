@@ -36,6 +36,7 @@ import { StoreInterior } from "./immersive/StoreInterior";
 import { RouteGuard, lazyPage } from "./ui/RouteGuard";
 import { StoreSheet } from "./features/StoreSheet";
 import { HarborSheet } from "./features/HarborSheet";
+import { CineHost } from "./features/CineViews";
 import { ShowroomSheet } from "./features/ShowroomSheet";
 import { ShipLayer } from "./ship/ShipLayer";
 import { FlyInvite } from "./airport/FlyInvite";
@@ -264,6 +265,7 @@ function Shell() {
       <StadiumPanel />
       <StoreInterior />
       <HarborSheet />
+      <CineHost />
       <ShowroomSheet />
       <ShipLayer />
       <AirportLayers />
