@@ -434,7 +434,7 @@ html[data-quality='low'] .glass-sheet,
 html[data-quality='low'] .glass-clear,
 html[data-quality='low'] .glass-tray,
 html[data-quality='low'] .glass-teal,
-html[data-quality='low'] .theme-night .glass,
+html[data-quality='low'].theme-night .glass,
 html[data-quality='low'] [class*='backdrop-blur'] {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
@@ -443,7 +443,9 @@ html[data-quality='low'] .glass { background: rgb(247 245 241 / 0.94); }
 html[data-quality='low'] .glass-strong { background: rgb(250 249 246 / 0.98); }
 html[data-quality='low'] .glass-clear { background: rgb(255 255 255 / 0.3); }
 html[data-quality='low'] .glass-tray { background: rgb(247 245 241 / 0.62); }
-html[data-quality='low'] .theme-night .glass { background: rgb(8 42 62 / 0.9); }
+html[data-quality='low'].theme-night .glass { background: rgb(8 42 62 / 0.9); }
+html[data-quality='low'].theme-night .glass-tray { background: rgb(8 42 62 / 0.75); }
+html[data-quality='low'].theme-night .glass-clear { background: rgb(6 44 66 / 0.55); }
 
 /* Tipografía autohospedada (variable, solo latín y latín extendido: alcanza para español). Generado a partir de @fontsource-variable. */
 @font-face {

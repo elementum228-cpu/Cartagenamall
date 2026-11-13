@@ -91,8 +91,8 @@ export default function WorldCanvas({ active, fallback, night }: { active: boole
         // El dibujo lo maneja <FrameDriver>: se detiene con la vista inactiva (modo Comprar, carrito…) y con la pestaña oculta.
         frameloop="never"
         camera={{ position: ISO_DIR.clone().multiplyScalar(CAMERA_DISTANCE).toArray(), zoom: 1, near: -400, far: 800 }}
-        // En pantallas densas (2× o más) el suavizado de bordes casi no se nota y cuesta mucho relleno: se omite.
-        gl={{ antialias: (window.devicePixelRatio || 1) < 2, alpha: true, powerPreference: 'high-performance' }}
+        // Con resolución efectiva menor a 2× (baja y media) el suavizado de bordes sí se nota: se mantiene; a 2× se omite.
+        gl={{ antialias: dpr < 2, alpha: true, powerPreference: 'high-performance' }}
         onCreated={({ gl, raycaster, scene, camera, invalidate }) => {
           gl.setClearColor(0x000000, 0)
           // Si el navegador reclama la memoria gráfica (iPhone con muchas pestañas, volver de otra app), el mundo se

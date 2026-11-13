@@ -110,7 +110,7 @@ export const resetProfileCache = () => {
 }
 
 /** Resolución interna máxima (devicePixelRatio) según el nivel: lo que más cuesta en pantallas densas. */
-export const DPR_CAP: Record<Tier, number> = { low: 1.25, medium: 1.5, high: 2 }
+export const DPR_CAP: Record<Tier, number> = { low: 1.5, medium: 1.75, high: 2 }
 
 /** Preferencias guardadas que cambian el arranque (leídas sin cargar el resto de la app). */
 export function readStoredViewPrefs(): { force2D: boolean; prefer3D: boolean } {

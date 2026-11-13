@@ -54,6 +54,6 @@ describe('precarga del motor 3D', () => {
     expect(shouldPreload3D(classify(sig({ memory: 8, cores: 8 })), { force2D: true, prefer3D: false })).toBe(false)
   })
   it('el tope de resolución se mantiene', () => {
-    expect(DPR_CAP).toEqual({ low: 1.25, medium: 1.5, high: 2 })
+    expect(DPR_CAP).toEqual({ low: 1.5, medium: 1.75, high: 2 })
   })
 })
