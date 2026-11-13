@@ -1,9 +1,9 @@
-import { Clapperboard, ImagePlus, Plus, Trash2, X } from 'lucide-react'
+import { Clapperboard, Copy, ImagePlus, Plus, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { readImageFile } from '../lib/image'
 import { remoteEnabled } from '../remote/client'
 import { uploadStadiumImage } from '../remote/photos'
-import { CHAINS, MAX_MOVIES, newMovie, parseShowtimes, useCine, type CineChain, type CineMovie } from '../state/cine'
+import { CHAINS, MAX_MOVIES, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
 
@@ -64,9 +64,8 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
   )
 }
 
-/** Una película: cartel, título, género, duración, clasificación y horarios (separados por comas). */
+/** Una película del catálogo: cartel, título, género, duración, clasificación y sinopsis. */
 function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange: (m: CineMovie) => void; onRemove: () => void }) {
-  const [times, setTimes] = useState(movie.showtimes.join(', '))
   return (
     <div className="space-y-3 rounded-2xl border border-line bg-sand/50 p-3">
       <div className="flex items-start justify-between gap-2">
@@ -81,46 +80,82 @@ function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange
         <input className={input} placeholder="Minutos" inputMode="numeric" value={movie.minutes ?? ''} onChange={(e) => onChange({ ...movie, minutes: Number(e.target.value.replace(/\D/g, '')) || null })} />
         <input className={input} placeholder="Clasif. (12+)" maxLength={8} value={movie.rating} onChange={(e) => onChange({ ...movie, rating: e.target.value })} />
       </div>
-      <input
-        className={input}
-        placeholder="Horarios: 14:30, 17:00, 20:15"
-        value={times}
-        onChange={(e) => setTimes(e.target.value)}
-        onBlur={() => {
-          const showtimes = parseShowtimes(times)
-          setTimes(showtimes.join(', '))
-          onChange({ ...movie, showtimes })
-        }}
-      />
     </div>
   )
 }
 
-function ChainEditor({ chain, onChange }: { chain: CineChain; onChange: (c: CineChain) => void }) {
-  const meta = CHAINS.find((c) => c.id === chain.id)!
-  const [open, setOpen] = useState(false)
-  const setMovie = (i: number, m: CineMovie) => onChange({ ...chain, movies: chain.movies.map((x, k) => (k === i ? m : x)) })
+/** Horas de una película en una cadena y un día: se escriben en una línea y se ordenan al salir del campo. */
+function ShowsInput({ movie, chain, day, shows, onChange }: { movie: CineMovie; chain: ChainId; day: string; shows: CineShow[]; onChange: (text: string) => void }) {
+  const current = formatShows(showsOf(shows, movie.id, chain, day))
+  const [text, setText] = useState(current)
   return (
-    <div className="rounded-2xl border border-line p-3">
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
-          <span className="size-3 shrink-0 rounded-full" style={{ background: meta.color }} />
-          <span className="min-w-0">
-            <span className="block truncate font-bold">{meta.name}</span>
-            <span className="block text-xs text-ink-soft">
-              {chain.movies.length} {chain.movies.length === 1 ? 'película' : 'películas'} · {chain.enabled ? 'visible' : 'oculta'}
-            </span>
-          </span>
-        </button>
-        <Switch on={chain.enabled} label={`Mostrar ${meta.name}`} onChange={(enabled) => onChange({ ...chain, enabled })} />
+    <label className="block">
+      <span className="text-sm font-bold">{movie.title || 'Sin título'}</span>
+      <input
+        className={`${input} mt-1`}
+        placeholder="14:30, 17:00 3D, 20:15 VIP SUB"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => {
+          onChange(text)
+          setText(formatShows(parseShows(text)))
+        }}
+      />
+    </label>
+  )
+}
+
+/** Funciones: por día y por cadena, las horas de cada película del catálogo. */
+function ShowsAdmin() {
+  const movies = useCine((s) => s.movies)
+  const shows = useCine((s) => s.shows)
+  const chains = useCine((s) => s.chains)
+  const set = useCine((s) => s.set)
+  const toast = useUI((s) => s.toast)
+  const days = nextDays()
+  const [day, setDay] = useState(days[0])
+  const [chain, setChain] = useState<ChainId>(CHAINS[0].id)
+  const count = (c: ChainId, d: string) => shows.filter((x) => x.chain === c && x.day === d).length
+  const info = CHAINS.find((c) => c.id === chain)!
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="font-bold">Funciones por día y cadena</p>
+        <p className="text-xs text-ink-soft">Escribe las horas de cada película separadas por comas. Si aplica, agrega el formato (2D, 3D, VIP) y el idioma (DOB doblada, SUB subtitulada): 14:30, 17:00 3D, 20:15 VIP SUB.</p>
       </div>
-      {open && (
-        <div className="mt-3 space-y-3">
-          {chain.movies.map((m, i) => (
-            <MovieEditor key={m.id} movie={m} onChange={(next) => setMovie(i, next)} onRemove={() => onChange({ ...chain, movies: chain.movies.filter((_, k) => k !== i) })} />
+      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Día">
+        {days.map((d) => (
+          <button key={d} type="button" aria-pressed={day === d} onClick={() => setDay(d)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold capitalize ${day === d ? 'border-brand bg-brand text-white' : 'border-line bg-card'}`}>
+            {dayLabel(d)}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Cadena">
+        {CHAINS.map((c) => (
+          <button key={c.id} type="button" aria-pressed={chain === c.id} onClick={() => setChain(c.id)} className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${chain === c.id ? 'border-ink bg-ink text-white' : 'border-line bg-card'}`}>
+            <span className="size-2.5 rounded-full" style={{ background: c.color }} /> {c.name}
+            <span className="opacity-60">{count(c.id, day)}</span>
+          </button>
+        ))}
+      </div>
+      {!chains.find((c) => c.id === chain)?.enabled && <p className="rounded-xl bg-amber/20 p-2 text-xs">Esta cadena está oculta: sus funciones no se ven en el cine.</p>}
+      {movies.length === 0 ? (
+        <p className="rounded-2xl bg-sand p-3 text-sm text-ink-soft">Primero agrega películas al catálogo (arriba).</p>
+      ) : (
+        <div className="space-y-3">
+          {movies.map((m) => (
+            <ShowsInput key={`${m.id}|${chain}|${day}`} movie={m} chain={chain} day={day} shows={shows} onChange={(text) => set({ shows: withShows(shows, m.id, chain, day, text) })} />
           ))}
-          <button type="button" className={btn.secondary} disabled={chain.movies.length >= MAX_MOVIES} onClick={() => onChange({ ...chain, movies: [...chain.movies, newMovie()] })}>
-            <Plus className="size-4" /> Agregar película {chain.movies.length >= MAX_MOVIES && `(máximo ${MAX_MOVIES})`}
+          <button
+            type="button"
+            className={btn.secondary}
+            disabled={count(chain, day) === 0}
+            onClick={() => {
+              set({ shows: repeatWeek(shows, chain, day, days) })
+              toast(`${info.name}: las funciones de ${dayLabel(day).toLowerCase()} se repitieron en los demás días.`, 'success')
+            }}
+          >
+            <Copy className="size-4" /> Repetir {dayLabel(day).toLowerCase()} en toda la semana
           </button>
         </div>
       )}
@@ -135,6 +170,8 @@ export function CineAdmin() {
   const lobbyOn = useCine((s) => s.lobbyOn)
   const posters = useCine((s) => s.posters)
   const chains = useCine((s) => s.chains)
+  const movies = useCine((s) => s.movies)
+  const shows = useCine((s) => s.shows)
   const set = useCine((s) => s.set)
   return (
     <div className="space-y-4">
@@ -168,17 +205,50 @@ export function CineAdmin() {
         <p className="text-[11px] text-ink-soft">Mejor imágenes verticales (2:3).</p>
       </div>
 
-      <div className="space-y-3 rounded-3xl border border-line bg-card p-4">
+      <div className="space-y-4 rounded-3xl border border-line bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-bold">2 · Entrar al cine</p>
-            <p className="text-xs text-ink-soft">Al tocar el cine se abren las puertas y se ven las cadenas con sus películas y horarios. Más adelante vendrán de una API en tiempo real; por ahora se cargan aquí.</p>
+            <p className="text-xs text-ink-soft">Al tocar el cine se abren las puertas: el visitante elige el día y ve cada película con sus horarios en cada cadena (o entra por cine). Más adelante vendrán de una API en tiempo real; por ahora se cargan aquí.</p>
           </div>
           <Switch on={lobbyOn} label="Habilitar la entrada al cine" onChange={(v) => set({ lobbyOn: v })} />
         </div>
-        {chains.map((c) => (
-          <ChainEditor key={c.id} chain={c} onChange={(next) => set({ chains: chains.map((x) => (x.id === c.id ? next : x)) })} />
-        ))}
+
+        <div className="space-y-2">
+          <p className="text-sm font-bold">Cadenas</p>
+          {chains.map((c) => {
+            const meta = CHAINS.find((x) => x.id === c.id)!
+            return (
+              <div key={c.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line px-3 py-2">
+                <span className="flex items-center gap-2 text-sm font-bold">
+                  <span className="size-3 rounded-full" style={{ background: meta.color }} /> {meta.name}
+                  <span className="text-xs font-normal text-ink-soft">{c.enabled ? 'visible' : 'oculta'}</span>
+                </span>
+                <Switch on={c.enabled} label={`Mostrar ${meta.name}`} onChange={(enabled) => set({ chains: chains.map((x) => (x.id === c.id ? { ...x, enabled } : x)) })} />
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <p className="font-bold">Catálogo de películas</p>
+            <p className="text-xs text-ink-soft">Cada película se carga una sola vez; sus horarios se ponen por cadena más abajo ({movies.length}/{MAX_MOVIES}).</p>
+          </div>
+          {movies.map((m, i) => (
+            <MovieEditor
+              key={m.id}
+              movie={m}
+              onChange={(next) => set({ movies: movies.map((x, k) => (k === i ? next : x)) })}
+              onRemove={() => set({ movies: movies.filter((_, k) => k !== i), shows: shows.filter((x) => x.movieId !== m.id) })}
+            />
+          ))}
+          <button type="button" className={btn.secondary} disabled={movies.length >= MAX_MOVIES} onClick={() => set({ movies: [...movies, newMovie()] })}>
+            <Plus className="size-4" /> Agregar película
+          </button>
+        </div>
+
+        <ShowsAdmin />
       </div>
     </div>
   )
