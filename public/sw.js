@@ -1,8 +1,9 @@
 // Service worker de MallPlay: permite instalar la app y abrirla rápido (o sin conexión).
 // Páginas: primero la red (siempre la versión publicada más nueva) y, sin conexión, la copia guardada.
-// Archivos del sitio (JS/CSS con hash, íconos, fuentes): copia guardada y se refresca por detrás.
+// Archivos con hash en el nombre (assets/*-hash.js|css|woff2…) nunca cambian: copia guardada primero, sin volver a pedirlos.
+// Otros archivos del sitio (íconos, manifiesto): copia guardada y se refresca por detrás.
 // Nada de Supabase ni otros servicios se guarda aquí.
-const CACHE = 'cm-v3'
+const CACHE = 'cm-v4'
 const SCOPE = new URL(self.registration.scope)
 const SHELL = new URL('./', SCOPE).href
 
@@ -23,6 +24,12 @@ self.addEventListener('activate', (event) => {
 const sameSite = (url) => url.origin === SCOPE.origin && url.pathname.startsWith(SCOPE.pathname) && !url.pathname.startsWith(SCOPE.pathname + 'presentacion/')
 const fonts = (url) => url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com'
 
+// Cada publicación trae archivos con hash nuevos: se descartan los más viejos para que el caché no crezca sin fin en celulares con poco espacio.
+async function trim(cache, max = 140) {
+  const keys = await cache.keys()
+  for (const k of keys.slice(0, Math.max(0, keys.length - max))) if (new URL(k.url).href !== SHELL) await cache.delete(k)
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request
   if (req.method !== 'GET') return
@@ -39,6 +46,22 @@ self.addEventListener('fetch', (event) => {
           return res
         })
         .catch(() => caches.match(SHELL)),
+    )
+    return
+  }
+
+  if (sameSite(url) && /\/assets\/.+-[\w-]{8}\.(js|css|woff2?|png|webp|avif|svg|jpg)$/.test(url.pathname)) {
+    event.respondWith(
+      caches.open(CACHE).then(async (c) => {
+        const hit = await c.match(req)
+        if (hit) return hit
+        const res = await fetch(req)
+        if (res.ok) {
+          c.put(req, res.clone())
+          trim(c)
+        }
+        return res
+      }),
     )
     return
   }

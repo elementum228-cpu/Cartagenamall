@@ -26,6 +26,8 @@ import type { StadiumEvent, Ticket } from '../stadium/types'
 import { usePirateShip } from '../state/pirate'
 import { useReservations, type CourtReservation } from '../state/reservations'
 import { useUI } from '../state/ui'
+import { useEntry } from '../state/entry'
+import { detectProfile } from '../lib/deviceProfile'
 import { supabase } from './client'
 import { useSession } from './session'
 
@@ -614,25 +616,48 @@ function pushTickets(prev: Ticket[], next: Ticket[]) {
 
 // ── Arranque ─────────────────────────────────────────────────────────────────
 
+/** Ejecuta las tareas de a una, con pausa entre ellas, cuando el portón de entrada ya terminó (o tras 8 s si nunca termina). */
+function runCalm(tasks: (() => unknown)[], gapMs: number) {
+  let started = false
+  const go = () => {
+    if (started) return
+    started = true
+    let i = 0
+    const next = () => {
+      if (i >= tasks.length) return
+      try {
+        void tasks[i++]()
+      } catch {
+        /* una tarea fallida no frena las demás */
+      }
+      setTimeout(next, gapMs)
+    }
+    next()
+  }
+  if (useEntry.getState().doorDone) go()
+  else {
+    useEntry.subscribe((st) => st.doorDone && go())
+    setTimeout(go, 8000)
+  }
+}
+
 let started = false
 export function startRemoteSync() {
   if (!supabase || started) return
   started = true
   const db = supabase
+  // Lo imprescindible para pintar el mall va ya; lo demás (periódico, cartelera, partido, barco, estadio…) espera a que la persona
+  // haya entrado y se pide de a una por vez, para no saturar la red ni el hilo principal de un celular básico.
+  const low = detectProfile().tier === 'low'
+  const slow = low ? 2.5 : 1
   void loadCatalog()
-  void loadPricing()
-  void loadSeason()
-  void loadHoy()
   void loadFeatures()
-  void loadCineFeed()
-  void loadMatch()
-  void loadShip()
-  void loadStadium()
-  setInterval(() => void refreshPromotions(), 10_000)
+  runCalm([loadPricing, loadSeason, loadHoy, loadCineFeed, loadMatch, loadShip, loadStadium], low ? 700 : 250)
+  setInterval(() => !document.hidden && void refreshPromotions(), 10_000 * slow)
   // las boletas vendidas cambian seguido: se refrescan para que el cupo sea real
-  setInterval(() => !document.hidden && void loadStadium(), 15_000)
-  setInterval(() => !document.hidden && void loadMatch(), 12_000)
-  setInterval(() => !document.hidden && void loadShip(), 8_000)
+  setInterval(() => !document.hidden && void loadStadium(), 15_000 * slow)
+  setInterval(() => !document.hidden && void loadMatch(), 12_000 * slow)
+  setInterval(() => !document.hidden && void loadShip(), 8_000 * slow)
 
   useCatalog.subscribe((next, prev) => {
     if (applying || !signedIn()) return

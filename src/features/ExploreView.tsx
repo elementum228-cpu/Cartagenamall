@@ -146,7 +146,7 @@ export function ExploreView({ active }: { active: boolean }) {
           <WorldCanvas active={active && !readingHoy} night={night} fallback={<Map2D reason="Tu dispositivo no pudo cargar el 3D. Mostramos el plano 2D." />} />
         </Suspense>
       ) : (
-        <Map2D reason={!webgl ? 'Tu navegador no soporta 3D (WebGL). Mostramos el plano 2D con las mismas tiendas.' : autoPlano ? 'Abrimos el plano 2D para que MallPlay vaya fluido en tu dispositivo. Tiene las mismas tiendas; puedes pasar a Vista 3D en Opciones.' : undefined} />
+        <Map2D reason={!webgl ? 'Tu navegador no soporta 3D (WebGL). Mostramos el plano 2D con las mismas tiendas.' : autoPlano ? 'Plano 2D para ir más fluido · 3D en Opciones' : undefined} />
       )}
       {use3D && <div className="world-vignette pointer-events-none absolute inset-0" aria-hidden />}
       {active && <Hud use3D={use3D} webgl={webgl} dimmed={(!!selectedSpaceId && !peek) || harborOpen} />}
@@ -199,7 +199,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const peekId = useUI((s) => (s.peek ? s.selectedSpaceId : null))
   const courtActive = useUI((s) => s.courtOpen || s.selectedSpaceId === COURT_SPACE.id)
   const chip = (on: boolean) =>
-    `tap-halo flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition duration-200 active:scale-[0.98] ${
+    `tap-halo touch-hit relative flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition duration-200 active:scale-[0.98] ${
       on ? 'glass-teal' : 'glass text-ink'
     }`
 
@@ -263,7 +263,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         <div
           className={`island-hide pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
         >
-          <Link to="/ofertas" className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
+          <Link to="/ofertas" className="glass touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
             <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
               <Gem className="size-3" strokeWidth={2} />
             </span>
@@ -271,7 +271,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           </Link>
           <Link
             to="/pasaporte"
-            className="glass flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none"
+            className="glass touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none"
             aria-label={`Mi pasaporte: ${passportDone} de ${stampList.length} sellos`}
           >
             <span className="grid size-5 place-items-center rounded-full bg-teal text-white">
@@ -294,7 +294,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
                 if (use3D) requestFocus({ kind: 'space', id: flashEvent.spaceId })
               }}
               // suelta, sin cápsula: ícono ámbar, descuento, tienda y contador alineados al centro
-              className="chrome-text flex h-8 items-center gap-1.5 rounded-full pr-1 text-[13px] leading-none font-semibold transition active:scale-[0.98]"
+              className="chrome-text touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-1 text-[13px] leading-none font-semibold transition active:scale-[0.98]"
               aria-label={`Oferta relámpago −${flash.discountPercent}% en ${flashStore?.name ?? 'una tienda'}. Ver la tienda`}
             >
               <span
@@ -675,7 +675,7 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
     const next = floors[idx + d]
     if (next) setFloor(next.id)
   }
-  const btn = 'grid h-8 w-full place-items-center text-ink-soft transition hover:text-ink disabled:opacity-25 max-md:hidden'
+  const btn = 'touch-hit relative grid h-8 w-full place-items-center text-ink-soft transition hover:text-ink disabled:opacity-25 max-md:hidden'
   return (
     <nav
       aria-label="Pisos"
@@ -694,7 +694,7 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
             onClick={() => setFloor(f.id)}
             aria-pressed={on}
             aria-label={f.name}
-            className={`rounded-[18px] px-1 py-2 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:py-2.5 md:text-[12px] ${on ? 'glass-teal' : 'text-ink hover:bg-white/30'}`}
+            className={`touch-hit relative min-h-11 rounded-[18px] px-1 py-2 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:py-2.5 md:text-[12px] ${on ? 'glass-teal' : 'text-ink hover:bg-white/30'}`}
           >
             <span className="md:hidden">P{f.level}</span>
             <span className="max-md:hidden">{f.name}</span>

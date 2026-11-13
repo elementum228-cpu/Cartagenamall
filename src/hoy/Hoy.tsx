@@ -4,6 +4,15 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { useUI } from '../state/ui'
 import { useEditionData, type EdPromo } from './edition'
 import { useHoy } from './store'
+import { detectProfile } from '../lib/deviceProfile'
+
+// Tipografía de titulares (≈77 KB): solo en dispositivos que la aguantan; en los básicos el periódico usa una serif del sistema.
+if (detectProfile().tier !== 'low') {
+  void import('@fontsource/fraunces/latin-600.css')
+  void import('@fontsource/fraunces/latin-800.css')
+  void import('@fontsource/fraunces/latin-900.css')
+  void import('@fontsource/fraunces/latin-700-italic.css')
+}
 
 const INK = '#14202e'
 const PAPER = '#f4edde'
@@ -12,10 +21,6 @@ const CORAL = '#e8613c'
 const MUSTARD = '#e2a72e'
 const DEEP = '#123a5e'
 // Tipografía del periódico: solo se descarga con él (latín; pesos 600, 800, 900 y cursiva 700).
-import '@fontsource/fraunces/latin-600.css'
-import '@fontsource/fraunces/latin-800.css'
-import '@fontsource/fraunces/latin-900.css'
-import '@fontsource/fraunces/latin-700-italic.css'
 
 const SERIF: CSSProperties = { fontFamily: "'Fraunces', Georgia, 'Times New Roman', serif" }
 const GRAIN =

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FLOOR_BY_ID, FOOD_LAYOUT, LAYOUT, SPACES, ZONE_BY_ID } from '../config/mall'
 import type { FloorConfig } from '../domain/types'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
@@ -36,12 +36,12 @@ export function Map2D({ reason }: { reason?: string }) {
 
   return (
     <div className="absolute inset-0 overflow-auto">
-      <div className="mx-auto flex min-h-full max-w-[640px] flex-col items-center justify-center px-3 pt-36 pb-36 pl-16 md:pt-16 md:pb-28">
-        {reason && <p className="mb-3 rounded-full bg-white/80 px-3 py-1.5 text-center text-xs font-semibold text-ink-soft shadow-soft">{reason}</p>}
+      <div className="mx-auto flex min-h-full max-w-[640px] flex-col items-center justify-center px-3 pt-48 pb-32 pl-16 md:pt-16 md:pb-28">
         <p className="mb-2 text-sm font-extrabold">
           {floor.name}
           <span className="font-semibold text-ink-soft max-md:hidden"> · {floor.subtitle}</span>
         </p>
+        <ReasonNote reason={reason} />
         <svg viewBox={`${-E} ${-E} ${E * 2} ${E * 2}`} className="w-full max-w-[600px]" role="group" aria-label={`Plano 2D del ${floor.name}`}>
           <FloorPlanBase floor={floor} />
           {spaces.map((s) => {
@@ -164,5 +164,20 @@ export function FloorPlanBase({ floor }: { floor: FloorConfig }) {
         </>
       )}
     </>
+  )
+}
+
+/** Aviso breve (por qué se muestra el plano 2D): una línea bajo el título del piso que se desvanece sola; reserva su espacio para no mover el plano. */
+function ReasonNote({ reason }: { reason?: string }) {
+  const [shown, setShown] = useState(true)
+  useEffect(() => {
+    const t = window.setTimeout(() => setShown(false), 7000)
+    return () => clearTimeout(t)
+  }, [])
+  if (!reason) return null
+  return (
+    <p role="status" className={`mb-1 text-center text-[11px] leading-4 font-semibold text-white/85 transition-opacity duration-700 ${shown ? 'opacity-100' : 'opacity-0'}`}>
+      {reason}
+    </p>
   )
 }

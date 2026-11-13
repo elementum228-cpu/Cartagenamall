@@ -15,9 +15,9 @@ describe('perfil de dispositivo (calidad automática)', () => {
     expect(classify(dev({ effectiveType: '4g', memory: 8, cores: 8, shortSide: 1080, touch: false })).tier).toBe('high')
   })
 
-  it('celulares básicos (poca memoria o pocos núcleos) → low y 2D', () => {
+  it('celulares básicos (poca memoria o pocos núcleos) → low, pero el 3D abre primero', () => {
     const p = classify(dev({ memory: 2, cores: 8 }))
-    expect(p).toMatchObject({ tier: 'low', start3D: false })
+    expect(p).toMatchObject({ tier: 'low', start3D: true })
     expect(p.reasons.join()).toMatch(/memoria/)
     expect(classify(dev({ memory: 4, cores: 2 })).tier).toBe('low')
   })

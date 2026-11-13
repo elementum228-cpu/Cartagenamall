@@ -27,7 +27,7 @@ export interface DeviceSignals {
 
 export interface DeviceProfile {
   tier: Tier
-  /** ¿Conviene abrir directamente el mundo 3D? Con `low`, el plano 2D (la persona puede pasar a 3D cuando quiera). */
+  /** ¿Conviene abrir directamente el mundo 3D? Siempre que haya WebGL; la calidad (`low`/`medium`/`high`) ajusta el costo, no la experiencia. */
   start3D: boolean
   /** Por qué se eligió este nivel (para depurar y para mostrar al administrador). */
   reasons: string[]
@@ -43,7 +43,8 @@ export function classify(s: DeviceSignals): DeviceProfile {
   if (s.effectiveType && SLOW_NETWORK.has(s.effectiveType)) low.push(`red lenta (${s.effectiveType})`)
   if (s.memory !== undefined && s.memory <= 2) low.push(`poca memoria (${s.memory} GB)`)
   if (s.cores !== undefined && s.cores <= 2) low.push(`pocos núcleos (${s.cores})`)
-  if (low.length) return { tier: 'low', start3D: false, reasons: low }
+  // El 3D es el producto: también en gama baja se abre primero (con calidad reducida). Solo sin WebGL se parte del plano 2D.
+  if (low.length) return { tier: 'low', start3D: s.webgl, reasons: low }
 
   const mid: string[] = []
   const phone = s.touch && s.shortSide < 768
@@ -124,7 +125,7 @@ export function readStoredViewPrefs(): { force2D: boolean; prefer3D: boolean } {
 
 /**
  * ¿Hay que empezar a bajar el motor 3D de inmediato? Sí, si la persona va a ver el 3D al abrir (dispositivo apto o 3D elegido
- * a mano) y no eligió el plano 2D. En dispositivos básicos el motor (~240 KB) solo se descarga cuando se pide la vista 3D.
+ * a mano) y no eligió el plano 2D. Con WebGL siempre se empieza en 3D; solo cambia la calidad.
  */
 export function shouldPreload3D(profile: DeviceProfile, stored = readStoredViewPrefs()): boolean {
   if (stored.force2D) return false

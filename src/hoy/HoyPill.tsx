@@ -8,7 +8,7 @@ const MUSTARD = '#e2a72e'
 export function HoyPill() {
   const read = useHoy((s) => s.read)
   return (
-    <button onClick={read} className="flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-bold shadow-sm" style={{ background: INK, color: '#fff' }} aria-label="Abrir MallPlay Hoy, el periódico del día">
+    <button onClick={read} className="touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-bold shadow-sm" style={{ background: INK, color: '#fff' }} aria-label="Abrir MallPlay Hoy, el periódico del día">
       <span className="grid size-5 place-items-center rounded-full" style={{ background: MUSTARD, color: INK }}>
         <Newspaper className="size-3" strokeWidth={2.4} />
       </span>

@@ -44,10 +44,10 @@ describe('limitador de cuadros', () => {
 describe('precarga del motor 3D', () => {
   const sig = (o: Partial<DeviceSignals>): DeviceSignals => ({ webgl: true, webgl2: true, reducedMotion: false, shortSide: 390, longSide: 844, dpr: 2, touch: true, ios: false, ...o })
 
-  it('dispositivos aptos lo precargan; los básicos, no', () => {
+  it('con WebGL todos lo precargan (también los básicos); sin WebGL, no', () => {
     expect(shouldPreload3D(classify(sig({ memory: 4, cores: 8 })), { force2D: false, prefer3D: false })).toBe(true)
-    expect(shouldPreload3D(classify(sig({ memory: 2 })), { force2D: false, prefer3D: false })).toBe(false)
-    expect(shouldPreload3D(classify(sig({ saveData: true })), { force2D: false, prefer3D: false })).toBe(false)
+    expect(shouldPreload3D(classify(sig({ memory: 2 })), { force2D: false, prefer3D: false })).toBe(true)
+    expect(shouldPreload3D(classify(sig({ webgl: false, webgl2: false })), { force2D: false, prefer3D: false })).toBe(false)
   })
   it('quien pidió 3D a mano en un dispositivo básico sí lo precarga; quien eligió 2D, nunca', () => {
     expect(shouldPreload3D(classify(sig({ memory: 2 })), { force2D: false, prefer3D: true })).toBe(true)

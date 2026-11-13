@@ -28,6 +28,7 @@ import { useHoy } from "./hoy/store";
 import { useFlight } from "./airport/flight";
 import { useCineUi } from "./state/cineUi";
 import { lazyWhen, prefetchIdle } from "./ui/lazyWhen";
+import { detectProfile } from "./lib/deviceProfile";
 import { RouteFallback } from "./ui/RouteFallback";
 import { useEntry } from "./state/entry";
 import { tourDone } from "./features/tourState";
@@ -183,16 +184,14 @@ function Shell() {
   const doorDone = useEntry((s) => s.doorDone);
   useEffect(() => {
     if (!doorDone) return;
-    return prefetchIdle([
-      StoreSheet.preload,
-      SpaceSheet.preload,
-      ...(tourDone() ? [] : [GuidedTour.preload]),
-      HoyHost.preload,
-      ShopPage.preload,
-      ProductSheet.preload,
-      OffersPage.preload,
-      CartPage.preload,
-    ]);
+    // Celular básico: solo las fichas de tienda y de espacio (lo más abierto), tarde y de a una; lo demás se baja al pedirlo.
+    const low = detectProfile().tier === "low";
+    return prefetchIdle(
+      low
+        ? [StoreSheet.preload, SpaceSheet.preload]
+        : [StoreSheet.preload, SpaceSheet.preload, ...(tourDone() ? [] : [GuidedTour.preload]), ShopPage.preload, ProductSheet.preload, OffersPage.preload, CartPage.preload, HoyHost.preload],
+      low ? 9000 : 3500,
+    );
   }, [doorDone]);
 
   // Al salir del mapa se cierra la selección de espacio (las fichas abiertas desde Comprar se mantienen).
@@ -395,7 +394,7 @@ function TopBar() {
     <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
       <Link
         to="/"
-        className="flex shrink-0 items-center gap-2.5 rounded-2xl pr-2"
+        className="touch-hit relative flex shrink-0 items-center gap-2.5 rounded-2xl pr-2"
         aria-label="MallPlay, inicio"
       >
         {onMap ? (

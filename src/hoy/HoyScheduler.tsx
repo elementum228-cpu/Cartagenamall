@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useEntry } from '../state/entry'
 import { useUI } from '../state/ui'
 import { useHoy } from './store'
+import { detectProfile } from '../lib/deviceProfile'
+import { tourDone } from '../features/tourState'
 
 /**
  * Programa el aviso de «MallPlay Hoy»: llega DESPUÉS de entrar al mall (cuando el portón terminó y no hay recorrido guiado en
@@ -25,7 +27,16 @@ export function HoyScheduler() {
   useEffect(() => {
     if (!doorDone || touring) return
     const q = new URLSearchParams(location.search).get('hoy')
-    const t = setTimeout(() => useHoy.getState().showNotice(), q === 'aviso' ? 800 : 3500)
+    // La primera visita es para conocer el mall (recorrido guiado): el periódico espera a la siguiente. En celulares básicos
+    // llega mucho más tarde y solo si la persona está tranquila (sin fichas, recorrido ni interior abiertos).
+    if (q !== 'aviso' && !tourDone()) return
+    const delay = q === 'aviso' ? 800 : detectProfile().tier === 'low' ? 20000 : 6000
+    let t = setTimeout(function tryShow() {
+      const u = useUI.getState()
+      const busy = u.openStoreId !== null || u.selectedSpaceId !== null || u.interiorStoreId !== null || u.productSheetId !== null
+      if (busy || document.hidden) t = setTimeout(tryShow, 5000)
+      else useHoy.getState().showNotice()
+    }, delay)
     return () => clearTimeout(t)
   }, [doorDone, touring])
   return null
