@@ -54,3 +54,16 @@ alter table storage.objects enable row level security;
 grant usage on schema storage to public;
 grant select, insert, update, delete on storage.buckets, storage.objects to anon, authenticated;
 
+
+-- Igual que Supabase Storage real: carpetas de una ruta (todos los segmentos menos el último).
+-- (storage.foldername(name))[1] es la primera carpeta.
+create or replace function storage.foldername(name text) returns text[]
+language plpgsql immutable as $$
+declare
+  _parts text[];
+begin
+  select string_to_array(name, '/') into _parts;
+  return _parts[1:array_length(_parts, 1) - 1];
+end
+$$;
+grant execute on function storage.foldername(text) to public;
