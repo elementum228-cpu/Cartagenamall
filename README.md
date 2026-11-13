@@ -145,6 +145,123 @@ inventario (`mergeSeed` en `state/catalog.ts`, con prueba).
 Sumar un `FloorConfig` en `config/mall.ts` (nivel, elevación, distribución, zonas) y su estructura en
 `world/` si la distribución es nueva. El selector de pisos, la cámara y las fichas lo toman solos.
 
+## Horarios de cine (API de cartelera)
+
+Integración para consultar la cartelera de cine **por ciudad** (hoy, solo Cartagena). Es una arquitectura de proveedores: cada cadena
+tiene su adaptador y la app solo habla con un endpoint propio. **No hay datos inventados ni lectura de páginas web**: una cadena solo
+muestra horarios si tiene una **fuente autorizada** configurada; si no, sale «Horarios no disponibles temporalmente» con el enlace
+oficial a su cartelera.
+
+> El sitio es estático (GitHub Pages), así que no hay `/api` propio: el endpoint es una **función de Supabase** (`cinema-showtimes`).
+
+### Endpoint
+
+```
+GET {VITE_SUPABASE_URL}/functions/v1/cinema-showtimes?city=cartagena&date=AAAA-MM-DD
+Headers: apikey y Authorization: Bearer <VITE_SUPABASE_ANON_KEY>   (llave pública; nunca la de servicio)
+```
+
+`city` por defecto `cartagena`; `date` por defecto hoy (hora de Colombia) y admite hoy + 7 días. Error de parámetros: `400 { error: { code, message } }`;
+si todo falla: `503` con un mensaje genérico (el detalle técnico queda solo en los registros del servidor).
+
+```jsonc
+{
+  "city": "Cartagena", "date": "2026-11-13", "updatedAt": "2026-11-13T15:00:00.000Z",
+  "providers": [{
+    "id": "cinecolombia", "name": "Cine Colombia",
+    "status": "available | partial | unavailable",
+    "officialUrl": "https://www.cinecolombia.com/cartagena",
+    "lastUpdatedAt": "…", "message": "(solo si no está «available»)",
+    "cinemas": [{ "id": "…", "name": "…", "address": "…",
+      "movies": [{ "title": "…", "posterUrl": "…", "durationMinutes": 118, "rating": "12+",
+        "showtimes": [{ "time": "19:30", "format": "2D", "language": "Doblada", "bookingUrl": "https://… (siempre oficial)" }] }] }]
+  }]
+}
+```
+
+- `available`: datos recientes · `partial`: se muestran los **últimos datos buenos** porque la última consulta falló (o hubo funciones descartadas por inválidas) · `unavailable`: sin datos.
+- `bookingUrl` siempre es https de un dominio oficial de la cadena; si la fuente no trae uno válido, se usa la cartelera oficial. La compra debe abrirse en una pestaña nueva (`target="_blank" rel="noopener noreferrer"`).
+- Cliente de la app: `src/cinema/api.ts` (consulta y validación), `src/cinema/filters.ts` (filtros por cadena/formato/idioma y agrupación por película y sede).
+
+### Qué usa cada cadena
+
+| Cadena | Adaptador | Fuente | Hoy | Cartelera oficial (Cartagena) |
+|---|---|---|---|---|
+| Cine Colombia | `providers/cinecolombia` | Feed autorizado (`CINEMA_CINECOLOMBIA_*`) | Sin feed: «no disponible» | https://www.cinecolombia.com/cartagena |
+| Procinal | `providers/procinal` | Feed autorizado (`CINEMA_PROCINAL_*`) | Sin feed: «no disponible» | https://www.procinal.com.co/ciudad/cartagena |
+| Royal Films | `providers/royalfilms` | Feed autorizado (`CINEMA_ROYALFILMS_*`) | Sin feed: «no disponible» | https://cinemasroyal.com/cartelera/cartagena |
+
+Ninguna de las tres publica (que se haya podido verificar) una API pública documentada de horarios. Por eso el adaptador es un **feed autorizado**:
+un acuerdo con la cadena, o una licencia con un agregador de horarios, que entregue un JSON con el contrato de abajo. Todo está en `supabase/functions/_shared/cinema/`
+(`types.ts`, `normalizer.ts`, `service.ts`, `cache.ts`, `providers/`) y la función en `supabase/functions/cinema-showtimes/`.
+
+### Qué conseguir (por cadena)
+
+Escribe al área comercial / de alianzas de cada cadena pidiendo **acceso autorizado a su programación de Cartagena para mostrarla en MallPlay**. Lo que necesitas de ellos:
+1. La **URL** del feed o API de programación (y su documentación del formato).
+2. El **token o llave** de acceso (si lo usan).
+3. Confirmación por escrito de que puedes mostrar horarios y enlazar la compra a su sitio.
+
+Con eso se llenan las variables de la tabla siguiente. Si la cadena entrega otro formato distinto al contrato, se pasa `parse` a `createFeedProvider` en su adaptador para convertirlo (el resto no cambia).
+Alternativa: un agregador comercial de horarios con licencia (no verifiqué que alguno cubra Colombia).
+
+**Contrato del feed** (`GET <FEED_URL>?city=cartagena&date=AAAA-MM-DD`, con `Authorization: Bearer <FEED_TOKEN>` si hay token):
+
+```jsonc
+{ "cinemas": [ { "id": "…", "name": "…", "address": "…",
+    "movies": [ { "title": "…", "posterUrl": "https://…", "durationMinutes": 118, "rating": "12+",
+      "showtimes": [ { "time": "19:30" /* o "7:30 PM" */, "format": "2D", "language": "Doblada", "bookingUrl": "https://…" } ] } ] } ] }
+```
+
+### Variables de entorno (secretos de Supabase, nunca en el repositorio ni en `VITE_*`)
+
+`supabase secrets set NOMBRE=valor` (ejemplo sin valores en `supabase/functions/cinema-showtimes/.env.example`).
+
+| Variable | Para qué | Obligatoria |
+|---|---|---|
+| `CINEMA_<CADENA>_FEED_URL` | URL https del feed autorizado (`<CADENA>` = `CINECOLOMBIA`, `PROCINAL`, `ROYALFILMS`) | Sí, para que la cadena tenga horarios |
+| `CINEMA_<CADENA>_FEED_TOKEN` | Token Bearer del feed | Si la fuente lo exige |
+| `CINEMA_<CADENA>_OFFICIAL_URL` | Cambia la cartelera oficial a la que se redirige | No |
+| `CINEMA_<CADENA>_HOSTS` | Dominios oficiales extra de compra, separados por comas (p. ej. si Royal Films compra en otro dominio) | No |
+| `CINEMA_CACHE_TTL_MINUTES` | Vigencia de una lectura buena (1–1440) | No (20) |
+| `CINEMA_ERROR_BACKOFF_MINUTES` | Espera tras un fallo antes de reintentar (no se martilla una fuente caída) | No (5) |
+| `CINEMA_PROVIDER_TIMEOUT_SECONDS` | Tiempo máximo por cadena (3–60) | No (20) |
+
+### Caché y fallos
+
+La app **nunca** consulta a las cadenas: solo al endpoint. Cada cadena y día se guarda en memoria del servidor y en Supabase (`cinema_showtimes_cache`).
+Si la fuente falla se devuelve el último resultado bueno (estado `partial`); si nunca hubo, `unavailable`. Los errores se registran en el servidor y en
+`cinema_fetch_log` solo con un código (`timeout`, `http_error`, `network`, `invalid_response`) y un detalle corto sin URLs ni claves; el usuario solo ve mensajes genéricos.
+Consultas simultáneas a una misma fuente se juntan en una.
+
+### Base de datos (migración `0025_cinema_showtimes.sql`)
+
+`cinema_sources` (una fila por cadena: `enabled`, estado del último intento y **`partnership` jsonb reservado para futuras alianzas comerciales**), `cinema_showtimes_cache`
+y `cinema_fetch_log`. RLS activa y sin acceso para anónimos; solo la función (llave de servicio) escribe y los administradores leen. No se guardan datos personales.
+`select public.cinema_prune_fetch_log(30)` borra el historial viejo (programarlo una vez al día).
+
+### Puesta en marcha
+
+1. `supabase db push` (aplica la migración 0025).
+2. `supabase functions deploy cinema-showtimes`.
+3. `supabase secrets set CINEMA_PROCINAL_FEED_URL=… CINEMA_PROCINAL_FEED_TOKEN=…` (y las demás cadenas cuando tengan su acceso).
+4. Probar: `curl -H "apikey: $ANON" -H "Authorization: Bearer $ANON" "$URL/functions/v1/cinema-showtimes?city=cartagena"`.
+
+### Cómo añadir una cadena nueva
+
+1. Confirma en fuentes oficiales que opera en Cartagena y consigue su acceso autorizado (ver arriba).
+2. Crea `supabase/functions/_shared/cinema/providers/<cadena>/index.ts` con `createFeedProvider({ id, name, officialUrls, hosts, envPrefix })` (o un adaptador propio que cumpla `Provider`).
+3. Suma su `id` a `ProviderId` en `types.ts`, a `IDS` en `src/cinema/api.ts` y agrégala a `providers/registry.ts`.
+4. Inserta su fila en `cinema_sources` (nueva migración) y define sus variables `CINEMA_<CADENA>_*`.
+5. Añade una prueba en `tests/cinema-service.test.ts` y corre `npx vitest run tests/cinema-*.test.ts`.
+
+### Límites legales y de actualización
+
+- No se leen páginas web ni se sortean CAPTCHAs, bloqueos, logins o protecciones anti-bot, y no se automatiza compra, reserva ni pago: la compra ocurre siempre en el sitio oficial.
+- Mostrar horarios de una cadena requiere su autorización (o una licencia con un agregador). Leer sus sitios sin permiso depende de sus términos de uso y es frágil.
+- Los horarios pueden cambiar: la app los muestra «sujetos a cambios» y la lectura tiene hasta `CINEMA_CACHE_TTL_MINUTES` de antigüedad.
+- Esta API es independiente del modo «Automático» del cine (`cine-sync`, ver `NOTAS.md`); queda como base para reemplazarlo.
+
 ## Siguiente paso sugerido
 
 1. Adaptadores Supabase para `services/ports.ts` (tablas: stores, products, inventory, promotions, orders, sub_orders, space_claims) con RLS por comercio.
