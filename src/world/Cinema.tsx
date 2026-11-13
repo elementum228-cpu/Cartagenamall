@@ -49,8 +49,8 @@ function useImageTexture(url: string | null, w: number, h: number, fallback: (g:
   return tex
 }
 
-/** Arte por defecto de una cartelera vertical. */
-const paintPoster = (hue: string) => (g: CanvasRenderingContext2D, w: number, h: number) => {
+/** Arte por defecto de una cartelera vertical (con el título de la película si lo tiene). */
+const paintPoster = (hue: string, title = '') => (g: CanvasRenderingContext2D, w: number, h: number) => {
   const bg = g.createLinearGradient(0, 0, 0, h)
   bg.addColorStop(0, hue)
   bg.addColorStop(1, '#1b2247')
@@ -63,12 +63,26 @@ const paintPoster = (hue: string) => (g: CanvasRenderingContext2D, w: number, h:
   g.fillStyle = '#ffffff'
   g.textAlign = 'center'
   g.font = `800 ${Math.round(w * 0.13)}px "Plus Jakarta Sans", system-ui, sans-serif`
-  g.fillText('PRÓXIMO', w / 2, h * 0.76)
-  g.fillText('ESTRENO', w / 2, h * 0.88)
+  const lines = title ? wrapTitle(g, title.toUpperCase(), w * 0.86).slice(0, 3) : ['PRÓXIMO', 'ESTRENO']
+  const y0 = h * (lines.length > 2 ? 0.7 : 0.76)
+  lines.forEach((t, i) => g.fillText(t, w / 2, y0 + i * w * 0.15))
 }
-const POSTER_A = paintPoster('#7a4bd6')
-const POSTER_B = paintPoster('#d6533f')
-const POSTER_C = paintPoster('#1f9d8f')
+
+/** Parte un título en líneas que caben en `max` píxeles. */
+function wrapTitle(g: CanvasRenderingContext2D, text: string, max: number): string[] {
+  const lines: string[] = []
+  let line = ''
+  for (const word of text.split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word
+    if (line && g.measureText(next).width > max) {
+      lines.push(line)
+      line = word
+    } else line = next
+  }
+  if (line) lines.push(line)
+  return lines
+}
+const POSTER_HUES = ['#7a4bd6', '#1f9d8f', '#d6533f', '#c9a24b']
 
 /** Letrero de neón «CINE» con marco de bombillos. */
 function useMarquee() {
@@ -439,10 +453,11 @@ function Screens() {
   const posters = useCine((s) => s.posters)
   const marquee = useMarquee()
   const sign = useCartelSign()
-  const t0 = useImageTexture(posters[0].image, 320, 480, POSTER_A)
-  const t1 = useImageTexture(posters[1].image, 320, 480, POSTER_C)
-  const t2 = useImageTexture(posters[2].image, 320, 480, POSTER_B)
-  const t3 = useImageTexture(posters[3].image, 320, 480, POSTER_A)
+  const fallbacks = useMemo(() => posters.map((p, i) => paintPoster(POSTER_HUES[i], p.title)), [posters])
+  const t0 = useImageTexture(posters[0].image, 320, 480, fallbacks[0])
+  const t1 = useImageTexture(posters[1].image, 320, 480, fallbacks[1])
+  const t2 = useImageTexture(posters[2].image, 320, 480, fallbacks[2])
+  const t3 = useImageTexture(posters[3].image, 320, 480, fallbacks[3])
   const mats = useMemo(() => [t0, t1, t2, t3].map((map) => new THREE.MeshBasicMaterial({ map, toneMapped: false })), [t0, t1, t2, t3])
   return (
     <group userData={{ dynamic: true }}>

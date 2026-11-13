@@ -1,9 +1,10 @@
-import { Clapperboard, Copy, ImagePlus, Plus, Trash2, X } from 'lucide-react'
+import { Clapperboard, Copy, ImagePlus, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { readImageFile } from '../lib/image'
 import { remoteEnabled } from '../remote/client'
 import { uploadStadiumImage } from '../remote/photos'
 import { CHAINS, MAX_MOVIES, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineMovie, type CineShow, type ChainId } from '../state/cine'
+import { exampleCine } from '../state/cineExample'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
 
@@ -102,6 +103,47 @@ function ShowsInput({ movie, chain, day, shows, onChange }: { movie: CineMovie; 
         }}
       />
     </label>
+  )
+}
+
+/** Para probar sin cargar nada a mano: un ejemplo completo (películas inventadas, 4 carteles y una semana de funciones) y volver a vaciar. */
+function ExampleTools() {
+  const movies = useCine((s) => s.movies)
+  const shows = useCine((s) => s.shows)
+  const set = useCine((s) => s.set)
+  const toast = useUI((s) => s.toast)
+  return (
+    <div className="space-y-2 rounded-2xl bg-sand p-3">
+      <p className="flex items-center gap-2 text-sm font-bold">
+        <Sparkles className="size-4" /> Probar con un ejemplo
+      </p>
+      <p className="text-xs text-ink-soft">Carga 6 películas inventadas con horarios en las tres cadenas durante toda la semana, y pone sus títulos en los 4 carteles. Reemplaza lo que haya en el catálogo y las funciones. Cuando termines de probar, bórralo.</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={btn.secondary}
+          onClick={() => {
+            if ((movies.length || shows.length) && !window.confirm('Esto reemplaza el catálogo, las funciones y los carteles actuales por el ejemplo. ¿Continuar?')) return
+            set(exampleCine())
+            toast('Ejemplo cargado: ya puedes probar el cine.', 'success')
+          }}
+        >
+          <Sparkles className="size-4" /> Cargar ejemplo
+        </button>
+        <button
+          type="button"
+          className={btn.ghost}
+          disabled={!movies.length && !shows.length}
+          onClick={() => {
+            if (!window.confirm('Esto borra todas las películas y funciones del catálogo (los carteles no se tocan). ¿Continuar?')) return
+            set({ movies: [], shows: [] })
+            toast('Catálogo y funciones borrados.', 'success')
+          }}
+        >
+          <Trash2 className="size-4" /> Borrar películas y funciones
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -229,6 +271,8 @@ export function CineAdmin() {
             )
           })}
         </div>
+
+        <ExampleTools />
 
         <div className="space-y-3">
           <div>

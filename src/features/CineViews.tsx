@@ -17,10 +17,10 @@ const reduceMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(pre
 function PosterArt({ title, hue = 0 }: { title?: string; hue?: number }) {
   const bg = ['linear-gradient(160deg,#7a4bd6,#1b2247)', 'linear-gradient(160deg,#1f9d8f,#1b2247)', 'linear-gradient(160deg,#d6533f,#1b2247)', 'linear-gradient(160deg,#c9a24b,#1b2247)'][hue % 4]
   return (
-    <div className="grid size-full place-items-center p-3 text-center text-white" style={{ background: bg }}>
+    <div className="grid size-full place-items-center p-2 text-center text-white" style={{ background: bg }}>
       <div>
         <Film className="mx-auto size-8 opacity-80" />
-        <p className="mt-2 text-[13px] font-extrabold leading-tight">{title || 'PRÓXIMO ESTRENO'}</p>
+        <p className="mt-2 text-[10.5px] leading-tight font-extrabold [overflow-wrap:anywhere]">{title || 'PRÓXIMO ESTRENO'}</p>
       </div>
     </div>
   )
