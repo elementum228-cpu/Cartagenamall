@@ -248,6 +248,27 @@ Si la fuente falla se devuelve el último resultado bueno (estado `partial`); si
 `cinema_fetch_log` solo con un código (`timeout`, `http_error`, `network`, `invalid_response`, `blocked`) y un detalle corto sin URLs ni claves; el usuario solo ve mensajes genéricos.
 Consultas simultáneas a una misma fuente se juntan en una. Si una página bloquea la lectura, **no se insiste**: se conserva lo último y se espera `CINEMA_BLOCKED_BACKOFF_MINUTES` antes de volver a mirar.
 
+### Arcade «Nave Caribe»: ranking semanal y premios (migraciones `0026` y `0027`, función `arcade-run`)
+
+Minijuego en la isla de Entretenimiento (se ve cuando el administrador activa la isla). Los puntos de premio se guardan en el dispositivo; el
+**ranking semanal** (mejor puntaje de la semana, se reinicia cada lunes) es compartido y el **top 3 gana premios** (descuentos en restaurantes o
+locales aliados) que la administración define.
+
+**Cómo se evita la trampa.** El navegador nunca manda un puntaje. Pide una partida (`start`: el servidor entrega la semilla), juega y manda el
+registro de sus movimientos (`finish`); la función `arcade-run` **repite la partida** con la misma lógica (`supabase/functions/_shared/arcade/sim.ts`,
+la misma que corre en el navegador, determinista) y guarda el puntaje que ELLA calcula. Una partida es de un solo uso, no puede terminar antes de lo que
+dura jugarla y tiene topes (60 puntos por partida, 240 por día). Límite que queda: un programa que juegue de verdad, en tiempo real, no se distingue de
+una persona. Por eso **los premios se entregan después de que la administración revise el podio** (pestaña *Arcade* de `/admin`: puntaje, duración,
+código del ganador y botón para descalificar).
+
+Puesta en marcha (una vez):
+1. `supabase db push` (aplica `0026` y `0027`) o pega ambos SQL, en orden, en el SQL Editor.
+2. `supabase functions deploy arcade-run` (usa `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`, que ya existen en las funciones).
+3. En `/admin` → *Arcade*: escribe los premios de los puestos 1 a 3 (se guardan en `mall_settings`, clave `arcade_prizes`).
+
+Cada lunes: abre *Arcade* → «Semana pasada», revisa el podio, descalifica lo sospechoso y entrega los premios contra el código `GP-XXXXXX` que muestra
+el ganador en su pantalla. Pruebas: `npx vitest run tests/arcade.test.ts` y `PGPASSWORD=postgres supabase/tests/arcade.sh` (reglas SQL).
+
 ### Base de datos (migración `0025_cinema_showtimes.sql`)
 
 `cinema_sources` (una fila por cadena: `enabled`, estado del último intento y **`partnership` jsonb reservado para futuras alianzas comerciales**), `cinema_showtimes_cache`

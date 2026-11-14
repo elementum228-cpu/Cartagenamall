@@ -34,9 +34,10 @@ import { isHighlighted } from '../lib/storeHighlight'
 import { DemoPromoButton } from '../features/DemoPromoButton'
 import { OwnerDashboard, PriceInput } from './OwnerDashboard'
 import { DemoInvites } from './DemoInvites'
+import { ArcadeAdmin } from './ArcadeAdmin'
 import { useSpacePrice, useSpacePricing } from '../state/spacePricing'
 
-type Tab = 'cine' | 'servicios' | 'hoy' | 'beta' | 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'estadio' | 'invitaciones' | 'integraciones'
+type Tab = 'arcade' | 'cine' | 'servicios' | 'hoy' | 'beta' | 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'estadio' | 'invitaciones' | 'integraciones'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'gestion', label: 'Gestión y precios' },
@@ -50,6 +51,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'estadio', label: 'Estadio' },
   { id: 'servicios', label: 'Zonas de servicio' },
   { id: 'cine', label: 'Cine' },
+  { id: 'arcade', label: 'Arcade' },
   { id: 'hoy', label: 'MallPlay Hoy' },
   { id: 'beta', label: 'Beta' },
   { id: 'invitaciones', label: 'Invitaciones' },
@@ -119,6 +121,7 @@ function AdminContent() {
         {tab === 'estadio' && <StadiumAdmin />}
         {tab === 'servicios' && <ServicesAdmin />}
         {tab === 'cine' && <CineAdmin />}
+        {tab === 'arcade' && <ArcadeAdmin />}
         {tab === 'hoy' && <HoyAdmin />}
         {tab === 'beta' && <InteriorAdmin />}
         {tab === 'invitaciones' && <DemoInvites />}

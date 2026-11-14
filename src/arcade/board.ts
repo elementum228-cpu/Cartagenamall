@@ -19,11 +19,6 @@ export interface Board {
   /** Mi puesto, aunque no esté entre los primeros (null si aún no he jugado en línea). */
   me: { rank: number; points: number; nickname: string } | null
 }
-export interface SubmitResult {
-  awarded: number
-  rankWeek: number
-  rankTotal: number
-}
 
 /** Mismo criterio que la base: letras, números, espacio, punto, guion y guion bajo; de 2 a 16 caracteres. */
 export function cleanNick(raw: string): string {
@@ -49,14 +44,91 @@ export function newPlayerId(): string {
 
 const num = (v: unknown) => Number(v ?? 0) || 0
 
-/** Envía una partida terminada. null = sin conexión, ranking no disponible o envío rechazado. */
-export async function submitRun(playerId: string, nickname: string, score: number): Promise<SubmitResult | null> {
-  if (!supabase || score <= 0) return null
+export interface RunTicket {
+  runId: string
+  seed: number
+}
+export interface RunResult {
+  /** Puntaje que calculó el servidor al repetir la partida (el único que cuenta para el ranking). */
+  score: number
+  awarded: number
+  rankWeek: number | null
+  banned: boolean
+}
+
+const call = async (body: Record<string, unknown>): Promise<Record<string, unknown> | null> => {
+  if (!supabase) return null
   try {
-    const { data, error } = await supabase.rpc('arcade_submit', { p_player: playerId, p_nickname: nickname, p_score: Math.floor(score) })
+    const { data, error } = await supabase.functions.invoke('arcade-run', { body })
+    if (error || !data || typeof data !== 'object' || 'error' in (data as object)) return null
+    return data as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+/** Pide al servidor una partida: devuelve la semilla (la elige él). null = sin conexión: se juega sin ranking. */
+export async function startRun(playerId: string): Promise<RunTicket | null> {
+  const d = await call({ action: 'start', player_id: playerId })
+  if (!d || typeof d.run_id !== 'string' || typeof d.seed !== 'number') return null
+  return { runId: d.run_id, seed: d.seed }
+}
+
+/** Entrega los movimientos de la partida; el servidor la repite y guarda su propio puntaje. null = no se pudo validar. */
+export async function finishRun(playerId: string, ticket: RunTicket, nickname: string, inputs: number[]): Promise<RunResult | null> {
+  const d = await call({ action: 'finish', run_id: ticket.runId, player_id: playerId, nickname, inputs })
+  if (!d) return null
+  invalidateBoard()
+  return { score: num(d.score), awarded: num(d.awarded), rankWeek: d.rank_week == null ? null : num(d.rank_week), banned: d.banned === true }
+}
+
+export interface Winner {
+  place: number
+  nickname: string
+  score: number
+  prize: string
+}
+export interface MyPrize {
+  week: string
+  place: number
+  score: number
+  prize: string
+  code: string
+}
+
+/** Podio de la semana pasada (con el premio de cada puesto). [] si aún no hay; null = no disponible. */
+export async function fetchWinners(): Promise<Winner[] | null> {
+  if (!supabase) return null
+  try {
+    const { data, error } = await supabase.rpc('arcade_winners', {})
+    if (error) return null
+    return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({ place: num(r.place), nickname: String(r.nickname ?? ''), score: num(r.score), prize: String(r.prize ?? '') }))
+  } catch {
+    return null
+  }
+}
+
+/** Los tres premios vigentes, por puesto. */
+export async function fetchPrizes(): Promise<string[] | null> {
+  if (!supabase) return null
+  try {
+    const { data, error } = await supabase.rpc('arcade_prizes', {})
+    if (error || !data) return null
+    const rows = data as Record<string, unknown>[]
+    return [1, 2, 3].map((p) => String(rows.find((r) => num(r.place) === p)?.prize ?? ''))
+  } catch {
+    return null
+  }
+}
+
+/** Si esta persona ganó un puesto la semana pasada: su premio y el código para caja. */
+export async function fetchMyPrize(playerId: string): Promise<MyPrize | null> {
+  if (!supabase) return null
+  try {
+    const { data, error } = await supabase.rpc('arcade_my_prize', { p_player: playerId })
     if (error || !data) return null
     const d = data as Record<string, unknown>
-    return { awarded: num(d.awarded), rankWeek: num(d.rank_week), rankTotal: num(d.rank_total) }
+    return { week: String(d.week ?? ''), place: num(d.place), score: num(d.score), prize: String(d.prize ?? ''), code: String(d.code ?? '') }
   } catch {
     return null
   }

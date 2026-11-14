@@ -3,15 +3,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFrameGate } from '../world/frameGate'
 import { copyText } from '../lib/clipboard'
 import { usePrefs } from '../state/ui'
-import { defaultNick, fetchBoard, invalidateBoard, submitRun, type Board, type BoardKind } from './board'
-import { createGame, draw, H, update, W, type Game, type Input } from './engine'
+import { defaultNick, fetchBoard, fetchMyPrize, fetchPrizes, fetchWinners, finishRun as finishRunRemote, startRun, type MyPrize, type Winner, type Board, type BoardKind, type RunTicket } from './board'
+import { createGame, createRecorder, H, makeRand, STEP, update, W, type Game, type Input } from './engine'
+import { draw } from './render'
 import { ARCADE_REWARDS, DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, SCORE_PER_POINT, useArcade, useArcadeUi, type ArcadeRedemption } from './store'
 
 // Pantalla de arcade de la isla de Entretenimiento: el juego «Nave Caribe» (canvas 2D) y los premios que se canjean con los puntos.
 // El bucle de dibujo solo corre mientras se juega: en el menú, en pausa y con la pestaña oculta no gasta nada.
 
 const DPR_BY_QUALITY = { low: 1, medium: 1.5, high: 2 } as const
-const STEP = 1 / 60
 
 type Phase = 'menu' | 'play' | 'pause' | 'over'
 
@@ -94,7 +94,20 @@ function Play({ onRanking }: { onRanking: () => void }) {
     phaseRef.current = p
     setPhaseState(p)
   }
-  const [result, setResult] = useState<{ score: number; awarded: number; capped: boolean; record: boolean; rankWeek?: number } | null>(null)
+  // Partida verificada: el servidor entrega la semilla y repite la partida con los movimientos anotados.
+  const ticket = useRef<RunTicket | null>(null)
+  const run = useRef<{ ticket: RunTicket | null; rec: ReturnType<typeof createRecorder>; step: number } | null>(null)
+  const [result, setResult] = useState<{ score: number; awarded: number; capped: boolean; record: boolean; rankWeek?: number; ranked: boolean; pending: boolean } | null>(null)
+  const playerId = useArcade((s) => s.playerId)
+  const prefetch = useCallback(() => {
+    ticket.current = null
+    void startRun(playerId).then((t) => {
+      ticket.current = t
+    })
+  }, [playerId])
+  useEffect(() => {
+    prefetch()
+  }, [prefetch])
   const best = useArcade((s) => s.best)
   const earnedToday = useArcade((s) => s.earnedToday)
 
@@ -131,7 +144,9 @@ function Play({ onRanking }: { onRanking: () => void }) {
       if (last) acc += Math.min((now - last) / 1000, 0.1)
       last = now
       let n = 0
+      const cur = run.current
       while (acc >= STEP && n < 4) {
+        if (cur) cur.rec.push(cur.step++, input.current)
         update(g, STEP, input.current)
         acc -= STEP
         n++
@@ -146,14 +161,17 @@ function Play({ onRanking }: { onRanking: () => void }) {
         stop()
         const st = useArcade.getState()
         const r = st.finishRun(g.score)
-        setResult({ score: g.score, ...r })
-        // al ranking en línea (si hay conexión): el puesto llega unos instantes después
-        const nick = st.nickname || defaultNick(st.playerId)
-        void submitRun(st.playerId, nick, g.score).then((res) => {
-          if (!res) return
-          invalidateBoard()
-          setResult((cur) => (cur && cur.score === g.score ? { ...cur, rankWeek: res.rankWeek } : cur))
-        })
+        const rn = run.current
+        const ranked = !!rn?.ticket
+        setResult({ score: g.score, ...r, ranked, pending: ranked })
+        // al servidor: repite la partida y guarda SU puntaje; el puesto llega unos instantes después
+        if (rn?.ticket) {
+          const nick = st.nickname || defaultNick(st.playerId)
+          void finishRunRemote(st.playerId, rn.ticket, nick, rn.rec.log).then((res) => {
+            setResult((c) => (c && c.score === g.score ? { ...c, pending: false, ranked: !!res, rankWeek: res?.rankWeek ?? undefined } : c))
+            prefetch()
+          })
+        } else prefetch()
         setPhase('over')
       }
     }
@@ -161,7 +179,11 @@ function Play({ onRanking }: { onRanking: () => void }) {
   }, [stop])
 
   const start = () => {
-    game.current = createGame()
+    // con partida del servidor (cuenta para el ranking) o, sin conexión, con semilla local (solo para jugar)
+    const t = ticket.current
+    ticket.current = null
+    game.current = createGame(makeRand(t ? t.seed : Math.floor(Math.random() * 2147483646) + 1))
+    run.current = { ticket: t, rec: createRecorder(), step: 0 }
     input.current = { targetX: null, dir: 0 }
     setResult(null)
     setPhase('play')
@@ -211,7 +233,8 @@ function Play({ onRanking }: { onRanking: () => void }) {
 
   const point = (e: React.PointerEvent) => {
     const r = e.currentTarget.getBoundingClientRect()
-    input.current.targetX = ((e.clientX - r.left) / r.width) * W
+    // entero: el servidor repite la partida con exactamente estos valores
+    input.current.targetX = Math.max(0, Math.min(W, Math.round(((e.clientX - r.left) / r.width) * W)))
   }
 
   // primer cuadro del menú: fondo estático (no corre ningún bucle)
@@ -267,11 +290,13 @@ function Play({ onRanking }: { onRanking: () => void }) {
                 <h3 className="text-xl font-extrabold">{result.record ? '¡Nuevo récord!' : 'Fin de la partida'}</h3>
                 <p className="text-4xl font-extrabold tabular-nums">{result.score}</p>
                 <p className="text-[14px] font-bold text-[#ffc83d]">+{result.awarded} puntos de premio</p>
-                {result.rankWeek ? (
+                {result.pending && <p className="text-[12px] text-[#9fb3ff]">Verificando tu partida…</p>}
+                {!result.pending && result.rankWeek ? (
                   <button onClick={onRanking} className="min-h-11 text-[13px] font-bold text-[#4de1ff] underline">
                     Puesto #{result.rankWeek} esta semana · ver ranking
                   </button>
                 ) : null}
+                {!result.pending && !result.ranked && <p className="px-2 text-[11.5px] leading-snug text-[#9fb3ff]">Esta partida no entra al ranking (sin conexión). Tus puntos de premio sí se guardaron.</p>}
                 {result.capped && <p className="text-[12px] text-[#c8d3ff]">Llegaste al tope de {result.awarded === 0 ? 'hoy' : 'puntos'}: vuelve mañana por más.</p>}
               </>
             )}
@@ -368,8 +393,78 @@ function Prizes() {
 }
 
 const MEDAL = ['#ffc83d', '#c9d2e6', '#d98a4e']
+const KIND_INFO: Record<BoardKind, { label: string; unit: string; note: string }> = {
+  week: { label: 'Esta semana', unit: '', note: 'Mejor puntaje de la semana. Se reinicia cada lunes y el top 3 gana premios.' },
+  best: { label: 'Récord', unit: '', note: 'Mejor puntaje en una sola partida, de todos los tiempos.' },
+  total: { label: 'Puntos', unit: ' pts', note: 'Puntos acumulados desde el primer día (tienen tope diario).' },
+}
 
-/** Tabla de líderes: semana en curso o total; si el servidor no responde, mis mejores partidas del dispositivo. */
+/** Premios de la semana: lo que se gana, el podio de la semana pasada y, si ganaste, tu código. */
+function Prizes3() {
+  const playerId = useArcade((s) => s.playerId)
+  const [prizes, setPrizes] = useState<string[] | null>(null)
+  const [winners, setWinners] = useState<Winner[] | null>(null)
+  const [mine, setMine] = useState<MyPrize | null>(null)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    let live = true
+    void Promise.all([fetchPrizes(), fetchWinners(), fetchMyPrize(playerId)]).then(([p, w, m]) => {
+      if (!live) return
+      setPrizes(p)
+      setWinners(w)
+      setMine(m)
+    })
+    return () => {
+      live = false
+    }
+  }, [playerId])
+  if (!prizes && !winners && !mine) return null
+  return (
+    <div className="flex flex-col gap-2">
+      {mine && (
+        <div className="rounded-2xl border-2 border-[#ffc83d] bg-[#ffc83d]/10 p-4 text-center" role="status">
+          <p className="text-[13px] font-semibold text-[#ffe08a]">¡Ganaste el puesto #{mine.place} de la semana pasada con {mine.score} puntos!</p>
+          <p className="my-1 text-[15px] font-extrabold">{mine.prize}</p>
+          <p className="text-3xl font-extrabold tracking-widest text-[#ffc83d]">{mine.code}</p>
+          <p className="mt-1 text-[11.5px] leading-snug text-[#c8d3ff]">Muestra este código en caja del local aliado. Los premios se confirman tras revisar las partidas del podio.</p>
+          <button
+            onClick={async () => {
+              setCopied(await copyText(mine.code))
+              setTimeout(() => setCopied(false), 1500)
+            }}
+            className="mt-2 min-h-11 rounded-full bg-white/15 px-5 text-[13px] font-bold"
+          >
+            {copied ? 'Copiado' : 'Copiar código'}
+          </button>
+        </div>
+      )}
+      {prizes && (
+        <div className="rounded-2xl bg-white/[0.07] p-3.5">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-extrabold tracking-wide text-[#ffc83d] uppercase">
+            <Trophy className="size-4" /> Premios cada lunes
+          </p>
+          <ol className="flex flex-col gap-1">
+            {prizes.map((t, i) => (
+              <li key={i} className="flex items-start gap-2 text-[13px] leading-snug">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-extrabold" style={{ background: MEDAL[i], color: '#1a1200' }}>
+                  {i + 1}
+                </span>
+                {t}
+              </li>
+            ))}
+          </ol>
+          {winners && winners.length > 0 && (
+            <p className="mt-2 border-t border-white/10 pt-2 text-[12px] text-[#c8d3ff]">
+              Semana pasada: {winners.map((w) => `${w.place}.º ${w.nickname} (${w.score})`).join(' · ')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Tabla de líderes: semana en curso, récord o puntos; si el servidor no responde, mis mejores partidas del dispositivo. */
 function Ranking() {
   const playerId = useArcade((s) => s.playerId)
   const nickname = useArcade((s) => s.nickname)
@@ -388,17 +483,13 @@ function Ranking() {
     }
   }, [kind, playerId])
 
+  const info = KIND_INFO[kind]
   const inList = board?.rows.some((r) => r.me)
   return (
     <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pb-2 text-white">
+      <Prizes3 />
       <div className="flex gap-1.5" role="tablist" aria-label="Tipo de ranking">
-        {(
-          [
-            ['week', 'Esta semana'],
-            ['total', 'Total'],
-            ['best', 'Récord'],
-          ] as const
-        ).map(([id, label]) => (
+        {(Object.keys(KIND_INFO) as BoardKind[]).map((id) => (
           <button
             key={id}
             role="tab"
@@ -406,7 +497,7 @@ function Ranking() {
             onClick={() => setKind(id)}
             className={`min-h-11 flex-1 rounded-xl text-[13px] font-bold ${kind === id ? 'bg-white text-[#04061a]' : 'bg-white/10'}`}
           >
-            {label}
+            {KIND_INFO[id].label}
           </button>
         ))}
       </div>
@@ -454,24 +545,24 @@ function Ranking() {
         </div>
       )}
 
-      {board && board.rows.length === 0 && <p className="py-6 text-center text-[13px] text-[#9fb3ff]">Todavía nadie ha sumado puntos {kind === 'week' ? 'esta semana' : ''}. ¡Sé el primero!</p>}
+      {board && board.rows.length === 0 && <p className="py-6 text-center text-[13px] text-[#9fb3ff]">Todavía no hay puntajes {kind === 'week' ? 'esta semana' : ''}. ¡Sé el primero!</p>}
 
       {board && board.rows.length > 0 && (
         <ol className="flex flex-col gap-1.5" aria-label="Tabla de líderes">
           {board.rows.map((r) => (
-            <Row key={`${r.rank}-${r.nickname}`} rank={r.rank} name={r.nickname} points={r.points} me={r.me} unit={kind === 'best' ? '' : ' pts'} />
+            <Row key={`${r.rank}-${r.nickname}`} rank={r.rank} name={r.nickname} points={r.points} me={r.me} unit={info.unit} />
           ))}
           {board.me && !inList && board.me.points > 0 && (
             <>
               <li className="text-center text-[11px] text-[#9fb3ff]" aria-hidden>
                 · · ·
               </li>
-              <Row rank={board.me.rank} name={board.me.nickname} points={board.me.points} me unit={kind === 'best' ? '' : ' pts'} />
+              <Row rank={board.me.rank} name={board.me.nickname} points={board.me.points} me unit={info.unit} />
             </>
           )}
         </ol>
       )}
-      <p className="text-center text-[11px] text-[#9fb3ff]">{kind === 'week' ? 'Puntos de la semana; se reinicia cada lunes.' : kind === 'total' ? 'Puntos acumulados desde el primer día.' : 'Mejor puntaje en una sola partida.'} Lo calcula el servidor.</p>
+      <p className="text-center text-[11px] text-[#9fb3ff]">{info.note} Cada partida la verifica el servidor.</p>
     </div>
   )
 }
