@@ -408,7 +408,7 @@ function TopBar() {
           </>
         )}
       </Link>
-      <div className="glass mx-auto hidden rounded-full md:block">
+      <div data-tour="nav" className="glass mx-auto hidden rounded-full md:block">
         <ModeSwitch />
       </div>
       <nav
@@ -529,6 +529,7 @@ function BottomNav() {
   ];
   return (
     <nav
+      data-tour="nav"
       className="tour-hide chrome-in-bottom glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 h-16 rounded-[26px] px-1.5 md:hidden"
       aria-label="Navegación principal"
     >

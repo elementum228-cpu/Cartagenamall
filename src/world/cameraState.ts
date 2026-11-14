@@ -38,3 +38,5 @@ export const cameraState = {
   /** El mapa está visible (modo Explorar): el teclado solo actúa entonces. */
   active: true,
 }
+
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __cmCameraState?: unknown }).__cmCameraState = cameraState

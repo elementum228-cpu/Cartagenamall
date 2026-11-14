@@ -31,6 +31,8 @@ const OVERVIEW_ZOOM = 0.54
 /** En pantallas verticales la fortaleza se encuadra más cerca (se recortan apenas las puntas de los baluartes). */
 const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
 /** Vista general y piso 1: se puede recorrer todo, incluidos el muelle, los barcos y el mar alrededor. */
+/** En el recorrido guiado, cuánto (fracción del alto) se sube el punto enfocado respecto al centro de la pantalla. */
+const TOUR_LIFT = 0.16
 const OVERVIEW_BOUNDS = 92
 const P1_BOUNDS = 62
 /** Alcance de la cámara con el muelle turístico abierto. */
@@ -310,6 +312,18 @@ export function CameraRig() {
       }
       cameraState.viewOffset.set(0, 0, 0)
       goal.current = { target, zoom }
+    } else if (focus.kind === 'spaces') {
+      // el centro de un grupo de espacios (p. ej. la terraza de servicios)
+      const list = focus.ids.map((id) => SPACE_BY_ID[id]).filter(Boolean)
+      if (!list.length) return
+      const so = floorOrigin(FLOOR_BY_ID[list[0].floorId], overview)
+      cameraState.groundY = so.y
+      const cx = list.reduce((a, sp) => a + sp.position[0], 0) / list.length
+      const cz = list.reduce((a, sp) => a + sp.position[1], 0) / list.length
+      goal.current = { target: new THREE.Vector3(so.x + cx, so.y, so.z + cz), zoom: THREE.MathUtils.clamp(fit * (focus.zoom ?? 1.8), minZoom, maxZoom) }
+    } else if (focus.kind === 'point') {
+      cameraState.groundY = focus.y ?? 0
+      goal.current = { target: new THREE.Vector3(focus.x, focus.y ?? 0, focus.z), zoom: THREE.MathUtils.clamp(fit * (focus.zoom ?? 1.6), minZoom, maxZoom) }
     } else if (focus.kind === 'space') {
       const space = SPACE_BY_ID[focus.id]
       if (!space) return
@@ -332,6 +346,11 @@ export function CameraRig() {
       // Efecto «zoom y vuelta»: la cámara se acerca de más al local y luego se echa hacia atrás
       // hasta encuadrarlo completo.
       goal.current = { target, zoom: Math.min(zoom * 1.75, maxZoom * 1.15), hold: 0.12, next: { target, zoom } }
+    }
+    // Recorrido guiado: la tarjeta tapa la parte baja; el punto enfocado se sube a ~1/3 de la pantalla para verse (y llevar su marca).
+    if (useUI.getState().tourStep !== null && goal.current && focus.kind !== 'zoom' && focus.kind !== 'enter') {
+      const g = goal.current
+      goal.current = { ...g, target: g.target.clone().addScaledVector(TOWARD_CAMERA, (TOUR_LIFT * size.height) / (g.zoom * ELEVATION_SIN)) }
     }
     prevOverview.current = overview
     invalidate()

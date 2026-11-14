@@ -217,7 +217,8 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const ctaSeen = usePrefs((s) => s.ctaSeen)
   const setCtaSeen = usePrefs((s) => s.setCtaSeen)
   // El botón de entrada es solo para quien llega por primera vez; después, el mapa queda limpio.
-  const showCta = use3D && overview && !ctaSeen && !hintSeen
+  const touring = useUI((s) => s.tourStep !== null)
+  const showCta = use3D && overview && !ctaSeen && !hintSeen && !touring
   useEffect(() => {
     if (!overview) setCtaSeen()
   }, [overview, setCtaSeen])
@@ -280,12 +281,13 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
         {!desktop && (
           <div className={`island-hide absolute top-[var(--chrome-top)] left-3 z-10 flex gap-2.5 transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-0' : ''}`}>
-            <button onClick={() => setCatsOpen(true)} aria-haspopup="dialog" className="glass touch-hit relative flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold text-ink shadow-none transition active:scale-[0.98]">
+            <button data-tour="categorias" onClick={() => setCatsOpen(true)} aria-haspopup="dialog" className="glass touch-hit relative flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold text-ink shadow-none transition active:scale-[0.98]">
               <LayoutGrid className="size-[18px]" strokeWidth={1.9} />
               Categorías
               <ChevronDown className="size-4 opacity-70" strokeWidth={2} />
             </button>
             <button
+              data-tour="descubre"
               onClick={() => setDiscOpen(true)}
               aria-haspopup="dialog"
               aria-label={discoverBadge ? `Descubre, ${discoverBadge} novedades` : 'Descubre'}
@@ -301,6 +303,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           className={`island-hide scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''} ${desktop ? '' : 'hidden'}`}
           role="toolbar"
           aria-label="Categorías del mall"
+          data-tour="categorias"
         >
           {/* Isla Tecnología no va en la fila: se llega en avión desde el aeropuerto */}
           {ZONES.filter((z) => z.id !== 'I' && (z.id !== 'G' || entOn)).map((z) => {
@@ -411,7 +414,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
           className={`pointer-events-none absolute inset-x-3 bottom-[calc(var(--chrome-bottom)+10px)] z-10 flex flex-col gap-3 transition-opacity duration-200 md:inset-x-5 md:bottom-5 ${dimmed ? 'max-md:opacity-0 max-md:**:pointer-events-none' : ''}`}
         >
           <AnimatePresence>
-            {use3D && !hintSeen && (
+            {use3D && !hintSeen && !touring && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -778,6 +781,7 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
   const btn = 'touch-hit relative grid h-8 w-full place-items-center text-ink-soft transition hover:text-ink disabled:opacity-25 max-md:hidden'
   return (
     <nav
+      data-tour="pisos"
       aria-label="Pisos"
       className={`glass absolute top-1/2 left-3 z-10 flex w-[50px] -translate-y-1/2 flex-col items-stretch gap-0.5 overflow-hidden rounded-[24px] p-1 transition-opacity duration-200 md:left-5 md:w-[64px] ${
         dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''

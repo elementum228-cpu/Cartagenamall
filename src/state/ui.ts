@@ -34,6 +34,10 @@ export type FocusInput =
   | { kind: 'islandRunway' }
   /** Encuadra una vitrina de la zona de servicios (con lugar para su ficha). */
   | { kind: 'showroom'; id: ShowroomId }
+  /** Encuadra un grupo de espacios (su centro), con el zoom relativo al encuadre general (recorrido guiado). */
+  | { kind: 'spaces'; ids: string[]; zoom?: number }
+  /** Encuadra un punto del mundo (x, z, altura y), con el zoom relativo al encuadre general (recorrido guiado). */
+  | { kind: 'point'; x: number; z: number; y?: number; zoom?: number }
 
 export type FocusRequest = FocusInput & { nonce: number }
 
@@ -264,3 +268,6 @@ export const usePrefs = create<PrefsState>()(
     },
   ),
 )
+
+// Solo en desarrollo: acceso desde la consola y las pruebas de navegador (igual que __cmGl y __cmLabels).
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __cmUI?: unknown }).__cmUI = useUI
