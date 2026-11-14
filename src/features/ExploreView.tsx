@@ -280,7 +280,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
           fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
         {!desktop && (
-          <div className={`island-hide absolute top-[var(--chrome-top)] left-3 z-10 flex gap-2.5 transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-0' : ''}`}>
+          <div data-tour="menu" className={`island-hide absolute top-[var(--chrome-top)] left-3 z-10 flex gap-2.5 transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-0' : ''}`}>
             <button data-tour="categorias" onClick={() => setCatsOpen(true)} aria-haspopup="dialog" className="glass touch-hit relative flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold text-ink shadow-none transition active:scale-[0.98]">
               <LayoutGrid className="size-[18px]" strokeWidth={1.9} />
               Categorías

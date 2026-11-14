@@ -32,7 +32,7 @@ const OVERVIEW_ZOOM = 0.54
 const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
 /** Vista general y piso 1: se puede recorrer todo, incluidos el muelle, los barcos y el mar alrededor. */
 /** En el recorrido guiado, cuánto (fracción del alto) se sube el punto enfocado respecto al centro de la pantalla. */
-const TOUR_LIFT = 0.16
+const TOUR_LIFT = 0.27
 const OVERVIEW_BOUNDS = 92
 const P1_BOUNDS = 62
 /** Alcance de la cámara con el muelle turístico abierto. */

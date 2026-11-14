@@ -12,56 +12,57 @@ import {
   LayoutGrid,
   MapPin,
   Mouse,
-  Move,
-  Plane,
+  Pause,
+  Play,
   Scissors,
-  ShoppingBag,
-  Sparkles,
   Store as StoreIcon,
   Trophy,
   Utensils,
-  Zap,
   ZoomIn,
   type LucideIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { AIRPORT_FOCUS } from '../airport/config'
-import { COURT_SPACE, FLOOR_OF_ZONE, MALL, SPACES, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { COURT_SPACE, FLOOR_OF_ZONE, MALL, SPACES } from '../config/mall'
 import { STADIUM } from '../config/stadium'
-import type { ZoneId } from '../domain/types'
-import { COURT_COLOR } from '../football/open'
+import { ENT_COLOR } from '../entertainment/config'
 import { playSparkle, playWhoosh } from '../lib/doorSound'
-import { formatCOP } from '../lib/format'
-import { isPromotionLive } from '../lib/pricing'
 import { useIsDesktop } from '../lib/useMedia'
 import { useUse3D } from '../lib/view3d'
-import { useAirportFeature } from '../state/airportFeature'
 import { useCine } from '../state/cine'
+import { useCatalog } from '../state/catalog'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { isServicesSpace, useServicesFeature } from '../state/servicesFeature'
-import { ENT_COLOR } from '../entertainment/config'
-import { HARBOR_FOCUS } from '../tourism/config'
-import { BX, BZ, DECK, DX } from '../world/cinemaLayout'
-import { cameraState } from '../world/cameraState'
-import { useCatalog, useCatalogMaps } from '../state/catalog'
-import { spacePrice, useSpacePricing } from '../state/spacePricing'
 import { usePrefs, useUI } from '../state/ui'
+import { HARBOR_FOCUS } from '../tourism/config'
+import { cameraState } from '../world/cameraState'
+import { BX, BZ, DECK, DX } from '../world/cinemaLayout'
 import { markDone } from './tourState'
 
-// Recorrido de bienvenida, en dos partes:
-//  1) «Cómo moverte»: te enseña a usar la plataforma sobre la propia pantalla (mover y acercar el mapa —con prueba en vivo—, y un foco
-//     sobre Categorías, Descubre, los pisos y la barra de navegación).
-//  2) «Qué encontrarás»: la cámara vuela por las zonas del mall (pasillos, comidas, servicios, cine, entretenimiento, deportes, estadio,
-//     aeropuerto y muelle) y marca cada una con un aro y su nombre.
-// Se muestra la primera vez (después del portón) y se puede repetir desde «Recorrido guiado» en las opciones del mapa.
-
-const STEP_MS = 6000
+// Recorrido de bienvenida: solo 6 pasos, pensado para que nadie lo salte.
+//  1) Bienvenida · 2) Recorre y acerca (gesto con prueba en vivo) · 3) Tu menú (Categorías y Descubre, resaltados sobre la pantalla real)
+//  4) Pisos y barra inferior · 5) Qué hay en el mall: UN solo paso donde la persona elige qué zona ver (la cámara vuela y la marca;
+//  «Mostrarme todas» las recorre sola) · 6) Cierre.
+// Las zonas son opcionales (un toque) en vez de ocho paradas obligatorias. Se muestra la primera vez (después del portón) y se
+// puede repetir desde «Recorrido guiado» en las opciones del mapa.
 
 export { startTour, tourDone } from './tourState'
 
-type StepType = 'story' | 'coach' | 'demo'
-type DemoKind = 'drag' | 'pinch' | 'wheel'
+type StepType = 'coach' | 'demo' | 'zones'
+type DemoKind = 'dragpinch' | 'wheel'
+
+interface Zone {
+  id: string
+  icon: LucideIcon
+  color: string
+  /** Texto corto del botón. */
+  label: string
+  /** Nombre completo, sobre el aro que marca la zona. */
+  name: string
+  desc: ReactNode
+  isNew?: boolean
+  go: () => void
+}
 
 interface Step {
   key: string
@@ -70,47 +71,40 @@ interface Step {
   color: string
   kicker: string
   title: string
-  body: ReactNode
+  body?: ReactNode
   chips?: string[]
   /** Mueve la cámara a esta parada. */
   go?: () => void
-  /** coach: valor de `data-tour` del elemento que se resalta. */
+  /** coach: valores de `data-tour` (separados por coma) de los elementos que se resaltan. */
   target?: string
   /** demo: gesto que se muestra y que la persona puede probar de verdad sobre el mapa. */
   demo?: DemoKind
-  /** story: nombre que se escribe sobre el aro que marca la zona. */
-  mark?: string
+  /** zones: las zonas que se pueden elegir. */
+  zones?: Zone[]
 }
 
 /** Resorte de las apps nativas: arranca ágil y se asienta sin rebote. */
-const SPRING = {
-  type: 'spring',
-  stiffness: 360,
-  damping: 34,
-  mass: 0.9,
-} as const
-/** Distancia (px) o velocidad para que un deslizamiento lateral cambie de parada. */
+const SPRING = { type: 'spring', stiffness: 360, damping: 34, mass: 0.9 } as const
+/** Distancia (px) o velocidad para que un deslizamiento lateral cambie de paso. */
 const SWIPE_PX = 60
 const SWIPE_V = 450
+/** Cada cuánto cambia de zona «Mostrarme todas». */
+const PLAY_MS = 4800
+/** Dónde (fracción del alto) cae el punto enfocado en el paso de zonas: debe coincidir con TOUR_LIFT de la cámara (0,5 − lift). */
+const MARK_TOP = '23%'
 
 export function GuidedTour() {
   const step = useUI((s) => s.tourStep)
   const steps = useTourSteps()
   const use3D = useUse3D()
-  const timer = useRef<number | null>(null)
-  const startedAt = useRef(0)
-  const remaining = useRef(STEP_MS)
-  const [paused, setPaused] = useState(false)
-  const pressedAt = useRef(0)
   const [dir, setDir] = useState(1)
   const [demoDone, setDemoDone] = useState(false)
-  const [rect, setRect] = useState<DOMRect | null>(null)
+  const [rects, setRects] = useState<DOMRect[]>([])
+  const [picked, setPicked] = useState<string | null>(null)
+  const [playing, setPlaying] = useState(false)
   const current = step === null ? null : steps[Math.min(step, steps.length - 1)]
   const last = step !== null && step >= steps.length - 1
-  const type: StepType = current?.type ?? 'story'
-  // Solo en desarrollo, `?tourfreeze`: sin avance automático (para fotografiar cada parada con calma)
-  const freeze = import.meta.env.DEV && new URLSearchParams(location.search).has('tourfreeze')
-  const auto = type === 'story' && !last && !freeze
+  const type: StepType = current?.type ?? 'coach'
 
   const finish = () => {
     markDone()
@@ -120,55 +114,33 @@ export function GuidedTour() {
     useUI.getState().setTourStep(null)
     useUI.getState().setOverview(true)
   }
-  /** Fue un toque breve (no mantener presionado para pausar). */
-  const tapped = () => performance.now() - pressedAt.current < 350
   const goto = (n: number) => {
     if (n < 0 || step === null) return
     if (n >= steps.length) return finish()
     setDir(n > step ? 1 : -1)
-    setPaused(false)
     useUI.getState().setTourStep(n)
   }
 
-  // cada parada: mover la cámara y sonar
+  // cada paso: mover la cámara y sonar
   useEffect(() => {
     if (step === null || !current) return
     setDemoDone(false)
-    setRect(null)
+    setRects([])
+    setPicked(null)
+    setPlaying(false)
     current.go?.()
     if (last) void playSparkle()
     else if (step > 0) void playWhoosh()
-    remaining.current = STEP_MS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
 
-  // avance automático (solo en las paradas de «Qué encontrarás»); mantener presionado lo pausa y al soltar sigue donde iba
-  useEffect(() => {
-    if (step === null || !auto) return
-    if (paused) {
-      remaining.current = Math.max(0, remaining.current - (performance.now() - startedAt.current))
-      return
-    }
-    startedAt.current = performance.now()
-    timer.current = window.setTimeout(() => goto(step + 1), remaining.current)
-    return () => {
-      if (timer.current) clearTimeout(timer.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, paused, auto])
-
-  // prueba en vivo: si la persona mueve o acerca el mapa de verdad, se celebra y se pasa a la siguiente
+  // prueba en vivo: si la persona acerca el mapa de verdad (lo difícil de descubrir), se celebra y se pasa al siguiente
   const demoKind = current?.demo
   useEffect(() => {
     if (step === null || type !== 'demo' || !demoKind || demoDone) return
     const z0 = cameraState.zoom
-    const x0 = cameraState.target.x
-    const y0 = cameraState.target.z
-    const kind = demoKind
     const id = window.setInterval(() => {
-      const moved = Math.hypot(cameraState.target.x - x0, cameraState.target.z - y0) * cameraState.zoom
-      const zoomed = Math.abs(Math.log(cameraState.zoom / z0))
-      if ((kind === 'drag' && moved > 45) || (kind !== 'drag' && zoomed > 0.2)) {
+      if (Math.abs(Math.log(cameraState.zoom / z0)) > 0.08) {
         window.clearInterval(id)
         setDemoDone(true)
       }
@@ -182,8 +154,33 @@ export function GuidedTour() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demoDone])
 
-  // la interfaz del mall se aparta solo en las paradas de recorrido por el mapa; al enseñar la interfaz hay que verla
-  const hideUi = step !== null && type === 'story'
+  // elegir una zona: la cámara vuela y el aro la marca
+  const zones = current?.zones
+  const pick = (z: Zone) => {
+    setPicked(z.id)
+    z.go()
+    void playWhoosh()
+  }
+  // «Mostrarme todas»: recorre las zonas solas, una cada pocos segundos
+  const pickedIdx = zones ? zones.findIndex((z) => z.id === picked) : -1
+  useEffect(() => {
+    if (!playing || !zones?.length) return
+    const next = () => {
+      setPicked((cur) => {
+        const i = zones.findIndex((z) => z.id === cur)
+        const z = zones[(i + 1) % zones.length]
+        z.go()
+        return z.id
+      })
+    }
+    if (pickedIdx < 0) next()
+    const id = window.setInterval(next, PLAY_MS)
+    return () => window.clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, zones])
+
+  // la interfaz del mall se aparta solo en el paso de zonas; al enseñar la interfaz hay que verla
+  const hideUi = step !== null && type === 'zones'
   useEffect(() => {
     document.documentElement.classList.toggle('tour-on', hideUi)
     return () => document.documentElement.classList.remove('tour-on')
@@ -202,8 +199,8 @@ export function GuidedTour() {
   })
 
   // la tarjeta sube si lo que se resalta está abajo (la barra de navegación)
-  const cardOnTop = type === 'coach' && !!rect && rect.top > window.innerHeight * 0.55
-  const mark = use3D && type === 'story' ? current?.mark : undefined
+  const cardOnTop = type === 'coach' && rects.some((r) => r.top > window.innerHeight * 0.55)
+  const zone = zones?.find((z) => z.id === picked)
 
   return (
     <MotionConfig reducedMotion="user">
@@ -219,30 +216,14 @@ export function GuidedTour() {
             role="dialog"
             aria-label="Recorrido guiado por el centro comercial"
           >
-            {type === 'story' && (
-              /* toques sobre el mapa: izquierda vuelve, derecha avanza; mantener presionado pausa */
-              <div
-                className="absolute inset-0"
-                onPointerDown={() => {
-                  pressedAt.current = performance.now()
-                  setPaused(true)
-                }}
-                onPointerUp={() => setPaused(false)}
-                onPointerCancel={() => setPaused(false)}
-                onPointerLeave={() => setPaused(false)}
-              >
-                <button type="button" className="absolute inset-y-0 left-0 w-1/3 cursor-w-resize" aria-label="Parada anterior" onClick={() => tapped() && goto(step - 1)} />
-                <button type="button" className="absolute inset-y-0 right-0 w-2/3 cursor-e-resize" aria-label="Siguiente parada" onClick={() => tapped() && goto(step + 1)} />
-              </div>
-            )}
-            {type === 'coach' && <Spotlight target={current.target} onRect={setRect} />}
+            {type === 'coach' && <Spotlight targets={current.target?.split(',') ?? []} onRects={setRects} />}
             {/* velo suave abajo para leer la tarjeta sobre el mapa */}
-            {type !== 'coach' && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-deep/70 via-deep/25 to-transparent" />}
+            {type !== 'coach' && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-deep/75 via-deep/30 to-transparent" />}
             {type === 'demo' && current.demo && <GestureDemo kind={current.demo} done={demoDone} />}
-            {mark && <ZoneMark label={mark} color={current.color} icon={current.icon} />}
+            {use3D && zone && <ZoneMark key={zone.id} label={zone.name} color={zone.color} icon={zone.icon} />}
 
-            {/* arriba: contador y salir, en vidrio (solo en las paradas del mapa; al enseñar la interfaz ahí está su barra) */}
-            {type === 'story' && (
+            {/* arriba: contador y salir, en vidrio (solo en el paso de zonas; en los demás ahí está la barra de la plataforma) */}
+            {type === 'zones' && (
               <motion.div
                 className="pointer-events-auto absolute inset-x-3 top-[max(12px,env(safe-area-inset-top))] flex items-center justify-between md:inset-x-6"
                 initial={{ y: -20, opacity: 0 }}
@@ -262,42 +243,41 @@ export function GuidedTour() {
               </motion.div>
             )}
 
-            {/* tarjeta: se queda en su sitio y solo cambia su contenido; se desliza de lado para cambiar de parada */}
+            {/* tarjeta: se queda en su sitio y solo cambia su contenido; se desliza de lado para cambiar de paso */}
             <div
               className={`pointer-events-none absolute inset-x-3 flex justify-center md:inset-x-0 ${cardOnTop ? 'top-[calc(max(12px,env(safe-area-inset-top))+52px)] md:top-20' : 'bottom-[max(16px,env(safe-area-inset-bottom))] md:bottom-8'}`}
             >
               <motion.div
-                className="glass-strong pointer-events-auto w-full max-w-[460px] touch-pan-y overflow-hidden rounded-[32px]"
+                className="glass-strong pointer-events-auto relative w-full max-w-[460px] touch-pan-y overflow-hidden rounded-[32px]"
                 initial={{ y: cardOnTop ? -60 : 80, opacity: 0, scale: 0.94 }}
                 animate={{ y: 0, opacity: 1, scale: 1 }}
                 transition={SPRING}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.35}
-                onDragStart={() => setPaused(true)}
                 onDragEnd={(_, info) => {
-                  setPaused(false)
                   if (info.offset.x < -SWIPE_PX || info.velocity.x < -SWIPE_V) goto(step + 1)
                   else if (info.offset.x > SWIPE_PX || info.velocity.x > SWIPE_V) goto(step - 1)
                 }}
                 layout
               >
+                {type !== 'zones' && !last && (
+                  <button
+                    type="button"
+                    onClick={finish}
+                    className="absolute top-3 right-3 z-10 min-h-11 rounded-full px-3 text-[13px] font-semibold text-ink-soft transition active:scale-95"
+                  >
+                    Saltar
+                  </button>
+                )}
                 <AnimatePresence mode="popLayout" initial={false} custom={dir}>
                   <motion.div
                     key={current.key}
                     custom={dir}
                     variants={{
-                      enter: (d: number) => ({
-                        x: d * 70,
-                        opacity: 0,
-                        filter: 'blur(8px)',
-                      }),
+                      enter: (d: number) => ({ x: d * 70, opacity: 0, filter: 'blur(8px)' }),
                       center: { x: 0, opacity: 1, filter: 'blur(0px)' },
-                      exit: (d: number) => ({
-                        x: d * -70,
-                        opacity: 0,
-                        filter: 'blur(8px)',
-                      }),
+                      exit: (d: number) => ({ x: d * -70, opacity: 0, filter: 'blur(8px)' }),
                     }}
                     initial="enter"
                     animate="center"
@@ -305,7 +285,7 @@ export function GuidedTour() {
                     transition={SPRING}
                     className="px-5 pt-5 pb-1"
                   >
-                    <div className="flex items-center gap-3.5">
+                    <div className={`flex items-center gap-3.5 ${type !== 'zones' && !last ? 'pr-12' : ''}`}>
                       <motion.span
                         className="relative grid size-14 shrink-0 place-items-center overflow-hidden rounded-[18px] text-white"
                         style={{
@@ -314,24 +294,11 @@ export function GuidedTour() {
                         }}
                         initial={{ scale: 0.6, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        transition={{
-                          type: 'spring',
-                          stiffness: 420,
-                          damping: 18,
-                          delay: 0.06,
-                        }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 18, delay: 0.06 }}
                       >
                         {/* brillo de vidrio arriba del ícono */}
                         <span className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent" />
-                        <motion.span
-                          initial={{ y: 6 }}
-                          animate={{ y: [6, -3, 0] }}
-                          transition={{
-                            duration: 0.55,
-                            delay: 0.12,
-                            ease: 'easeOut',
-                          }}
-                        >
+                        <motion.span initial={{ y: 6 }} animate={{ y: [6, -3, 0] }} transition={{ duration: 0.55, delay: 0.12, ease: 'easeOut' }}>
                           <current.icon className="relative size-7" strokeWidth={1.8} />
                         </motion.span>
                       </motion.span>
@@ -340,7 +307,7 @@ export function GuidedTour() {
                         <h2 className="text-[24px] leading-[1.1] font-bold tracking-[-0.02em] text-ink">{current.title}</h2>
                       </div>
                     </div>
-                    <div className="mt-3 text-[15px] leading-snug text-ink-soft">{current.body}</div>
+                    {current.body && <div className="mt-3 text-[15px] leading-snug text-ink-soft">{current.body}</div>}
                     {type === 'demo' && (
                       <p className={`mt-2.5 flex items-center gap-1.5 text-[13px] font-bold ${demoDone ? 'text-teal' : 'text-ink-soft'}`} aria-live="polite">
                         {demoDone ? (
@@ -367,28 +334,27 @@ export function GuidedTour() {
                         ))}
                       </div>
                     )}
+                    {zones && (
+                      <ZonePicker
+                        zones={zones}
+                        picked={picked}
+                        playing={playing}
+                        onPick={(z) => {
+                          setPlaying(false)
+                          pick(z)
+                        }}
+                        onTogglePlay={() => setPlaying((p) => !p)}
+                      />
+                    )}
                   </motion.div>
                 </AnimatePresence>
 
                 <div className="px-5 pt-4 pb-5">
-                  {/* indicador de páginas: la actual es una cápsula; en las paradas del mapa se llena con el tiempo */}
-                  <div className="mb-4 flex items-center justify-center gap-1" aria-hidden>
+                  {/* indicador de pasos */}
+                  <div className="mb-4 flex items-center justify-center gap-1.5" aria-hidden>
                     {steps.map((s, i) => (
-                      <motion.span key={s.key} className="relative h-[6px] overflow-hidden rounded-full bg-ink/15" animate={{ width: i === step ? 22 : 6 }} transition={SPRING}>
-                        {i === step && (
-                          <span
-                            key={`fill-${step}`}
-                            className="absolute inset-y-0 left-0 rounded-full bg-teal"
-                            style={
-                              auto
-                                ? {
-                                    animation: `tour-fill ${STEP_MS}ms linear forwards`,
-                                    animationPlayState: paused ? 'paused' : 'running',
-                                  }
-                                : { width: '100%' }
-                            }
-                          />
-                        )}
+                      <motion.span key={s.key} className="relative h-[6px] overflow-hidden rounded-full bg-ink/15" animate={{ width: i === step ? 26 : 6 }} transition={SPRING}>
+                        {i === step && <span className="absolute inset-0 rounded-full bg-teal" />}
                         {i < step && <span className="absolute inset-0 rounded-full bg-ink/35" />}
                       </motion.span>
                     ))}
@@ -438,13 +404,6 @@ export function GuidedTour() {
                       </AnimatePresence>
                     </motion.button>
                   </div>
-                  {type === 'story' ? (
-                    <p className="mt-3 text-center text-[11.5px] text-ink-soft max-md:block md:hidden">Desliza la tarjeta o toca el mapa para avanzar</p>
-                  ) : (
-                    <button type="button" onClick={finish} className="mx-auto mt-2 block min-h-11 px-4 text-[13px] font-semibold text-ink-soft underline underline-offset-2">
-                      Saltar recorrido
-                    </button>
-                  )}
                 </div>
               </motion.div>
             </div>
@@ -456,24 +415,102 @@ export function GuidedTour() {
   )
 }
 
+/** Las zonas del mall como botones: tocar una lleva la cámara hasta ella y muestra su descripción. */
+function ZonePicker({
+  zones,
+  picked,
+  playing,
+  onPick,
+  onTogglePlay,
+}: {
+  zones: Zone[]
+  picked: string | null
+  playing: boolean
+  onPick: (z: Zone) => void
+  onTogglePlay: () => void
+}) {
+  const zone = zones.find((z) => z.id === picked)
+  return (
+    <div className="mt-3">
+      <ul className="grid grid-cols-4 gap-1.5" aria-label="Zonas del mall">
+        {zones.map((z) => {
+          const on = z.id === picked
+          return (
+            <li key={z.id}>
+              <button
+                type="button"
+                onClick={() => onPick(z)}
+                aria-pressed={on}
+                className={`relative flex min-h-[62px] w-full flex-col items-center justify-center gap-1 rounded-2xl px-0.5 py-1.5 text-[11px] leading-none font-bold transition active:scale-[0.96] ${on ? 'text-white' : 'bg-ink/[0.06] text-ink'}`}
+                style={on ? { background: z.color } : undefined}
+              >
+                {z.isNew && !on && <span className="absolute top-1 right-1.5 size-2 rounded-full bg-amber ring-2 ring-white" aria-label="Nuevo" />}
+                <z.icon className="size-[22px]" strokeWidth={1.8} />
+                {z.label}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="mt-2.5 min-h-[64px]" aria-live="polite">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.p
+            key={zone?.id ?? 'vacio'}
+            className="text-[14px] leading-snug text-ink-soft"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+          >
+            {zone ? (
+              <>
+                <b className="font-bold text-ink">{zone.name}.</b> {zone.desc}
+              </>
+            ) : (
+              'Toca una zona y la cámara vuela hasta ella. Con «Mostrarme todas» las vemos seguidas.'
+            )}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+      <button type="button" onClick={onTogglePlay} className="mt-1 flex min-h-11 items-center gap-1.5 text-[13px] font-bold text-teal">
+        {playing ? (
+          <>
+            <Pause className="size-4" strokeWidth={2.2} /> Detener
+          </>
+        ) : (
+          <>
+            <Play className="size-4" strokeWidth={2.2} /> Mostrarme todas
+          </>
+        )}
+      </button>
+    </div>
+  )
+}
+
 /**
- * Foco sobre un elemento real de la interfaz (marcado con `data-tour`): todo se oscurece menos él, con un aro que late.
- * Si el elemento no está en pantalla (otra versión del diseño), solo queda el velo y la tarjeta explica.
+ * Foco sobre uno o varios elementos reales de la interfaz (marcados con `data-tour`): todo se oscurece menos ellos, con un aro que late.
+ * Si no están en pantalla (otra versión del diseño), solo queda el velo y la tarjeta explica.
  */
-function Spotlight({ target, onRect }: { target?: string; onRect: (r: DOMRect | null) => void }) {
-  const [r, setR] = useState<DOMRect | null>(null)
+function Spotlight({ targets, onRects }: { targets: string[]; onRects: (r: DOMRect[]) => void }) {
+  const [rs, setRs] = useState<DOMRect[]>([])
+  const key = targets.join(',')
   useEffect(() => {
-    if (!target) return
+    if (!key) return
     let raf = 0
     let until = performance.now() + 900 // las barras se acomodan con una transición: se mide unos instantes
     const measure = () => {
-      const el = [...document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`)].find((e) => {
-        const b = e.getBoundingClientRect()
-        return b.width > 0 && b.height > 0 && getComputedStyle(e).visibility !== 'hidden'
-      })
-      const b = el ? el.getBoundingClientRect() : null
-      setR((old) => (old && b && old.x === b.x && old.y === b.y && old.width === b.width && old.height === b.height ? old : b))
-      onRect(b)
+      const found: DOMRect[] = []
+      for (const t of key.split(',')) {
+        const el = [...document.querySelectorAll<HTMLElement>(`[data-tour="${t}"]`)].find((e) => {
+          const b = e.getBoundingClientRect()
+          return b.width > 0 && b.height > 0 && getComputedStyle(e).visibility !== 'hidden'
+        })
+        if (el) found.push(el.getBoundingClientRect())
+      }
+      setRs((old) =>
+        old.length === found.length && old.every((o, i) => o.x === found[i].x && o.y === found[i].y && o.width === found[i].width && o.height === found[i].height) ? old : found,
+      )
+      onRects(found)
       if (performance.now() < until) raf = requestAnimationFrame(measure)
     }
     measure()
@@ -487,70 +524,90 @@ function Spotlight({ target, onRect }: { target?: string; onRect: (r: DOMRect | 
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
     }
-  }, [target, onRect])
-  if (!r) return <div className="absolute inset-0 bg-deep/60" />
+  }, [key, onRects])
+  if (!rs.length) return <div className="absolute inset-0 bg-deep/60" />
   const pad = 8
   return (
     <div className="absolute inset-0" aria-hidden>
-      {/* el hueco: una sombra enorme alrededor del elemento oscurece todo lo demás */}
-      <div
-        className="absolute rounded-[24px] border-2 border-white/90"
-        style={{
-          left: r.left - pad,
-          top: r.top - pad,
-          width: r.width + pad * 2,
-          height: r.height + pad * 2,
-          boxShadow: '0 0 0 100vmax rgb(3 14 24 / 0.62)',
-        }}
-      />
-      <motion.div
-        className="absolute rounded-[28px] border-2 border-teal-bright"
-        style={{
-          left: r.left - pad,
-          top: r.top - pad,
-          width: r.width + pad * 2,
-          height: r.height + pad * 2,
-        }}
-        animate={{ scale: [1, 1.08, 1], opacity: [0.9, 0, 0.9] }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
-      />
+      {/* velo con huecos: una máscara oscurece todo menos los elementos resaltados */}
+      <svg className="absolute inset-0 size-full">
+        <defs>
+          <mask id="tour-hole">
+            <rect width="100%" height="100%" fill="white" />
+            {rs.map((r, i) => (
+              <rect key={i} x={r.left - pad} y={r.top - pad} width={r.width + pad * 2} height={r.height + pad * 2} rx={24} fill="black" />
+            ))}
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="rgb(3 14 24 / 0.62)" mask="url(#tour-hole)" />
+        {rs.map((r, i) => (
+          <rect
+            key={i}
+            x={r.left - pad}
+            y={r.top - pad}
+            width={r.width + pad * 2}
+            height={r.height + pad * 2}
+            rx={24}
+            fill="none"
+            stroke="rgb(255 255 255 / 0.9)"
+            strokeWidth={2}
+          />
+        ))}
+      </svg>
+      {rs.map((r, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-[28px] border-2 border-teal-bright"
+          style={{ left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: r.height + pad * 2 }}
+          animate={{ scale: [1, 1.08, 1], opacity: [0.9, 0, 0.9] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+        />
+      ))}
     </div>
   )
 }
 
-/** Animación del gesto (arrastrar, pellizcar o rueda) sobre el mapa; el mapa sigue tocable debajo. */
+/** Animación del gesto sobre el mapa (en el celular alterna deslizar y pellizcar); el mapa sigue tocable debajo. */
 function GestureDemo({ kind, done }: { kind: DemoKind; done: boolean }) {
+  const [phase, setPhase] = useState<'drag' | 'pinch'>('drag')
+  useEffect(() => {
+    if (kind !== 'dragpinch') return
+    const id = window.setInterval(() => setPhase((p) => (p === 'drag' ? 'pinch' : 'drag')), 2600)
+    return () => window.clearInterval(id)
+  }, [kind])
   const finger = 'absolute size-12 rounded-full border-2 border-white bg-white/35 shadow-[0_0_24px_rgb(255_255_255/0.55)]'
   return (
-    <div className="pointer-events-none absolute top-[30%] left-1/2 h-40 w-56 -translate-x-1/2" aria-hidden>
+    <div className="pointer-events-none absolute top-[26%] left-1/2 h-40 w-56 -translate-x-1/2" aria-hidden>
       <div className="absolute inset-0 rounded-[28px] bg-deep/35" />
-      {kind === 'drag' && (
-        <>
-          <motion.span
-            className={`${finger} top-[calc(50%-24px)]`}
-            initial={{ left: 24 }}
-            animate={{ left: [24, 152, 24], opacity: done ? 0 : [0.9, 1, 0.9] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <Move className="absolute top-3 right-3 size-6 text-white/80" strokeWidth={1.8} />
-        </>
+      {kind === 'dragpinch' && phase === 'drag' && (
+        <motion.span
+          key="drag"
+          className={`${finger} top-[calc(50%-24px)]`}
+          initial={{ left: 24 }}
+          animate={{ left: [24, 152, 24], opacity: done ? 0 : [0.9, 1, 0.9] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
       )}
-      {kind === 'pinch' && (
+      {kind === 'dragpinch' && phase === 'pinch' && (
         <>
           <motion.span
+            key="p1"
             className={finger}
             initial={{ left: 86, top: 62 }}
             animate={{ left: [86, 40, 86], top: [62, 94, 62] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
           />
           <motion.span
+            key="p2"
             className={finger}
             initial={{ left: 118, top: 44 }}
             animate={{ left: [118, 164, 118], top: [44, 12, 44] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <ZoomIn className="absolute top-3 left-3 size-6 text-white/80" strokeWidth={1.8} />
         </>
+      )}
+      {kind === 'dragpinch' && (
+        <span className="absolute inset-x-0 bottom-2.5 text-center text-[12px] font-bold text-white/90">{phase === 'drag' ? 'Desliza para moverte' : 'Pellizca para acercar'}</span>
       )}
       {kind === 'wheel' && (
         <motion.div
@@ -561,6 +618,7 @@ function GestureDemo({ kind, done }: { kind: DemoKind; done: boolean }) {
           <Mouse className="size-14" strokeWidth={1.4} />
         </motion.div>
       )}
+      <ZoomIn className="absolute top-3 right-3 size-6 text-white/80" strokeWidth={1.8} />
       {done && (
         <motion.span
           className="absolute inset-0 grid place-items-center"
@@ -580,7 +638,7 @@ function GestureDemo({ kind, done }: { kind: DemoKind; done: boolean }) {
 /** Marca de la zona que la cámara está mostrando: un aro que late en el punto enfocado y su nombre. */
 function ZoneMark({ label, color, icon: Icon }: { label: string; color: string; icon: LucideIcon }) {
   return (
-    <div className="pointer-events-none absolute top-[34%] left-1/2 -translate-x-1/2 -translate-y-1/2" aria-hidden>
+    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1/2" style={{ top: MARK_TOP }} aria-hidden>
       <div className="relative grid size-[120px] place-items-center">
         {[0, 0.7].map((d) => (
           <motion.span
@@ -589,21 +647,10 @@ function ZoneMark({ label, color, icon: Icon }: { label: string; color: string; 
             style={{ borderColor: color }}
             initial={{ scale: 0.55, opacity: 0.9 }}
             animate={{ scale: [0.55, 1.25], opacity: [0.9, 0] }}
-            transition={{
-              duration: 1.9,
-              repeat: Infinity,
-              delay: d,
-              ease: 'easeOut',
-            }}
+            transition={{ duration: 1.9, repeat: Infinity, delay: d, ease: 'easeOut' }}
           />
         ))}
-        <span
-          className="size-3 rounded-full"
-          style={{
-            background: color,
-            boxShadow: `0 0 0 4px #fff, 0 0 18px ${color}`,
-          }}
-        />
+        <span className="size-3 rounded-full" style={{ background: color, boxShadow: `0 0 0 4px #fff, 0 0 18px ${color}` }} />
       </div>
       <motion.div
         className="absolute bottom-full left-1/2 mb-1 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-white shadow-[0_8px_22px_-8px_rgb(0_0_0/0.6)]"
@@ -622,14 +669,7 @@ function ZoneMark({ label, color, icon: Icon }: { label: string; color: string; 
 /** Destellos turquesa y ámbar que se abren suavemente al final del recorrido. */
 function Sparks() {
   const sparks = useMemo(
-    () =>
-      Array.from({ length: 22 }, (_, i) => ({
-        i,
-        x: (Math.random() - 0.5) * 460,
-        y: -140 - Math.random() * 300,
-        d: Math.random() * 0.25,
-        s: 4 + Math.random() * 6,
-      })),
+    () => Array.from({ length: 22 }, (_, i) => ({ i, x: (Math.random() - 0.5) * 460, y: -140 - Math.random() * 300, d: Math.random() * 0.25, s: 4 + Math.random() * 6 })),
     [],
   )
   return (
@@ -640,19 +680,9 @@ function Sparks() {
           <motion.span
             key={p.i}
             className="absolute rounded-full"
-            style={{
-              width: p.s,
-              height: p.s,
-              background: c,
-              boxShadow: `0 0 10px ${c}`,
-            }}
+            style={{ width: p.s, height: p.s, background: c, boxShadow: `0 0 10px ${c}` }}
             initial={{ x: 0, y: 0, opacity: 0, scale: 0.3 }}
-            animate={{
-              x: p.x,
-              y: [0, p.y, p.y + 110],
-              opacity: [0, 1, 0],
-              scale: [0.3, 1, 0.5],
-            }}
+            animate={{ x: p.x, y: [0, p.y, p.y + 110], opacity: [0, 1, 0], scale: [0.3, 1, 0.5] }}
             transition={{ duration: 1.8, delay: p.d, ease: [0.2, 0.8, 0.2, 1] }}
           />
         )
@@ -661,153 +691,34 @@ function Sparks() {
   )
 }
 
-/** Paradas del recorrido, con datos reales del mall (tiendas, precios, ofertas, espacios libres) y solo lo que está activado. */
+/** Los pasos del recorrido; las zonas que aparecen en el paso 5 son solo las que están activadas. */
 function useTourSteps(): Step[] {
   const assignments = useCatalog((s) => s.assignments)
-  const promotions = useCatalog((s) => s.promotions)
-  const { storeById, spaceByStore } = useCatalogMaps()
-  const pricing = useSpacePricing()
   const entOn = useEntertainmentFeature((s) => s.enabled)
   const svcOn = useServicesFeature((s) => s.enabled)
-  const airportOn = useAirportFeature((s) => s.enabled)
   const cineOn = useCine((s) => s.enabled)
   const desktop = useIsDesktop()
   const use3D = useUse3D()
 
   return useMemo(() => {
     const ui = () => useUI.getState()
-    /** Para los puntos lejanos (cine, estadio, aeropuerto, muelle) se abre la vista general: ahí la cámara puede llegar. */
+    /** Para los puntos lejanos (cine, estadio, muelle) se abre la vista general: ahí la cámara puede llegar. */
     const far = (focus: Parameters<ReturnType<typeof ui>['requestFocus']>[0]) => {
       ui().setOverview(true)
       ui().requestFocus(focus)
     }
-    const storesIn = (zone: ZoneId) =>
-      SPACES.filter((sp) => sp.zoneId === zone && assignments[sp.id])
-        .map((sp) => storeById[assignments[sp.id]]?.name)
-        .filter(Boolean) as string[]
     const tourSpaces = SPACES.filter((sp) => (entOn || sp.zoneId !== 'G') && (svcOn || !isServicesSpace(sp)))
-    const freeSpaces = tourSpaces.filter((sp) => !assignments[sp.id])
     const totalStores = tourSpaces.filter((sp) => assignments[sp.id]).length
     const serviceIds = SPACES.filter(isServicesSpace).map((sp) => sp.id)
-    const serviceStores = SPACES.filter(isServicesSpace)
-      .map((sp) => storeById[assignments[sp.id]]?.name)
-      .filter(Boolean) as string[]
 
-    // ── Parte 1 · Cómo moverte ──────────────────────────────────────────────────────────────────────────────
-    const coach: Step[] = [
+    const zones: Zone[] = [
       {
-        key: 'bienvenida',
-        type: 'coach',
-        icon: MapPin,
-        color: '#008d87',
-        kicker: 'Bienvenido a',
-        title: MALL.name,
-        body: <>Un centro comercial para recorrer, descubrir y jugar. En menos de dos minutos te enseñamos a moverte y te mostramos qué hay en cada zona.</>,
-        chips: [`${totalStores} tiendas`, '2 pisos', ...(entOn ? ['Entretenimiento'] : []), 'Ofertas escondidas'],
-        go: () => ui().setOverview(true),
-      },
-      ...(use3D
-        ? ([
-            {
-              key: 'mover',
-              type: 'demo',
-              demo: 'drag',
-              icon: Move,
-              color: '#3b82a6',
-              kicker: 'Cómo moverte · 1',
-              title: 'Recorre el mapa',
-              body: desktop ? (
-                <>Arrastra con el mouse para moverte por el mall (también puedes mantener Espacio y arrastrar).</>
-              ) : (
-                <>Desliza un dedo sobre el mapa para recorrer el mall.</>
-              ),
-            },
-            {
-              key: 'acercar',
-              type: 'demo',
-              demo: desktop ? 'wheel' : 'pinch',
-              icon: ZoomIn,
-              color: '#d99a1f',
-              kicker: 'Cómo moverte · 2',
-              title: 'Acerca y aleja',
-              body: desktop ? (
-                <>Usa la rueda del mouse para acercarte a una tienda o alejarte y verlo todo.</>
-              ) : (
-                <>Pellizca con dos dedos: sepáralos para acercar y júntalos para alejar. Así ves cada tienda de cerca.</>
-              ),
-            },
-          ] as Step[])
-        : []),
-      {
-        key: 'categorias',
-        type: 'coach',
-        target: 'categorias',
-        icon: LayoutGrid,
-        color: '#c2607f',
-        kicker: 'Cómo moverte · 3',
-        title: 'Categorías',
-        body: <>Toca aquí para ir directo a Moda, Tecnología, Gastronomía, Cine… {desktop ? '' : 'Desliza la hoja hacia arriba y verás los locales de cada una.'}</>,
-      },
-      ...(desktop
-        ? []
-        : ([
-            {
-              key: 'descubre',
-              type: 'coach',
-              target: 'descubre',
-              icon: Sparkles,
-              color: '#e0558a',
-              kicker: 'Cómo moverte · 4',
-              title: 'Descubre',
-              body: <>Tu pasaporte de sellos, las ofertas escondidas, el periódico MallPlay Hoy y el Arcade, todo en un solo lugar.</>,
-            },
-          ] as Step[])),
-      {
-        key: 'pisos',
-        type: 'coach',
-        target: 'pisos',
-        icon: Layers,
-        color: '#008d87',
-        kicker: 'Cómo moverte · 5',
-        title: 'Pisos',
-        body: <>Cambia entre el piso 1 y el 2. «Todo» te muestra el mall completo, con todo lo que lo rodea.</>,
-      },
-      {
-        key: 'navegacion',
-        type: 'coach',
-        target: 'nav',
-        icon: ShoppingBag,
-        color: '#5f9a6e',
-        kicker: 'Cómo moverte · 6',
-        title: desktop ? 'Explorar y comprar' : 'Tu barra de navegación',
-        body: desktop ? (
-          <>Cambia entre explorar el mapa y comprar productos de todas las tiendas en un solo lugar.</>
-        ) : (
-          <>Explora el mapa, compra productos de todas las tiendas, mira las ofertas relámpago y revisa tu carrito.</>
-        ),
-      },
-    ]
-
-    // ── Parte 2 · Qué encontrarás ───────────────────────────────────────────────────────────────────────────
-    const names = (zone: ZoneId) => storesIn(zone)
-    const lanes = (['A', 'B', 'C', 'D'] as ZoneId[]).map((id) => ZONE_BY_ID[id].name)
-    const flash = promotions.find((p) => p.type === 'flash' && isPromotionLive(p, Date.now()) && spaceByStore[p.storeId] && SPACE_BY_ID[spaceByStore[p.storeId]])
-    const secrets = promotions.filter((p) => p.type === 'secret' && isPromotionLive(p, Date.now())).length
-    const court = assignments[COURT_SPACE.id] ? storeById[assignments[COURT_SPACE.id]] : null
-    const free = freeSpaces.find((sp) => sp.floorId === 'P1' && sp.type === 'local') ?? freeSpaces[0]
-    const food = ZONE_BY_ID.E
-
-    const story: Step[] = [
-      {
-        key: 'pasillos',
-        type: 'story',
+        id: 'tiendas',
         icon: StoreIcon,
         color: '#e0735f',
-        kicker: 'Qué encontrarás · Piso 1',
-        title: 'Cuatro pasillos de tiendas',
-        body: <>Moda, tecnología, belleza y lifestyle alrededor de la plaza central. Toca cualquier tienda para ver sus productos y hacer tu pedido.</>,
-        chips: [...lanes, ...names('A').slice(0, 1), ...names('B').slice(0, 1)].slice(0, 5),
-        mark: 'Pasillos',
+        label: 'Tiendas',
+        name: 'Pasillos de tiendas',
+        desc: <>Moda, tecnología, belleza y lifestyle alrededor de la plaza. Toca una tienda para ver sus productos.</>,
         go: () => {
           ui().setOverview(false)
           ui().setFloor('P1')
@@ -815,101 +726,73 @@ function useTourSteps(): Step[] {
         },
       },
       {
-        key: 'comidas',
-        type: 'story',
+        id: 'comida',
         icon: Utensils,
-        color: food.color,
-        kicker: 'Qué encontrarás · Piso 2',
-        title: food.name,
-        body: <>Sube por las escaleras eléctricas: comida local, mariscos, café y postres con vista a la fortaleza.</>,
-        chips: names('E').slice(0, 4),
-        mark: 'Zona de comida',
+        color: '#d98a2a',
+        label: 'Comida',
+        name: 'Zona de comida · Piso 2',
+        desc: <>Comida local, mariscos, café y postres. Sube por las escaleras eléctricas.</>,
         go: () => {
           ui().setFloor(FLOOR_OF_ZONE.E)
           ui().requestFocus({ kind: 'zone', id: 'E' })
         },
       },
       ...(svcOn && serviceIds.length
-        ? ([
+        ? [
             {
-              key: 'servicios',
-              type: 'story',
+              id: 'servicios',
               icon: Scissors,
-              color: ZONE_BY_ID.F.color,
-              kicker: 'Qué encontrarás · Nuevo',
-              title: 'Zona de servicios',
-              body: <>Una terraza sobre la joyería, con escalera y patio hundido, para barberías, belleza y otros servicios. Reserva y pregunta directo por WhatsApp.</>,
-              chips: serviceStores.slice(0, 3).concat(['Barberías', 'Belleza']).slice(0, 4),
-              mark: 'Servicios',
+              color: '#7b6cf0',
+              label: 'Servicios',
+              name: 'Zona de servicios',
+              isNew: true,
+              desc: <>Una terraza sobre la joyería con barberías, belleza y otros servicios. Pregunta y reserva por WhatsApp.</>,
               go: () => {
                 ui().setOverview(false)
                 ui().setFloor('P1')
-                ui().requestFocus({
-                  kind: 'spaces',
-                  ids: serviceIds,
-                  zoom: 1.9,
-                })
+                ui().requestFocus({ kind: 'spaces', ids: serviceIds, zoom: 1.9 })
               },
-            },
-          ] as Step[])
+            } as Zone,
+          ]
         : []),
       ...(cineOn
-        ? ([
+        ? [
             {
-              key: 'cine',
-              type: 'story',
+              id: 'cine',
               icon: Film,
               color: '#6b4fd1',
-              kicker: 'Qué encontrarás · Nuevo',
-              title: 'Cine',
-              body: <>Toca la cartelera para ver las películas en cartel y entra por las puertas para elegir la cadena y sus horarios en Cartagena.</>,
-              chips: ['Cartelera', 'Cine Colombia', 'Royal Films', 'Procinal'],
-              mark: 'Cine',
+              label: 'Cine',
+              name: 'Cine',
+              isNew: true,
+              desc: <>Toca la cartelera para ver las películas; entra por las puertas para elegir la cadena y sus horarios.</>,
               go: () => far({ kind: 'point', x: BX + DX, z: BZ + 3, y: DECK, zoom: 1.6 }),
-            },
-          ] as Step[])
+            } as Zone,
+          ]
         : []),
       ...(entOn
-        ? ([
+        ? [
             {
-              key: 'entretenimiento',
-              type: 'story',
+              id: 'diversion',
               icon: Gamepad2,
               color: ENT_COLOR,
-              kicker: 'Qué encontrarás · Isla',
-              title: 'Entretenimiento',
-              body: (
-                <>
-                  Cruza el puente: una isla con pista de karts, locales de videojuegos y comida. En el óvalo verde hay una máquina de{' '}
-                  <b className="font-semibold text-ink">Arcade</b>: juega, suma puntos y gana premios.
-                </>
-              ),
-              chips: [...names('G').slice(0, 2), 'Pista de karts', 'Arcade'],
-              mark: 'Entretenimiento',
+              label: 'Diversión',
+              name: 'Entretenimiento',
+              desc: <>Una isla con pista de karts, videojuegos y comida. En el óvalo verde está el Arcade: juega y gana premios.</>,
               go: () => {
                 ui().setOverview(false)
                 ui().setFloor('P1')
                 ui().requestFocus({ kind: 'zone', id: 'G' })
               },
-            },
-          ] as Step[])
+            } as Zone,
+          ]
         : []),
       {
-        key: 'cancha',
-        type: 'story',
+        id: 'deportes',
         icon: Trophy,
-        color: COURT_COLOR,
-        kicker: 'Qué encontrarás · Piso 1',
-        title: 'Zona de deportes',
-        body: court ? (
-          <>
-            Una cancha de fútbol 5 y una de pádel, con iluminación nocturna, operadas por <b className="font-semibold text-ink">{court.name}</b>. Reserva la que esté libre desde el
-            mall.
-          </>
-        ) : (
-          <>Una cancha de fútbol 5 y una de pádel, con iluminación nocturna, listas para un negocio que las opere: {formatCOP(spacePrice(pricing, COURT_SPACE))}/mes.</>
-        ),
-        mark: 'Deportes',
+        color: '#2f9e5a',
+        label: 'Deportes',
+        name: 'Zona de deportes',
+        desc: <>Fútbol 5 y pádel con luz nocturna. Reserva la cancha libre desde el mall.</>,
         go: () => {
           ui().setOverview(false)
           ui().setFloor('P1')
@@ -917,113 +800,107 @@ function useTourSteps(): Step[] {
         },
       },
       {
-        key: 'estadio',
-        type: 'story',
+        id: 'estadio',
         icon: Landmark,
         color: '#2e6f4a',
-        kicker: 'Qué encontrarás · Próximamente',
-        title: 'Estadio',
-        body: <>Estamos construyendo el estadio al norte de la fortaleza. Toca la obra para ver los eventos, comprar boletas y escuchar cómo avanza.</>,
-        mark: 'Estadio',
-        go: () =>
-          far({
-            kind: 'point',
-            x: STADIUM.center[0],
-            z: STADIUM.center[1],
-            zoom: 1.6,
-          }),
+        label: 'Estadio',
+        name: 'Estadio',
+        desc: <>En construcción al norte de la fortaleza. Toca la obra para ver eventos, boletas y cómo avanza.</>,
+        go: () => far({ kind: 'point', x: STADIUM.center[0], z: STADIUM.center[1], zoom: 1.6 }),
       },
-      ...(airportOn
+      {
+        id: 'muelle',
+        icon: Anchor,
+        color: '#16325c',
+        label: 'Muelle',
+        name: 'Muelle turístico',
+        desc: <>Paseos en lancha, el barco pirata y el barco de los descuentos. Toca una lancha para reservar.</>,
+        go: () => far({ kind: 'point', x: HARBOR_FOCUS[0], z: HARBOR_FOCUS[1], zoom: 1.4 }),
+      },
+    ]
+
+    const steps: Step[] = [
+      {
+        key: 'bienvenida',
+        type: 'coach',
+        icon: MapPin,
+        color: '#008d87',
+        kicker: 'Bienvenido a',
+        title: MALL.name,
+        body: <>Un centro comercial para recorrer, descubrir y jugar. En menos de un minuto te mostramos cómo moverte y qué hay en cada zona.</>,
+        chips: [`${totalStores} tiendas`, '2 pisos', ...(entOn ? ['Entretenimiento'] : []), 'Ofertas escondidas'],
+        go: () => ui().setOverview(true),
+      },
+      ...(use3D
         ? ([
             {
-              key: 'aeropuerto',
-              type: 'story',
-              icon: Plane,
-              color: '#5b8cff',
-              kicker: 'Qué encontrarás · Viaje',
-              title: 'Aeropuerto',
-              body: <>Toca el aeropuerto para volar a la Isla Tecnología, con sus propias tiendas. ¡Y volver cuando quieras!</>,
-              mark: 'Aeropuerto',
-              go: () =>
-                far({
-                  kind: 'point',
-                  x: AIRPORT_FOCUS[0],
-                  z: AIRPORT_FOCUS[1],
-                  zoom: 1.5,
-                }),
+              key: 'gestos',
+              type: 'demo',
+              demo: desktop ? 'wheel' : 'dragpinch',
+              icon: ZoomIn,
+              color: '#d99a1f',
+              kicker: 'Cómo moverte',
+              title: 'Recorre y acerca',
+              body: desktop ? (
+                <>Arrastra con el mouse para moverte y usa la rueda para acercarte a una tienda o alejarte.</>
+              ) : (
+                <>Desliza un dedo para moverte. Pellizca con dos: sepáralos para ver una tienda de cerca y júntalos para alejar.</>
+              ),
             },
           ] as Step[])
         : []),
       {
-        key: 'muelle',
-        type: 'story',
-        icon: Anchor,
-        color: '#16325c',
-        kicker: 'Qué encontrarás · Muelle',
-        title: 'Muelle turístico',
-        body: <>Paseos en lancha, el barco pirata y el barco de los descuentos cuando atraca. Toca una lancha para reservar.</>,
-        mark: 'Muelle',
-        go: () =>
-          far({
-            kind: 'point',
-            x: HARBOR_FOCUS[0],
-            z: HARBOR_FOCUS[1],
-            zoom: 1.4,
-          }),
+        key: 'menu',
+        type: 'coach',
+        target: desktop ? 'categorias' : 'menu',
+        icon: LayoutGrid,
+        color: '#c2607f',
+        kicker: 'Cómo moverte',
+        title: desktop ? 'Categorías' : 'Tu menú',
+        body: desktop ? (
+          <>Toca una categoría para ir directo a ella: Moda, Tecnología, Gastronomía, Cine…</>
+        ) : (
+          <>
+            <b className="font-semibold text-ink">Categorías</b> te lleva a cada zona y a sus locales. <b className="font-semibold text-ink">Descubre</b> reúne tu pasaporte, las
+            ofertas escondidas, el periódico y el Arcade.
+          </>
+        ),
+      },
+      {
+        key: 'pisos',
+        type: 'coach',
+        target: 'pisos,nav',
+        icon: Layers,
+        color: '#008d87',
+        kicker: 'Cómo moverte',
+        title: desktop ? 'Pisos y modos' : 'Pisos y barra',
+        body: desktop ? (
+          <>A la izquierda cambias de piso (y «Todo» muestra el mall completo). Arriba alternas entre explorar y comprar.</>
+        ) : (
+          <>Izquierda: pisos y «Todo» (el mall completo). Abajo: explorar, comprar, ofertas y carrito.</>
+        ),
+      },
+      {
+        key: 'zonas',
+        type: 'zones',
+        icon: Compass,
+        color: '#e0735f',
+        kicker: 'Qué hay en el mall',
+        title: 'Elige una zona',
+        zones,
+        go: () => ui().setOverview(true),
+      },
+      {
+        key: 'final',
+        type: 'coach',
+        icon: Footprints,
+        color: '#008d87',
+        kicker: 'Todo listo',
+        title: '¡Ahora te toca a ti!',
+        body: <>Toca cualquier tienda, abre «Categorías» o juega en el Arcade. Puedes repetir este recorrido cuando quieras desde las opciones del mapa.</>,
+        go: () => ui().setOverview(true),
       },
     ]
-    if (flash) {
-      const sp = SPACE_BY_ID[spaceByStore[flash.storeId]]
-      story.push({
-        key: 'ofertas',
-        type: 'story',
-        icon: Zap,
-        color: '#e39a2d',
-        kicker: 'Ofertas',
-        title: `Relámpago −${flash.discountPercent}%`,
-        body: (
-          <>
-            {flash.title} en <b className="font-semibold text-ink">{storeById[flash.storeId]?.name}</b>. Duran pocas horas
-            {secrets ? <> y hay {secrets === 1 ? 'una oferta escondida' : `${secrets} ofertas escondidas`} cerca de las tiendas: búscalas.</> : '.'}
-          </>
-        ),
-        go: () => {
-          ui().setOverview(false)
-          ui().setFloor(sp.floorId)
-          ui().requestFocus({ kind: 'showcase', id: sp.id })
-        },
-      })
-    }
-    if (free)
-      story.push({
-        key: 'tu-negocio',
-        type: 'story',
-        icon: StoreIcon,
-        color: ZONE_BY_ID[free.zoneId].color,
-        kicker: '¿Tienes un negocio?',
-        title: 'Tu negocio aquí',
-        body: (
-          <>
-            Hay {freeSpaces.length} espacios libres. Toca un letrero «TU NEGOCIO AQUÍ» y reclámalo desde {formatCOP(Math.min(...freeSpaces.map((sp) => spacePrice(pricing, sp))))}
-            /mes.
-          </>
-        ),
-        go: () => {
-          ui().setOverview(false)
-          ui().setFloor(free.floorId)
-          ui().requestFocus({ kind: 'showcase', id: free.id })
-        },
-      })
-    story.push({
-      key: 'final',
-      type: 'story',
-      icon: Footprints,
-      color: '#008d87',
-      kicker: 'Todo el mall',
-      title: '¡Ahora te toca a ti!',
-      body: <>Toca cualquier tienda, abre «Categorías» o juega en el Arcade. Puedes repetir este recorrido cuando quieras desde las opciones del mapa.</>,
-      go: () => ui().setOverview(true),
-    })
-    return [...coach, ...story]
-  }, [assignments, promotions, storeById, spaceByStore, pricing, entOn, svcOn, airportOn, cineOn, desktop, use3D])
+    return steps
+  }, [assignments, entOn, svcOn, cineOn, desktop, use3D])
 }
