@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { rewardCode } from '../state/passport'
 import { safeStorage } from '../state/storage'
 import { cleanNick, defaultNick, newPlayerId } from './board'
+import { DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from './engine'
 
 // Puntos del Arcade: cada partida de «Nave Caribe» suma puntos que la persona canjea por premios. Todo vive en este
 // dispositivo (igual que el pasaporte). Hay un tope por partida y por día para que nadie se lleve premios solo jugando
@@ -35,6 +36,8 @@ export interface ArcadeRun {
   /** Entró al ranking (partida verificada por el servidor). */
   ranked: boolean
   awarded: number
+  /** Dificultad con la que se jugó (0 fácil … 3 extremo). */
+  difficulty?: number
 }
 export const MAX_SAVED_RUNS = 60
 
@@ -68,6 +71,9 @@ interface ArcadeState {
   /** Música y efectos del juego (se puede apagar). */
   sound: boolean
   setSound: (on: boolean) => void
+  /** Dificultad elegida para la próxima partida: a más difícil, todo baja más rápido y el puntaje se multiplica. */
+  difficulty: Difficulty
+  setDifficulty: (d: Difficulty) => void
   /** Identificador aleatorio de este dispositivo en el ranking (nunca se muestra a otros). */
   playerId: string
   nickname: string
@@ -75,7 +81,7 @@ interface ArcadeState {
   localBest: { score: number; at: string }[]
   setNickname: (raw: string) => string
   /** Registra una partida terminada; devuelve cuántos puntos dio y si el tope del día lo recortó. */
-  finishRun: (score: number, ranked?: boolean) => { awarded: number; capped: boolean; record: boolean }
+  finishRun: (score: number, ranked?: boolean, difficulty?: Difficulty) => { awarded: number; capped: boolean; record: boolean }
   redeem: (rewardId: string) => ArcadeRedemption | null
 }
 
@@ -92,6 +98,8 @@ export const useArcade = create<ArcadeState>()(
       runs: [],
       sound: true,
       setSound: (sound) => set({ sound }),
+      difficulty: DEFAULT_DIFFICULTY,
+      setDifficulty: (d) => set({ difficulty: DIFFICULTIES[d] ? d : DEFAULT_DIFFICULTY }),
       playerId: newPlayerId(),
       nickname: '',
       localBest: [],
@@ -101,7 +109,7 @@ export const useArcade = create<ArcadeState>()(
         set({ nickname: ok })
         return ok
       },
-      finishRun: (score, ranked = false) => {
+      finishRun: (score, ranked = false, difficulty = get().difficulty) => {
         const s = get()
         const today = dayKey()
         const earnedToday = s.day === today ? s.earnedToday : 0
@@ -109,7 +117,7 @@ export const useArcade = create<ArcadeState>()(
         const wanted = Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))
         const record = score > s.best
         const localBest = score > 0 ? [...s.localBest, { score, at: new Date().toISOString() }].sort((a, b) => b.score - a.score).slice(0, 5) : s.localBest
-        const runs = score > 0 ? [{ score, at: new Date().toISOString(), ranked, awarded }, ...s.runs].slice(0, MAX_SAVED_RUNS) : s.runs
+        const runs = score > 0 ? [{ score, at: new Date().toISOString(), ranked, awarded, difficulty }, ...s.runs].slice(0, MAX_SAVED_RUNS) : s.runs
         set({ runs, localBest, points: s.points + awarded, lifetime: s.lifetime + awarded, best: Math.max(s.best, score), plays: s.plays + 1, day: today, earnedToday: earnedToday + awarded })
         return { awarded, capped: awarded < wanted, record }
       },

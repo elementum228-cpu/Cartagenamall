@@ -49,6 +49,35 @@ export const KIND_COLOR: Record<EnemyKind, string> = { 0: '#ff5c8a', 1: '#8b5cff
 export const WAVE_SECONDS = 18
 export const waveOf = (t: number) => 1 + Math.floor(t / WAVE_SECONDS)
 
+// ── Dificultad elegible ──────────────────────────────────────────────────────────────────────────────────────────────────────
+/** 0 Fácil · 1 Normal · 2 Difícil · 3 Extremo. A más dificultad todo baja más rápido y aparece más seguido, pero el puntaje se multiplica. */
+export type Difficulty = 0 | 1 | 2 | 3
+export interface DifficultyDef {
+  id: Difficulty
+  name: string
+  /** Multiplicador del puntaje en porcentaje (entero: así el puntaje es exacto en cualquier motor). */
+  mult: number
+  /** Factor de la velocidad de caída. */
+  speed: number
+  /** Factor de la frecuencia de apariciones. */
+  spawn: number
+  /** Desde qué segundo aparecen cañoneros. */
+  gunnerFrom: number
+  /** Cada cuántos segundos llega una formación en V. */
+  formationEvery: number
+  /** Factor de la velocidad de los disparos enemigos. */
+  bulletSpeed: number
+  /** Factor de la probabilidad de que un enemigo suelte premio. */
+  drops: number
+}
+export const DIFFICULTIES: DifficultyDef[] = [
+  { id: 0, name: 'Fácil', mult: 70, speed: 0.7, spawn: 0.72, gunnerFrom: 999, formationEvery: 30, bulletSpeed: 0.8, drops: 1.5 },
+  { id: 1, name: 'Normal', mult: 100, speed: 1, spawn: 1, gunnerFrom: 22, formationEvery: 20, bulletSpeed: 1, drops: 1 },
+  { id: 2, name: 'Difícil', mult: 160, speed: 1.3, spawn: 1.3, gunnerFrom: 14, formationEvery: 16, bulletSpeed: 1.15, drops: 0.9 },
+  { id: 3, name: 'Extremo', mult: 240, speed: 1.65, spawn: 1.7, gunnerFrom: 8, formationEvery: 12, bulletSpeed: 1.3, drops: 0.8 },
+]
+export const DEFAULT_DIFFICULTY: Difficulty = 1
+
 interface Bullet { on: boolean; x: number; y: number; vx: number }
 /** 0 = arma (sube de nivel) · 1 = cadencia rápida por unos segundos. */
 export type PickupKind = 0 | 1
@@ -59,7 +88,11 @@ interface Part { on: boolean; x: number; y: number; vx: number; vy: number; life
 
 export interface Game {
   time: number
+  /** Puntaje con el multiplicador de la dificultad (entero). */
   score: number
+  /** Puntaje sin multiplicador. */
+  raw: number
+  diff: DifficultyDef
   lives: number
   over: boolean
   kills: number
@@ -112,10 +145,12 @@ export function makeRand(seed: number): () => number {
   }
 }
 
-export function createGame(rand: () => number = Math.random): Game {
+export function createGame(rand: () => number = Math.random, difficulty: Difficulty = DEFAULT_DIFFICULTY): Game {
   return {
     time: 0,
     score: 0,
+    raw: 0,
+    diff: DIFFICULTIES[difficulty] ?? DIFFICULTIES[DEFAULT_DIFFICULTY],
     lives: LIVES,
     over: false,
     kills: 0,
@@ -129,7 +164,7 @@ export function createGame(rand: () => number = Math.random): Game {
     sinceDrop: 0,
     picked: 0,
     glow: 0,
-    formationAt: 20,
+    formationAt: DIFFICULTIES[difficulty]?.formationEvery ?? 20,
     bullets: Array.from({ length: MAX_BULLETS }, () => ({ on: false, x: 0, y: 0, vx: 0 })),
     ebullets: Array.from({ length: MAX_EBULLETS }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0 })),
     pickups: Array.from({ length: MAX_PICKUPS }, () => ({ on: false, kind: 0 as PickupKind, x: 0, y: 0, phase: 0 })),
@@ -145,13 +180,20 @@ export const spawnGap = (t: number) => Math.max(0.24, 0.85 - t * 0.0125)
 /** Velocidad base de caída. */
 export const fallSpeed = (t: number) => Math.min(245, 85 + t * 1.9)
 
+/** Suma puntos base: el puntaje final es el base por el multiplicador de la dificultad (división entera: exacto en cualquier motor). */
+function addScore(g: Game, base: number) {
+  g.raw += base
+  g.score = Math.floor((g.raw * g.diff.mult) / 100)
+}
+
 function pickKind(g: Game): EnemyKind {
   const t = g.time
   const r = g.rand()
   // cañoneros: aparecen a partir de los ~22 s, uno a la vez (dos pasados los ~55 s)
   let guns = 0
   for (const e of g.enemies) if (e.on && e.kind === 3) guns++
-  const pGun = t > 22 && guns < (t > 55 ? 2 : 1) ? 0.05 + Math.min(0.06, (t - 22) * 0.0015) : 0
+  const from = g.diff.gunnerFrom
+  const pGun = t > from && guns < (t > from + 33 ? 2 : 1) ? 0.05 + Math.min(0.06, (t - from) * 0.0015) : 0
   if (r < pGun) return 3
   const pGold = t > 8 ? 0.06 : 0
   if (r < pGun + pGold) return 2
@@ -171,7 +213,7 @@ function spawn(g: Game) {
   e.baseX = r + 10 + g.rand() * (W - 2 * (r + 10))
   e.x = e.baseX
   e.y = -r
-  e.vy = fallSpeed(g.time) * (kind === 3 ? 0.32 : kind === 2 ? 1.6 : kind === 1 ? 0.7 : 0.85 + g.rand() * 0.4)
+  e.vy = fallSpeed(g.time) * g.diff.speed * (kind === 3 ? 0.32 : kind === 2 ? 1.6 : kind === 1 ? 0.7 : 0.85 + g.rand() * 0.4)
   e.phase = g.rand() * 6.28
   e.amp = kind === 0 ? g.rand() * 26 : kind === 2 ? 40 : kind === 3 ? 16 : 0
   e.flash = 0
@@ -193,7 +235,7 @@ function formation(g: Game) {
     e.baseX = Math.max(20, Math.min(W - 20, cx + d * 34))
     e.x = e.baseX
     e.y = -KIND_R[0] - (d < 0 ? -d : d) * 24
-    e.vy = fallSpeed(g.time) * 0.95
+    e.vy = fallSpeed(g.time) * g.diff.speed * 0.95
     e.phase = 0
     e.amp = 0
     e.flash = 0
@@ -204,7 +246,7 @@ function formation(g: Game) {
 /** Un cañonero dispara hacia donde está la nave (más disparos en abanico pasada la mitad de la ronda). */
 function enemyFire(g: Game, e: Enemy) {
   const dy = SHIP_Y - e.y
-  const aim = Math.max(-95, Math.min(95, (g.shipX - e.x) / (dy / EBULLET_SPEED)))
+  const aim = Math.max(-95, Math.min(95, (g.shipX - e.x) / (dy / (EBULLET_SPEED * g.diff.bulletSpeed))))
   const vxs = g.time > 50 ? [aim, aim - 55, aim + 55] : [aim]
   for (const vx of vxs) {
     const b = g.ebullets.find((x) => !x.on)
@@ -213,7 +255,7 @@ function enemyFire(g: Game, e: Enemy) {
     b.x = e.x
     b.y = e.y + KIND_R[3]
     b.vx = vx
-    b.vy = EBULLET_SPEED
+    b.vy = EBULLET_SPEED * g.diff.bulletSpeed
   }
 }
 
@@ -272,7 +314,7 @@ function fire(g: Game) {
 /** Al destruir un enemigo puede soltar un premio: los dorados siempre, los rombos casi siempre y los puntitos a veces. */
 function maybeDrop(g: Game, kind: EnemyKind, x: number, y: number) {
   g.sinceDrop += 1
-  const chance = kind === 3 ? 1 : kind === 2 ? 0.5 : kind === 1 ? 0.28 : 0.06
+  const chance = kind === 3 ? 1 : (kind === 2 ? 0.5 : kind === 1 ? 0.28 : 0.06) * g.diff.drops
   const roll = g.rand()
   // «piedad»: si pasan muchos enemigos sin premio, el siguiente lo suelta sí o sí
   if (roll >= chance && g.sinceDrop < 16) return
@@ -322,14 +364,14 @@ export function update(g: Game, dt: number, input: Input) {
 
   // formaciones en V cada 20 s
   if (g.time >= g.formationAt) {
-    g.formationAt += 20
+    g.formationAt += g.diff.formationEvery
     formation(g)
   }
 
   // apariciones
   g.spawnIn -= dt
   while (g.spawnIn <= 0) {
-    g.spawnIn += spawnGap(g.time)
+    g.spawnIn += spawnGap(g.time) / g.diff.spawn
     spawn(g)
   }
 
@@ -379,7 +421,7 @@ export function update(g: Game, dt: number, input: Input) {
       g.glow = 0.5
       if (k.kind === 0) {
         if (g.weapon < MAX_WEAPON) g.weapon += 1
-        else g.score += 15 // arma al máximo: el premio se vuelve puntos
+        else addScore(g, 15) // arma al máximo: el premio se vuelve puntos
       } else g.rapid = RAPID_SECONDS
       burst(g, k.x, k.y, k.kind === 0 ? '#5dff9b' : '#ffb347', 10)
     }
@@ -420,7 +462,7 @@ export function update(g: Game, dt: number, input: Input) {
         e.flash = 0.08
         if (e.hp <= 0) {
           e.on = false
-          g.score += KIND_SCORE[e.kind]
+          addScore(g, KIND_SCORE[e.kind])
           g.kills += 1
           burst(g, e.x, e.y, KIND_COLOR[e.kind], e.kind === 1 ? 9 : 6)
           maybeDrop(g, e.kind, e.x, e.y)
@@ -503,14 +545,15 @@ export function createRecorder() {
 }
 
 /** Repite la partida con la semilla y las entradas dadas. Devuelve null si el registro es inválido. */
-export function replay(seed: number, log: InputLog): ReplayResult | null {
+export function replay(seed: number, log: InputLog, difficulty: number = DEFAULT_DIFFICULTY): ReplayResult | null {
+  if (!Number.isInteger(difficulty) || difficulty < 0 || difficulty >= DIFFICULTIES.length) return null
   if (!Number.isInteger(seed) || log.length % 3 !== 0 || log.length > 3 * 6000) return null
   for (let i = 0; i < log.length; i += 3) {
     const [f, t, d] = [log[i], log[i + 1], log[i + 2]]
     if (!Number.isInteger(f) || f < 0 || f > MAX_STEPS || !Number.isInteger(t) || t < -1 || t > W || (d !== -1 && d !== 0 && d !== 1)) return null
     if (i >= 3 && f < log[i - 3]) return null
   }
-  const g = createGame(makeRand(seed))
+  const g = createGame(makeRand(seed), difficulty as Difficulty)
   const input: Input = { targetX: null, dir: 0 }
   let k = 0
   let steps = 0

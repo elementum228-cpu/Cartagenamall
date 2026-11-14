@@ -75,8 +75,8 @@ export async function startRun(playerId: string): Promise<RunTicket | null> {
 }
 
 /** Entrega los movimientos de la partida; el servidor la repite y guarda su propio puntaje. null = no se pudo validar. */
-export async function finishRun(playerId: string, ticket: RunTicket, nickname: string, inputs: number[]): Promise<RunResult | null> {
-  const d = await call({ action: 'finish', run_id: ticket.runId, player_id: playerId, nickname, inputs })
+export async function finishRun(playerId: string, ticket: RunTicket, nickname: string, inputs: number[], difficulty = 1): Promise<RunResult | null> {
+  const d = await call({ action: 'finish', run_id: ticket.runId, player_id: playerId, nickname, inputs, difficulty })
   if (!d) return null
   invalidateBoard()
   return { score: num(d.score), awarded: num(d.awarded), rankWeek: d.rank_week == null ? null : num(d.rank_week), banned: d.banned === true }

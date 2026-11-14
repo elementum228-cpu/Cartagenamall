@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KIND_HP, MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
+import { DIFFICULTIES, KIND_HP, MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
 import { ARCADE_REWARDS, DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, awardFor, useArcade } from '../src/arcade/store'
 
 const still = { targetX: null, dir: 0 }
@@ -96,6 +96,65 @@ describe('dificultad progresiva de Nave Caribe', () => {
     }
     expect(maxOn).toBeGreaterThanOrEqual(6)
     expect(guns).toBeGreaterThan(0)
+  })
+})
+
+describe('dificultad elegible de Nave Caribe', () => {
+  it('a más dificultad cae más rápido, aparece más seguido y el puntaje se multiplica', () => {
+    for (let i = 1; i < DIFFICULTIES.length; i++) {
+      const a = DIFFICULTIES[i - 1]
+      const b = DIFFICULTIES[i]
+      expect(b.speed).toBeGreaterThan(a.speed)
+      expect(b.spawn).toBeGreaterThan(a.spawn)
+      expect(b.mult).toBeGreaterThan(a.mult)
+      expect(b.gunnerFrom).toBeLessThan(a.gunnerFrom)
+    }
+    expect(DIFFICULTIES[1].mult).toBe(100) // Normal = puntaje base
+  })
+
+  it('el mismo golpe vale más puntos cuanto más difícil es, siempre en enteros', () => {
+    const score = DIFFICULTIES.map((d) => {
+      const g = createGame(makeRand(3), d.id)
+      g.spawnIn = 99
+      Object.assign(g.enemies[0], { on: true, kind: 1, x: g.shipX, baseX: g.shipX, y: 300, vy: 0, hp: 1, amp: 0 })
+      for (let i = 0; i < 120 && g.score === 0; i++) update(g, 1 / 60, still)
+      expect(Number.isInteger(g.score)).toBe(true)
+      return g.score
+    })
+    expect(score).toEqual([12, 18, 28, 43]) // 18 puntos base × 70 %, 100 %, 160 %, 240 % (redondeado hacia abajo)
+  })
+
+  it('los enemigos bajan más rápido en Extremo que en Fácil con la misma semilla', () => {
+    const fall = (d: 0 | 1 | 2 | 3) => {
+      const g = createGame(makeRand(5), d)
+      g.fireIn = 99
+      g.lives = 9999
+      let max = 0
+      for (let i = 0; i < 20 * 60; i++) {
+        update(g, 1 / 60, { targetX: null, dir: 0 })
+        for (const e of g.enemies) if (e.on) max = Math.max(max, e.vy)
+      }
+      return max
+    }
+    expect(fall(3)).toBeGreaterThan(fall(0) * 1.8)
+  })
+
+  it('el servidor repite la partida con la dificultad declarada: da el mismo puntaje y rechaza dificultades inventadas', () => {
+    for (const d of [0, 1, 2, 3] as const) {
+      const g = createGame(makeRand(9), d)
+      const rec = createRecorder()
+      let step = 0
+      while (!g.over && step < MAX_STEPS) {
+        const input: Input = { targetX: Math.round(180 + Math.sin(step / 30) * 140), dir: 0 }
+        rec.push(step, input)
+        update(g, STEP, input)
+        step++
+      }
+      expect(replay(9, rec.log, d)!.score).toBe(g.score)
+    }
+    expect(replay(9, [], 4)).toBeNull()
+    expect(replay(9, [], -1)).toBeNull()
+    expect(replay(9, [], 1.5)).toBeNull()
   })
 })
 

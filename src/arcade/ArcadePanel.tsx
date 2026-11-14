@@ -4,7 +4,7 @@ import { createFrameGate } from '../world/frameGate'
 import { usePrefs } from '../state/ui'
 import { setArcadeSound, sfx, startMusic, stopMusic, suspendArcadeAudio, unlockArcadeAudio } from './audio'
 import { defaultNick, finishRun as finishRunRemote, startRun, type RunTicket } from './board'
-import { createGame, createRecorder, H, makeRand, MAX_WEAPON, STEP, update, W, type Game, type Input } from './engine'
+import { createGame, createRecorder, DIFFICULTIES, H, makeRand, MAX_WEAPON, STEP, update, W, type Difficulty, type Game, type Input } from './engine'
 import { draw } from './render'
 import { DAILY_POINTS_CAP, useArcade, useArcadeUi } from './store'
 import { Prizes, Ranking } from './ArcadeTabs'
@@ -122,6 +122,48 @@ interface Result {
   rankWeek?: number
   ranked: boolean
   pending: boolean
+  difficulty: Difficulty
+}
+
+/** Elige la dificultad: a más difícil, todo baja más rápido y cada punto vale más. */
+const DIFF_STYLE = [
+  { color: '#5dff9b', note: 'Tranquilo: sin cañoneros, para entrar en calor.' },
+  { color: '#4de1ff', note: 'El reto de siempre: cañoneros y oleadas.' },
+  { color: '#ffb347', note: 'Todo cae más rápido y los cañoneros llegan antes.' },
+  { color: '#ff5c8a', note: 'Lluvia total: velocidad máxima y puntos por montones.' },
+] as const
+const multLabel = (m: number) => `×${(m / 100).toLocaleString('es-CO', { maximumFractionDigits: 1 })}`
+
+function DifficultyPicker() {
+  const difficulty = useArcade((s) => s.difficulty)
+  const setDifficulty = useArcade((s) => s.setDifficulty)
+  return (
+    <div className="mx-auto mt-4 w-full max-w-[330px]">
+      <p className="mb-2 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Dificultad</p>
+      <div role="radiogroup" aria-label="Dificultad" className="grid grid-cols-4 gap-1.5">
+        {DIFFICULTIES.map((d) => {
+          const on = difficulty === d.id
+          const c = DIFF_STYLE[d.id].color
+          return (
+            <button
+              key={d.id}
+              role="radio"
+              aria-checked={on}
+              onClick={() => setDifficulty(d.id)}
+              style={on ? { borderColor: c, boxShadow: `0 0 16px -4px ${c}`, color: c } : undefined}
+              className={`flex min-h-[58px] flex-col items-center justify-center rounded-2xl border-2 px-1 py-1.5 transition active:scale-95 ${on ? 'bg-white/10' : 'border-white/10 bg-white/[0.05] text-white/80'}`}
+            >
+              <span className="text-[13px] leading-tight font-extrabold">{d.name}</span>
+              <span className="mt-0.5 text-[12px] font-bold tabular-nums">{multLabel(d.mult)}</span>
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-2 min-h-8 text-[12.5px] leading-snug text-[#c8d3ff]">
+        {DIFF_STYLE[difficulty].note} Cada punto vale {multLabel(DIFFICULTIES[difficulty].mult)}.
+      </p>
+    </div>
+  )
 }
 
 function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void }) {
@@ -253,13 +295,13 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
         const st = useArcade.getState()
         const rn = run.current
         const ranked = !!rn?.ticket
-        const r = st.finishRun(g.score, ranked)
+        const r = st.finishRun(g.score, ranked, g.diff.id)
         sfx(r.record ? 'record' : 'over')
-        setResult({ score: g.score, ...r, picked: g.picked, ranked, pending: ranked })
+        setResult({ score: g.score, ...r, picked: g.picked, ranked, pending: ranked, difficulty: g.diff.id })
         // al servidor: repite la partida y guarda SU puntaje; el puesto llega unos instantes después
         if (rn?.ticket) {
           const nick = st.nickname || defaultNick(st.playerId)
-          void finishRunRemote(st.playerId, rn.ticket, nick, rn.rec.log).then((res) => {
+          void finishRunRemote(st.playerId, rn.ticket, nick, rn.rec.log, g.diff.id).then((res) => {
             setResult((c) => (c && c.score === g.score ? { ...c, pending: false, ranked: !!res, rankWeek: res?.rankWeek ?? undefined } : c))
             prefetch()
           })
@@ -277,7 +319,8 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
     // con partida del servidor (cuenta para el ranking) o, sin conexión, con semilla local (solo para jugar)
     const t = ticket.current
     ticket.current = null
-    game.current = createGame(makeRand(t ? t.seed : Math.floor(Math.random() * 2147483646) + 1))
+    const diff = useArcade.getState().difficulty
+    game.current = createGame(makeRand(t ? t.seed : Math.floor(Math.random() * 2147483646) + 1), diff)
     run.current = { ticket: t, rec: createRecorder(), step: 0 }
     input.current = { targetX: null, dir: 0 }
     setResult(null)
@@ -401,6 +444,9 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
           <Trophy className="mx-auto size-10 text-[#ffc83d]" />
           <h3 className="mt-1 text-2xl font-extrabold">{result.record ? '¡Nuevo récord!' : 'Fin de la partida'}</h3>
           <p className="mt-1 text-6xl leading-none font-extrabold tabular-nums">{result.score}</p>
+          <p className="mt-1 text-[13px] font-extrabold" style={{ color: DIFF_STYLE[result.difficulty].color }}>
+            {DIFFICULTIES[result.difficulty].name} · {multLabel(DIFFICULTIES[result.difficulty].mult)}
+          </p>
           <p className="mt-2 text-[15px] font-bold text-[#ffc83d]">+{result.awarded} puntos de premio</p>
           {result.picked > 0 && (
             <p className="text-[12.5px] text-[#9fb3ff]">
@@ -455,6 +501,7 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
           </p>
         </>
       )}
+      <DifficultyPicker />
       <button
         autoFocus
         onClick={start}

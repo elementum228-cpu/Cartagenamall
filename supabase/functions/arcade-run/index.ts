@@ -18,6 +18,8 @@ const CORS = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json; charset=utf-8' } })
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+/** La base rechaza puntajes mayores a 6000 (arcade_run_record): una partida legítima nunca debe fallar por eso. */
+const MAX_SCORE = 5990
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 Deno.serve(async (req) => {
@@ -49,7 +51,10 @@ Deno.serve(async (req) => {
     const { data: run, error: runErr } = await db.from('arcade_runs').select('seed, player_id, status').eq('id', runId).maybeSingle()
     if (runErr || !run || run.player_id !== player || run.status !== 'open') return json({ error: 'partida desconocida o ya usada' }, 400)
 
-    const res = replay(run.seed as number, inputs as number[])
+    // La dificultad la declara el navegador, pero no se puede mentir con ella: la partida se repite con esa dificultad y solo
+    // da puntaje si esos movimientos sobreviven en ella. Sin dato = Normal (clientes anteriores).
+    const difficulty = body.difficulty === undefined ? 1 : Number(body.difficulty)
+    const res = replay(run.seed as number, inputs as number[], difficulty)
     if (!res || !res.over) {
       await db.from('arcade_runs').update({ status: 'rejected', reject_reason: res ? 'no terminó' : 'registro inválido', finished_at: new Date().toISOString() }).eq('id', runId)
       return json({ error: 'partida no válida' }, 422)
@@ -58,7 +63,7 @@ Deno.serve(async (req) => {
       p_run: runId,
       p_player: player,
       p_nickname: String(body.nickname ?? ''),
-      p_score: res.score,
+      p_score: Math.min(res.score, MAX_SCORE),
       p_steps: Math.min(res.steps, MAX_STEPS),
       p_inputs: inputs,
     })

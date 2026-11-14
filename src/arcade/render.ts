@@ -531,8 +531,10 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
   const into = g.time - (wave - 1) * WAVE_SECONDS
   ctx.textAlign = 'center'
   ctx.font = '800 12px Manrope, system-ui, sans-serif'
+  ctx.fillStyle = ['#5dff9b', '#4de1ff', '#ffb347', '#ff5c8a'][g.diff.id]
+  ctx.fillText(`${g.diff.name.toUpperCase()} ×${(g.diff.mult / 100).toLocaleString('es-CO', { maximumFractionDigits: 1 })}`, W / 2, 8)
   ctx.fillStyle = 'rgba(200,215,255,0.8)'
-  ctx.fillText(`OLEADA ${wave}`, W / 2, 10)
+  ctx.fillText(`OLEADA ${wave}`, W / 2, 24)
   if (wave > 1 && into < 1.8 && !g.over) {
     ctx.globalAlpha = Math.min(1, (1.8 - into) * 1.2)
     ctx.font = '900 34px Manrope, system-ui, sans-serif'
