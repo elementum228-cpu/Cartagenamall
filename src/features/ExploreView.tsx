@@ -59,7 +59,7 @@ import {
 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
+import { COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACES, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import { formatCOP } from '../lib/format'
 import { useSpacePrice } from '../state/spacePricing'
 import type { ZoneId } from '../domain/types'
@@ -94,7 +94,7 @@ import { InstallButton } from '../pwa/InstallApp'
 import { useHoy, hoySeenToday } from '../hoy/store'
 import { useCine } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
-import { CategoriesSheet, DiscoverSheet, type CategoryItem, type DiscoverRow } from './ExploreSheets'
+import { CategoriesSheet, DiscoverSheet, type CategoryItem, type CategoryStore, type DiscoverRow } from './ExploreSheets'
 
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
 
@@ -210,6 +210,8 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   // Celular: categorías y juego/novedades viven en dos hojas (menos botones sueltos en la primera pantalla).
   const [catsOpen, setCatsOpen] = useState(false)
   const [discOpen, setDiscOpen] = useState(false)
+  const catStores = useCatalog((s) => s.stores)
+  const catAssignments = useCatalog((s) => s.assignments)
   const hoyNotice = useHoy((s) => s.notice)
   const cineOn = useCine((s) => s.enabled && s.lobbyOn)
   const ctaSeen = usePrefs((s) => s.ctaSeen)
@@ -229,14 +231,18 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
       Icon: ZONE_ICON[z.id],
       color: z.color,
       active: activeZone === z.id,
+      stores: SPACES.filter((sp) => sp.zoneId === z.id).flatMap((sp) => {
+        const st = catStores.find((x) => x.id === catAssignments[sp.id])
+        return st ? [{ store: st, spaceId: sp.id }] : []
+      }),
       onPick: () => {
         setFloor(FLOOR_OF_ZONE[z.id])
         selectSpace(null)
         if (use3D) requestFocus({ kind: 'zone', id: z.id })
       },
     })),
-    { id: 'deportes', label: 'Deportes', Icon: Trophy, color: '#2f9e5a', active: courtActive, onPick: () => openCourtOrClaim(use3D) },
-    ...(cineOn ? [{ id: 'cine', label: 'Cine', Icon: Film, color: '#6b4fd1', onPick: () => useCineUi.getState().open('lobby') }] : []),
+    { id: 'deportes', label: 'Deportes', Icon: Trophy, color: '#2f9e5a', active: courtActive, hint: 'Fútbol 5 y pádel', onPick: () => openCourtOrClaim(use3D) },
+    ...(cineOn ? [{ id: 'cine', label: 'Cine', Icon: Film, color: '#6b4fd1', hint: 'Cartelera', onPick: () => useCineUi.getState().open('lobby') }] : []),
   ]
   const discoverRows: DiscoverRow[] = [
     { id: 'pasaporte', title: 'Pasaporte', detail: `${passportDone} de ${stampList.length} sellos`, Icon: BookOpen, color: '#0f8f80', progress: stampList.length ? passportDone / stampList.length : 0, onPick: () => navigate('/pasaporte') },
@@ -494,7 +500,18 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         </div>
         {use3D && desktop && !dimmed && !overview && <ControlsLegend />}
       </div>
-    <CategoriesSheet open={catsOpen} onClose={() => setCatsOpen(false)} items={categoryItems} />
+    <CategoriesSheet
+        open={catsOpen}
+        onClose={() => setCatsOpen(false)}
+        items={categoryItems}
+        onStore={(c: CategoryStore) => {
+          // a ese local: cambia de piso, acerca la cámara y abre su ficha
+          const sp = SPACE_BY_ID[c.spaceId]
+          if (sp) setFloor(sp.floorId)
+          selectSpace(c.spaceId)
+          if (use3D) requestFocus({ kind: 'space', id: c.spaceId })
+        }}
+      />
       <DiscoverSheet open={discOpen} onClose={() => setDiscOpen(false)} rows={discoverRows} />
     </MotionConfig>
   )

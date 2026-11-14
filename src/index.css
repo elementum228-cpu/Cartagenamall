@@ -441,6 +441,8 @@ html[data-quality='low'] [class*='backdrop-blur'] {
 }
 html[data-quality='low'] .glass { background: rgb(247 245 241 / 0.94); }
 html[data-quality='low'] .glass-strong { background: rgb(250 249 246 / 0.98); }
+/* Sin desenfoque, una hoja translúcida deja ver el mapa nítido detrás (se ve «sucia»): en calidad baja las hojas son sólidas. */
+html[data-quality='low'] .glass-sheet { background: #fffefc; }
 html[data-quality='low'] .glass-clear { background: rgb(255 255 255 / 0.3); }
 html[data-quality='low'] .glass-tray { background: rgb(247 245 241 / 0.62); }
 html[data-quality='low'].theme-night .glass { background: rgb(8 42 62 / 0.9); }
