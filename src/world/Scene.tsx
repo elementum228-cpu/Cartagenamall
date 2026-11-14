@@ -222,7 +222,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                     if (space.label === 'D-05')
                       return (
                         <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>
-                          <VeneplastAnchorStore width={9.8} depth={6.2} interactive={interactive} onOpen={() => onSelect(space.id)} />
+                          <VeneplastAnchorStore width={9.8} depth={6.2} interactive={interactive} animateVisitors={!reduceMotion} onOpen={() => onSelect(space.id)} />
                         </group>
                       )
                     return (
