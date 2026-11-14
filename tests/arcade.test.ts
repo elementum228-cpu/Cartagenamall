@@ -65,8 +65,8 @@ describe('motor de Nave Caribe', () => {
 
   it('la dificultad sube con tope y no se crean objetos nuevos (piscinas fijas)', () => {
     expect(spawnGap(0)).toBeGreaterThan(spawnGap(40))
-    expect(spawnGap(1000)).toBeCloseTo(0.18, 5)
-    expect(fallSpeed(1000)).toBe(365)
+    expect(spawnGap(1000)).toBeCloseTo(0.07, 5) // sin techo hasta un mínimo casi imposible
+    expect(fallSpeed(1000)).toBeCloseTo(245 + 537, 3)
     const g = createGame(makeRand(9))
     const sizes = [g.bullets.length, g.enemies.length, g.parts.length]
     for (let i = 0; i < 3000 && !g.over; i++) update(g, 1 / 60, { targetX: (i * 7) % W, dir: 0 })
@@ -221,6 +221,45 @@ describe('oleadas sin fin y jefes de Nave Caribe', () => {
     }
     expect(hp(1, 1)).toBeGreaterThan(hp(1, 0))
     expect(hp(3, 0)).toBeGreaterThan(hp(0, 0))
+  })
+
+  it('es infinito de verdad: sin límite de tiempo la dificultad sigue creciendo oleada tras oleada, jefe tras jefe', () => {
+    for (const [a, b] of [[100, 300], [300, 600], [600, 900]]) {
+      expect(fallSpeed(b)).toBeGreaterThan(fallSpeed(a))
+      expect(spawnGap(b)).toBeLessThan(spawnGap(a) + 1e-9)
+    }
+    const g = createGame(makeRand(41), 0)
+    g.lives = 9999
+    g.weapon = 5
+    let maxWave = 0
+    let bosses = 0
+    for (let i = 0; i < 700 * 60 && !g.over; i++) {
+      const target = g.boss.on ? g.boss.x : (g.enemies.filter((e) => e.on).sort((x, y) => y.y - x.y)[0]?.x ?? 180)
+      update(g, 1 / 60, { targetX: Math.round(target), dir: 0 })
+      g.weapon = 5
+      maxWave = Math.max(maxWave, g.wave)
+      bosses = Math.max(bosses, g.bosses)
+    }
+    expect(g.over).toBe(false) // pasados 10 minutos sigue
+    expect(maxWave).toBeGreaterThanOrEqual(15)
+    expect(bosses).toBeGreaterThanOrEqual(2)
+  })
+
+  it('vencer a un jefe sube de golpe el ritmo de la partida', () => {
+    const g = createGame(makeRand(12), 1)
+    g.lives = 9999
+    g.fireIn = 99
+    g.wave = 5
+    g.waveT = 17.99
+    update(g, 0.05, { targetX: null, dir: 0 })
+    const before = g.prog
+    g.boss.hp = 1
+    g.boss.age = 0
+    g.boss.y = 118
+    Object.assign(g.bullets[0], { on: true, x: 180, y: 130, vx: 0 })
+    update(g, 1 / 60, { targetX: null, dir: 0 })
+    expect(g.bosses).toBe(1)
+    expect(g.prog).toBeGreaterThanOrEqual(before + 25)
   })
 
   it('más allá de la oleada 5 todo sigue acelerándose (sin tope temprano) y la repetición del servidor coincide', () => {

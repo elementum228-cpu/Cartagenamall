@@ -33,8 +33,8 @@ const BULLET_SPEED = 560
 const EBULLET_SPEED = 205
 export const EBULLET_R = 5
 export const LIVES = 3
-/** Tope de seguridad de una partida (el juego no termina por tiempo: sigue mientras la nave aguante; esto solo acota la repetición del servidor). */
-export const MAX_SECONDS = 420
+/** Tope de seguridad de una partida: 20 minutos. El juego NO termina por tiempo: la dificultad sigue subiendo sin techo hasta que nadie aguanta (mucho antes de este tope); esto solo acota la repetición que hace el servidor. */
+export const MAX_SECONDS = 1200
 const INVULN = 1.6
 const SHIP_MAX_SPEED = 900
 const KEY_SPEED = 400
@@ -216,14 +216,22 @@ export function createGame(rand: () => number = Math.random, difficulty: Difficu
 }
 
 /** Segundos entre apariciones: baja con el tiempo hasta un mínimo (la partida se pone cada vez más intensa). */
-export const spawnGap = (t: number) => Math.max(0.26 - Math.min(0.08, Math.max(0, t - 100) * 0.0004), 0.85 - t * 0.0105)
+export const spawnGap = (t: number) => Math.max(Math.max(0.07, 0.26 - Math.max(0, t - 100) * 0.00063), 0.85 - t * 0.0105)
 /** Velocidad base de caída. */
-export const fallSpeed = (t: number) => Math.min(245, 85 + t * 1.5) + Math.min(120, Math.max(0, t - 105) * 0.45)
+export const fallSpeed = (t: number) => Math.min(245, 85 + t * 1.5) + Math.min(560, Math.max(0, t - 105) * 0.6)
 
 /** Suma puntos base: el puntaje final es el base por el multiplicador de la dificultad (división entera: exacto en cualquier motor). */
 function addScore(g: Game, base: number) {
   g.raw += base
   g.score = Math.floor((g.raw * g.diff.mult) / 100)
+}
+
+/** Vida extra de los enemigos con el paso del tiempo (sin techo): pasados los primeros minutos hasta los puntitos aguantan más golpes. */
+function hpBonus(kind: EnemyKind, t: number): number {
+  if (kind === 0) return Math.floor(Math.max(0, t - 180) / 120)
+  if (kind === 1) return Math.floor(Math.max(0, t - 120) / 90)
+  if (kind === 3) return 2 * Math.floor(Math.max(0, t - 150) / 60)
+  return 0
 }
 
 function pickKind(g: Game): EnemyKind {
@@ -233,7 +241,7 @@ function pickKind(g: Game): EnemyKind {
   let guns = 0
   for (const e of g.enemies) if (e.on && e.kind === 3) guns++
   const from = g.diff.gunnerFrom
-  const pGun = t > from && guns < (t > from + 33 ? (t > from + 150 ? 3 : 2) : 1) ? 0.05 + Math.min(0.06, (t - from) * 0.0015) : 0
+  const pGun = t > from && guns < Math.min(5, 1 + Math.floor((t - from) / 45)) ? 0.05 + Math.min(0.12, (t - from) * 0.0015) : 0
   if (r < pGun) return 3
   const pGold = t > 8 ? 0.06 : 0
   if (r < pGun + pGold) return 2
@@ -249,7 +257,7 @@ function spawn(g: Game) {
   const r = KIND_R[kind]
   e.on = true
   e.kind = kind
-  e.hp = KIND_HP[kind]
+  e.hp = KIND_HP[kind] + hpBonus(kind, g.prog)
   e.baseX = r + 10 + g.rand() * (W - 2 * (r + 10))
   e.x = e.baseX
   e.y = -r
@@ -262,7 +270,7 @@ function spawn(g: Game) {
 
 /** Formación en V de puntitos que baja de golpe: rompe el ritmo y obliga a moverse (cada 20 s). */
 function formation(g: Game) {
-  const n = g.prog < 50 ? 5 : g.prog < 130 ? 7 : 9
+  const n = g.prog < 50 ? 5 : g.prog < 130 ? 7 : g.prog < 260 ? 9 : g.prog < 400 ? 11 : 13
   const mid = (n - 1) / 2
   const cx = 60 + g.rand() * (W - 120)
   for (let i = 0; i < n; i++) {
@@ -271,7 +279,7 @@ function formation(g: Game) {
     const d = i - mid
     e.on = true
     e.kind = 0
-    e.hp = 1
+    e.hp = 1 + hpBonus(0, g.prog)
     e.baseX = Math.max(20, Math.min(W - 20, cx + d * 34))
     e.x = e.baseX
     e.y = -KIND_R[0] - (d < 0 ? -d : d) * 24
@@ -287,7 +295,7 @@ function formation(g: Game) {
 function enemyFire(g: Game, e: Enemy) {
   const dy = SHIP_Y - e.y
   const aim = Math.max(-95, Math.min(95, (g.shipX - e.x) / (dy / (EBULLET_SPEED * g.diff.bulletSpeed))))
-  const vxs = g.prog > 50 ? [aim, aim - 55, aim + 55] : [aim]
+  const vxs = g.prog > 200 ? [aim, aim - 50, aim + 50, aim - 100, aim + 100] : g.prog > 50 ? [aim, aim - 55, aim + 55] : [aim]
   for (const vx of vxs) {
     const b = g.ebullets.find((x) => !x.on)
     if (!b) return
@@ -346,12 +354,12 @@ function updateBoss(g: Game, dt: number) {
     b.aimIn += enraged ? 1.0 : 1.5
     const dy = SHIP_Y - b.y
     const aim = Math.max(-110, Math.min(110, (g.shipX - b.x) / (dy / (EBULLET_SPEED * sp))))
-    for (const dv of [0, -42, 42]) ebullet(g, b.x, b.y + BOSS_R - 8, aim + dv, EBULLET_SPEED * sp)
+    for (const dv of b.num >= 3 ? [0, -42, 42, -84, 84] : [0, -42, 42]) ebullet(g, b.x, b.y + BOSS_R - 8, aim + dv, EBULLET_SPEED * sp)
   }
   b.fanIn -= dt
   if (b.fanIn <= 0) {
     b.fanIn += enraged ? 2.3 : 3.3
-    const n = Math.min(11, 5 + b.num)
+    const n = Math.min(17, 3 + 2 * b.num)
     for (let i = 0; i < n; i++) ebullet(g, b.x, b.y + BOSS_R - 8, (i - (n - 1) / 2) * 40, EBULLET_SPEED * sp * 0.92)
   }
   // refuerzos: puntitos que caen desde el jefe cuando está herido
@@ -399,6 +407,8 @@ function defeatBoss(g: Game) {
   dropPickup(g, 1, b.x + 20, b.y + 30)
   if (g.lives < LIVES) g.lives += 1
   for (const eb of g.ebullets) eb.on = false
+  // vencer al jefe sube de golpe el ritmo: lo que viene es más duro que lo que había antes de él
+  g.prog += 25
   g.wave += 1
   g.waveT = 0
   g.formationAt = g.prog + g.diff.formationEvery
@@ -603,7 +613,7 @@ export function update(g: Game, dt: number, input: Input) {
     if (e.kind === 3 && e.y > 24 && e.y < SHIP_Y - 150) {
       e.shoot -= dt
       if (e.shoot <= 0) {
-        e.shoot += Math.max(0.7, 1.7 - g.prog * 0.009)
+        e.shoot += Math.max(0.45, 1.7 - g.prog * 0.009)
         enemyFire(g, e)
       }
     }

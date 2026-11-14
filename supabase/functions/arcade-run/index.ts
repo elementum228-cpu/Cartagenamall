@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   if (req.method !== 'POST') return json({ error: 'método no permitido' }, 405)
   const raw = await req.text()
-  if (raw.length > 1_000_000) return json({ error: 'cuerpo demasiado grande' }, 413)
+  if (raw.length > 3_000_000) return json({ error: 'cuerpo demasiado grande' }, 413)
   let body: Record<string, unknown>
   try {
     body = JSON.parse(raw)
