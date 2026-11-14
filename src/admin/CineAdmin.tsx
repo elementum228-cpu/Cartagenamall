@@ -4,7 +4,8 @@ import { readImageFile } from '../lib/image'
 import { remoteEnabled } from '../remote/client'
 import { runCineSync } from '../remote/sync'
 import { uploadStadiumImage } from '../remote/photos'
-import { CHAINS, MAX_MOVIES, OFFICIAL_HOSTS, isOfficialLink, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
+import { parseTrailer } from '../cinema/trailer'
+import { CHAINS, EVENT_KINDS, EVENT_STATUS, MAX_EVENTS, MAX_MOVIES, newEvent, type CineEvent, type CineEventKind, type CineEventStatus, OFFICIAL_HOSTS, isOfficialLink, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
 import { CINE_COLOMBIA_SNAPSHOT, CINE_COLOMBIA_SNAPSHOT_DATE } from '../cinema/cineColombiaSnapshot'
 import { importMovies, parseMovieList } from '../state/cineImport'
 import { exampleCine } from '../state/cineExample'
@@ -93,6 +94,105 @@ function LinkInput({ chain, name, value, onChange }: { chain: ChainId; name: str
   )
 }
 
+/** Tráiler oficial: solo enlaces de YouTube o Vimeo; solo se guarda si es válido (o vacío, para quitarlo). */
+function TrailerInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [text, setText] = useState(value)
+  const bad = text.trim() !== '' && !parseTrailer(text)
+  return (
+    <label className="block">
+      <input
+        className={`${input} ${bad ? 'border-red-400' : ''}`}
+        inputMode="url"
+        placeholder="Tráiler (YouTube o Vimeo)"
+        value={text}
+        aria-invalid={bad}
+        onChange={(e) => {
+          setText(e.target.value)
+          if (!e.target.value.trim() || parseTrailer(e.target.value)) onChange(e.target.value.trim())
+        }}
+      />
+      {bad && <span className="text-[11px] text-red-600">Pega un enlace https de YouTube o Vimeo.</span>}
+    </label>
+  )
+}
+
+/** Un evento de MallPlay Cinema: nada se ve hasta salir de «Borrador». */
+function EventEditor({ event, onChange, onRemove }: { event: CineEvent; onChange: (e: CineEvent) => void; onRemove: () => void }) {
+  const [url, setUrl] = useState(event.url)
+  const badUrl = url.trim() !== '' && !/^https:\/\/[^\s]+$/.test(url.trim())
+  return (
+    <div className="space-y-2.5 rounded-2xl border border-line bg-sand/50 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <Photo label="Imagen del evento (16:9)" value={event.image} onChange={(image) => onChange({ ...event, image })} />
+        <button type="button" className={btn.ghost} onClick={onRemove} aria-label="Quitar evento">
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+      <input className={input} placeholder="Nombre del evento" maxLength={80} value={event.title} onChange={(e) => onChange({ ...event, title: e.target.value })} />
+      <textarea className={`${input} min-h-16`} placeholder="Descripción breve" maxLength={300} value={event.description} onChange={(e) => onChange({ ...event, description: e.target.value })} />
+      <div className="grid grid-cols-2 gap-2">
+        <select className={input} value={event.kind} onChange={(e) => onChange({ ...event, kind: e.target.value as CineEventKind })} aria-label="Tipo de evento">
+          {EVENT_KINDS.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.name}
+            </option>
+          ))}
+        </select>
+        <select className={input} value={event.status} onChange={(e) => onChange({ ...event, status: e.target.value as CineEventStatus })} aria-label="Estado del evento">
+          {EVENT_STATUS.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <input type="date" className={input} value={event.date} onChange={(e) => onChange({ ...event, date: e.target.value })} aria-label="Fecha" />
+        <input type="time" className={input} value={event.time} onChange={(e) => onChange({ ...event, time: e.target.value })} aria-label="Hora" />
+        <select className={input} value={event.mode} onChange={(e) => onChange({ ...event, mode: e.target.value as CineEvent['mode'] })} aria-label="Modalidad">
+          <option value="presencial">Presencial</option>
+          <option value="virtual">Virtual</option>
+          <option value="mixto">Presencial y virtual</option>
+        </select>
+        <input className={input} placeholder="Lugar o plataforma" maxLength={80} value={event.place} onChange={(e) => onChange({ ...event, place: e.target.value })} />
+        <input className={input} placeholder="Cupos totales" inputMode="numeric" value={event.capacity ?? ''} onChange={(e) => onChange({ ...event, capacity: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
+        <input className={input} placeholder="Cupos tomados" inputMode="numeric" value={event.taken ?? ''} onChange={(e) => onChange({ ...event, taken: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
+      </div>
+      <label className="block">
+        <input
+          className={`${input} ${badUrl ? 'border-red-400' : ''}`}
+          inputMode="url"
+          placeholder="Enlace para participar (https, opcional)"
+          value={url}
+          aria-invalid={badUrl}
+          onChange={(e) => {
+            setUrl(e.target.value)
+            if (!e.target.value.trim() || /^https:\/\/[^\s]+$/.test(e.target.value.trim())) onChange({ ...event, url: e.target.value.trim() })
+          }}
+        />
+        {badUrl && <span className="text-[11px] text-red-600">Debe empezar por https://</span>}
+      </label>
+    </div>
+  )
+}
+
+function EventsAdmin() {
+  const events = useCine((s) => s.events)
+  const set = useCine((s) => s.set)
+  return (
+    <div className="space-y-3 rounded-3xl border border-line bg-card p-4">
+      <div>
+        <p className="font-bold">3 · Eventos de MallPlay Cinema</p>
+        <p className="text-xs text-ink-soft">Noches de estreno, trivias, cine en pareja, maratones, encuentros y noches de tráileres. Un evento nuevo empieza en «Borrador» y no se ve: cámbialo a «Próximamente» o «Abierto» cuando sea real. No hay eventos de ejemplo ({events.length}/{MAX_EVENTS}).</p>
+      </div>
+      {events.map((ev, i) => (
+        <EventEditor key={ev.id} event={ev} onChange={(next) => set({ events: events.map((x, k) => (k === i ? next : x)) })} onRemove={() => set({ events: events.filter((_, k) => k !== i) })} />
+      ))}
+      <button type="button" className={btn.secondary} disabled={events.length >= MAX_EVENTS} onClick={() => set({ events: [...events, newEvent()] })}>
+        <Plus className="size-4" /> Agregar evento
+      </button>
+    </div>
+  )
+}
+
 /** Una película del catálogo: cartel, título, género, duración, clasificación y sinopsis. */
 function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange: (m: CineMovie) => void; onRemove: () => void }) {
   return (
@@ -103,7 +203,16 @@ function MovieEditor({ movie, onChange, onRemove }: { movie: CineMovie; onChange
           <Trash2 className="size-4" />
         </button>
       </div>
+      <Photo label="Imagen horizontal (opcional, 16:9: se ve en el encabezado)" value={movie.backdrop ?? null} onChange={(backdrop) => onChange({ ...movie, backdrop })} />
       <input className={input} placeholder="Título de la película" maxLength={120} value={movie.title} onChange={(e) => onChange({ ...movie, title: e.target.value })} />
+      <div className="grid grid-cols-2 gap-2">
+        <input className={input} placeholder="Año (2026)" inputMode="numeric" maxLength={4} value={movie.year ?? ''} onChange={(e) => onChange({ ...movie, year: Number(e.target.value.replace(/\D/g, '')) || null })} />
+        <TrailerInput value={movie.trailer ?? ''} onChange={(trailer) => onChange({ ...movie, trailer })} />
+      </div>
+      <label className="block text-xs font-bold">
+        Última revisión de esta ficha
+        <input type="date" className={`${input} mt-0.5 font-normal`} value={movie.updatedAt ?? ''} onChange={(e) => onChange({ ...movie, updatedAt: e.target.value })} />
+      </label>
       <div className="grid grid-cols-3 gap-2">
         <input className={input} placeholder="Género" maxLength={40} value={movie.genre} onChange={(e) => onChange({ ...movie, genre: e.target.value })} />
         <input className={input} placeholder="Minutos" inputMode="numeric" value={movie.minutes ?? ''} onChange={(e) => onChange({ ...movie, minutes: Number(e.target.value.replace(/\D/g, '')) || null })} />
@@ -472,6 +581,8 @@ export function CineAdmin() {
 
         <ShowsAdmin />
       </div>
+
+      <EventsAdmin />
     </div>
   )
 }

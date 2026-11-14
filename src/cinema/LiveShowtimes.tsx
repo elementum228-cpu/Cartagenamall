@@ -136,7 +136,7 @@ export function LiveShowtimes({ hideWhenEmpty = false }: { hideWhenEmpty?: boole
     <section aria-label="Horarios de las salas de cine de Cartagena" className="mt-1">
       <div className="flex items-start justify-between gap-3 pr-12">
         <div>
-          <h3 className="text-[20px] font-black tracking-tight">Cine en Cartagena</h3>
+          <h3 className="text-[20px] font-black tracking-tight">Funciones de hoy</h3>
           <p className="mt-0.5 text-[12px] text-white/55">{lastUpdate ? updatedAgo(lastUpdate, clock) : 'Horarios de las salas de la ciudad'}</p>
         </div>
         <button onClick={() => setTick((n) => n + 1)} aria-label="Actualizar horarios" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 transition active:scale-95">

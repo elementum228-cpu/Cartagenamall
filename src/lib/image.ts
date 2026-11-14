@@ -14,6 +14,18 @@ const LIMITS: Record<ImageKind, { max: number; type: string; quality: number }> 
   poster: { max: 1280, type: 'image/jpeg', quality: 0.82 },
 }
 
+let webp: boolean | null = null
+function webpOk() {
+  if (webp === null) {
+    try {
+      webp = document.createElement('canvas').toDataURL('image/webp').startsWith('data:image/webp')
+    } catch {
+      webp = false
+    }
+  }
+  return webp
+}
+
 /** Tamaño máximo del archivo original (antes de reducirlo). */
 export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 
@@ -28,7 +40,10 @@ export async function readImageFile(file: File, kind: ImageKind): Promise<string
       el.onerror = () => reject(new Error('No se pudo leer la imagen.'))
       el.src = url
     })
-    const { max, type, quality } = LIMITS[kind]
+    const lim = LIMITS[kind]
+    const { max, quality } = lim
+    // carteles: WebP cuando el navegador lo guarda (pesa bastante menos); si no, JPEG
+    const type = kind === 'poster' && webpOk() ? 'image/webp' : lim.type
     if (kind === 'avatar') {
       // foto de perfil: recorte cuadrado centrado
       const side = Math.min(img.naturalWidth, img.naturalHeight)

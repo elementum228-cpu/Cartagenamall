@@ -115,7 +115,9 @@ export function ExploreView({ active }: { active: boolean }) {
   // con el periódico abierto el 3D se pausa: la animación de la hoja va fluida en el teléfono
   const hoyOpen = useHoy((s) => s.reader)
   const arcadeOpen = useArcadeUi((s) => s.open)
-  const readingHoy = hoyOpen || arcadeOpen
+  // con el cine abierto (cartelera o lobby, a pantalla completa) tampoco se dibuja el mapa de atrás
+  const cineOpen = useCineUi((s) => s.view !== null)
+  const readingHoy = hoyOpen || arcadeOpen || cineOpen
   const root = useRef<HTMLDivElement>(null)
 
   // De noche, mientras se explora, las barras y controles pasan a vidrio ahumado (ver index.css).

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { parseTrailer } from '../cinema/trailer'
 import { safeStorage } from './storage'
 
 /**
@@ -62,7 +63,67 @@ export interface CineMovie {
   soon: boolean
   /** Estreno: sale primero en el cine y lleva la etiqueta «Estreno». */
   isNew: boolean
+  /** Imagen horizontal (para el encabezado cinematográfico). Sin ella se usa el cartel. */
+  backdrop?: string | null
+  /** Tráiler oficial: enlace de YouTube o Vimeo (se reproduce solo cuando la persona lo pide). */
+  trailer?: string
+  /** Año de la película (null/sin dato = no se muestra). */
+  year?: number | null
+  /** Cuándo se revisó esta ficha por última vez («AAAA-MM-DD»). */
+  updatedAt?: string
 }
+
+// ── Eventos de MallPlay Cinema ────────────────────────────────────────────────────────────────────
+
+export type CineEventKind = 'premiere' | 'trivia' | 'couples' | 'marathon' | 'cinephiles' | 'trailers'
+export type CineEventStatus = 'draft' | 'soon' | 'open' | 'full' | 'finished' | 'cancelled'
+export type CineEventMode = 'presencial' | 'virtual' | 'mixto'
+
+export const EVENT_KINDS: { id: CineEventKind; name: string; hint: string }[] = [
+  { id: 'premiere', name: 'Noche de estreno', hint: 'Varias personas se organizan para ver una función real.' },
+  { id: 'trivia', name: 'Trivia de películas', hint: 'Preguntas sobre películas, géneros y personajes.' },
+  { id: 'couples', name: 'Cine en pareja', hint: 'Película + restaurante + postre.' },
+  { id: 'marathon', name: 'Maratón de cine', hint: 'Varias películas seguidas.' },
+  { id: 'cinephiles', name: 'Encuentro de cinéfilos', hint: 'Comunidad que habla y organiza actividades de cine.' },
+  { id: 'trailers', name: 'Noche de tráileres', hint: 'Tráileres oficiales y votación de próximos estrenos.' },
+]
+
+export const EVENT_STATUS: { id: CineEventStatus; name: string }[] = [
+  { id: 'draft', name: 'Borrador (no se ve)' },
+  { id: 'soon', name: 'Próximamente' },
+  { id: 'open', name: 'Abierto' },
+  { id: 'full', name: 'Completo' },
+  { id: 'finished', name: 'Finalizado' },
+  { id: 'cancelled', name: 'Cancelado' },
+]
+
+/** Un evento. Solo los carga la administración (pestaña Cine): no hay eventos de ejemplo. Los borradores no se ven. */
+export interface CineEvent {
+  id: string
+  kind: CineEventKind
+  title: string
+  description: string
+  image: string | null
+  status: CineEventStatus
+  /** «AAAA-MM-DD» o '' si aún no hay fecha. */
+  date: string
+  /** «HH:MM» o ''. */
+  time: string
+  mode: CineEventMode
+  /** Lugar o plataforma (texto libre). */
+  place: string
+  /** Cupos totales (null = sin límite o sin dato). */
+  capacity: number | null
+  /** Cupos ya tomados (solo si la administración lo lleva). */
+  taken: number | null
+  /** Enlace para inscribirse o participar (https). Sin enlace, el evento solo informa. */
+  url: string
+  /** Película del catálogo relacionada (opcional). */
+  movieId: string
+}
+
+export const MAX_EVENTS = 24
+export const newEvent = (): CineEvent => ({ id: `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind: 'premiere', title: '', description: '', image: null, status: 'draft', date: '', time: '', mode: 'presencial', place: '', capacity: null, taken: null, url: '', movieId: '' })
 
 export type ShowFormat = '' | '2D' | '3D' | 'VIP'
 export type ShowLang = '' | 'DOB' | 'SUB'
@@ -102,6 +163,8 @@ export interface CineState {
   chains: CineChain[]
   movies: CineMovie[]
   shows: CineShow[]
+  /** Eventos de MallPlay Cinema (solo los que carga la administración). */
+  events: CineEvent[]
   /** Mientras no haya programación cargada (ni leída), se muestra el ejemplo, avisando que lo es. */
   demo: boolean
 }
@@ -123,6 +186,7 @@ export const emptyCine = (): CineState => ({
   chains: emptyChains(),
   movies: [],
   shows: [],
+  events: [],
   demo: true,
 })
 
@@ -227,8 +291,52 @@ function cleanLinks(v: unknown): Partial<Record<ChainId, string>> {
 export const cleanMovie = (v: unknown, i: number): CineMovie => {
   const o = (v ?? {}) as Partial<CineMovie>
   const minutes = typeof o.minutes === 'number' && Number.isFinite(o.minutes) && o.minutes > 0 ? Math.round(o.minutes) : null
-  return { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400), links: cleanLinks(o.links), release: typeof o.release === 'string' && DAY_RE.test(o.release) ? o.release : '', soon: o.soon === true, isNew: o.isNew === true }
+  const base: CineMovie = { id: str(o.id, 40) || `m${i}`, title: str(o.title), image: img(o.image), genre: str(o.genre, 40), minutes, rating: str(o.rating, 8), synopsis: str(o.synopsis, 400), links: cleanLinks(o.links), release: typeof o.release === 'string' && DAY_RE.test(o.release) ? o.release : '', soon: o.soon === true, isNew: o.isNew === true }
+  // campos opcionales (solo se guardan si traen algo válido)
+  const backdrop = img(o.backdrop)
+  const trailer = parseTrailer(typeof o.trailer === 'string' ? o.trailer : '') ? str(o.trailer, 200) : ''
+  const year = typeof o.year === 'number' && Number.isInteger(o.year) && o.year >= 1900 && o.year <= 2100 ? o.year : null
+  const updatedAt = typeof o.updatedAt === 'string' && DAY_RE.test(o.updatedAt) ? o.updatedAt : ''
+  return { ...base, ...(backdrop ? { backdrop } : {}), ...(trailer ? { trailer } : {}), ...(year ? { year } : {}), ...(updatedAt ? { updatedAt } : {}) }
 }
+
+const EVENT_KIND_IDS = EVENT_KINDS.map((k) => k.id)
+const EVENT_STATUS_IDS = EVENT_STATUS.map((k) => k.id)
+const posInt = (x: unknown, max = 100000) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? Math.min(Math.round(x), max) : null)
+
+export const cleanEvent = (v: unknown, i: number): CineEvent => {
+  const o = (v ?? {}) as Partial<CineEvent>
+  const capacity = posInt(o.capacity)
+  const taken = posInt(o.taken)
+  const url = typeof o.url === 'string' && /^https:\/\/[^\s]+$/.test(o.url.trim()) ? o.url.trim().slice(0, 400) : ''
+  return {
+    id: str(o.id, 40) || `e${i}`,
+    kind: EVENT_KIND_IDS.includes(o.kind as CineEventKind) ? (o.kind as CineEventKind) : 'premiere',
+    title: str(o.title, 80),
+    description: str(o.description, 300),
+    image: img(o.image),
+    status: EVENT_STATUS_IDS.includes(o.status as CineEventStatus) ? (o.status as CineEventStatus) : 'draft',
+    date: typeof o.date === 'string' && DAY_RE.test(o.date) ? o.date : '',
+    time: typeof o.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.time) ? o.time : '',
+    mode: o.mode === 'virtual' || o.mode === 'mixto' ? o.mode : 'presencial',
+    place: str(o.place, 80),
+    capacity,
+    taken: taken !== null && capacity !== null ? Math.min(taken, capacity) : taken,
+    url,
+    movieId: str(o.movieId, 40),
+  }
+}
+
+/** Eventos que ve el público: nada de borradores ni sin título; los abiertos primero, luego próximos, completos, y al final lo ya terminado. */
+export function publicEvents(events: CineEvent[]): CineEvent[] {
+  const rank: Record<CineEventStatus, number> = { open: 0, soon: 1, full: 2, finished: 3, cancelled: 4, draft: 9 }
+  return events
+    .filter((e) => e.status !== 'draft' && e.title)
+    .sort((a, b) => rank[a.status] - rank[b.status] || (a.date || '9').localeCompare(b.date || '9') || a.title.localeCompare(b.title))
+}
+
+/** Cupos libres: null si no se llevan cupos. */
+export const seatsLeft = (e: Pick<CineEvent, 'capacity' | 'taken'>): number | null => (e.capacity === null ? null : Math.max(0, e.capacity - (e.taken ?? 0)))
 
 const cleanShow = (v: unknown): CineShow | null => {
   const o = (v ?? {}) as Partial<CineShow>
@@ -286,7 +394,8 @@ export const cleanCine = (v: unknown, now = new Date()): CineState => {
       .filter((s): s is CineShow => !!s && s.day >= today && ids.has(s.movieId) && !seen.has(s.id) && !!seen.add(s.id))
       .slice(0, MAX_SHOWS)
   } else ({ movies, shows } = fromLegacyChains(rawChains, today))
-  return { enabled: o.enabled !== false, boardOn: o.boardOn !== false, lobbyOn: o.lobbyOn !== false, posters: p, chains, movies, shows, demo: o.demo !== false }
+  const events = (Array.isArray(o.events) ? o.events : []).slice(0, MAX_EVENTS).map(cleanEvent)
+  return { enabled: o.enabled !== false, boardOn: o.boardOn !== false, lobbyOn: o.lobbyOn !== false, posters: p, chains, movies, shows, events, demo: o.demo !== false }
 }
 
 export const useCine = create<CineState & { set: (patch: Partial<CineState>) => void }>()(
