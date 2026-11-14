@@ -375,7 +375,7 @@ function ModeSwitch() {
 const navLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-full px-3 py-1.5 text-[13.5px] font-semibold transition duration-200 ${isActive ? "bg-teal/12 text-teal" : "text-ink-soft hover:text-ink"}`;
 const iconBtn =
-  "glass relative grid size-11 place-items-center rounded-full text-ink shadow-none transition duration-200 active:scale-[0.96]";
+  "glass touch-hit relative grid size-9 place-items-center rounded-full text-ink shadow-none transition duration-200 active:scale-[0.96] md:size-10";
 
 /** Barra superior flotante de vidrio. */
 function TopBar() {
@@ -393,7 +393,7 @@ function TopBar() {
   );
   return (
     // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
-    <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-14 items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
+    <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-[46px] items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
       <Link
         to="/"
         className="touch-hit relative flex shrink-0 items-center gap-2.5 rounded-2xl pr-2"
@@ -436,14 +436,14 @@ function TopBar() {
           onClick={() => navigate("/comprar?foco=1")}
           aria-label="Buscar productos"
         >
-          <Search className="size-[21px]" strokeWidth={1.8} />
+          <Search className="size-[18px]" strokeWidth={1.8} />
         </button>
         <Link
           to="/favoritos"
           className={`${iconBtn} max-md:hidden`}
           aria-label="Favoritos"
         >
-          <Heart className="size-[21px]" strokeWidth={1.8} />
+          <Heart className="size-[18px]" strokeWidth={1.8} />
         </Link>
         {FEATURES.compare && compare > 0 && (
           <Link
@@ -451,7 +451,7 @@ function TopBar() {
             className={`${iconBtn} max-md:hidden`}
             aria-label={`Comparador, ${compare} productos`}
           >
-            <Scale className="size-[21px]" strokeWidth={1.8} />
+            <Scale className="size-[18px]" strokeWidth={1.8} />
             <Badge n={compare} />
           </Link>
         )}
@@ -463,14 +463,14 @@ function TopBar() {
             }
             aria-label="Mi negocio: modo dueño"
           >
-            <Store className="size-[21px]" strokeWidth={1.8} />
+            <Store className="size-[18px]" strokeWidth={1.8} />
           </NavLink>
         )}
         <BellButton className={iconBtn} />
         {!loggedIn && remoteEnabled() && (
           <Link
             to="/registro"
-            className="grid h-11 place-items-center rounded-full bg-teal px-4 text-[14px] font-bold whitespace-nowrap text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-sm:hidden"
+            className="grid h-9 place-items-center rounded-full bg-teal px-3.5 text-[13px] font-semibold whitespace-nowrap text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-sm:hidden"
           >
             Crear cuenta
           </Link>
@@ -486,18 +486,18 @@ function TopBar() {
             <img
               src={avatar}
               alt=""
-              className="size-9 rounded-full object-cover"
+              className="size-7 rounded-full object-cover md:size-8"
             />
           ) : (
-            <UserRound className="size-[21px]" strokeWidth={1.8} />
+            <UserRound className="size-[18px]" strokeWidth={1.8} />
           )}
         </NavLink>
         <Link
           to="/carrito"
-          className="relative grid size-11 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden"
+          className="relative grid size-10 place-items-center rounded-full bg-teal text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-md:hidden"
           aria-label={`Carrito, ${count} productos`}
         >
-          <ShoppingCart className="size-[19px]" strokeWidth={1.9} />
+          <ShoppingCart className="size-[17px]" strokeWidth={1.9} />
           <Badge n={count} />
         </Link>
       </div>

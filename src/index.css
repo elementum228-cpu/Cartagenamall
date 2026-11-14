@@ -37,7 +37,7 @@ body,
 
 /* Medidas de las barras flotantes: el mapa y las páginas se acomodan a ellas. */
 :root {
-  --chrome-top: calc(max(10px, env(safe-area-inset-top)) + 56px + 10px);
+  --chrome-top: calc(max(10px, env(safe-area-inset-top)) + 46px + 8px);
   --chrome-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 64px + 10px);
 }
 @media (min-width: 768px) {

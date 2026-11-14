@@ -16,12 +16,12 @@ export function MallWordmark({ className = '' }: { className?: string }) {
 }
 
 /** Logo todo en blanco (la «M» de arcos y el nombre), con una sombra suave para leerse sobre cualquier fondo. Para la barra superior. */
-export function MallLogoWhite({ height = 30 }: { height?: number }) {
+export function MallLogoWhite({ height = 23 }: { height?: number }) {
   const shadow = 'drop-shadow(0 1px 5px rgb(0 0 0 / 0.35))'
   return (
-    <span className="flex items-center gap-2.5 text-white" style={{ filter: shadow }}>
+    <span className="flex items-center gap-2 text-white" style={{ filter: shadow }}>
       <img src={markWhite} alt="" aria-hidden height={height} style={{ height, width: 'auto' }} />
-      <span className="text-[19px] font-extrabold tracking-[-0.02em]">MallPlay</span>
+      <span className="text-[16px] font-extrabold tracking-[-0.02em]">MallPlay</span>
     </span>
   )
 }

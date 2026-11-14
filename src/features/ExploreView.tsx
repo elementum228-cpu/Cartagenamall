@@ -280,22 +280,22 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
           fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
         {!desktop && (
-          <div data-tour="menu" className={`island-hide absolute top-[var(--chrome-top)] left-3 z-10 flex gap-2.5 transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-0' : ''}`}>
-            <button data-tour="categorias" onClick={() => setCatsOpen(true)} aria-haspopup="dialog" className="glass touch-hit relative flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold text-ink shadow-none transition active:scale-[0.98]">
-              <LayoutGrid className="size-[18px]" strokeWidth={1.9} />
+          <div data-tour="menu" className={`island-hide absolute top-[var(--chrome-top)] left-3 z-10 flex gap-2 transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-0' : ''}`}>
+            <button data-tour="categorias" onClick={() => setCatsOpen(true)} aria-haspopup="dialog" className="glass touch-hit relative flex h-9 items-center gap-1.5 rounded-full pr-2.5 pl-3 text-[13px] font-semibold tracking-[-0.005em] text-ink shadow-none transition active:scale-[0.98]">
+              <LayoutGrid className="size-4" strokeWidth={1.9} />
               Categorías
-              <ChevronDown className="size-4 opacity-70" strokeWidth={2} />
+              <ChevronDown className="size-3.5 opacity-60" strokeWidth={2} />
             </button>
             <button
               data-tour="descubre"
               onClick={() => setDiscOpen(true)}
               aria-haspopup="dialog"
               aria-label={discoverBadge ? `Descubre, ${discoverBadge} novedades` : 'Descubre'}
-              className="glass touch-hit relative flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold text-ink shadow-none transition active:scale-[0.98]"
+              className="glass touch-hit relative flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold tracking-[-0.005em] text-ink shadow-none transition active:scale-[0.98]"
             >
-              <Sparkles className="size-[18px]" strokeWidth={1.9} />
+              <Sparkles className="size-4" strokeWidth={1.9} />
               Descubre
-              {discoverBadge > 0 && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-amber px-1 text-[11px] leading-none font-extrabold text-deep">{discoverBadge}</span>}
+              {discoverBadge > 0 && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-amber px-1 text-[10px] leading-none font-extrabold text-deep">{discoverBadge}</span>}
             </button>
           </div>
         )}
