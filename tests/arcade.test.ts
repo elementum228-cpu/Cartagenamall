@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_STEPS, ROUND_SECONDS, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
+import { MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
 import { ARCADE_REWARDS, DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, awardFor, useArcade } from '../src/arcade/store'
 
 const still = { targetX: null, dir: 0 }
@@ -37,7 +37,7 @@ describe('motor de Nave Caribe', () => {
     const g = createGame(makeRand(5))
     g.spawnIn = 99
     g.fireIn = 99
-    const hit = () => Object.assign(g.enemies.find((x) => !x.on)!, { on: true, kind: 0, x: g.shipX, baseX: g.shipX, y: 548, vy: 0, hp: 1, amp: 0 })
+    const hit = () => Object.assign(g.enemies.find((x) => !x.on)!, { on: true, kind: 0, x: g.shipX, baseX: g.shipX, y: SHIP_Y, vy: 0, hp: 1, amp: 0 })
     hit()
     update(g, 1 / 60, still)
     expect(g.lives).toBe(2)
@@ -143,6 +143,104 @@ function play(seed: number, pick: (step: number) => Input) {
   return { g, log: rec.log, steps: step }
 }
 
+describe('armas y premios', () => {
+  const place = (g: ReturnType<typeof createGame>, o: Partial<{ kind: 0 | 1 | 2; x: number; y: number; hp: number }>) =>
+    Object.assign(g.enemies.find((x) => !x.on)!, { on: true, kind: 0, x: g.shipX, baseX: g.shipX, y: 300, vy: 0, hp: 1, amp: 0, ...o })
+  const quiet = (g: ReturnType<typeof createGame>) => {
+    g.spawnIn = 99
+    return g
+  }
+
+  it('el arma sube de nivel y dispara más: 1, 2, 3 y 5 disparos por ráfaga', () => {
+    const counts = [1, 2, 3, 4].map((lvl) => {
+      const g = quiet(createGame(makeRand(1)))
+      g.weapon = lvl
+      g.fireIn = 0
+      update(g, 1 / 60, still)
+      return g.bullets.filter((b) => b.on).length
+    })
+    expect(counts).toEqual([1, 2, 3, 5])
+  })
+
+  it('un dorado siempre suelta premio; al recogerlo de arma, sube el nivel', () => {
+    const g = quiet(createGame(makeRand(2)))
+    g.fireIn = 99
+    place(g, { kind: 2, y: 200 })
+    Object.assign(g.bullets[0], { on: true, x: g.shipX, y: 200, vx: 0 })
+    update(g, 1 / 60, still)
+    const drop = g.pickups.find((k) => k.on)
+    expect(drop).toBeTruthy()
+    drop!.kind = 0
+    drop!.x = g.shipX
+    drop!.y = SHIP_Y - 4
+    const antes = g.weapon
+    update(g, 1 / 60, still)
+    expect(g.weapon).toBe(antes + 1)
+    expect(g.picked).toBe(1)
+  })
+
+  it('con el arma al máximo el premio de arma da 25 puntos; el rápido acelera el disparo', () => {
+    const g = quiet(createGame(makeRand(3)))
+    g.fireIn = 99
+    g.weapon = MAX_WEAPON
+    Object.assign(g.pickups[0], { on: true, kind: 0, x: g.shipX, y: SHIP_Y, phase: 0 })
+    update(g, 1 / 60, still)
+    expect(g.score).toBe(25)
+    Object.assign(g.pickups[1], { on: true, kind: 1, x: g.shipX, y: SHIP_Y, phase: 0 })
+    update(g, 1 / 60, still)
+    expect(g.rapid).toBeGreaterThan(RAPID_SECONDS - 0.1)
+    g.fireIn = 0
+    update(g, 1 / 60, still)
+    expect(g.fireIn).toBeLessThan(0.13) // cadencia rápida (0,115 s) en vez de 0,2 s
+  })
+
+  it('recibir un golpe baja un nivel de arma y quita la cadencia rápida', () => {
+    const g = quiet(createGame(makeRand(4)))
+    g.fireIn = 99
+    g.weapon = 3
+    g.rapid = 5
+    place(g, { y: SHIP_Y })
+    update(g, 1 / 60, still)
+    expect(g.weapon).toBe(2)
+    expect(g.rapid).toBe(0)
+  })
+
+  it('el premio no tarda: tras 8 enemigos sin soltar nada, el siguiente lo suelta', () => {
+    const g = quiet(createGame(makeRand(5)))
+    g.fireIn = 99
+    g.sinceDrop = 7
+    place(g, { kind: 0, y: 200 })
+    Object.assign(g.bullets[0], { on: true, x: g.shipX, y: 200, vx: 0 })
+    update(g, 1 / 60, still)
+    expect(g.pickups.some((k) => k.on)).toBe(true)
+    expect(g.sinceDrop).toBe(0)
+  })
+
+  it('con premios en juego la repetición del servidor sigue dando el mismo puntaje', () => {
+    const wander = (s: number): Input => ({ targetX: Math.round(180 + Math.sin(s / 25) * 160), dir: 0 })
+    for (const seed of [11, 12, 13]) {
+      const { g, log } = play(seed, wander)
+      expect(replay(seed, log)!.score).toBe(g.score)
+      expect(g.picked).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('el puntaje máximo posible queda por debajo del tope del servidor (6000)', () => {
+    // un jugador perfecto: la nave se pone bajo cada enemigo; aun así no se pasa del tope
+    const g = createGame(makeRand(21))
+    const rec = createRecorder()
+    let step = 0
+    while (!g.over && step < MAX_STEPS) {
+      const target = g.enemies.filter((e) => e.on).sort((a, b) => b.y - a.y)[0]
+      const input: Input = { targetX: target ? Math.round(target.x) : 180, dir: 0 }
+      rec.push(step, input)
+      update(g, STEP, input)
+      step++
+    }
+    expect(g.score).toBeLessThan(6000)
+  })
+})
+
 describe('verificación de partidas en el servidor (repetición)', () => {
   const wander = (s: number): Input => ({ targetX: Math.round(180 + Math.sin(s / 40) * 150), dir: 0 })
 
@@ -192,5 +290,32 @@ describe('verificación de partidas en el servidor (repetición)', () => {
   it('el registro de una partida completa es pequeño (cabe holgado en el envío)', () => {
     const { log } = play(11, (s) => ({ targetX: Math.round(180 + Math.sin(s / 3) * 170), dir: 0 })) // peor caso: cambia en cada paso
     expect(JSON.stringify(log).length).toBeLessThan(150_000)
+  })
+})
+
+describe('historial y sonido del Arcade', () => {
+  it('guarda cada partida (la más reciente primero) hasta un tope, y marca las del ranking', () => {
+    useArcade.setState({ runs: [], earnedToday: 0, best: 0, localBest: [] })
+    useArcade.getState().finishRun(120, true)
+    useArcade.getState().finishRun(300, false)
+    const r = useArcade.getState().runs
+    expect(r.map((x) => x.score)).toEqual([300, 120])
+    expect(r.map((x) => x.ranked)).toEqual([false, true])
+    for (let i = 0; i < 80; i++) useArcade.getState().finishRun(10 + i)
+    expect(useArcade.getState().runs.length).toBe(60)
+    expect(useArcade.getState().runs[0].score).toBe(89)
+  })
+
+  it('una partida de 0 puntos no ensucia el historial', () => {
+    useArcade.setState({ runs: [] })
+    useArcade.getState().finishRun(0)
+    expect(useArcade.getState().runs).toHaveLength(0)
+  })
+
+  it('el sonido está encendido por defecto y se puede apagar', () => {
+    expect(useArcade.getState().sound).toBe(true)
+    useArcade.getState().setSound(false)
+    expect(useArcade.getState().sound).toBe(false)
+    useArcade.getState().setSound(true)
   })
 })

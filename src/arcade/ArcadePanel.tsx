@@ -1,17 +1,19 @@
-import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Trophy, X } from 'lucide-react'
+import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Trophy, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFrameGate } from '../world/frameGate'
-import { copyText } from '../lib/clipboard'
 import { usePrefs } from '../state/ui'
-import { defaultNick, fetchBoard, fetchMyPrize, fetchPrizes, fetchWinners, finishRun as finishRunRemote, startRun, type MyPrize, type Winner, type Board, type BoardKind, type RunTicket } from './board'
-import { createGame, createRecorder, H, makeRand, STEP, update, W, type Game, type Input } from './engine'
+import { setArcadeSound, sfx, startMusic, stopMusic, suspendArcadeAudio, unlockArcadeAudio } from './audio'
+import { defaultNick, finishRun as finishRunRemote, startRun, type RunTicket } from './board'
+import { createGame, createRecorder, H, makeRand, MAX_WEAPON, STEP, update, W, type Game, type Input } from './engine'
 import { draw } from './render'
-import { ARCADE_REWARDS, DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, SCORE_PER_POINT, useArcade, useArcadeUi, type ArcadeRedemption } from './store'
+import { DAILY_POINTS_CAP, useArcade, useArcadeUi } from './store'
+import { Prizes, Ranking } from './ArcadeTabs'
 
-// Pantalla de arcade de la isla de Entretenimiento: el juego «Nave Caribe» (canvas 2D) y los premios que se canjean con los puntos.
-// El bucle de dibujo solo corre mientras se juega: en el menú, en pausa y con la pestaña oculta no gasta nada.
+// Pantalla de arcade de la isla de Entretenimiento: el juego «Nave Caribe» (canvas 2D), su música (que se puede apagar), el ranking de la
+// semana y los premios. Mientras se juega, la partida ocupa TODA la pantalla. El bucle de dibujo solo corre mientras se juega: en el menú,
+// en pausa y con la pestaña oculta no gasta nada.
 
-const DPR_BY_QUALITY = { low: 1, medium: 1.5, high: 2 } as const
+const DPR_BY_QUALITY = { low: 1.5, medium: 2, high: 2 } as const
 
 type Phase = 'menu' | 'play' | 'pause' | 'over'
 
@@ -37,68 +39,114 @@ export function ArcadePanel() {
   )
 }
 
+/** Interruptor de música y efectos (se recuerda). */
+function SoundButton({ className = '' }: { className?: string }) {
+  const sound = useArcade((s) => s.sound)
+  const toggle = () => {
+    const next = !useArcade.getState().sound
+    useArcade.getState().setSound(next)
+    setArcadeSound(next)
+    if (next) {
+      unlockArcadeAudio()
+      if (useArcadeUi.getState().playing) startMusic()
+    }
+  }
+  return (
+    <button
+      onClick={toggle}
+      aria-pressed={sound}
+      aria-label={sound ? 'Silenciar música y efectos' : 'Activar música y efectos'}
+      className={`grid size-11 shrink-0 place-items-center rounded-full text-white transition active:scale-95 ${className}`}
+    >
+      {sound ? <Volume2 className="size-5" /> : <VolumeX className="size-5 opacity-70" />}
+    </button>
+  )
+}
+
 function Cabinet({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<'play' | 'rank' | 'prizes'>('play')
   const points = useArcade((s) => s.points)
+  const playing = useArcadeUi((s) => s.playing)
   return (
     <div className="flex max-h-full w-full max-w-[440px] flex-col gap-2.5">
-      <div className="flex items-center gap-2">
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e0558a] text-white">
-          <Gamepad2 className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[15px] leading-tight font-extrabold tracking-tight text-white">ARCADE · Nave Caribe</h2>
-          <p className="text-[12px] font-semibold text-[#9fb3ff]">Isla de Entretenimiento</p>
-        </div>
-        <span className="rounded-full bg-[#ffc83d] px-3 py-1.5 text-[13px] font-extrabold text-[#2a1a00]" aria-label={`${points} puntos`}>
-          {points} pts
-        </span>
-        <button onClick={onClose} aria-label="Cerrar el arcade" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-white active:bg-white/20">
-          <X className="size-5" />
-        </button>
-      </div>
-      <div className="flex gap-1.5" role="tablist">
-        {(
-          [
-            ['play', 'Jugar', Rocket],
-            ['rank', 'Ranking', Crown],
-            ['prizes', 'Premios', Gift],
-          ] as const
-        ).map(([id, label, Icon]) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-[14px] font-bold transition ${tab === id ? 'bg-[#4de1ff] text-[#04202b]' : 'bg-white/10 text-white'}`}
-          >
-            <Icon className="size-4" />
-            {label}
+      {/* mientras se juega, la partida cubre la pantalla: el encabezado y las pestañas quedan ocultos para lectores de pantalla */}
+      <div className="flex flex-col gap-2.5" aria-hidden={playing}>
+        <div className="flex items-center gap-2">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e0558a] text-white">
+            <Gamepad2 className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-[15px] leading-tight font-extrabold tracking-tight text-white">ARCADE</h2>
+            <p className="truncate text-[12px] font-semibold text-[#9fb3ff]">Nave Caribe · Entretenimiento</p>
+          </div>
+          <span className="rounded-full bg-[#ffc83d] px-3 py-1.5 text-[13px] font-extrabold text-[#2a1a00]" aria-label={`${points} puntos`}>
+            {points} pts
+          </span>
+          <SoundButton className="bg-white/10 active:bg-white/20" />
+          <button onClick={onClose} aria-label="Cerrar el arcade" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-white active:bg-white/20">
+            <X className="size-5" />
           </button>
-        ))}
+        </div>
+        <div className="flex gap-1.5" role="tablist">
+          {(
+            [
+              ['play', 'Jugar', Rocket],
+              ['rank', 'Ranking', Crown],
+              ['prizes', 'Premios', Gift],
+            ] as const
+          ).map(([id, label, Icon]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-[14px] font-bold transition ${tab === id ? 'bg-[#4de1ff] text-[#04202b]' : 'bg-white/10 text-white'}`}
+            >
+              <Icon className="size-4" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
-      {tab === "play" ? <Play onRanking={() => setTab("rank")} /> : tab === "rank" ? <Ranking /> : <Prizes />}
+      {tab === 'play' ? <Play onRanking={() => setTab('rank')} onExit={onClose} /> : tab === 'rank' ? <Ranking /> : <Prizes />}
     </div>
   )
 }
 
-function Play({ onRanking }: { onRanking: () => void }) {
+interface Result {
+  score: number
+  awarded: number
+  capped: boolean
+  record: boolean
+  picked: number
+  rankWeek?: number
+  ranked: boolean
+  pending: boolean
+}
+
+function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void }) {
   const quality = usePrefs((s) => s.quality)
+  const sound = useArcade((s) => s.sound)
+  const best = useArcade((s) => s.best)
+  const earnedToday = useArcade((s) => s.earnedToday)
+  const playerId = useArcade((s) => s.playerId)
   const canvas = useRef<HTMLCanvasElement>(null)
+  const box = useRef<HTMLDivElement>(null)
   const game = useRef<Game | null>(null)
   const input = useRef<Input>({ targetX: null, dir: 0 })
+  const scale = useRef(1)
   const raf = useRef(0)
   const [phase, setPhaseState] = useState<Phase>('menu')
   const phaseRef = useRef<Phase>('menu')
   const setPhase = (p: Phase) => {
     phaseRef.current = p
     setPhaseState(p)
+    useArcadeUi.getState().setPlaying(p === 'play' || p === 'pause')
   }
   // Partida verificada: el servidor entrega la semilla y repite la partida con los movimientos anotados.
   const ticket = useRef<RunTicket | null>(null)
   const run = useRef<{ ticket: RunTicket | null; rec: ReturnType<typeof createRecorder>; step: number } | null>(null)
-  const [result, setResult] = useState<{ score: number; awarded: number; capped: boolean; record: boolean; rankWeek?: number; ranked: boolean; pending: boolean } | null>(null)
-  const playerId = useArcade((s) => s.playerId)
+  const [result, setResult] = useState<Result | null>(null)
   const prefetch = useCallback(() => {
     ticket.current = null
     void startRun(playerId).then((t) => {
@@ -108,35 +156,69 @@ function Play({ onRanking }: { onRanking: () => void }) {
   useEffect(() => {
     prefetch()
   }, [prefetch])
-  const best = useArcade((s) => s.best)
-  const earnedToday = useArcade((s) => s.earnedToday)
+  useEffect(() => {
+    setArcadeSound(sound)
+  }, [sound])
 
   const stop = useCallback(() => {
     cancelAnimationFrame(raf.current)
     raf.current = 0
   }, [])
 
-  const loop = useCallback(() => {
+  /** Ajusta el lienzo al espacio: la partida llena la pantalla manteniendo la proporción del campo. */
+  const fit = useCallback(() => {
+    const cv = canvas.current
+    const holder = box.current?.parentElement
+    if (!cv || !box.current || !holder) return
+    const cs = getComputedStyle(holder)
+    const availW = holder.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+    const availH = holder.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+    const h = Math.min(availH, (availW * H) / W)
+    const w = (h * W) / H
+    box.current.style.width = `${Math.floor(w)}px`
+    box.current.style.height = `${Math.floor(h)}px`
+    const dpr = Math.min(window.devicePixelRatio || 1, DPR_BY_QUALITY[usePrefs.getState().quality])
+    cv.width = Math.max(1, Math.round(w * dpr))
+    cv.height = Math.round((cv.width * H) / W)
+    scale.current = cv.width / W
+    const ctx = cv.getContext('2d', { alpha: false })
+    const g = game.current
+    if (ctx && g && phaseRef.current !== 'play') {
+      ctx.setTransform(scale.current, 0, 0, scale.current, 0, 0)
+      draw(g, ctx, true)
+    }
+  }, [])
+
+  // el lienzo solo existe jugando o en pausa: ajustar al aparecer y cuando cambie el tamaño de la pantalla
+  const immersive = phase === 'play' || phase === 'pause'
+  useEffect(() => {
+    if (!immersive) return
+    fit()
+    const holder = box.current?.parentElement
+    if (!holder) return
+    const ro = new ResizeObserver(fit)
+    ro.observe(holder)
+    return () => ro.disconnect()
+  }, [immersive, fit, quality])
+
+  // bucle de juego: corre solo en la fase «play»
+  useEffect(() => {
+    if (phase !== 'play') return
     const cv = canvas.current
     const ctx = cv?.getContext('2d', { alpha: false })
     if (!cv || !ctx) return
     const q = usePrefs.getState().quality
-    const dpr = Math.min(window.devicePixelRatio || 1, DPR_BY_QUALITY[q])
-    const rect = cv.getBoundingClientRect()
-    const pw = Math.max(1, Math.round(rect.width * dpr))
-    if (cv.width !== pw) {
-      cv.width = pw
-      cv.height = Math.round((pw * H) / W)
-    }
-    const scale = cv.width / W
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const gate = createFrameGate(q === 'low' ? 30 : 60, 0.1)
     let last = 0
     let acc = 0
+    let lastPop = 0
+    const g0 = game.current
+    let prev = g0 ? { kills: g0.kills, lives: g0.lives, picked: g0.picked } : { kills: 0, lives: 3, picked: 0 }
     const tick = (now: number) => {
       raf.current = requestAnimationFrame(tick)
       const g = game.current
-      if (!g || phaseRef.current !== 'play') return
+      if (!g) return
       if (document.hidden) {
         last = 0
         return
@@ -152,18 +234,28 @@ function Play({ onRanking }: { onRanking: () => void }) {
         n++
       }
       if (n === 4) acc = 0
+      // efectos de sonido según lo que pasó (un solo «pop» cada 90 ms para no saturar)
+      if (g.picked > prev.picked) sfx('power')
+      else if (g.lives < prev.lives) sfx('hurt')
+      else if (g.kills > prev.kills && now - lastPop > 90) {
+        lastPop = now
+        sfx('pop')
+      }
+      prev = { kills: g.kills, lives: g.lives, picked: g.picked }
       if (gate.shouldRender(now)) {
         gate.step(now)
-        ctx.setTransform(scale, 0, 0, scale, 0, 0)
+        ctx.setTransform(scale.current, 0, 0, scale.current, 0, 0)
         draw(g, ctx, reduce)
       }
       if (g.over) {
         stop()
+        stopMusic()
         const st = useArcade.getState()
-        const r = st.finishRun(g.score)
         const rn = run.current
         const ranked = !!rn?.ticket
-        setResult({ score: g.score, ...r, ranked, pending: ranked })
+        const r = st.finishRun(g.score, ranked)
+        sfx(r.record ? 'record' : 'over')
+        setResult({ score: g.score, ...r, picked: g.picked, ranked, pending: ranked })
         // al servidor: repite la partida y guarda SU puntaje; el puesto llega unos instantes después
         if (rn?.ticket) {
           const nick = st.nickname || defaultNick(st.playerId)
@@ -176,9 +268,12 @@ function Play({ onRanking }: { onRanking: () => void }) {
       }
     }
     raf.current = requestAnimationFrame(tick)
-  }, [stop])
+    return stop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, stop, prefetch])
 
   const start = () => {
+    unlockArcadeAudio()
     // con partida del servidor (cuenta para el ranking) o, sin conexión, con semilla local (solo para jugar)
     const t = ticket.current
     ticket.current = null
@@ -187,26 +282,36 @@ function Play({ onRanking }: { onRanking: () => void }) {
     input.current = { targetX: null, dir: 0 }
     setResult(null)
     setPhase('play')
-    stop()
-    loop()
+    if (useArcade.getState().sound) startMusic()
   }
   const pause = useCallback(() => {
     if (phaseRef.current !== 'play') return
     setPhase('pause')
-    stop()
-  }, [stop])
+    suspendArcadeAudio()
+  }, [])
   const resume = () => {
+    unlockArcadeAudio()
     setPhase('play')
-    loop()
+    if (useArcade.getState().sound) startMusic()
+  }
+  const quit = () => {
+    stop()
+    stopMusic()
+    suspendArcadeAudio()
+    game.current = null
+    setPhase('menu')
   }
 
-  // pausa sola si la pestaña se oculta; el bucle se corta al cerrar el panel
+  // pausa sola si la pestaña se oculta; al cerrar el panel se corta todo
   useEffect(() => {
     const onHide = () => document.hidden && pause()
     document.addEventListener('visibilitychange', onHide)
     return () => {
       document.removeEventListener('visibilitychange', onHide)
       stop()
+      stopMusic()
+      suspendArcadeAudio()
+      useArcadeUi.getState().setPlaying(false)
     }
   }, [pause, stop])
 
@@ -237,347 +342,124 @@ function Play({ onRanking }: { onRanking: () => void }) {
     input.current.targetX = Math.max(0, Math.min(W, Math.round(((e.clientX - r.left) / r.width) * W)))
   }
 
-  // primer cuadro del menú: fondo estático (no corre ningún bucle)
-  useEffect(() => {
-    const cv = canvas.current
-    const ctx = cv?.getContext('2d', { alpha: false })
-    if (!cv || !ctx || phase !== 'menu') return
-    const dpr = Math.min(window.devicePixelRatio || 1, DPR_BY_QUALITY[quality])
-    const pw = Math.max(1, Math.round(cv.getBoundingClientRect().width * dpr))
-    cv.width = pw
-    cv.height = Math.round((pw * H) / W)
-    ctx.setTransform(pw / W, 0, 0, pw / W, 0, 0)
-    draw(createGame(() => 0.5), ctx, true)
-  }, [phase, quality])
-
   const daily = Math.max(0, DAILY_POINTS_CAP - earnedToday)
 
-  return (
-    <div className="flex min-h-0 flex-col gap-2.5">
-      <div className="relative mx-auto w-[min(100%,calc((100dvh-250px)*9/16))] overflow-hidden rounded-2xl border-2 border-[#4de1ff]/60 bg-[#070b24] shadow-[0_0_28px_-6px_#4de1ff]" style={{ aspectRatio: `${W} / ${H}` }}>
-        <canvas
-          ref={canvas}
-          className="block h-full w-full"
-          style={{ touchAction: 'none' }}
-          aria-label="Pantalla del juego Nave Caribe: arrastra la nave a izquierda y derecha para esquivar y destruir puntitos"
-          onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId)
-            point(e)
-          }}
-          onPointerMove={point}
-        />
-        {phase === 'play' && (
-          <button onClick={pause} aria-label="Pausar" className="absolute right-1 bottom-1 grid size-11 place-items-center rounded-full bg-white/10 text-white active:bg-white/25">
-            <Pause className="size-5" />
-          </button>
-        )}
-        {phase !== 'play' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#070b24]/80 px-6 text-center text-white">
-            {phase === 'menu' && (
-              <>
-                <Rocket className="size-10 text-[#4de1ff]" />
-                <h3 className="text-2xl font-extrabold tracking-tight">Nave Caribe</h3>
-                <p className="text-[13px] leading-snug text-[#c8d3ff]">Arrastra la nave: dispara sola. Destruye los puntitos y esquívalos durante 90 segundos para sumar puntos y canjearlos por premios.</p>
-                <p className="text-[12px] font-semibold text-[#9fb3ff]">
-                  Récord: {best} · Hoy puedes ganar {daily} pts más
-                </p>
-              </>
-            )}
-            {phase === 'pause' && <h3 className="text-2xl font-extrabold">En pausa</h3>}
-            {phase === 'over' && result && (
-              <>
-                <Trophy className="size-9 text-[#ffc83d]" />
-                <h3 className="text-xl font-extrabold">{result.record ? '¡Nuevo récord!' : 'Fin de la partida'}</h3>
-                <p className="text-4xl font-extrabold tabular-nums">{result.score}</p>
-                <p className="text-[14px] font-bold text-[#ffc83d]">+{result.awarded} puntos de premio</p>
-                {result.pending && <p className="text-[12px] text-[#9fb3ff]">Verificando tu partida…</p>}
-                {!result.pending && result.rankWeek ? (
-                  <button onClick={onRanking} className="min-h-11 text-[13px] font-bold text-[#4de1ff] underline">
-                    Puesto #{result.rankWeek} esta semana · ver ranking
-                  </button>
-                ) : null}
-                {!result.pending && !result.ranked && <p className="px-2 text-[11.5px] leading-snug text-[#9fb3ff]">Esta partida no entra al ranking (sin conexión). Tus puntos de premio sí se guardaron.</p>}
-                {result.capped && <p className="text-[12px] text-[#c8d3ff]">Llegaste al tope de {result.awarded === 0 ? 'hoy' : 'puntos'}: vuelve mañana por más.</p>}
-              </>
-            )}
-            <button
-              autoFocus
-              onClick={phase === 'pause' ? resume : start}
-              className="mt-1 flex min-h-12 items-center gap-2 rounded-full bg-[#4de1ff] px-7 text-[16px] font-extrabold text-[#04202b] active:scale-95"
-            >
-              <PlayIcon className="size-5" />
-              {phase === 'pause' ? 'Seguir' : phase === 'over' ? 'Jugar otra vez' : 'Jugar'}
-            </button>
-            {phase === 'pause' && (
-              <button onClick={start} className="min-h-11 text-[13px] font-bold text-[#9fb3ff] underline">
-                Empezar de nuevo
+  // ── Partida (pantalla completa) ──────────────────────────────────────────────────────────────────────────────────────────────
+  if (immersive)
+    return (
+      <div className="fixed inset-0 z-[71] flex items-center justify-center bg-[#04061a] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        <div ref={box} className="relative overflow-hidden bg-[#070b24]">
+          <canvas
+            ref={canvas}
+            className="block h-full w-full"
+            style={{ touchAction: 'none' }}
+            aria-label="Pantalla del juego Nave Caribe: arrastra la nave a izquierda y derecha para esquivar y destruir puntitos; los círculos sueltan armas"
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              point(e)
+            }}
+            onPointerMove={point}
+          />
+          {phase === 'play' && (
+            <div className="absolute top-2 right-2 flex gap-1.5">
+              <SoundButton className="bg-black/35 backdrop-blur-sm active:bg-black/55" />
+              <button onClick={pause} aria-label="Pausar" className="grid size-11 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm active:bg-black/55">
+                <Pause className="size-5" />
               </button>
-            )}
-          </div>
-        )}
-      </div>
-      <p className="text-center text-[11px] text-[#9fb3ff]">
-        1 punto por cada {SCORE_PER_POINT} del puntaje · máx. {MAX_POINTS_PER_RUN} por partida · {DAILY_POINTS_CAP} por día
-      </p>
-    </div>
-  )
-}
-
-function Prizes() {
-  const points = useArcade((s) => s.points)
-  const redemptions = useArcade((s) => s.redemptions)
-  const [shown, setShown] = useState<ArcadeRedemption | null>(null)
-  const [copied, setCopied] = useState(false)
-  const redeem = (id: string) => {
-    const r = useArcade.getState().redeem(id)
-    if (r) setShown(r)
-  }
-  const code = shown ?? null
-  return (
-    <div className="flex min-h-0 flex-col gap-2 overflow-y-auto pb-2">
-      {code && (
-        <div className="rounded-2xl border-2 border-[#ffc83d] bg-[#ffc83d]/10 p-4 text-center text-white" role="status">
-          <p className="text-[13px] font-semibold text-[#ffe08a]">¡Canjeado! Muestra este código en caja:</p>
-          <p className="my-1 text-3xl font-extrabold tracking-widest text-[#ffc83d]">{code.code}</p>
-          <p className="text-[13px] font-bold">{code.name}</p>
-          <button
-            onClick={async () => {
-              setCopied(await copyText(code.code))
-              setTimeout(() => setCopied(false), 1500)
-            }}
-            className="mt-2 min-h-11 rounded-full bg-white/15 px-5 text-[13px] font-bold"
-          >
-            {copied ? 'Copiado' : 'Copiar código'}
-          </button>
-        </div>
-      )}
-      {ARCADE_REWARDS.map((r) => {
-        const ok = points >= r.cost
-        return (
-          <div key={r.id} className="rounded-2xl bg-white/[0.07] p-3.5 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[15px] font-extrabold">{r.name}</p>
-                <p className="text-[12.5px] leading-snug text-[#c8d3ff]">{r.detail}</p>
+            </div>
+          )}
+          {phase === 'pause' && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#070b24]/85 px-6 text-center text-white">
+              <h3 className="text-3xl font-extrabold">En pausa</h3>
+              <button
+                autoFocus
+                onClick={resume}
+                className="mt-1 flex min-h-12 items-center gap-2 rounded-full bg-[#4de1ff] px-8 text-[16px] font-extrabold text-[#04202b] active:scale-95"
+              >
+                <PlayIcon className="size-5" /> Seguir
+              </button>
+              <div className="mt-1 flex items-center gap-2">
+                <SoundButton className="bg-white/10 active:bg-white/20" />
+                <button onClick={start} className="min-h-11 px-3 text-[13px] font-bold text-[#9fb3ff] underline">
+                  Empezar de nuevo
+                </button>
+                <button onClick={quit} className="min-h-11 px-3 text-[13px] font-bold text-[#9fb3ff] underline">
+                  Salir
+                </button>
               </div>
-              <span className="shrink-0 rounded-full bg-[#ffc83d] px-2.5 py-1 text-[12px] font-extrabold text-[#2a1a00]">{r.cost} pts</span>
             </div>
-            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
-              <div className="h-full rounded-full bg-[#4de1ff]" style={{ width: `${Math.min(100, (points / r.cost) * 100)}%` }} />
-            </div>
-            <button
-              disabled={!ok}
-              onClick={() => redeem(r.id)}
-              className={`mt-2.5 min-h-11 w-full rounded-xl text-[14px] font-extrabold ${ok ? 'bg-[#4de1ff] text-[#04202b] active:scale-[0.98]' : 'bg-white/10 text-white/50'}`}
-            >
-              {ok ? 'Canjear' : `Te faltan ${r.cost - points} pts`}
-            </button>
-          </div>
-        )
-      })}
-      {redemptions.length > 0 && (
-        <div className="mt-1 text-white">
-          <p className="mb-1 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Mis códigos</p>
-          <ul className="flex flex-col gap-1.5">
-            {redemptions.slice(0, 6).map((r) => (
-              <li key={r.code} className="flex items-center justify-between rounded-xl bg-white/[0.06] px-3 py-2 text-[13px]">
-                <span className="font-extrabold tracking-wider text-[#ffc83d]">{r.code}</span>
-                <span className="truncate pl-3 text-[#c8d3ff]">{r.name}</span>
-              </li>
-            ))}
-          </ul>
+          )}
         </div>
-      )}
-    </div>
-  )
-}
+      </div>
+    )
 
-const MEDAL = ['#ffc83d', '#c9d2e6', '#d98a4e']
-const KIND_INFO: Record<BoardKind, { label: string; unit: string; note: string }> = {
-  week: { label: 'Esta semana', unit: '', note: 'Mejor puntaje de la semana. Se reinicia cada lunes y el top 3 gana premios.' },
-  best: { label: 'Récord', unit: '', note: 'Mejor puntaje en una sola partida, de todos los tiempos.' },
-  total: { label: 'Puntos', unit: ' pts', note: 'Puntos acumulados desde el primer día (tienen tope diario).' },
-}
-
-/** Premios de la semana: lo que se gana, el podio de la semana pasada y, si ganaste, tu código. */
-function Prizes3() {
-  const playerId = useArcade((s) => s.playerId)
-  const [prizes, setPrizes] = useState<string[] | null>(null)
-  const [winners, setWinners] = useState<Winner[] | null>(null)
-  const [mine, setMine] = useState<MyPrize | null>(null)
-  const [copied, setCopied] = useState(false)
-  useEffect(() => {
-    let live = true
-    void Promise.all([fetchPrizes(), fetchWinners(), fetchMyPrize(playerId)]).then(([p, w, m]) => {
-      if (!live) return
-      setPrizes(p)
-      setWinners(w)
-      setMine(m)
-    })
-    return () => {
-      live = false
-    }
-  }, [playerId])
-  if (!prizes && !winners && !mine) return null
+  // ── Menú y fin de partida ────────────────────────────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-2">
-      {mine && (
-        <div className="rounded-2xl border-2 border-[#ffc83d] bg-[#ffc83d]/10 p-4 text-center" role="status">
-          <p className="text-[13px] font-semibold text-[#ffe08a]">¡Ganaste el puesto #{mine.place} de la semana pasada con {mine.score} puntos!</p>
-          <p className="my-1 text-[15px] font-extrabold">{mine.prize}</p>
-          <p className="text-3xl font-extrabold tracking-widest text-[#ffc83d]">{mine.code}</p>
-          <p className="mt-1 text-[11.5px] leading-snug text-[#c8d3ff]">Muestra este código en caja del local aliado. Los premios se confirman tras revisar las partidas del podio.</p>
-          <button
-            onClick={async () => {
-              setCopied(await copyText(mine.code))
-              setTimeout(() => setCopied(false), 1500)
-            }}
-            className="mt-2 min-h-11 rounded-full bg-white/15 px-5 text-[13px] font-bold"
-          >
-            {copied ? 'Copiado' : 'Copiar código'}
-          </button>
-        </div>
-      )}
-      {prizes && (
-        <div className="rounded-2xl bg-white/[0.07] p-3.5">
-          <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-extrabold tracking-wide text-[#ffc83d] uppercase">
-            <Trophy className="size-4" /> Premios cada lunes
-          </p>
-          <ol className="flex flex-col gap-1">
-            {prizes.map((t, i) => (
-              <li key={i} className="flex items-start gap-2 text-[13px] leading-snug">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-extrabold" style={{ background: MEDAL[i], color: '#1a1200' }}>
-                  {i + 1}
-                </span>
-                {t}
-              </li>
-            ))}
-          </ol>
-          {winners && winners.length > 0 && (
-            <p className="mt-2 border-t border-white/10 pt-2 text-[12px] text-[#c8d3ff]">
-              Semana pasada: {winners.map((w) => `${w.place}.º ${w.nickname} (${w.score})`).join(' · ')}
+    <div className="flex min-h-0 flex-col overflow-y-auto rounded-3xl border-2 border-[#4de1ff]/50 bg-gradient-to-b from-[#0b1448] to-[#070b24] px-5 py-6 text-center text-white shadow-[0_0_28px_-6px_#4de1ff]">
+      {phase === 'over' && result ? (
+        <>
+          <Trophy className="mx-auto size-10 text-[#ffc83d]" />
+          <h3 className="mt-1 text-2xl font-extrabold">{result.record ? '¡Nuevo récord!' : 'Fin de la partida'}</h3>
+          <p className="mt-1 text-6xl leading-none font-extrabold tabular-nums">{result.score}</p>
+          <p className="mt-2 text-[15px] font-bold text-[#ffc83d]">+{result.awarded} puntos de premio</p>
+          {result.picked > 0 && (
+            <p className="text-[12.5px] text-[#9fb3ff]">
+              Recogiste {result.picked} {result.picked === 1 ? 'premio' : 'premios'} del camino
             </p>
           )}
-        </div>
+          {result.capped && <p className="mt-1 text-[12px] text-[#c8d3ff]">Llegaste al tope de {result.awarded === 0 ? 'hoy' : 'puntos'}: vuelve mañana por más.</p>}
+          {result.pending && <p className="mt-2 text-[12px] text-[#9fb3ff]">Verificando tu partida…</p>}
+          {!result.pending && result.rankWeek ? (
+            <button onClick={onRanking} className="mx-auto mt-1 min-h-11 text-[13px] font-bold text-[#4de1ff] underline">
+              Puesto #{result.rankWeek} esta semana · ver ranking
+            </button>
+          ) : null}
+          {!result.pending && !result.ranked && (
+            <p className="mx-auto mt-1 max-w-[280px] text-[11.5px] leading-snug text-[#9fb3ff]">
+              Esta partida no entra al ranking (sin conexión). Tus puntos de premio sí se guardaron.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-gradient-to-br from-[#4de1ff] to-[#2f86ff] text-[#04202b] shadow-[0_10px_30px_-10px_#4de1ff]">
+            <Rocket className="size-9" />
+          </span>
+          <h3 className="mt-3 text-3xl font-extrabold tracking-tight">Nave Caribe</h3>
+          <p className="mx-auto mt-1 max-w-[300px] text-[13.5px] leading-snug text-[#c8d3ff]">
+            Arrastra la nave: dispara sola. Destruye los círculos y esquívalos durante 90 segundos.
+          </p>
+          <ul className="mx-auto mt-4 flex w-full max-w-[320px] flex-col gap-2 text-left text-[13px]">
+            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#c9ffdc] to-[#0a7d3e] text-[18px] font-extrabold text-white">+</span>
+              <span>
+                <b className="text-[#5dff9b]">Arma:</b> los círculos sueltan premios verdes. Cada uno suma disparos (hasta {MAX_WEAPON} niveles).
+              </span>
+            </li>
+            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffe6b8] to-[#b34d00] text-[16px] text-white">⚡</span>
+              <span>
+                <b className="text-[#ffb347]">Rápido:</b> los naranjas aceleran tu disparo por unos segundos.
+              </span>
+            </li>
+          </ul>
+          <p className="mt-3 text-[12px] leading-snug text-[#9fb3ff]">Un golpe te quita una vida y un nivel de arma.</p>
+          <p className="mt-2 text-[12.5px] font-semibold text-[#9fb3ff]">
+            Récord: {best} · Hoy puedes ganar {daily} pts más
+          </p>
+        </>
       )}
-    </div>
-  )
-}
-
-/** Tabla de líderes: semana en curso, récord o puntos; si el servidor no responde, mis mejores partidas del dispositivo. */
-function Ranking() {
-  const playerId = useArcade((s) => s.playerId)
-  const nickname = useArcade((s) => s.nickname)
-  const localBest = useArcade((s) => s.localBest)
-  const [kind, setKind] = useState<BoardKind>('week')
-  const [board, setBoard] = useState<Board | null | undefined>(undefined)
-  const [draft, setDraft] = useState(nickname || defaultNick(playerId))
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    let live = true
-    setBoard(undefined)
-    void fetchBoard(kind, playerId).then((b) => live && setBoard(b))
-    return () => {
-      live = false
-    }
-  }, [kind, playerId])
-
-  const info = KIND_INFO[kind]
-  const inList = board?.rows.some((r) => r.me)
-  return (
-    <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pb-2 text-white">
-      <Prizes3 />
-      <div className="flex gap-1.5" role="tablist" aria-label="Tipo de ranking">
-        {(Object.keys(KIND_INFO) as BoardKind[]).map((id) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={kind === id}
-            onClick={() => setKind(id)}
-            className={`min-h-11 flex-1 rounded-xl text-[13px] font-bold ${kind === id ? 'bg-white text-[#04061a]' : 'bg-white/10'}`}
-          >
-            {KIND_INFO[id].label}
-          </button>
-        ))}
-      </div>
-
-      <form
-        className="flex items-center gap-2 rounded-2xl bg-white/[0.07] p-2.5"
-        onSubmit={(e) => {
-          e.preventDefault()
-          setDraft(useArcade.getState().setNickname(draft))
-          setSaved(true)
-          setTimeout(() => setSaved(false), 1600)
-        }}
+      <button
+        autoFocus
+        onClick={start}
+        className="mx-auto mt-5 flex min-h-14 items-center gap-2 rounded-full bg-[#4de1ff] px-10 text-[17px] font-extrabold text-[#04202b] shadow-[0_12px_28px_-12px_#4de1ff] active:scale-95"
       >
-        <label className="min-w-0 flex-1 text-[11px] font-bold tracking-wide text-[#9fb3ff] uppercase">
-          Tu apodo en el ranking
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            maxLength={16}
-            autoComplete="off"
-            className="mt-1 block min-h-11 w-full rounded-xl bg-[#0c1236] px-3 text-[15px] font-bold text-white normal-case outline-none focus:ring-2 focus:ring-[#4de1ff]"
-          />
-        </label>
-        <button className="mt-5 min-h-11 shrink-0 rounded-xl bg-[#4de1ff] px-4 text-[13px] font-extrabold text-[#04202b]">{saved ? 'Listo' : 'Guardar'}</button>
-      </form>
-
-      {board === undefined && <p className="py-6 text-center text-[13px] text-[#9fb3ff]">Cargando ranking…</p>}
-
-      {board === null && (
-        <div className="rounded-2xl bg-white/[0.07] p-4">
-          <p className="text-[13px] font-bold">El ranking en línea no está disponible ahora.</p>
-          <p className="mb-2 text-[12px] text-[#c8d3ff]">Tus mejores partidas en este dispositivo:</p>
-          {localBest.length === 0 ? (
-            <p className="text-[12px] text-[#9fb3ff]">Aún no has jugado. ¡Juega una partida!</p>
-          ) : (
-            <ol className="flex flex-col gap-1.5">
-              {localBest.map((b, i) => (
-                <li key={b.at} className="flex items-center justify-between rounded-xl bg-white/[0.06] px-3 py-2 text-[14px]">
-                  <span className="font-extrabold text-[#ffc83d]">#{i + 1}</span>
-                  <span className="font-extrabold tabular-nums">{b.score}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      )}
-
-      {board && board.rows.length === 0 && <p className="py-6 text-center text-[13px] text-[#9fb3ff]">Todavía no hay puntajes {kind === 'week' ? 'esta semana' : ''}. ¡Sé el primero!</p>}
-
-      {board && board.rows.length > 0 && (
-        <ol className="flex flex-col gap-1.5" aria-label="Tabla de líderes">
-          {board.rows.map((r) => (
-            <Row key={`${r.rank}-${r.nickname}`} rank={r.rank} name={r.nickname} points={r.points} me={r.me} unit={info.unit} />
-          ))}
-          {board.me && !inList && board.me.points > 0 && (
-            <>
-              <li className="text-center text-[11px] text-[#9fb3ff]" aria-hidden>
-                · · ·
-              </li>
-              <Row rank={board.me.rank} name={board.me.nickname} points={board.me.points} me unit={info.unit} />
-            </>
-          )}
-        </ol>
-      )}
-      <p className="text-center text-[11px] text-[#9fb3ff]">{info.note} Cada partida la verifica el servidor.</p>
+        <PlayIcon className="size-5" />
+        {phase === 'over' ? 'Jugar otra vez' : 'Jugar'}
+      </button>
+      <button onClick={onExit} className="mx-auto mt-1 min-h-11 px-4 text-[13px] font-semibold text-[#9fb3ff] underline underline-offset-2">
+        Salir del arcade
+      </button>
     </div>
-  )
-}
-
-function Row({ rank, name, points, me, unit }: { rank: number; name: string; points: number; me: boolean; unit: string }) {
-  return (
-    <li className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${me ? 'bg-[#4de1ff]/20 ring-2 ring-[#4de1ff]' : 'bg-white/[0.06]'}`}>
-      <span className="grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-extrabold" style={rank <= 3 ? { background: MEDAL[rank - 1], color: '#1a1200' } : { background: '#ffffff1a' }}>
-        {rank}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-[14px] font-bold">
-        {name}
-        {me && <span className="ml-1.5 text-[11px] font-extrabold text-[#4de1ff]">TÚ</span>}
-      </span>
-      <span className="text-[14px] font-extrabold text-[#ffc83d] tabular-nums">{points}{unit}</span>
-    </li>
   )
 }

@@ -108,6 +108,49 @@ export async function fetchWinners(): Promise<Winner[] | null> {
   }
 }
 
+export interface HistoryRun {
+  score: number
+  at: string
+  weekStart: string
+}
+export interface WeekSummary {
+  /** Cuántas personas han puntuado esta semana. */
+  players: number
+  /** Mejor puntaje de la semana (el del líder). */
+  leader: number
+  /** Mi mejor puntaje esta semana (null si aún no juego). */
+  best: number | null
+  /** Mi puesto esta semana (null si aún no juego). */
+  rank: number | null
+  /** Partidas que llevo esta semana. */
+  plays: number
+}
+
+/** Mis últimas partidas verificadas (guardadas en el servidor, así se ven desde cualquier dispositivo). null = no disponible. */
+export async function fetchHistory(playerId: string): Promise<HistoryRun[] | null> {
+  if (!supabase) return null
+  try {
+    const { data, error } = await supabase.rpc('arcade_my_history', { p_player: playerId, p_limit: 40 })
+    if (error) return null
+    return ((data as Record<string, unknown>[] | null) ?? []).map((r) => ({ score: num(r.score), at: String(r.finished_at ?? ''), weekStart: String(r.week_start ?? '') }))
+  } catch {
+    return null
+  }
+}
+
+/** Mi semana frente a todos: puesto, líder y cuánto me falta. null = no disponible. */
+export async function fetchWeekSummary(playerId: string): Promise<WeekSummary | null> {
+  if (!supabase) return null
+  try {
+    const { data, error } = await supabase.rpc('arcade_week_summary', { p_player: playerId })
+    if (error || !data) return null
+    const d = data as Record<string, unknown>
+    return { players: num(d.players), leader: num(d.leader), best: d.best == null ? null : num(d.best), rank: d.rank == null || d.best == null ? null : num(d.rank), plays: num(d.plays) }
+  } catch {
+    return null
+  }
+}
+
 /** Los tres premios vigentes, por puesto. */
 export async function fetchPrizes(): Promise<string[] | null> {
   if (!supabase) return null

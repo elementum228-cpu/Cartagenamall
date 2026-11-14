@@ -8,16 +8,25 @@
 
 /** Tamaño lógico del campo (el canvas lo escala a la pantalla). */
 export const W = 360
-export const H = 640
+export const H = 720
 
-const MAX_BULLETS = 36
+const MAX_BULLETS = 90
+const MAX_PICKUPS = 6
 const MAX_ENEMIES = 22
 const MAX_PARTS = 36
 const STARS = 36
 
-export const SHIP_Y = 548
+export const SHIP_Y = 628
 export const SHIP_R = 13
 const FIRE_EVERY = 0.2
+/** Cadencia con el premio «rápido». */
+const FIRE_RAPID = 0.115
+/** Nivel máximo del arma (1 disparo, 2 paralelos, 3 abanico, 5 en abanico) y duración del premio «rápido». */
+export const MAX_WEAPON = 4
+export const RAPID_SECONDS = 9
+/** Premio que cae: velocidad y radio de recogida. */
+const PICKUP_VY = 78
+const PICKUP_R = 15
 const BULLET_SPEED = 560
 export const LIVES = 3
 /** Duración de una ronda: sesiones cortas y acotadas (también cuidan la batería). */
@@ -33,7 +42,10 @@ const KIND_HP: Record<EnemyKind, number> = { 0: 1, 1: 3, 2: 1 }
 export const KIND_R: Record<EnemyKind, number> = { 0: 11, 1: 17, 2: 10 }
 export const KIND_COLOR: Record<EnemyKind, string> = { 0: '#ff5c8a', 1: '#8b5cff', 2: '#ffc83d' }
 
-interface Bullet { on: boolean; x: number; y: number }
+interface Bullet { on: boolean; x: number; y: number; vx: number }
+/** 0 = arma (sube de nivel) · 1 = cadencia rápida por unos segundos. */
+export type PickupKind = 0 | 1
+interface Pickup { on: boolean; kind: PickupKind; x: number; y: number; phase: number }
 interface Enemy { on: boolean; kind: EnemyKind; x: number; y: number; baseX: number; vy: number; hp: number; phase: number; amp: number; flash: number }
 interface Part { on: boolean; x: number; y: number; vx: number; vy: number; life: number; color: string }
 
@@ -49,7 +61,18 @@ export interface Game {
   spawnIn: number
   /** Cuánto lleva el último golpe recibido (para el parpadeo del marcador). */
   hurt: number
+  /** Nivel del arma (1..MAX_WEAPON): sube con los premios y baja un nivel al recibir un golpe. */
+  weapon: number
+  /** Segundos que le quedan al premio de cadencia rápida. */
+  rapid: number
+  /** Enemigos destruidos desde el último premio (para que el premio no tarde demasiado en salir). */
+  sinceDrop: number
+  /** Premios recogidos (estadística). */
+  picked: number
+  /** Parpadeo de la nave al recoger un premio (solo para dibujar). */
+  glow: number
   bullets: Bullet[]
+  pickups: Pickup[]
   enemies: Enemy[]
   parts: Part[]
   stars: { x: number; y: number; s: number; v: number }[]
@@ -90,7 +113,13 @@ export function createGame(rand: () => number = Math.random): Game {
     fireIn: 0.25,
     spawnIn: 0.8,
     hurt: 0,
-    bullets: Array.from({ length: MAX_BULLETS }, () => ({ on: false, x: 0, y: 0 })),
+    weapon: 1,
+    rapid: 0,
+    sinceDrop: 0,
+    picked: 0,
+    glow: 0,
+    bullets: Array.from({ length: MAX_BULLETS }, () => ({ on: false, x: 0, y: 0, vx: 0 })),
+    pickups: Array.from({ length: MAX_PICKUPS }, () => ({ on: false, kind: 0 as PickupKind, x: 0, y: 0, phase: 0 })),
     enemies: Array.from({ length: MAX_ENEMIES }, () => ({ on: false, kind: 0 as EnemyKind, x: 0, y: 0, baseX: 0, vy: 0, hp: 0, phase: 0, amp: 0, flash: 0 })),
     parts: Array.from({ length: MAX_PARTS }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, color: '#fff' })),
     stars: Array.from({ length: STARS }, () => ({ x: rand() * W, y: rand() * H, s: rand() < 0.2 ? 2 : 1, v: 14 + rand() * 40 })),
@@ -143,6 +172,45 @@ function burst(g: Game, x: number, y: number, color: string, n: number) {
   }
 }
 
+/** Dispara según el nivel del arma: 1 recto · 2 paralelos · 3 abanico · 4 abanico de cinco. */
+function fire(g: Game) {
+  const y = SHIP_Y - SHIP_R
+  const shots: [number, number][] =
+    g.weapon <= 1
+      ? [[0, 0]]
+      : g.weapon === 2
+        ? [[-7, 0], [7, 0]]
+        : g.weapon === 3
+          ? [[0, 0], [-9, -70], [9, 70]]
+          : [[0, 0], [-9, -60], [9, 60], [-16, -135], [16, 135]]
+  for (const [dx, vx] of shots) {
+    const b = g.bullets.find((x) => !x.on)
+    if (!b) return
+    b.on = true
+    b.x = g.shipX + dx
+    b.y = y
+    b.vx = vx
+  }
+}
+
+/** Al destruir un enemigo puede soltar un premio: los dorados siempre, los rombos casi siempre y los puntitos a veces. */
+function maybeDrop(g: Game, kind: EnemyKind, x: number, y: number) {
+  g.sinceDrop += 1
+  const chance = kind === 2 ? 1 : kind === 1 ? 0.45 : 0.13
+  const roll = g.rand()
+  // «piedad»: si pasan muchos enemigos sin premio, el siguiente lo suelta sí o sí
+  if (roll >= chance && g.sinceDrop < 8) return
+  const k = g.pickups.find((q) => !q.on)
+  if (!k) return
+  g.sinceDrop = 0
+  k.on = true
+  // arma mientras no esté al máximo (en 2 de cada 3); si no, cadencia rápida
+  k.kind = g.weapon < MAX_WEAPON && g.rand() < 0.66 ? 0 : 1
+  k.x = Math.max(PICKUP_R, Math.min(W - PICKUP_R, x))
+  k.y = y
+  k.phase = 0
+}
+
 export interface Input {
   /** Posición objetivo de la nave (toque o ratón), en coordenadas lógicas; null = sin puntero. */
   targetX: number | null
@@ -166,16 +234,14 @@ export function update(g: Game, dt: number, input: Input) {
   }
   g.shipX = Math.max(SHIP_R, Math.min(W - SHIP_R, g.shipX))
 
-  // disparo automático
+  g.rapid = Math.max(0, g.rapid - dt)
+  g.glow = Math.max(0, g.glow - dt)
+
+  // disparo automático: el nivel del arma decide cuántos disparos salen (y en qué abanico)
   g.fireIn -= dt
   if (g.fireIn <= 0) {
-    g.fireIn += FIRE_EVERY
-    const b = g.bullets.find((x) => !x.on)
-    if (b) {
-      b.on = true
-      b.x = g.shipX
-      b.y = SHIP_Y - SHIP_R
-    }
+    g.fireIn += g.rapid > 0 ? FIRE_RAPID : FIRE_EVERY
+    fire(g)
   }
 
   // apariciones
@@ -188,7 +254,31 @@ export function update(g: Game, dt: number, input: Input) {
   for (const b of g.bullets) {
     if (!b.on) continue
     b.y -= BULLET_SPEED * dt
-    if (b.y < -10) b.on = false
+    b.x += b.vx * dt
+    if (b.y < -10 || b.x < -12 || b.x > W + 12) b.on = false
+  }
+
+  // premios que caen: recogerlos con la nave
+  for (const k of g.pickups) {
+    if (!k.on) continue
+    k.y += PICKUP_VY * dt
+    k.phase += dt * 4
+    if (k.y > H + 20) {
+      k.on = false
+      continue
+    }
+    const dx = g.shipX - k.x
+    const dy = SHIP_Y - k.y
+    if (dx * dx + dy * dy <= (PICKUP_R + SHIP_R) * (PICKUP_R + SHIP_R)) {
+      k.on = false
+      g.picked += 1
+      g.glow = 0.5
+      if (k.kind === 0) {
+        if (g.weapon < MAX_WEAPON) g.weapon += 1
+        else g.score += 25 // arma al máximo: el premio se vuelve puntos
+      } else g.rapid = RAPID_SECONDS
+      burst(g, k.x, k.y, k.kind === 0 ? '#5dff9b' : '#ffb347', 10)
+    }
   }
 
   for (const e of g.enemies) {
@@ -222,6 +312,7 @@ export function update(g: Game, dt: number, input: Input) {
           g.score += KIND_SCORE[e.kind]
           g.kills += 1
           burst(g, e.x, e.y, KIND_COLOR[e.kind], e.kind === 1 ? 9 : 6)
+          maybeDrop(g, e.kind, e.x, e.y)
         }
         break
       }
@@ -238,6 +329,9 @@ export function update(g: Game, dt: number, input: Input) {
         g.lives -= 1
         g.invuln = INVULN
         g.hurt = 0.4
+        // un golpe cuesta un nivel de arma y la cadencia rápida
+        if (g.weapon > 1) g.weapon -= 1
+        g.rapid = 0
         if (g.lives <= 0) {
           g.over = true
           burst(g, g.shipX, SHIP_Y, '#4de1ff', 14)

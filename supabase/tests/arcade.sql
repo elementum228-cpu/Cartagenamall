@@ -89,6 +89,32 @@ begin
   perform pg_temp.expect_error('arcade_admin_ban sin ser admin', format('select arcade_admin_ban(%L, true)', a));
 end $$;
 
+-- 10b. historial y semana (0028)
+do $$
+declare
+  a uuid := '00000000-0000-0000-0000-00000000000a';
+  b uuid := '00000000-0000-0000-0000-00000000000b';
+  w date := date_trunc('week', now() at time zone 'America/Bogota')::date;
+  sm jsonb;
+begin
+  delete from arcade_runs;
+  update arcade_players set week_start = w, week_best = 0, banned = false;
+  update arcade_players set week_best = 900 where player_id = a;
+  update arcade_players set week_best = 400 where player_id = b;
+  insert into arcade_runs (player_id, seed, status, score, steps, week_start, finished_at) values
+    (a, 1, 'verified', 900, 5400, w, now() - interval '2 hours'),
+    (a, 2, 'verified', 300, 5400, w, now() - interval '1 hour'),
+    (a, 3, 'rejected', 5000, 10, w, now()),
+    (b, 4, 'verified', 400, 5400, w, now());
+  perform pg_temp.check('historial: solo mis partidas verificadas, la más reciente primero', (select string_agg(score::text, ',' order by finished_at desc) from arcade_my_history(a, 10)) = '300,900');
+  perform pg_temp.check('historial de otra persona no se mezcla', (select count(*) from arcade_my_history(b, 10)) = 1);
+  sm := arcade_week_summary(b);
+  perform pg_temp.check('semana de Bob: puesto 2 de 2, líder 900, mejor 400', (sm->>'rank')::int = 2 and (sm->>'players')::int = 2 and (sm->>'leader')::int = 900 and (sm->>'best')::int = 400);
+  perform pg_temp.check('semana de Ana: puesto 1 y 2 partidas', (arcade_week_summary(a)->>'rank')::int = 1 and (arcade_week_summary(a)->>'plays')::int = 2);
+  sm := arcade_week_summary('00000000-0000-0000-0000-0000000000ff');
+  perform pg_temp.check('quien no jugó ve la competencia pero no tiene puesto', (sm->>'players')::int = 2 and sm->'rank' is null or (sm->>'best') is null);
+end $$;
+
 -- 11. permisos de los visitantes anónimos
 set role anon;
 select pg_temp.expect_error('anon pide partida', $q$select arcade_run_start('00000000-0000-0000-0000-00000000000a')$q$);
@@ -98,3 +124,4 @@ select pg_temp.expect_error('anon lee la tabla de jugadores', 'select * from arc
 select pg_temp.expect_error('anon lee las partidas', 'select * from arcade_runs');
 select pg_temp.check('anon sí puede leer el top', (select count(*) from arcade_top('week', null, 5)) >= 0);
 select pg_temp.check('anon sí puede ver el podio', (select count(*) from arcade_winners()) >= 0);
+select pg_temp.check('anon puede leer su historial y su semana', (select count(*) from arcade_my_history('00000000-0000-0000-0000-00000000000a', 5)) >= 0 and arcade_week_summary('00000000-0000-0000-0000-00000000000a') is not null);

@@ -28,6 +28,16 @@ export const ARCADE_REWARDS: ArcadeReward[] = [
   { id: 'bono', name: 'Bono de $10.000', detail: 'Para usar en la tienda o restaurante que elijas.', cost: 600 },
 ]
 
+/** Una partida jugada en este dispositivo (se guardan las últimas 60). */
+export interface ArcadeRun {
+  score: number
+  at: string
+  /** Entró al ranking (partida verificada por el servidor). */
+  ranked: boolean
+  awarded: number
+}
+export const MAX_SAVED_RUNS = 60
+
 export interface ArcadeRedemption {
   code: string
   rewardId: string
@@ -53,6 +63,11 @@ interface ArcadeState {
   day: string
   earnedToday: number
   redemptions: ArcadeRedemption[]
+  /** Historial de partidas de este dispositivo (la más reciente primero). */
+  runs: ArcadeRun[]
+  /** Música y efectos del juego (se puede apagar). */
+  sound: boolean
+  setSound: (on: boolean) => void
   /** Identificador aleatorio de este dispositivo en el ranking (nunca se muestra a otros). */
   playerId: string
   nickname: string
@@ -60,7 +75,7 @@ interface ArcadeState {
   localBest: { score: number; at: string }[]
   setNickname: (raw: string) => string
   /** Registra una partida terminada; devuelve cuántos puntos dio y si el tope del día lo recortó. */
-  finishRun: (score: number) => { awarded: number; capped: boolean; record: boolean }
+  finishRun: (score: number, ranked?: boolean) => { awarded: number; capped: boolean; record: boolean }
   redeem: (rewardId: string) => ArcadeRedemption | null
 }
 
@@ -74,6 +89,9 @@ export const useArcade = create<ArcadeState>()(
       day: dayKey(),
       earnedToday: 0,
       redemptions: [],
+      runs: [],
+      sound: true,
+      setSound: (sound) => set({ sound }),
       playerId: newPlayerId(),
       nickname: '',
       localBest: [],
@@ -83,7 +101,7 @@ export const useArcade = create<ArcadeState>()(
         set({ nickname: ok })
         return ok
       },
-      finishRun: (score) => {
+      finishRun: (score, ranked = false) => {
         const s = get()
         const today = dayKey()
         const earnedToday = s.day === today ? s.earnedToday : 0
@@ -91,7 +109,8 @@ export const useArcade = create<ArcadeState>()(
         const wanted = Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))
         const record = score > s.best
         const localBest = score > 0 ? [...s.localBest, { score, at: new Date().toISOString() }].sort((a, b) => b.score - a.score).slice(0, 5) : s.localBest
-        set({ localBest, points: s.points + awarded, lifetime: s.lifetime + awarded, best: Math.max(s.best, score), plays: s.plays + 1, day: today, earnedToday: earnedToday + awarded })
+        const runs = score > 0 ? [{ score, at: new Date().toISOString(), ranked, awarded }, ...s.runs].slice(0, MAX_SAVED_RUNS) : s.runs
+        set({ runs, localBest, points: s.points + awarded, lifetime: s.lifetime + awarded, best: Math.max(s.best, score), plays: s.plays + 1, day: today, earnedToday: earnedToday + awarded })
         return { awarded, capped: awarded < wanted, record }
       },
       redeem: (rewardId) => {
@@ -107,5 +126,10 @@ export const useArcade = create<ArcadeState>()(
   ),
 )
 
-/** Abre y cierra el juego (no se guarda). */
-export const useArcadeUi = create<{ open: boolean; setOpen: (v: boolean) => void }>()((set) => ({ open: false, setOpen: (open) => set({ open }) }))
+/** Abre y cierra el juego (no se guarda). `playing`: hay una partida en curso (la pantalla se vuelve de pantalla completa). */
+export const useArcadeUi = create<{ open: boolean; setOpen: (v: boolean) => void; playing: boolean; setPlaying: (v: boolean) => void }>()((set) => ({
+  open: false,
+  setOpen: (open) => set(open ? { open } : { open, playing: false }),
+  playing: false,
+  setPlaying: (playing) => set({ playing }),
+}))

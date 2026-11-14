@@ -262,12 +262,14 @@ una persona. Por eso **los premios se entregan después de que la administració
 código del ganador y botón para descalificar).
 
 Puesta en marcha (una vez):
-1. `supabase db push` (aplica `0026` y `0027`) o pega ambos SQL, en orden, en el SQL Editor.
+1. `supabase db push` (aplica `0026`, `0027` y `0028`) o pega los tres SQL, en orden, en el SQL Editor. (`0028` agrega el historial de partidas y «Tu semana».)
 2. `supabase functions deploy arcade-run` (usa `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`, que ya existen en las funciones).
 3. En `/admin` → *Arcade*: escribe los premios de los puestos 1 a 3 (se guardan en `mall_settings`, clave `arcade_prizes`).
 
 Cada lunes: abre *Arcade* → «Semana pasada», revisa el podio, descalifica lo sospechoso y entrega los premios contra el código `GP-XXXXXX` que muestra
-el ganador en su pantalla. Pruebas: `npx vitest run tests/arcade.test.ts` y `PGPASSWORD=postgres supabase/tests/arcade.sh` (reglas SQL).
+el ganador en su pantalla. **Sobre el juego:** pantalla completa al jugar; música y efectos sintetizados en el navegador (sin archivos) que se apagan con el botón del altavoz (se recuerda); los círculos sueltan premios (verde: arma de hasta 4 niveles, naranja: disparo rápido) y un golpe cuesta una vida y un nivel de arma. Cada partida se guarda en el dispositivo (últimas 60) y en el servidor (partidas verificadas), y la pestaña *Ranking* muestra «Tu semana» frente al líder.
+
+Pruebas: `npx vitest run tests/arcade.test.ts` y `PGPASSWORD=postgres supabase/tests/arcade.sh` (reglas SQL).
 
 ### Base de datos (migración `0025_cinema_showtimes.sql`)
 
