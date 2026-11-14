@@ -48,7 +48,7 @@ import { MallPathLighting } from './MallPathLighting'
 import { PATH_LIGHTS } from './pathLights'
 import { usePromoEvents } from '../promotions/store'
 import { AvailableOutlines, SpaceUnit } from './SpaceUnit'
-import { VeneplastAnchorStore } from './VeneplastAnchorStore' // TEMP-VP
+import { VeneplastAnchorStore } from './VeneplastAnchorStore'
 
 function modeFor(floor: FloorConfig, active: FloorConfig, overview: boolean): FloorMode {
   if (overview || floor.id === active.id) return 'full'
@@ -218,10 +218,11 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                   )}
                   {spaces.map((space) => {
                     const store = storeById[assignments[space.id]] ?? null
-                    if (import.meta.env.DEV && space.label === 'D-05' && new URLSearchParams(location.search).has('vp')) // TEMP-VP
+                    // D-05 (local premium del Pasillo D): tienda ancla Veneplast
+                    if (space.label === 'D-05')
                       return (
                         <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>
-                          <VeneplastAnchorStore width={9.8} depth={6.2} />
+                          <VeneplastAnchorStore width={9.8} depth={6.2} interactive={interactive} onOpen={() => onSelect(space.id)} />
                         </group>
                       )
                     return (
