@@ -1,8 +1,9 @@
-import { Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Trophy, X } from 'lucide-react'
+import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Trophy, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFrameGate } from '../world/frameGate'
 import { copyText } from '../lib/clipboard'
 import { usePrefs } from '../state/ui'
+import { defaultNick, fetchBoard, invalidateBoard, submitRun, type Board, type BoardKind } from './board'
 import { createGame, draw, H, update, W, type Game, type Input } from './engine'
 import { ARCADE_REWARDS, DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, SCORE_PER_POINT, useArcade, useArcadeUi, type ArcadeRedemption } from './store'
 
@@ -37,7 +38,7 @@ export function ArcadePanel() {
 }
 
 function Cabinet({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<'play' | 'prizes'>('play')
+  const [tab, setTab] = useState<'play' | 'rank' | 'prizes'>('play')
   const points = useArcade((s) => s.points)
   return (
     <div className="flex max-h-full w-full max-w-[440px] flex-col gap-2.5">
@@ -60,6 +61,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
         {(
           [
             ['play', 'Jugar', Rocket],
+            ['rank', 'Ranking', Crown],
             ['prizes', 'Premios', Gift],
           ] as const
         ).map(([id, label, Icon]) => (
@@ -75,12 +77,12 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           </button>
         ))}
       </div>
-      {tab === "play" ? <Play /> : <Prizes />}
+      {tab === "play" ? <Play onRanking={() => setTab("rank")} /> : tab === "rank" ? <Ranking /> : <Prizes />}
     </div>
   )
 }
 
-function Play() {
+function Play({ onRanking }: { onRanking: () => void }) {
   const quality = usePrefs((s) => s.quality)
   const canvas = useRef<HTMLCanvasElement>(null)
   const game = useRef<Game | null>(null)
@@ -92,7 +94,7 @@ function Play() {
     phaseRef.current = p
     setPhaseState(p)
   }
-  const [result, setResult] = useState<{ score: number; awarded: number; capped: boolean; record: boolean } | null>(null)
+  const [result, setResult] = useState<{ score: number; awarded: number; capped: boolean; record: boolean; rankWeek?: number } | null>(null)
   const best = useArcade((s) => s.best)
   const earnedToday = useArcade((s) => s.earnedToday)
 
@@ -142,8 +144,16 @@ function Play() {
       }
       if (g.over) {
         stop()
-        const r = useArcade.getState().finishRun(g.score)
+        const st = useArcade.getState()
+        const r = st.finishRun(g.score)
         setResult({ score: g.score, ...r })
+        // al ranking en línea (si hay conexión): el puesto llega unos instantes después
+        const nick = st.nickname || defaultNick(st.playerId)
+        void submitRun(st.playerId, nick, g.score).then((res) => {
+          if (!res) return
+          invalidateBoard()
+          setResult((cur) => (cur && cur.score === g.score ? { ...cur, rankWeek: res.rankWeek } : cur))
+        })
         setPhase('over')
       }
     }
@@ -257,6 +267,11 @@ function Play() {
                 <h3 className="text-xl font-extrabold">{result.record ? '¡Nuevo récord!' : 'Fin de la partida'}</h3>
                 <p className="text-4xl font-extrabold tabular-nums">{result.score}</p>
                 <p className="text-[14px] font-bold text-[#ffc83d]">+{result.awarded} puntos de premio</p>
+                {result.rankWeek ? (
+                  <button onClick={onRanking} className="min-h-11 text-[13px] font-bold text-[#4de1ff] underline">
+                    Puesto #{result.rankWeek} esta semana · ver ranking
+                  </button>
+                ) : null}
                 {result.capped && <p className="text-[12px] text-[#c8d3ff]">Llegaste al tope de {result.awarded === 0 ? 'hoy' : 'puntos'}: vuelve mañana por más.</p>}
               </>
             )}
@@ -349,5 +364,129 @@ function Prizes() {
         </div>
       )}
     </div>
+  )
+}
+
+const MEDAL = ['#ffc83d', '#c9d2e6', '#d98a4e']
+
+/** Tabla de líderes: semana en curso o total; si el servidor no responde, mis mejores partidas del dispositivo. */
+function Ranking() {
+  const playerId = useArcade((s) => s.playerId)
+  const nickname = useArcade((s) => s.nickname)
+  const localBest = useArcade((s) => s.localBest)
+  const [kind, setKind] = useState<BoardKind>('week')
+  const [board, setBoard] = useState<Board | null | undefined>(undefined)
+  const [draft, setDraft] = useState(nickname || defaultNick(playerId))
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    let live = true
+    setBoard(undefined)
+    void fetchBoard(kind, playerId).then((b) => live && setBoard(b))
+    return () => {
+      live = false
+    }
+  }, [kind, playerId])
+
+  const inList = board?.rows.some((r) => r.me)
+  return (
+    <div className="flex min-h-0 flex-col gap-2.5 overflow-y-auto pb-2 text-white">
+      <div className="flex gap-1.5" role="tablist" aria-label="Tipo de ranking">
+        {(
+          [
+            ['week', 'Esta semana'],
+            ['total', 'Total'],
+            ['best', 'Récord'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={kind === id}
+            onClick={() => setKind(id)}
+            className={`min-h-11 flex-1 rounded-xl text-[13px] font-bold ${kind === id ? 'bg-white text-[#04061a]' : 'bg-white/10'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <form
+        className="flex items-center gap-2 rounded-2xl bg-white/[0.07] p-2.5"
+        onSubmit={(e) => {
+          e.preventDefault()
+          setDraft(useArcade.getState().setNickname(draft))
+          setSaved(true)
+          setTimeout(() => setSaved(false), 1600)
+        }}
+      >
+        <label className="min-w-0 flex-1 text-[11px] font-bold tracking-wide text-[#9fb3ff] uppercase">
+          Tu apodo en el ranking
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={16}
+            autoComplete="off"
+            className="mt-1 block min-h-11 w-full rounded-xl bg-[#0c1236] px-3 text-[15px] font-bold text-white normal-case outline-none focus:ring-2 focus:ring-[#4de1ff]"
+          />
+        </label>
+        <button className="mt-5 min-h-11 shrink-0 rounded-xl bg-[#4de1ff] px-4 text-[13px] font-extrabold text-[#04202b]">{saved ? 'Listo' : 'Guardar'}</button>
+      </form>
+
+      {board === undefined && <p className="py-6 text-center text-[13px] text-[#9fb3ff]">Cargando ranking…</p>}
+
+      {board === null && (
+        <div className="rounded-2xl bg-white/[0.07] p-4">
+          <p className="text-[13px] font-bold">El ranking en línea no está disponible ahora.</p>
+          <p className="mb-2 text-[12px] text-[#c8d3ff]">Tus mejores partidas en este dispositivo:</p>
+          {localBest.length === 0 ? (
+            <p className="text-[12px] text-[#9fb3ff]">Aún no has jugado. ¡Juega una partida!</p>
+          ) : (
+            <ol className="flex flex-col gap-1.5">
+              {localBest.map((b, i) => (
+                <li key={b.at} className="flex items-center justify-between rounded-xl bg-white/[0.06] px-3 py-2 text-[14px]">
+                  <span className="font-extrabold text-[#ffc83d]">#{i + 1}</span>
+                  <span className="font-extrabold tabular-nums">{b.score}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      )}
+
+      {board && board.rows.length === 0 && <p className="py-6 text-center text-[13px] text-[#9fb3ff]">Todavía nadie ha sumado puntos {kind === 'week' ? 'esta semana' : ''}. ¡Sé el primero!</p>}
+
+      {board && board.rows.length > 0 && (
+        <ol className="flex flex-col gap-1.5" aria-label="Tabla de líderes">
+          {board.rows.map((r) => (
+            <Row key={`${r.rank}-${r.nickname}`} rank={r.rank} name={r.nickname} points={r.points} me={r.me} unit={kind === 'best' ? '' : ' pts'} />
+          ))}
+          {board.me && !inList && board.me.points > 0 && (
+            <>
+              <li className="text-center text-[11px] text-[#9fb3ff]" aria-hidden>
+                · · ·
+              </li>
+              <Row rank={board.me.rank} name={board.me.nickname} points={board.me.points} me unit={kind === 'best' ? '' : ' pts'} />
+            </>
+          )}
+        </ol>
+      )}
+      <p className="text-center text-[11px] text-[#9fb3ff]">{kind === 'week' ? 'Puntos de la semana; se reinicia cada lunes.' : kind === 'total' ? 'Puntos acumulados desde el primer día.' : 'Mejor puntaje en una sola partida.'} Lo calcula el servidor.</p>
+    </div>
+  )
+}
+
+function Row({ rank, name, points, me, unit }: { rank: number; name: string; points: number; me: boolean; unit: string }) {
+  return (
+    <li className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${me ? 'bg-[#4de1ff]/20 ring-2 ring-[#4de1ff]' : 'bg-white/[0.06]'}`}>
+      <span className="grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-extrabold" style={rank <= 3 ? { background: MEDAL[rank - 1], color: '#1a1200' } : { background: '#ffffff1a' }}>
+        {rank}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[14px] font-bold">
+        {name}
+        {me && <span className="ml-1.5 text-[11px] font-extrabold text-[#4de1ff]">TÚ</span>}
+      </span>
+      <span className="text-[14px] font-extrabold text-[#ffc83d] tabular-nums">{points}{unit}</span>
+    </li>
   )
 }

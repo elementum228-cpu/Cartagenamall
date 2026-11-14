@@ -94,3 +94,34 @@ describe('puntos y premios del Arcade', () => {
     expect(useArcade.getState().finishRun(100).record).toBe(false)
   })
 })
+
+describe('ranking del Arcade (cliente)', () => {
+  it('limpia el apodo como lo hace la base y genera uno por defecto estable', async () => {
+    const { cleanNick, defaultNick } = await import('../src/arcade/board')
+    expect(cleanNick('  <b>Ana   Luz</b> ')).toBe('bAna Luzb')
+    expect(cleanNick('Ñandú_92')).toBe('Ñandú_92')
+    expect(cleanNick('x'.repeat(40))).toHaveLength(16)
+    expect(defaultNick('abc')).toBe(defaultNick('abc'))
+    expect(defaultNick('abc')).toMatch(/^Jugador\d{4}$/)
+  })
+
+  it('un apodo demasiado corto vuelve al apodo por defecto', () => {
+    useArcade.setState({ nickname: '' })
+    const id = useArcade.getState().playerId
+    expect(useArcade.getState().setNickname('a')).toMatch(/^Jugador\d{4}$/)
+    expect(useArcade.getState().setNickname('Capitán')).toBe('Capitán')
+    expect(id).toBeTruthy()
+  })
+
+  it('guarda las 5 mejores partidas del dispositivo, de mayor a menor', () => {
+    useArcade.setState({ localBest: [], earnedToday: 0 })
+    for (const s of [120, 900, 40, 500, 300, 700, 10]) useArcade.getState().finishRun(s)
+    expect(useArcade.getState().localBest.map((b) => b.score)).toEqual([900, 700, 500, 300, 120])
+  })
+
+  it('sin base de datos conectada, el ranking en línea devuelve null y no rompe', async () => {
+    const { fetchBoard, submitRun } = await import('../src/arcade/board')
+    expect(await fetchBoard('week', 'x', true)).toBeNull()
+    expect(await submitRun('x', 'Ana', 100)).toBeNull()
+  })
+})

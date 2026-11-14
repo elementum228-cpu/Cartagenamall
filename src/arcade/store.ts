@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { rewardCode } from '../state/passport'
 import { safeStorage } from '../state/storage'
+import { cleanNick, defaultNick, newPlayerId } from './board'
 
 // Puntos del Arcade: cada partida de «Nave Caribe» suma puntos que la persona canjea por premios. Todo vive en este
 // dispositivo (igual que el pasaporte). Hay un tope por partida y por día para que nadie se lleve premios solo jugando
@@ -52,6 +53,12 @@ interface ArcadeState {
   day: string
   earnedToday: number
   redemptions: ArcadeRedemption[]
+  /** Identificador aleatorio de este dispositivo en el ranking (nunca se muestra a otros). */
+  playerId: string
+  nickname: string
+  /** Mis mejores partidas en este dispositivo (respaldo cuando el ranking en línea no está disponible). */
+  localBest: { score: number; at: string }[]
+  setNickname: (raw: string) => string
   /** Registra una partida terminada; devuelve cuántos puntos dio y si el tope del día lo recortó. */
   finishRun: (score: number) => { awarded: number; capped: boolean; record: boolean }
   redeem: (rewardId: string) => ArcadeRedemption | null
@@ -67,6 +74,15 @@ export const useArcade = create<ArcadeState>()(
       day: dayKey(),
       earnedToday: 0,
       redemptions: [],
+      playerId: newPlayerId(),
+      nickname: '',
+      localBest: [],
+      setNickname: (raw) => {
+        const nick = cleanNick(raw)
+        const ok = nick.length >= 2 ? nick : defaultNick(get().playerId)
+        set({ nickname: ok })
+        return ok
+      },
       finishRun: (score) => {
         const s = get()
         const today = dayKey()
@@ -74,7 +90,8 @@ export const useArcade = create<ArcadeState>()(
         const awarded = awardFor(score, earnedToday)
         const wanted = Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))
         const record = score > s.best
-        set({ points: s.points + awarded, lifetime: s.lifetime + awarded, best: Math.max(s.best, score), plays: s.plays + 1, day: today, earnedToday: earnedToday + awarded })
+        const localBest = score > 0 ? [...s.localBest, { score, at: new Date().toISOString() }].sort((a, b) => b.score - a.score).slice(0, 5) : s.localBest
+        set({ localBest, points: s.points + awarded, lifetime: s.lifetime + awarded, best: Math.max(s.best, score), plays: s.plays + 1, day: today, earnedToday: earnedToday + awarded })
         return { awarded, capped: awarded < wanted, record }
       },
       redeem: (rewardId) => {
