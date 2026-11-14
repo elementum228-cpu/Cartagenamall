@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DIFFICULTIES, KIND_HP, MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
+import { DIFFICULTIES, KIND_HP, MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, MAX_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
 import { ARCADE_REWARDS, DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, awardFor, useArcade } from '../src/arcade/store'
 
 const still = { targetX: null, dir: 0 }
@@ -53,18 +53,20 @@ describe('motor de Nave Caribe', () => {
     expect(g.over).toBe(true)
   })
 
-  it('la ronda termina sola a los 90 s aunque la nave no muera', () => {
+  it('la partida no termina por tiempo: sigue mientras haya vidas, y solo un tope de seguridad la corta', () => {
     const g = createGame(makeRand(2))
-    g.lives = 999
-    for (let i = 0; i < (ROUND_SECONDS + 2) * 60 && !g.over; i++) update(g, 1 / 60, still)
+    g.lives = 9999
+    for (let i = 0; i < 150 * 60 && !g.over; i++) update(g, 1 / 60, still)
+    expect(g.over).toBe(false) // pasados los 90 s de antes, el juego sigue
+    for (let i = 0; i < (MAX_SECONDS + 2) * 60 && !g.over; i++) update(g, 1 / 60, still)
     expect(g.over).toBe(true)
-    expect(g.time).toBeGreaterThanOrEqual(ROUND_SECONDS)
+    expect(g.time).toBeGreaterThanOrEqual(MAX_SECONDS)
   })
 
   it('la dificultad sube con tope y no se crean objetos nuevos (piscinas fijas)', () => {
     expect(spawnGap(0)).toBeGreaterThan(spawnGap(40))
-    expect(spawnGap(1000)).toBe(0.24)
-    expect(fallSpeed(1000)).toBe(245)
+    expect(spawnGap(1000)).toBeCloseTo(0.18, 5)
+    expect(fallSpeed(1000)).toBe(365)
     const g = createGame(makeRand(9))
     const sizes = [g.bullets.length, g.enemies.length, g.parts.length]
     for (let i = 0; i < 3000 && !g.over; i++) update(g, 1 / 60, { targetX: (i * 7) % W, dir: 0 })
@@ -155,6 +157,103 @@ describe('dificultad elegible de Nave Caribe', () => {
     expect(replay(9, [], 4)).toBeNull()
     expect(replay(9, [], -1)).toBeNull()
     expect(replay(9, [], 1.5)).toBeNull()
+  })
+})
+
+describe('oleadas sin fin y jefes de Nave Caribe', () => {
+  const quiet = (d: 0 | 1 | 2 | 3 = 1) => {
+    const g = createGame(makeRand(12), d)
+    g.lives = 9999
+    g.fireIn = 99
+    return g
+  }
+
+  it('cada 18 s sube la oleada; tras la oleada 5 llega el jefe y las oleadas se detienen', () => {
+    const g = quiet()
+    for (let i = 0; i < 19 * 60; i++) update(g, 1 / 60, still)
+    expect(g.wave).toBe(2)
+    expect(g.boss.on).toBe(false)
+    for (let i = 0; i < 72 * 60 + 30; i++) update(g, 1 / 60, still)
+    expect(g.wave).toBe(5)
+    expect(g.boss.on).toBe(true)
+    expect(g.msg).toBe(1)
+    const w = g.waveT
+    const p = g.prog
+    for (let i = 0; i < 300; i++) update(g, 1 / 60, still)
+    expect(g.waveT).toBe(w) // el reloj de oleadas espera al jefe
+    expect(g.prog).toBe(p) // y la dificultad no sigue subiendo mientras dura
+  })
+
+  it('el jefe dispara; al derrotarlo da puntos, premios, una vida y pasa a la oleada 6', () => {
+    const g = quiet()
+    g.wave = 5
+    g.waveT = 17.99
+    g.lives = 2
+    update(g, 0.05, still)
+    expect(g.boss.on).toBe(true)
+    for (let i = 0; i < 6 * 60; i++) update(g, 1 / 60, still)
+    expect(g.ebullets.some((b) => b.on)).toBe(true)
+    // lo dejamos a punto de caer y le damos un disparo
+    g.boss.hp = 1
+    g.boss.age = 0 // el jefe se mueve según su edad: en 0 está justo al centro
+    g.boss.y = 118
+    Object.assign(g.bullets[0], { on: true, x: 180, y: 130, vx: 0 })
+    const before = g.score
+    update(g, 1 / 60, still)
+    expect(g.boss.on).toBe(false)
+    expect(g.bosses).toBe(1)
+    expect(g.wave).toBe(6)
+    expect(g.waveT).toBe(0)
+    expect(g.score).toBeGreaterThan(before + 200)
+    expect(g.lives).toBe(3)
+    expect(g.pickups.some((k) => k.on)).toBe(true)
+    expect(g.msg).toBe(2)
+  })
+
+  it('cada jefe trae más vida y la dificultad la cambia', () => {
+    const hp = (d: 0 | 1 | 2 | 3, bosses: number) => {
+      const g = quiet(d)
+      g.bosses = bosses
+      g.wave = 5
+      g.waveT = 17.99
+      update(g, 0.05, still)
+      return g.boss.maxHp
+    }
+    expect(hp(1, 1)).toBeGreaterThan(hp(1, 0))
+    expect(hp(3, 0)).toBeGreaterThan(hp(0, 0))
+  })
+
+  it('más allá de la oleada 5 todo sigue acelerándose (sin tope temprano) y la repetición del servidor coincide', () => {
+    expect(fallSpeed(200)).toBeGreaterThan(fallSpeed(100))
+    expect(spawnGap(200)).toBeLessThan(spawnGap(100))
+    for (const d of [0, 2] as const) {
+      const g = createGame(makeRand(31), d)
+      g.lives = 9999
+      const rec = createRecorder()
+      let step = 0
+      while (!g.over && step < 130 * 60) {
+        const target = g.boss.on ? g.boss.x : (g.enemies.filter((e) => e.on).sort((a, b) => b.y - a.y)[0]?.x ?? 180)
+        const input: Input = { targetX: Math.round(target), dir: 0 }
+        rec.push(step, input)
+        update(g, STEP, input)
+        step++
+      }
+      expect(g.wave).toBeGreaterThanOrEqual(5) // llega al menos hasta la oleada del jefe
+      // la repetición solo llega hasta el tope de pasos, así que comparamos el avance hasta el mismo punto con una partida igual
+      const again = createGame(makeRand(31), d)
+      again.lives = 9999
+      const input2: Input = { targetX: null, dir: 0 }
+      let k = 0
+      for (let s = 0; s < step; s++) {
+        while (k < rec.log.length && rec.log[k] <= s) {
+          input2.targetX = rec.log[k + 1] === -1 ? null : rec.log[k + 1]
+          input2.dir = rec.log[k + 2]
+          k += 3
+        }
+        update(again, STEP, input2)
+      }
+      expect([again.score, again.wave, again.bosses]).toEqual([g.score, g.wave, g.bosses])
+    }
   })
 })
 
@@ -309,21 +408,6 @@ describe('armas y premios', () => {
       expect(g.picked).toBeGreaterThanOrEqual(0)
     }
   })
-
-  it('el puntaje máximo posible queda por debajo del tope del servidor (6000)', () => {
-    // un jugador perfecto: la nave se pone bajo cada enemigo; aun así no se pasa del tope
-    const g = createGame(makeRand(21))
-    const rec = createRecorder()
-    let step = 0
-    while (!g.over && step < MAX_STEPS) {
-      const target = g.enemies.filter((e) => e.on).sort((a, b) => b.y - a.y)[0]
-      const input: Input = { targetX: target ? Math.round(target.x) : 180, dir: 0 }
-      rec.push(step, input)
-      update(g, STEP, input)
-      step++
-    }
-    expect(g.score).toBeLessThan(6000)
-  })
 })
 
 describe('verificación de partidas en el servidor (repetición)', () => {
@@ -355,14 +439,14 @@ describe('verificación de partidas en el servidor (repetición)', () => {
     expect(replay(1, [0, 10, 5])).toBeNull() // dirección inválida
     expect(replay(1, [10, 10, 0, 5, 10, 0])).toBeNull() // pasos desordenados
     expect(replay(1.5, [])).toBeNull() // semilla no entera
-    expect(replay(1, new Array(3 * 6001).fill(0))).toBeNull() // demasiado largo
+    expect(replay(1, new Array(3 * (MAX_STEPS + 11)).fill(0))).toBeNull() // demasiado largo
   })
 
   it('una partida sin movimientos termina sola y no pasa del tope de pasos', () => {
     const r = replay(3, [])!
     expect(r.over).toBe(true)
     expect(r.steps).toBeLessThanOrEqual(MAX_STEPS)
-    expect(r.seconds).toBeLessThanOrEqual(ROUND_SECONDS + 1)
+    expect(r.seconds).toBeLessThanOrEqual(MAX_SECONDS + 1)
   })
 
   it('el seno determinista se parece al real (error < 0,2 %) y es exacto de un motor a otro (solo operaciones básicas)', () => {

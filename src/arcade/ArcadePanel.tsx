@@ -473,7 +473,7 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
           </span>
           <h3 className="mt-3 text-3xl font-extrabold tracking-tight">Nave Caribe</h3>
           <p className="mx-auto mt-1 max-w-[300px] text-[13.5px] leading-snug text-[#c8d3ff]">
-            Arrastra la nave: dispara sola. Destruye los círculos y esquívalos durante 90 segundos.
+            Arrastra la nave: dispara sola. Destruye los círculos y esquívalos: la partida no se acaba hasta que te quedes sin vidas.
           </p>
           <ul className="mx-auto mt-4 flex w-full max-w-[320px] flex-col gap-2 text-left text-[13px]">
             <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
@@ -492,6 +492,12 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
               <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffd0b0] to-[#7d1f0a] text-[16px] text-white">!</span>
               <span>
                 <b className="text-[#ff9a6b]">Cañoneros:</b> los naranjas te disparan. Esquiva sus tiros y destrúyelos: valen mucho. Cada oleada llega más fuerte.
+              </span>
+            </li>
+            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#c5adff] to-[#2a1170] text-[17px] text-white">★</span>
+              <span>
+                <b className="text-[#c5adff]">Jefe:</b> al terminar la oleada 5 llega un jefe enorme. Si lo derrotas, ganas una vida y sigues con la oleada 6… y cada jefe es más duro.
               </span>
             </li>
           </ul>

@@ -1,4 +1,4 @@
-import { EBULLET_R, H, KIND_HP, KIND_R, LIVES, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_R, SHIP_Y, W, WAVE_SECONDS, waveOf, type EnemyKind, type Game } from './engine'
+import { BOSS_EVERY, BOSS_R, EBULLET_R, H, KIND_HP, KIND_R, LIVES, MAX_WEAPON, RAPID_SECONDS, SHIP_R, SHIP_Y, W, WAVE_SECONDS, type EnemyKind, type Game } from './engine'
 
 // Dibujo de «Nave Caribe». Los elementos con degradados y brillos (nave, enemigos, disparos, premios y el fondo) se pintan UNA vez en
 // lienzos pequeños y después solo se pegan con drawImage: se ven mucho mejor y cuestan casi lo mismo que un rectángulo. Lo que cambia
@@ -34,6 +34,7 @@ interface Sprites {
   /** La nave, una por nivel de arma (índice 1..MAX_WEAPON): cada arma nueva la hace más robusta. */
   ship: Sprite[]
   ebullet: Sprite
+  boss: Sprite
   enemy: Record<EnemyKind, Sprite>
   bullet: Sprite
   weaponOrb: Sprite
@@ -261,6 +262,94 @@ function sprites(): Sprites {
     g.fillStyle = '#ff6a4a'
     g.fill()
   })
+  // jefe: un kraken de casco morado con corona dorada, ojos furiosos, boca con dientes y cañones laterales
+  const boss = make(170, 150, (g) => {
+    g.fillStyle = radial(g, 0, 0, 20, 82, [
+      [0, 'rgba(255,80,110,0.42)'],
+      [1, 'rgba(255,80,110,0)'],
+    ])
+    g.fillRect(-85, -75, 170, 150)
+    // tentáculos
+    g.lineCap = 'round'
+    for (const sx of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        g.beginPath()
+        g.moveTo(sx * (14 + i * 15), 24)
+        g.bezierCurveTo(sx * (22 + i * 20), 48 + i * 3, sx * (46 + i * 12), 52 + i * 6, sx * (52 + i * 11), 36 + i * 8)
+        g.strokeStyle = i % 2 ? '#4b2fb8' : '#5d3bd1'
+        g.lineWidth = 10 - i * 2
+        g.stroke()
+      }
+    }
+    // corona de púas doradas
+    for (let i = -3; i <= 3; i++) {
+      g.beginPath()
+      g.moveTo(i * 12 - 6, -26 + Math.abs(i) * 4)
+      g.lineTo(i * 12, -52 + Math.abs(i) * 7)
+      g.lineTo(i * 12 + 6, -26 + Math.abs(i) * 4)
+      g.closePath()
+      g.fillStyle = '#ffc83d'
+      g.fill()
+      g.strokeStyle = '#b87900'
+      g.lineWidth = 1
+      g.stroke()
+    }
+    // casco
+    g.beginPath()
+    g.ellipse(0, -2, 54, 42, 0, 0, 6.3)
+    g.fillStyle = radial(g, -14, -20, 4, 62, [
+      [0, '#c5adff'],
+      [0.45, '#7a52e8'],
+      [1, '#2a1170'],
+    ])
+    g.fill()
+    g.lineWidth = 2.4
+    g.strokeStyle = 'rgba(255,255,255,0.7)'
+    g.stroke()
+    // cañones laterales
+    for (const sx of [-1, 1]) {
+      g.fillStyle = '#1a0f44'
+      g.fillRect(sx * 50 - 7, 6, 14, 16)
+      g.fillStyle = '#ff7a45'
+      g.fillRect(sx * 50 - 4, 18, 8, 6)
+    }
+    // ojos
+    for (const sx of [-1, 1]) {
+      g.beginPath()
+      g.ellipse(sx * 19, -8, 13, 11, 0, 0, 6.3)
+      g.fillStyle = '#fff6f0'
+      g.fill()
+      g.beginPath()
+      g.ellipse(sx * 19 - sx * 1.5, -6, 5, 8, 0, 0, 6.3)
+      g.fillStyle = '#e1123b'
+      g.fill()
+      g.beginPath()
+      g.ellipse(sx * 19 - sx * 1.5, -6, 1.7, 6, 0, 0, 6.3)
+      g.fillStyle = '#1a0510'
+      g.fill()
+      // ceja furiosa
+      g.beginPath()
+      g.moveTo(sx * 34, -24)
+      g.lineTo(sx * 6, -13)
+      g.lineWidth = 4.5
+      g.strokeStyle = '#1a0f44'
+      g.stroke()
+    }
+    // boca con dientes
+    g.beginPath()
+    g.ellipse(0, 20, 24, 10, 0, 0, 3.1416)
+    g.fillStyle = '#12051f'
+    g.fill()
+    g.fillStyle = '#ffffff'
+    for (let i = -3; i <= 3; i++) {
+      g.beginPath()
+      g.moveTo(i * 6.4 - 3, 20)
+      g.lineTo(i * 6.4, 27 - Math.abs(i) * 0.5)
+      g.lineTo(i * 6.4 + 3, 20)
+      g.closePath()
+      g.fill()
+    }
+  })
   const ebullet = make(14, 14, (g) => {
     g.fillStyle = radial(g, 0, 0, 1, 7, [
       [0, '#ffffff'],
@@ -408,7 +497,7 @@ function sprites(): Sprites {
     g.fill()
   })
 
-  cache = { bg, ship, ebullet, enemy: { 0: pink, 1: diamond, 2: gold, 3: gunner }, bullet, weaponOrb, rapidOrb }
+  cache = { bg, ship, ebullet, boss, enemy: { 0: pink, 1: diamond, 2: gold, 3: gunner }, bullet, weaponOrb, rapidOrb }
   return cache
 }
 
@@ -477,6 +566,21 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
     }
   }
 
+  // jefe (se aclara un instante al recibir un disparo)
+  if (g.boss.on) {
+    const bs = g.boss
+    const bob = reduceMotion ? 0 : Math.sin(bs.age * 3) * 2.5
+    put(ctx, sp.boss, bs.x, bs.y + bob, (BOSS_R * 2) / 100)
+    if (bs.flash > 0) {
+      ctx.globalAlpha = 0.45
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.ellipse(bs.x, bs.y + bob - 2, BOSS_R + 6, BOSS_R - 4, 0, 0, 6.2832)
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
+  }
+
   // partículas
   for (const p of g.parts) {
     if (!p.on) continue
@@ -522,25 +626,44 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
     }
   }
 
-  // tiempo restante: una barra fina arriba
-  ctx.fillStyle = '#4de1ff'
-  ctx.fillRect(0, 0, W * Math.max(0, 1 - g.time / ROUND_SECONDS), 3)
+  // barra fina arriba: avance de la oleada o, durante el jefe, su vida
+  const boss = g.boss.on
+  ctx.fillStyle = boss ? '#ff7a45' : '#4de1ff'
+  ctx.fillRect(0, 0, W * (boss ? Math.max(0, g.boss.hp / g.boss.maxHp) : Math.min(1, g.waveT / WAVE_SECONDS)), 3)
 
-  // oleada: pequeña arriba al centro y un aviso grande los primeros segundos de cada una
-  const wave = waveOf(g.time)
-  const into = g.time - (wave - 1) * WAVE_SECONDS
+  // oleada (o jefe) y dificultad, arriba al centro
+  const wave = g.wave
   ctx.textAlign = 'center'
   ctx.font = '800 12px Manrope, system-ui, sans-serif'
   ctx.fillStyle = ['#5dff9b', '#4de1ff', '#ffb347', '#ff5c8a'][g.diff.id]
   ctx.fillText(`${g.diff.name.toUpperCase()} ×${(g.diff.mult / 100).toLocaleString('es-CO', { maximumFractionDigits: 1 })}`, W / 2, 8)
-  ctx.fillStyle = 'rgba(200,215,255,0.8)'
-  ctx.fillText(`OLEADA ${wave}`, W / 2, 24)
-  if (wave > 1 && into < 1.8 && !g.over) {
-    ctx.globalAlpha = Math.min(1, (1.8 - into) * 1.2)
-    ctx.font = '900 34px Manrope, system-ui, sans-serif'
+  ctx.fillStyle = boss ? '#ff9a6b' : 'rgba(200,215,255,0.8)'
+  ctx.fillText(boss ? `JEFE ${g.boss.num}` : `OLEADA ${wave}${wave % BOSS_EVERY === 0 ? ' · JEFE AL FINAL' : ''}`, W / 2, 24)
+  if (boss) {
+    // barra de vida del jefe
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'
+    ctx.fillRect(W / 2 - 80, 42, 160, 7)
+    ctx.fillStyle = '#ff7a45'
+    ctx.fillRect(W / 2 - 80, 42, 160 * Math.max(0, g.boss.hp / g.boss.maxHp), 7)
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(W / 2 - 80, 42, 160, 7)
+  }
+  // avisos grandes: jefe llegando, jefe derrotado u oleada nueva
+  const big = (text: string, sub: string, color: string, alpha: number) => {
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = color
+    ctx.font = '900 36px Manrope, system-ui, sans-serif'
+    ctx.fillText(text, W / 2, H * 0.32)
     ctx.fillStyle = '#ffffff'
-    ctx.fillText(`OLEADA ${wave}`, W / 2, H * 0.3)
+    ctx.font = '800 14px Manrope, system-ui, sans-serif'
+    ctx.fillText(sub, W / 2, H * 0.32 + 44)
     ctx.globalAlpha = 1
+  }
+  if (!g.over) {
+    if (g.msg === 1) big('¡JEFE!', 'Dispárale hasta derrotarlo', '#ff7a45', Math.min(1, g.msgT))
+    else if (g.msg === 2) big('¡JEFE DERROTADO!', '+1 vida · sigue la oleada ' + wave, '#5dff9b', Math.min(1, g.msgT))
+    else if (!boss && wave > 1 && g.waveT < 1.8) big(`OLEADA ${wave}`, '', '#ffffff', Math.min(1, (1.8 - g.waveT) * 1.2))
   }
 
   // marcador (a la izquierda: los botones de sonido, pausa y cerrar van a la derecha, fuera del canvas)

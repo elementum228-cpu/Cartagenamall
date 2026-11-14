@@ -31,7 +31,7 @@ begin
   res := arcade_run_record((run->>'run_id')::uuid, a, 'Ana Luz', 450, 5400, '[0,-1,0]'::jsonb);
   perform pg_temp.check('450 puntos → 45 de premio, mejor semana 450', (res->>'awarded')::int = 45 and (res->>'week_best')::int = 450);
   perform pg_temp.check('rank semanal 1', (res->>'rank_week')::int = 1);
-  perform pg_temp.check('con puntaje ≥ 300 guarda el registro de movimientos', (select inputs is not null from arcade_runs where id = (run->>'run_id')::uuid));
+  perform pg_temp.check('con puntaje < 3000 no guarda el registro de movimientos', (select inputs is null from arcade_runs where id = (run->>'run_id')::uuid));
 
   -- 4. la partida es de un solo uso y solo de su dueño
   perform pg_temp.expect_error('reusar la partida', format('select arcade_run_record(%L, %L, %L, 999, 5400, null)', run->>'run_id', a, 'Ana'));
@@ -39,7 +39,7 @@ begin
   run2 := arcade_run_start(a);
   update arcade_runs set started_at = now() - interval '100 seconds' where id = (run2->>'run_id')::uuid;
   perform pg_temp.expect_error('partida de otra persona', format('select arcade_run_record(%L, %L, %L, 100, 5400, null)', run2->>'run_id', b, 'Bob'));
-  perform pg_temp.expect_error('puntaje fuera de rango', format('select arcade_run_record(%L, %L, %L, 99999, 5400, null)', run2->>'run_id', a, 'Ana'));
+  perform pg_temp.expect_error('puntaje fuera de rango', format('select arcade_run_record(%L, %L, %L, 5000001, 5400, null)', run2->>'run_id', a, 'Ana'));
 
   -- 5. topes: 60 por partida y 240 por día
   for n in 1..6 loop
@@ -125,3 +125,19 @@ select pg_temp.expect_error('anon lee las partidas', 'select * from arcade_runs'
 select pg_temp.check('anon sí puede leer el top', (select count(*) from arcade_top('week', null, 5)) >= 0);
 select pg_temp.check('anon sí puede ver el podio', (select count(*) from arcade_winners()) >= 0);
 select pg_temp.check('anon puede leer su historial y su semana', (select count(*) from arcade_my_history('00000000-0000-0000-0000-00000000000a', 5)) >= 0 and arcade_week_summary('00000000-0000-0000-0000-00000000000a') is not null);
+
+reset role;
+-- 0029: sin tope de 6000; el servidor acepta partidas largas con puntajes altos (el tope de seguridad es 5.000.000)
+do $$
+declare
+  v_player uuid := gen_random_uuid();
+  v_open jsonb;
+  v_res jsonb;
+begin
+  v_open := public.arcade_run_start(v_player);
+  update public.arcade_runs set started_at = now() - interval '300 seconds' where id = (v_open->>'run_id')::uuid;
+  v_res := public.arcade_run_record((v_open->>'run_id')::uuid, v_player, 'Larga', 25000, 12000, '[]'::jsonb);
+  if (v_res->>'score')::int <> 25000 then raise exception 'FALLÓ: 25000 puntos deberían aceptarse'; end if;
+  if not (select inputs is not null from public.arcade_runs where id = (v_open->>'run_id')::uuid) then raise exception 'FALLÓ: con 25000 puntos debe guardar los movimientos'; end if;
+  raise notice 'OK 0029: puntaje de 25000 aceptado (sin el tope de 6000) y con movimientos guardados';
+end $$;

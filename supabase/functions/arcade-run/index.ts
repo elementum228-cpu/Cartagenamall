@@ -2,7 +2,7 @@
 //
 // Partidas verificadas del Arcade («Nave Caribe»). El navegador NUNCA manda su puntaje:
 //   1) { action: 'start', player_id }                          → { run_id, seed }   (la semilla la pone el servidor)
-//   2) { action: 'finish', run_id, player_id, nickname, inputs } → repite la partida con la misma lógica del juego y guarda
+//   2) { action: 'finish', run_id, player_id, nickname, inputs, difficulty } → repite la partida con la misma lógica del juego y guarda
 //      el puntaje que calcula ELLA (el del navegador no existe para el servidor).
 // Con esto, mandar «un puntaje alto» a mano no sirve: hay que entregar movimientos que, repetidos aquí, den ese puntaje, y la
 // partida no puede terminar antes del tiempo real que dura jugarla. (Un programa que juegue de verdad sigue siendo posible: por
@@ -18,15 +18,15 @@ const CORS = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'content-type': 'application/json; charset=utf-8' } })
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-/** La base rechaza puntajes mayores a 6000 (arcade_run_record): una partida legítima nunca debe fallar por eso. */
-const MAX_SCORE = 5990
+/** La base (migración 0029) rechaza puntajes mayores a 5.000.000: una partida legítima nunca debe fallar por eso. */
+const MAX_SCORE = 4_900_000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   if (req.method !== 'POST') return json({ error: 'método no permitido' }, 405)
   const raw = await req.text()
-  if (raw.length > 200_000) return json({ error: 'cuerpo demasiado grande' }, 413)
+  if (raw.length > 1_000_000) return json({ error: 'cuerpo demasiado grande' }, 413)
   let body: Record<string, unknown>
   try {
     body = JSON.parse(raw)
