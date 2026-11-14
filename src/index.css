@@ -267,9 +267,14 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Campos con su propio anillo de foco (border + ring): sin el contorno global encima. Va sin capa, igual que la regla de abajo. */
 :focus-visible {
   outline: 3px solid color-mix(in srgb, var(--color-brand) 55%, transparent);
   outline-offset: 2px;
+}
+/* Campos con su propio anillo de foco (borde + halo): sin el contorno global encima. */
+.field-clean:focus-visible {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
