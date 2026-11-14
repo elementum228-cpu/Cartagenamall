@@ -46,6 +46,9 @@ export function CartPage() {
         title="Tu carrito está vacío"
         action={
           <div className="flex gap-2">
+            <Link to="/pedidos" className={btn.secondary}>
+              Mis pedidos
+            </Link>
             <Link to="/" className={btn.secondary}>
               Explorar el mall
             </Link>
@@ -62,7 +65,12 @@ export function CartPage() {
   return (
     <div className="mx-auto grid max-w-5xl gap-6 px-4 pt-5 pb-32 md:grid-cols-[1fr_340px] md:pb-10">
       <div className="space-y-4">
-        <h1 className="text-2xl font-extrabold tracking-tight">Carrito universal</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold tracking-tight">Carrito universal</h1>
+          <Link to="/pedidos" className="shrink-0 rounded-full border border-line px-3.5 py-2 text-sm font-bold text-teal">
+            Mis pedidos
+          </Link>
+        </div>
         <p className="-mt-2 text-sm text-ink-soft">
           {items.reduce((a, i) => a + i.qty, 0)} productos de {groups.length} {groups.length === 1 ? 'tienda' : 'tiendas'}
         </p>

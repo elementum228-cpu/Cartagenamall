@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 const KEY = 'cm:hoy-seen'
 const today = () => new Date().toISOString().slice(0, 10)
-const seenToday = () => {
+export const hoySeenToday = () => {
   try {
     return localStorage.getItem(KEY) === today()
   } catch {
@@ -15,7 +15,7 @@ export const useHoy = create<{ notice: boolean; reader: boolean; showNotice: () 
   notice: false,
   reader: false,
   showNotice: () => {
-    if (!seenToday()) set({ notice: true })
+    if (!hoySeenToday()) set({ notice: true })
   },
   later: () => {
     try {

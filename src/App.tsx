@@ -1,5 +1,4 @@
 import {
-  ClipboardList,
   Compass,
   Heart,
   Scale,
@@ -471,7 +470,7 @@ function TopBar() {
         {!loggedIn && remoteEnabled() && (
           <Link
             to="/registro"
-            className="grid h-11 place-items-center rounded-full bg-teal px-4 text-[14px] font-bold whitespace-nowrap text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96]"
+            className="grid h-11 place-items-center rounded-full bg-teal px-4 text-[14px] font-bold whitespace-nowrap text-white shadow-[var(--shadow-glow)] transition active:scale-[0.96] max-sm:hidden"
           >
             Crear cuenta
           </Link>
@@ -479,7 +478,7 @@ function TopBar() {
         <NavLink
           to={loggedIn ? "/mi-cuenta" : "/login"}
           className={({ isActive }) =>
-            `${iconBtn} ${isActive ? "!bg-teal !text-white" : ""} ${loggedIn || !remoteEnabled() ? "" : "max-sm:hidden"}`
+            `${iconBtn} ${isActive ? "!bg-teal !text-white" : ""}`
           }
           aria-label={loggedIn ? "Mi cuenta" : "Iniciar sesión o crear cuenta"}
         >
@@ -526,7 +525,6 @@ function BottomNav() {
     { to: "/", label: "Explorar", icon: Compass, end: true },
     { to: "/comprar", label: "Comprar", icon: ShoppingBag },
     { to: "/ofertas", label: "Ofertas", icon: Zap },
-    { to: "/pedidos", label: "Pedidos", icon: ClipboardList },
     { to: "/carrito", label: "Carrito", icon: ShoppingCart, badge: count },
   ];
   return (
@@ -534,7 +532,7 @@ function BottomNav() {
       className="tour-hide chrome-in-bottom glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 h-16 rounded-[26px] px-1.5 md:hidden"
       aria-label="Navegación principal"
     >
-      <ul className="grid h-full grid-cols-5 items-center">
+      <ul className="grid h-full grid-cols-4 items-center">
         {tabs.map((t) => (
           <li key={t.to} className="flex justify-center">
             <NavLink

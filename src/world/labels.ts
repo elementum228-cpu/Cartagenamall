@@ -47,11 +47,27 @@ export function visibleInTree(o: THREE.Object3D) {
 const v = new THREE.Vector3()
 const MARGIN = 4
 
+/** Zonas de pantalla que ocupan los botones del celular: ningún cartel del mapa debe quedar debajo de ellos. */
+function hudZones(w: number, h: number): [number, number, number, number][] {
+  return [
+    [0, 0, w, 126], // cabecera y fila «Categorías / Descubre»
+    [0, 126, 280, 170], // aviso contextual (oferta relámpago)
+    [0, h * 0.34, 68, h * 0.68], // selector de pisos
+    [w - 68, h - 260, w, h - 80], // opciones y volver al centro
+    [0, h - 92, w, h], // pestañas
+  ]
+}
+/** En la vista general del celular solo se muestran los carteles más importantes; el resto aparece al acercar. */
+const OVERVIEW_MAX_LABELS = 6
+
 export function useLabelDeclutter() {
   let frame = 0
   useFrame(({ camera, size }) => {
     if (frame++ % 3) return // cada 3 cuadros basta
-    const rects: [number, number, number, number][] = []
+    const compact = size.width < 768
+    const rects: [number, number, number, number][] = compact ? hudZones(size.width, size.height) : []
+    const overviewish = compact && cameraState.zoom / cameraState.fitZoom < 1.3
+    let shown = 0
     const list = [...entries].filter((e) => e.eligible).sort((a, b) => b.priority - a.priority)
     for (const e of list) {
       e.object.getWorldPosition(v)
@@ -62,8 +78,13 @@ export function useLabelDeclutter() {
       const w = h * e.aspect
       const r: [number, number, number, number] = [x - w / 2 - MARGIN, y - h / 2 - MARGIN, x + w / 2 + MARGIN, y + h / 2 + MARGIN]
       const hit = rects.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])
-      e.accepted = !hit
-      if (!hit) rects.push(r)
+      // el cartel elegido (selected) nunca se oculta por el límite de la vista general
+      const capped = overviewish && e.priority < LABEL_PRIORITY.selected && shown >= OVERVIEW_MAX_LABELS
+      e.accepted = !hit && !capped
+      if (e.accepted) {
+        rects.push(r)
+        shown++
+      }
     }
     for (const e of entries) if (!e.eligible) e.accepted = true
   })

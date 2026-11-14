@@ -21,7 +21,6 @@ import {
   Gamepad2,
   Plane,
   BookOpen,
-  Castle,
   Sailboat,
   Ghost,
   Scissors,
@@ -53,10 +52,13 @@ import {
   ChevronRight,
   X,
   Store as StoreIcon,
+  LayoutGrid,
+  Film,
+  Newspaper,
   type LucideIcon,
 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { COURT_SPACE, FLOORS, FLOOR_OF_ZONE, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import { formatCOP } from '../lib/format'
 import { useSpacePrice } from '../state/spacePricing'
@@ -89,7 +91,10 @@ import { startTour } from './tourState'
 import { PinchHint } from './PinchHint'
 import { InstallButton } from '../pwa/InstallApp'
 
-import { useHoy } from '../hoy/store'
+import { useHoy, hoySeenToday } from '../hoy/store'
+import { useCine } from '../state/cine'
+import { useCineUi } from '../state/cineUi'
+import { CategoriesSheet, DiscoverSheet, type CategoryItem, type DiscoverRow } from './ExploreSheets'
 
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
 
@@ -170,6 +175,7 @@ function Loading() {
 
 function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed: boolean }) {
   const desktop = useIsDesktop()
+  const navigate = useNavigate()
   const overview = useUI((s) => s.overview)
   const setFloor = useUI((s) => s.setFloor)
   const requestFocus = useUI((s) => s.requestFocus)
@@ -201,6 +207,45 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   const activeZone = useUI((s) => (s.focus?.kind === 'zone' ? s.focus.id : null))
   const peekId = useUI((s) => (s.peek ? s.selectedSpaceId : null))
   const courtActive = useUI((s) => s.courtOpen || s.selectedSpaceId === COURT_SPACE.id)
+  // Celular: categorías y juego/novedades viven en dos hojas (menos botones sueltos en la primera pantalla).
+  const [catsOpen, setCatsOpen] = useState(false)
+  const [discOpen, setDiscOpen] = useState(false)
+  const hoyNotice = useHoy((s) => s.notice)
+  const cineOn = useCine((s) => s.enabled && s.lobbyOn)
+  const ctaSeen = usePrefs((s) => s.ctaSeen)
+  const setCtaSeen = usePrefs((s) => s.setCtaSeen)
+  // El botón de entrada es solo para quien llega por primera vez; después, el mapa queda limpio.
+  const showCta = use3D && overview && !ctaSeen && !hintSeen
+  useEffect(() => {
+    if (!overview) setCtaSeen()
+  }, [overview, setCtaSeen])
+  const hiddenLeft = Math.max(0, secretTotal - Math.min(discovered.length, secretTotal))
+  // Globito de «Descubre»: lo que hay de nuevo (el periódico de hoy sin leer, ofertas escondidas por encontrar).
+  const discoverBadge = (!hoySeenToday() || hoyNotice ? 1 : 0) + (hiddenLeft > 0 ? 1 : 0)
+  const categoryItems: CategoryItem[] = [
+    ...ZONES.filter((z) => z.id !== 'I' && (z.id !== 'G' || entOn)).map((z) => ({
+      id: z.id,
+      label: z.name,
+      Icon: ZONE_ICON[z.id],
+      color: z.color,
+      active: activeZone === z.id,
+      onPick: () => {
+        setFloor(FLOOR_OF_ZONE[z.id])
+        selectSpace(null)
+        if (use3D) requestFocus({ kind: 'zone', id: z.id })
+      },
+    })),
+    { id: 'deportes', label: 'Deportes', Icon: Trophy, color: '#2f9e5a', active: courtActive, onPick: () => openCourtOrClaim(use3D) },
+    ...(cineOn ? [{ id: 'cine', label: 'Cine', Icon: Film, color: '#6b4fd1', onPick: () => useCineUi.getState().open('lobby') }] : []),
+  ]
+  const discoverRows: DiscoverRow[] = [
+    { id: 'pasaporte', title: 'Pasaporte', detail: `${passportDone} de ${stampList.length} sellos`, Icon: BookOpen, color: '#0f8f80', progress: stampList.length ? passportDone / stampList.length : 0, onPick: () => navigate('/pasaporte') },
+    ...(secretTotal > 0
+      ? [{ id: 'secretas', title: 'Ofertas escondidas', detail: `${Math.min(discovered.length, secretTotal)} de ${secretTotal} encontradas`, Icon: Gem, color: '#d99a1f', progress: Math.min(discovered.length, secretTotal) / secretTotal, onPick: () => navigate('/ofertas') }]
+      : []),
+    { id: 'hoy', title: 'MallPlay Hoy', detail: 'El periódico del día', Icon: Newspaper, color: '#14202e', badge: !hoySeenToday() ? 1 : undefined, onPick: () => useHoy.getState().read() },
+    ...(entOn ? [{ id: 'arcade', title: 'Arcade · Nave Caribe', detail: 'Gana puntos y entra al top semanal', Icon: Gamepad2, color: '#e0558a', onPick: () => useArcadeUi.getState().setOpen(true) }] : []),
+  ]
   const chip = (on: boolean) =>
     `tap-halo touch-hit relative flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold whitespace-nowrap transition duration-200 active:scale-[0.98] ${
       on ? 'glass-teal' : 'glass text-ink'
@@ -227,8 +272,27 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         {/* categorías: cápsulas de vidrio, la elegida en turquesa */}
         {/* cada cápsula flota sola sobre el mapa (sin bandeja). La fila sí recibe toques: en iPhone una
           fila que los ignora no se puede deslizar de lado. Es una franja delgada, el mapa sigue libre. */}
+        {!desktop && (
+          <div className={`island-hide absolute top-[var(--chrome-top)] left-3 z-10 flex gap-2.5 transition-opacity duration-200 ${dimmed ? 'pointer-events-none opacity-0' : ''}`}>
+            <button onClick={() => setCatsOpen(true)} aria-haspopup="dialog" className="glass touch-hit relative flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold text-ink shadow-none transition active:scale-[0.98]">
+              <LayoutGrid className="size-[18px]" strokeWidth={1.9} />
+              Categorías
+              <ChevronDown className="size-4 opacity-70" strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => setDiscOpen(true)}
+              aria-haspopup="dialog"
+              aria-label={discoverBadge ? `Descubre, ${discoverBadge} novedades` : 'Descubre'}
+              className="glass touch-hit relative flex h-11 items-center gap-2 rounded-full px-4 text-[14px] font-bold text-ink shadow-none transition active:scale-[0.98]"
+            >
+              <Sparkles className="size-[18px]" strokeWidth={1.9} />
+              Descubre
+              {discoverBadge > 0 && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-amber px-1 text-[11px] leading-none font-extrabold text-deep">{discoverBadge}</span>}
+            </button>
+          </div>
+        )}
         <div
-          className={`island-hide scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''}`}
+          className={`island-hide scrollbar-none absolute top-[var(--chrome-top)] right-0 left-0 z-10 flex touch-pan-x gap-2.5 overflow-x-auto overscroll-x-contain px-3 pb-2 transition-opacity duration-200 md:px-5 ${dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''} ${desktop ? '' : 'hidden'}`}
           role="toolbar"
           aria-label="Categorías del mall"
         >
@@ -270,25 +334,29 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
 
         {/* descubrimientos y oferta relámpago: pills discretas */}
         <div
-          className={`island-hide pointer-events-none absolute top-[calc(var(--chrome-top)+48px)] right-3 left-3 z-10 flex flex-wrap items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
+          className={`island-hide pointer-events-none absolute top-[calc(var(--chrome-top)+56px)] right-3 left-3 z-10 flex flex-wrap md:top-[calc(var(--chrome-top)+48px)] items-start gap-1.5 transition-opacity duration-200 md:left-5 md:right-auto *:pointer-events-auto ${dimmed ? 'max-md:opacity-0 max-md:*:pointer-events-none' : ''}`}
         >
-          <Link to="/ofertas" className="glass touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
-            <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
-              <Gem className="size-3" strokeWidth={2} />
-            </span>
-            Secretas {Math.min(discovered.length, secretTotal)}/{secretTotal}
-          </Link>
-          <Link
-            to="/pasaporte"
-            className="glass touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none"
-            aria-label={`Mi pasaporte: ${passportDone} de ${stampList.length} sellos`}
-          >
-            <span className="grid size-5 place-items-center rounded-full bg-teal text-white">
-              <BookOpen className="size-3" strokeWidth={2} />
-            </span>
-            Pasaporte {passportDone}/{stampList.length}
-          </Link>
-          <HoyPill />
+          {desktop && secretTotal > 0 && (
+            <Link to="/ofertas" className="glass touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none">
+              <span className="grid size-5 place-items-center rounded-full bg-amber/90 text-deep">
+                <Gem className="size-3" strokeWidth={2} />
+              </span>
+              Secretas {Math.min(discovered.length, secretTotal)}/{secretTotal}
+            </Link>
+          )}
+          {desktop && (
+            <Link
+              to="/pasaporte"
+              className="glass touch-hit relative flex h-8 items-center gap-1.5 rounded-full pr-3 pl-1.5 text-[12px] font-semibold text-ink shadow-none"
+              aria-label={`Mi pasaporte: ${passportDone} de ${stampList.length} sellos`}
+            >
+              <span className="grid size-5 place-items-center rounded-full bg-teal text-white">
+                <BookOpen className="size-3" strokeWidth={2} />
+              </span>
+              Pasaporte {passportDone}/{stampList.length}
+            </Link>
+          )}
+          {desktop && <HoyPill />}
           {flash && flashEvent && (
             <button
               onClick={() => {
@@ -316,8 +384,9 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
               <Countdown endsAt={flash.endsAt} className="!font-sans !text-[12.5px] leading-none !font-semibold opacity-90" />
             </button>
           )}
-          <ShipPill />
-          {season === 'halloween' && (
+          {/* un solo aviso contextual a la vez: la oferta relámpago tiene prioridad sobre el barco y la temporada */}
+          {!flash && <ShipPill />}
+          {!flash && season === 'halloween' && (
             <span className="chrome-text flex h-8 items-center gap-1.5 pr-1 text-[12.5px] leading-none font-semibold">
               <span className="grid size-6 place-items-center rounded-full bg-[#e8761c] text-white shadow-[0_2px_10px_rgb(232_118_28/0.5)]">
                 <Moon className="size-3.5" strokeWidth={2.2} />
@@ -367,20 +436,23 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             <div className="w-11 shrink-0 max-md:block md:hidden" aria-hidden />
             <div className="flex min-w-0 flex-1 justify-center md:justify-start *:pointer-events-auto">
               <AnimatePresence mode="popLayout" initial={false}>
-                {use3D && !peekId && (
+                {showCta && !peekId && (
                   <motion.div
                     className="island-hide"
-                    key={overview ? 'enter' : 'overview'}
+                    key="enter"
                     initial={{ opacity: 0, scale: 0.9, filter: 'blur(6px)' }}
                     animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                     exit={{ opacity: 0, scale: 0.92, filter: 'blur(6px)' }}
                     transition={SPRING}
                   >
-                    {overview ? (
-                      <PrimaryCta onClick={() => useUI.getState().enterMall()} icon={<DoorOpen className="size-5" strokeWidth={1.9} />} label="Explorar el mall" />
-                    ) : (
-                      <PrimaryCta onClick={() => useUI.getState().setOverview(true)} icon={<Castle className="size-5" strokeWidth={1.9} />} label="Ver todo el mall" />
-                    )}
+                    <PrimaryCta
+                      onClick={() => {
+                        setCtaSeen()
+                        useUI.getState().enterMall()
+                      }}
+                      icon={<DoorOpen className="size-5" strokeWidth={1.9} />}
+                      label="Entrar al mall"
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -396,7 +468,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
                   <House className="size-5" strokeWidth={1.8} />
                 </button>
               )}
-              {use3D && (
+              {use3D && desktop && (
                 <div className="glass flex flex-col overflow-hidden rounded-full shadow-none">
                   <button
                     className="grid size-11 place-items-center text-ink transition active:bg-white/50"
@@ -422,6 +494,8 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
         </div>
         {use3D && desktop && !dimmed && !overview && <ControlsLegend />}
       </div>
+    <CategoriesSheet open={catsOpen} onClose={() => setCatsOpen(false)} items={categoryItems} />
+      <DiscoverSheet open={discOpen} onClose={() => setDiscOpen(false)} rows={discoverRows} />
     </MotionConfig>
   )
 }
@@ -718,10 +792,10 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
           onClick={() => setOverview(!overview)}
           aria-pressed={overview}
           title="Vista general de la fortaleza (ambos pisos)"
-          aria-label="Fortaleza: ver todo el mall"
-          className={`grid h-10 place-items-center rounded-[18px] transition duration-200 active:scale-[0.97] ${overview ? 'bg-amber text-deep shadow-[0_6px_18px_-6px_rgb(247_179_75/0.7),inset_0_1px_0_rgb(255_255_255/0.5)]' : 'text-ink-soft hover:bg-white/30'}`}
+          aria-label="Ver todo el mall"
+          className={`touch-hit relative grid min-h-11 place-items-center rounded-[18px] px-1 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:text-[12px] ${overview ? 'glass-teal' : 'text-ink hover:bg-white/30'}`}
         >
-          <Castle className="size-5" strokeWidth={1.8} />
+          Todo
         </button>
       )}
     </nav>

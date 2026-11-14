@@ -206,6 +206,9 @@ interface PrefsState {
   setTimeMode: (m: TimeMode) => void
   force2D: boolean
   hintSeen: boolean
+  /** Ya usó (o ya no necesita) el botón «Entrar al mall» de la primera pantalla. */
+  ctaSeen: boolean
+  setCtaSeen: () => void
   /** Calidad gráfica: alta (todo), media (sin sombras ni ambiente lejano), baja (menos decoración). */
   quality: Quality
   /** La persona eligió la calidad a mano: el ajuste automático ya no la cambia. */
@@ -230,6 +233,8 @@ export const usePrefs = create<PrefsState>()(
       setTimeMode: (timeMode) => set({ timeMode }),
       force2D: false,
       hintSeen: false,
+      ctaSeen: false,
+      setCtaSeen: () => set((s) => (s.ctaSeen ? s : { ctaSeen: true })),
       // El primer nivel sale del dispositivo (ver lib/deviceProfile.ts); después, el monitor de FPS solo puede bajarlo.
       quality: detectProfile().tier,
       qualityLocked: false,
