@@ -433,13 +433,19 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
             <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
               <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#c9ffdc] to-[#0a7d3e] text-[18px] font-extrabold text-white">+</span>
               <span>
-                <b className="text-[#5dff9b]">Arma:</b> los círculos sueltan premios verdes. Cada uno suma disparos (hasta {MAX_WEAPON} niveles).
+                <b className="text-[#5dff9b]">Arma:</b> los premios verdes mejoran tu nave: más cañones y más disparos (hasta {MAX_WEAPON} niveles).
               </span>
             </li>
             <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
               <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffe6b8] to-[#b34d00] text-[16px] text-white">⚡</span>
               <span>
                 <b className="text-[#ffb347]">Rápido:</b> los naranjas aceleran tu disparo por unos segundos.
+              </span>
+            </li>
+            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffd0b0] to-[#7d1f0a] text-[16px] text-white">!</span>
+              <span>
+                <b className="text-[#ff9a6b]">Cañoneros:</b> los naranjas te disparan. Esquiva sus tiros y destrúyelos: valen mucho. Cada oleada llega más fuerte.
               </span>
             </li>
           </ul>

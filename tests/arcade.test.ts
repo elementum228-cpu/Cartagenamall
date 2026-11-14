@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
+import { KIND_HP, MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
 import { ARCADE_REWARDS, DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, awardFor, useArcade } from '../src/arcade/store'
 
 const still = { targetX: null, dir: 0 }
@@ -30,7 +30,7 @@ describe('motor de Nave Caribe', () => {
     Object.assign(e, { on: true, kind: 0, x: g.shipX, baseX: g.shipX, y: 300, vy: 0, hp: 1, amp: 0 })
     g.spawnIn = 99
     for (let i = 0; i < 120 && g.score === 0; i++) update(g, 1 / 60, still)
-    expect(g.score).toBe(10)
+    expect(g.score).toBe(6)
   })
 
   it('chocar quita una vida, da invulnerabilidad y a la tercera termina', () => {
@@ -63,13 +63,39 @@ describe('motor de Nave Caribe', () => {
 
   it('la dificultad sube con tope y no se crean objetos nuevos (piscinas fijas)', () => {
     expect(spawnGap(0)).toBeGreaterThan(spawnGap(40))
-    expect(spawnGap(1000)).toBe(0.3)
-    expect(fallSpeed(1000)).toBe(190)
+    expect(spawnGap(1000)).toBe(0.24)
+    expect(fallSpeed(1000)).toBe(245)
     const g = createGame(makeRand(9))
     const sizes = [g.bullets.length, g.enemies.length, g.parts.length]
     for (let i = 0; i < 3000 && !g.over; i++) update(g, 1 / 60, { targetX: (i * 7) % W, dir: 0 })
     expect([g.bullets.length, g.enemies.length, g.parts.length]).toEqual(sizes)
     expect(g.enemies.every((e) => !e.on || e.y < H + 40)).toBe(true)
+  })
+})
+
+describe('dificultad progresiva de Nave Caribe', () => {
+  it('un cañonero dispara hacia la nave y su disparo cuenta como golpe', () => {
+    const g = createGame(makeRand(6))
+    g.spawnIn = 99
+    g.fireIn = 99
+    Object.assign(g.enemies[0], { on: true, kind: 3, x: g.shipX, baseX: g.shipX, y: 120, vy: 0, hp: KIND_HP[3], amp: 0, shoot: 0.05 })
+    for (let i = 0; i < 600 && g.lives === 3; i++) update(g, 1 / 60, still)
+    expect(g.ebullets.length).toBeGreaterThan(0)
+    expect(g.lives).toBe(2)
+  })
+
+  it('llegan formaciones en V y aparecen cañoneros pasada la mitad inicial', () => {
+    const g = createGame(makeRand(8))
+    g.lives = 999
+    let guns = 0
+    let maxOn = 0
+    for (let i = 0; i < 70 * 60 && !g.over; i++) {
+      update(g, 1 / 60, { targetX: (i * 3) % W, dir: 0 })
+      maxOn = Math.max(maxOn, g.enemies.filter((e) => e.on).length)
+      if (g.enemies.some((e) => e.on && e.kind === 3)) guns++
+    }
+    expect(maxOn).toBeGreaterThanOrEqual(6)
+    expect(guns).toBeGreaterThan(0)
   })
 })
 
@@ -144,28 +170,28 @@ function play(seed: number, pick: (step: number) => Input) {
 }
 
 describe('armas y premios', () => {
-  const place = (g: ReturnType<typeof createGame>, o: Partial<{ kind: 0 | 1 | 2; x: number; y: number; hp: number }>) =>
+  const place = (g: ReturnType<typeof createGame>, o: Partial<{ kind: 0 | 1 | 2 | 3; x: number; y: number; hp: number }>) =>
     Object.assign(g.enemies.find((x) => !x.on)!, { on: true, kind: 0, x: g.shipX, baseX: g.shipX, y: 300, vy: 0, hp: 1, amp: 0, ...o })
   const quiet = (g: ReturnType<typeof createGame>) => {
     g.spawnIn = 99
     return g
   }
 
-  it('el arma sube de nivel y dispara más: 1, 2, 3 y 5 disparos por ráfaga', () => {
-    const counts = [1, 2, 3, 4].map((lvl) => {
+  it('el arma sube de nivel y dispara más: 1, 2, 3, 5 y 7 disparos por ráfaga', () => {
+    const counts = [1, 2, 3, 4, 5].map((lvl) => {
       const g = quiet(createGame(makeRand(1)))
       g.weapon = lvl
       g.fireIn = 0
       update(g, 1 / 60, still)
       return g.bullets.filter((b) => b.on).length
     })
-    expect(counts).toEqual([1, 2, 3, 5])
+    expect(counts).toEqual([1, 2, 3, 5, 7])
   })
 
-  it('un dorado siempre suelta premio; al recogerlo de arma, sube el nivel', () => {
+  it('un cañonero siempre suelta premio; al recogerlo de arma, sube el nivel', () => {
     const g = quiet(createGame(makeRand(2)))
     g.fireIn = 99
-    place(g, { kind: 2, y: 200 })
+    place(g, { kind: 3, y: 200 })
     Object.assign(g.bullets[0], { on: true, x: g.shipX, y: 200, vx: 0 })
     update(g, 1 / 60, still)
     const drop = g.pickups.find((k) => k.on)
@@ -179,19 +205,19 @@ describe('armas y premios', () => {
     expect(g.picked).toBe(1)
   })
 
-  it('con el arma al máximo el premio de arma da 25 puntos; el rápido acelera el disparo', () => {
+  it('con el arma al máximo el premio de arma da 15 puntos; el rápido acelera el disparo', () => {
     const g = quiet(createGame(makeRand(3)))
     g.fireIn = 99
     g.weapon = MAX_WEAPON
     Object.assign(g.pickups[0], { on: true, kind: 0, x: g.shipX, y: SHIP_Y, phase: 0 })
     update(g, 1 / 60, still)
-    expect(g.score).toBe(25)
+    expect(g.score).toBe(15)
     Object.assign(g.pickups[1], { on: true, kind: 1, x: g.shipX, y: SHIP_Y, phase: 0 })
     update(g, 1 / 60, still)
     expect(g.rapid).toBeGreaterThan(RAPID_SECONDS - 0.1)
     g.fireIn = 0
     update(g, 1 / 60, still)
-    expect(g.fireIn).toBeLessThan(0.13) // cadencia rápida (0,115 s) en vez de 0,2 s
+    expect(g.fireIn).toBeLessThan(0.14) // cadencia rápida (0,13 s) en vez de 0,24 s
   })
 
   it('recibir un golpe baja un nivel de arma y quita la cadencia rápida', () => {
@@ -205,10 +231,10 @@ describe('armas y premios', () => {
     expect(g.rapid).toBe(0)
   })
 
-  it('el premio no tarda: tras 8 enemigos sin soltar nada, el siguiente lo suelta', () => {
+  it('el premio no tarda: tras 16 enemigos sin soltar nada, el siguiente lo suelta', () => {
     const g = quiet(createGame(makeRand(5)))
     g.fireIn = 99
-    g.sinceDrop = 7
+    g.sinceDrop = 15
     place(g, { kind: 0, y: 200 })
     Object.assign(g.bullets[0], { on: true, x: g.shipX, y: 200, vx: 0 })
     update(g, 1 / 60, still)

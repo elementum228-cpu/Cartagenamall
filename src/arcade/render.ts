@@ -1,4 +1,4 @@
-import { H, KIND_R, LIVES, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_R, SHIP_Y, W, type EnemyKind, type Game } from './engine'
+import { EBULLET_R, H, KIND_HP, KIND_R, LIVES, MAX_WEAPON, RAPID_SECONDS, ROUND_SECONDS, SHIP_R, SHIP_Y, W, WAVE_SECONDS, waveOf, type EnemyKind, type Game } from './engine'
 
 // Dibujo de «Nave Caribe». Los elementos con degradados y brillos (nave, enemigos, disparos, premios y el fondo) se pintan UNA vez en
 // lienzos pequeños y después solo se pegan con drawImage: se ven mucho mejor y cuestan casi lo mismo que un rectángulo. Lo que cambia
@@ -31,7 +31,9 @@ const linear = (g: CanvasRenderingContext2D, x0: number, y0: number, x1: number,
 
 interface Sprites {
   bg: Sprite
-  ship: Sprite
+  /** La nave, una por nivel de arma (índice 1..MAX_WEAPON): cada arma nueva la hace más robusta. */
+  ship: Sprite[]
+  ebullet: Sprite
   enemy: Record<EnemyKind, Sprite>
   bullet: Sprite
   weaponOrb: Sprite
@@ -67,13 +69,67 @@ function sprites(): Sprites {
     return c
   })()
 
-  // nave: caza esbelto con alas, cabina y luces; la punta mira hacia arriba
-  const ship = make(64, 74, (g) => {
-    g.fillStyle = radial(g, 0, 4, 0, 34, [
-      [0, 'rgba(77,225,255,0.38)'],
+  // nave: caza esbelto con alas, cabina y luces; la punta mira hacia arriba. Cada nivel de arma añade piezas: cañones gemelos, cañones
+  // en las alas, vainas blindadas con doble cañón y, al máximo, alas ampliadas con ocho cañones y motores dobles.
+  const barrel = (g: CanvasRenderingContext2D, x: number, y0: number, y1: number, w = 2.6) => {
+    g.fillStyle = '#1a2b55'
+    g.fillRect(x - w / 2 - 0.7, y0, w + 1.4, y1 - y0)
+    g.fillStyle = linear(g, x - w / 2, 0, x + w / 2, 0, [
+      [0, '#cfe4ff'],
+      [1, '#5b7bb8'],
+    ])
+    g.fillRect(x - w / 2, y0, w, y1 - y0)
+    g.fillStyle = '#4de1ff'
+    g.fillRect(x - w / 2, y0 - 1.6, w, 2)
+  }
+  const paintShip = (g: CanvasRenderingContext2D, level: number) => {
+    g.fillStyle = radial(g, 0, 4, 0, 40, [
+      [0, level >= 4 ? 'rgba(93,255,155,0.34)' : 'rgba(77,225,255,0.38)'],
       [1, 'rgba(77,225,255,0)'],
     ])
-    g.fillRect(-32, -37, 64, 74)
+    g.fillRect(-42, -46, 84, 92)
+    // nivel 5: alas ampliadas con borde dorado (detrás de todo)
+    if (level >= 5) {
+      for (const sx of [-1, 1]) {
+        g.save()
+        g.scale(sx, 1)
+        g.beginPath()
+        g.moveTo(14, 2)
+        g.lineTo(37, 24)
+        g.lineTo(35, 31)
+        g.lineTo(14, 26)
+        g.closePath()
+        g.fillStyle = linear(g, 14, 2, 37, 31, [
+          [0, '#1f4fb8'],
+          [1, '#081c4f'],
+        ])
+        g.fill()
+        g.strokeStyle = '#ffc83d'
+        g.lineWidth = 1.6
+        g.stroke()
+        g.restore()
+      }
+    }
+    // nivel 4+: vainas blindadas a los costados del fuselaje
+    if (level >= 4) {
+      for (const sx of [-1, 1]) {
+        g.save()
+        g.scale(sx, 1)
+        g.beginPath()
+        g.roundRect(9, -10, 9, 30, 4)
+        g.fillStyle = linear(g, 9, -10, 18, 20, [
+          [0, '#35508f'],
+          [1, '#0f2252'],
+        ])
+        g.fill()
+        g.strokeStyle = 'rgba(255,255,255,0.6)'
+        g.lineWidth = 0.9
+        g.stroke()
+        g.fillStyle = '#ffc83d'
+        g.fillRect(10.5, -2, 6, 2)
+        g.restore()
+      }
+    }
     // alas
     for (const sx of [-1, 1]) {
       g.save()
@@ -96,7 +152,7 @@ function sprites(): Sprites {
       g.beginPath()
       g.moveTo(11, 4)
       g.lineTo(21, 15)
-      g.strokeStyle = '#ff5c8a'
+      g.strokeStyle = level >= 3 ? '#ffc83d' : '#ff5c8a'
       g.lineWidth = 2
       g.stroke()
       g.beginPath()
@@ -115,7 +171,7 @@ function sprites(): Sprites {
     g.closePath()
     g.fillStyle = linear(g, -9, -28, 9, 18, [
       [0, '#f2fdff'],
-      [0.45, '#6fe6ff'],
+      [0.45, level >= 4 ? '#8dffc0' : '#6fe6ff'],
       [1, '#1b6dd6'],
     ])
     g.fill()
@@ -134,10 +190,84 @@ function sprites(): Sprites {
     g.ellipse(-1.1, -10, 1.1, 3.2, 0, 0, 6.3)
     g.fillStyle = 'rgba(255,255,255,0.85)'
     g.fill()
-    // toberas
+    // toberas (dobles a partir del nivel 5)
     g.fillStyle = '#0b1b3d'
     g.fillRect(-5.5, 16, 4, 4)
     g.fillRect(1.5, 16, 4, 4)
+    if (level >= 5) {
+      g.fillRect(-16.5, 20, 4, 4)
+      g.fillRect(12.5, 20, 4, 4)
+    }
+    // cañones, de adentro hacia afuera según el nivel
+    if (level >= 2) {
+      barrel(g, -4.4, -18, -6)
+      barrel(g, 4.4, -18, -6)
+    }
+    if (level >= 3) {
+      barrel(g, -19, 2, 14, 2.8)
+      barrel(g, 19, 2, 14, 2.8)
+      g.fillStyle = '#ffc83d' // punta dorada en la proa
+      g.beginPath()
+      g.moveTo(0, -33)
+      g.lineTo(2.6, -26)
+      g.lineTo(-2.6, -26)
+      g.closePath()
+      g.fill()
+    }
+    if (level >= 4) {
+      barrel(g, -11.5, -14, -4, 2.4)
+      barrel(g, 11.5, -14, -4, 2.4)
+    }
+    if (level >= 5) {
+      barrel(g, -27, 10, 22, 3)
+      barrel(g, 27, 10, 22, 3)
+      g.fillStyle = '#ffc83d'
+      g.beginPath()
+      g.arc(0, 3, 2.4, 0, 6.3)
+      g.fill()
+    }
+  }
+  const ship: Sprite[] = [make(84, 92, (g) => paintShip(g, 1))]
+  for (let lv = 1; lv <= MAX_WEAPON; lv++) ship[lv] = make(84, 92, (g) => paintShip(g, lv))
+
+  // cañonero: casco blindado naranja con cañón y ojo central
+  const gunner = make(56, 56, (g) => {
+    g.fillStyle = radial(g, 0, 0, 8, 28, [
+      [0, 'rgba(255,122,69,0.5)'],
+      [1, 'rgba(255,122,69,0)'],
+    ])
+    g.fillRect(-28, -28, 56, 56)
+    g.beginPath()
+    g.arc(0, 0, 18, 0, 6.3)
+    g.fillStyle = radial(g, -5, -6, 2, 20, [
+      [0, '#ffd0b0'],
+      [0.5, '#e8582b'],
+      [1, '#7d1f0a'],
+    ])
+    g.fill()
+    g.lineWidth = 2
+    g.strokeStyle = 'rgba(255,255,255,0.8)'
+    g.stroke()
+    g.fillStyle = '#3a0f05'
+    g.fillRect(-3.5, 10, 7, 12)
+    g.fillStyle = '#ffd34d'
+    g.fillRect(-3.5, 20, 7, 3)
+    g.beginPath()
+    g.arc(0, -1, 6, 0, 6.3)
+    g.fillStyle = '#1a0805'
+    g.fill()
+    g.beginPath()
+    g.arc(-1.5, -2.5, 2.2, 0, 6.3)
+    g.fillStyle = '#ff6a4a'
+    g.fill()
+  })
+  const ebullet = make(14, 14, (g) => {
+    g.fillStyle = radial(g, 0, 0, 1, 7, [
+      [0, '#ffffff'],
+      [0.4, '#ff9a5a'],
+      [1, 'rgba(255,90,60,0)'],
+    ])
+    g.fillRect(-7, -7, 14, 14)
   })
 
   const orb = (hi: string, mid: string, lo: string, glow: string) =>
@@ -278,7 +408,7 @@ function sprites(): Sprites {
     g.fill()
   })
 
-  cache = { bg, ship, enemy: { 0: pink, 1: diamond, 2: gold }, bullet, weaponOrb, rapidOrb }
+  cache = { bg, ship, ebullet, enemy: { 0: pink, 1: diamond, 2: gold, 3: gunner }, bullet, weaponOrb, rapidOrb }
   return cache
 }
 
@@ -318,6 +448,9 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
     }
   }
 
+  // disparos enemigos
+  for (const b of g.ebullets) if (b.on) put(ctx, sp.ebullet, b.x, b.y, EBULLET_R / 4.6)
+
   // enemigos (blancos un instante al recibir un disparo)
   for (const e of g.enemies) {
     if (!e.on) continue
@@ -334,6 +467,14 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
       } else ctx.arc(e.x, e.y, r, 0, 6.2832)
       ctx.fill()
     } else put(ctx, sp.enemy[e.kind], e.x, e.y)
+    // el cañonero muestra cuánta vida le queda
+    if (e.kind === 3) {
+      const r = KIND_R[3]
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'
+      ctx.fillRect(e.x - r, e.y - r - 8, r * 2, 4)
+      ctx.fillStyle = '#ff7a45'
+      ctx.fillRect(e.x - r, e.y - r - 8, r * 2 * Math.max(0, e.hp / KIND_HP[3]), 4)
+    }
   }
 
   // partículas
@@ -355,9 +496,15 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
       ctx.fillStyle = '#fff1a8'
       ctx.fillRect(x - 4.5, y + 12, 2, 4 + f)
       ctx.fillRect(x + 2.5, y + 12, 2, 4 + f)
+      if (g.weapon >= MAX_WEAPON) {
+        ctx.fillStyle = '#ff9a2e'
+        ctx.fillRect(x - 16.5, y + 16, 4, 6 + f)
+        ctx.fillRect(x + 12.5, y + 16, 4, 6 + f)
+      }
     }
     ctx.globalAlpha = g.invuln > 0 && Math.floor(g.time * 16) % 2 === 0 ? 0.55 : 1
-    put(ctx, sp.ship, x, y + 2)
+    // al subir de nivel la nave «late» un instante
+    put(ctx, sp.ship[Math.min(MAX_WEAPON, Math.max(1, g.weapon))], x, y + 2, 1 + (reduceMotion ? 0 : Math.min(0.22, g.glow * 0.5)))
     ctx.globalAlpha = 1
     if (g.invuln > 0) {
       ctx.strokeStyle = 'rgba(77,225,255,0.85)'
@@ -379,6 +526,21 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
   ctx.fillStyle = '#4de1ff'
   ctx.fillRect(0, 0, W * Math.max(0, 1 - g.time / ROUND_SECONDS), 3)
 
+  // oleada: pequeña arriba al centro y un aviso grande los primeros segundos de cada una
+  const wave = waveOf(g.time)
+  const into = g.time - (wave - 1) * WAVE_SECONDS
+  ctx.textAlign = 'center'
+  ctx.font = '800 12px Manrope, system-ui, sans-serif'
+  ctx.fillStyle = 'rgba(200,215,255,0.8)'
+  ctx.fillText(`OLEADA ${wave}`, W / 2, 10)
+  if (wave > 1 && into < 1.8 && !g.over) {
+    ctx.globalAlpha = Math.min(1, (1.8 - into) * 1.2)
+    ctx.font = '900 34px Manrope, system-ui, sans-serif'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(`OLEADA ${wave}`, W / 2, H * 0.3)
+    ctx.globalAlpha = 1
+  }
+
   // marcador (a la izquierda: los botones de sonido, pausa y cerrar van a la derecha, fuera del canvas)
   ctx.textBaseline = 'top'
   ctx.textAlign = 'left'
@@ -387,7 +549,7 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
   ctx.fillText(String(g.score), 14, 12)
   for (let i = 0; i < LIVES; i++) {
     ctx.globalAlpha = i < g.lives ? 1 : 0.25
-    put(ctx, sp.ship, 22 + i * 24, 58, 0.34)
+    put(ctx, sp.ship[1], 22 + i * 24, 58, 0.34)
   }
   ctx.globalAlpha = 1
   // nivel del arma y cadencia rápida
