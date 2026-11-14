@@ -15,6 +15,7 @@ import { useCatalog } from '../state/catalog'
 import { useClaims } from '../state/claims'
 import { useSpacePrice } from '../state/spacePricing'
 import { useUI } from '../state/ui'
+import { useArcadeUi } from '../arcade/store'
 import { formatCOP } from '../lib/format'
 import { ENT_COLOR, ENT_BRIDGE_Z, ENT_CENTER, ENT_HX, ENT_HZ, ENT_TRACK, ENT_WALL_X } from '../entertainment/config'
 
@@ -646,6 +647,101 @@ function TrackSpace({ night }: { night: boolean }) {
   )
 }
 
+// ── máquina de arcade (abre el minijuego «Nave Caribe» y los premios) ───────────────────────────────
+// en el óvalo verde de la pista: es el único lugar sin carteles ni portales delante (se llevarían el toque), de frente a la cámara isométrica
+const CAB_AT: [number, number] = [3.3, 0.3]
+const CAB_ROT = Math.PI / 4
+
+/** Pantalla de la máquina: se dibuja una sola vez (nave, puntitos y estrellas) y queda como textura fija. */
+function arcadeScreenTexture() {
+  const c = document.createElement('canvas')
+  c.width = 64
+  c.height = 96
+  const g = c.getContext('2d')!
+  g.fillStyle = '#070b24'
+  g.fillRect(0, 0, 64, 96)
+  g.fillStyle = '#9fb3ff'
+  for (const [x, y] of [[6, 10], [20, 40], [50, 22], [34, 70], [58, 62], [12, 84]]) g.fillRect(x, y, 2, 2)
+  g.fillStyle = '#ff5c8a'
+  for (const [x, y] of [[14, 16], [34, 10], [50, 28], [24, 36]]) {
+    g.beginPath()
+    g.arc(x, y, 5, 0, 6.3)
+    g.fill()
+  }
+  g.fillStyle = '#ffc83d'
+  g.beginPath()
+  g.arc(44, 48, 4, 0, 6.3)
+  g.fill()
+  g.fillStyle = '#4de1ff'
+  g.fillRect(31, 56, 2, 8)
+  g.beginPath()
+  g.moveTo(32, 68)
+  g.lineTo(40, 84)
+  g.lineTo(32, 80)
+  g.lineTo(24, 84)
+  g.closePath()
+  g.fill()
+  const t = new THREE.CanvasTexture(c)
+  t.magFilter = THREE.NearestFilter
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+
+function ArcadeCabinet({ night }: { night: boolean }) {
+  const open = () => {
+    const ui = useUI.getState()
+    if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
+    useArcadeUi.getState().setOpen(true)
+  }
+  const label = useMemo(() => getGlassPill('Arcade', { dot: '#4de1ff', sub: 'Juega y gana puntos', dark: night }), [night])
+  const screen = useMemo(() => arcadeScreenTexture(), [])
+  const mats = useMemo(
+    () => ({
+      body: mat('#1b2150'),
+      trim: mat('#e0558a', { emissive: 0.5 }),
+      screen: new THREE.MeshBasicMaterial({ map: screen, toneMapped: false }),
+      hit: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    }),
+    [screen],
+  )
+  return (
+    <group position={[CAB_AT[0], Y, CAB_AT[1]]} rotation={[0, CAB_ROT, 0]}>
+      <mesh position={[0, 0.55, 0]} material={mats.body} castShadow>
+        <boxGeometry args={[1.3, 1.1, 1]} />
+      </mesh>
+      <mesh position={[0, 1.55, -0.1]} material={mats.body}>
+        <boxGeometry args={[1.3, 0.95, 0.8]} />
+      </mesh>
+      <mesh position={[0, 1.58, 0.31]} rotation={[-0.2, 0, 0]} material={mats.screen}>
+        <planeGeometry args={[0.98, 0.74]} />
+      </mesh>
+      <mesh position={[0, 2.18, -0.1]} material={mats.trim}>
+        <boxGeometry args={[1.34, 0.3, 0.84]} />
+      </mesh>
+      <mesh position={[0, 1.08, 0.44]} rotation={[0.35, 0, 0]} material={mats.trim}>
+        <boxGeometry args={[1.18, 0.1, 0.4]} />
+      </mesh>
+      <mesh
+        position={[0, 1.2, 0]}
+        material={mats.hit}
+        onClick={(e) => {
+          if (e.delta > 8) return
+          e.stopPropagation()
+          open()
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => (document.body.style.cursor = '')}
+      >
+        <boxGeometry args={[1.8, 2.6, 1.6]} />
+      </mesh>
+      <ScreenLabel label={label} position={[0, 3.1, 0]} pixelHeight={30} maxZoomRatio={2.4} priority={LABEL_PRIORITY.store} onClick={open} />
+    </group>
+  )
+}
+
 export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const label = useMemo(() => getGlassPill('Entretenimiento', { dot: '#e0558a', sub: 'Pista de karts y videojuegos', dark: night }), [night])
@@ -673,6 +769,7 @@ export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
       <BridgeCrossers reduceMotion={reduceMotion} />
       <group position={[C.x, 0, C.z]}>
         <TrackSpace night={night} />
+        <ArcadeCabinet night={night} />
         <Karts reduceMotion={reduceMotion} />
         {VISITORS.map(([x, z, color, rot], i) => (
           <group key={i} position={[x, Y, z]} rotation={[0, rot, 0]}>

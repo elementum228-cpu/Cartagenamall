@@ -72,6 +72,7 @@ import { usePersonal } from '../state/personal'
 import { usePassport, usePassportStamps } from '../state/passport'
 import { useSeason, useSeasonSettings } from '../state/season'
 import { usePrefs, useUI } from '../state/ui'
+import { useArcadeUi } from '../arcade/store'
 import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
@@ -107,7 +108,9 @@ export function ExploreView({ active }: { active: boolean }) {
   const harborOpen = useUI((s) => s.harbor !== null || s.showroom !== null || s.shipOpen)
   const night = useIsNight() && use3D
   // con el periódico abierto el 3D se pausa: la animación de la hoja va fluida en el teléfono
-  const readingHoy = useHoy((s) => s.reader)
+  const hoyOpen = useHoy((s) => s.reader)
+  const arcadeOpen = useArcadeUi((s) => s.open)
+  const readingHoy = hoyOpen || arcadeOpen
   const root = useRef<HTMLDivElement>(null)
 
   // De noche, mientras se explora, las barras y controles pasan a vidrio ahumado (ver index.css).
@@ -253,6 +256,12 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
             <Trophy className="size-4" strokeWidth={1.8} />
             Deportes
           </button>
+          {entOn && (
+            <button onClick={() => useArcadeUi.getState().setOpen(true)} className={chip(false)}>
+              <Gamepad2 className="size-4" strokeWidth={1.8} />
+              Arcade
+            </button>
+          )}
         </div>
 
         <div className="island-hide">

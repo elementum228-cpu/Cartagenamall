@@ -28,6 +28,7 @@ import { useHoy } from "./hoy/store";
 import { useFlight } from "./airport/flight";
 import { useCineUi } from "./state/cineUi";
 import { lazyWhen, prefetchIdle } from "./ui/lazyWhen";
+import { useArcadeUi } from "./arcade/store";
 import { detectProfile } from "./lib/deviceProfile";
 import { RouteFallback } from "./ui/RouteFallback";
 import { useEntry } from "./state/entry";
@@ -96,6 +97,7 @@ const HarborSheet = lazyWhen(() => import("./features/HarborSheet").then((m) => 
 const ShowroomSheet = lazyWhen(() => import("./features/ShowroomSheet").then((m) => ({ default: m.ShowroomSheet })), () => useUI((s) => s.showroom !== null));
 const CineHost = lazyWhen(() => import("./features/CineViews").then((m) => ({ default: m.CineHost })), () => useCineUi((s) => s.view !== null));
 const HoyHost = lazyWhen(() => import("./hoy/Hoy").then((m) => ({ default: m.HoyHost })), () => useHoy((s) => s.notice || s.reader));
+const ArcadePanel = lazyWhen(() => import("./arcade/ArcadePanel").then((m) => ({ default: m.ArcadePanel })), () => useArcadeUi((st) => st.open));
 const GuidedTour = lazyWhen(() => import("./features/GuidedTour").then((m) => ({ default: m.GuidedTour })), () => useUI((s) => s.tourStep !== null));
 const FlyInvite = lazyWhen(() => import("./airport/FlyInvite").then((m) => ({ default: m.FlyInvite })), () => useUI((s) => s.airportOpen));
 const FlightLayer = lazyWhen(() => import("./airport/FlightLayer").then((m) => ({ default: m.FlightLayer })), () => useFlight((s) => s.step !== null || s.world !== "mall" || s.returnOpen));
@@ -309,6 +311,7 @@ function Shell() {
       <HoyHost />
       <Toasts />
       <GuidedTour />
+      <ArcadePanel />
       <InstallLayer />
       <StampToast />
       <ClueModal />
