@@ -221,7 +221,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                     if (import.meta.env.DEV && space.label === 'D-05' && new URLSearchParams(location.search).has('vp')) // TEMP-VP
                       return (
                         <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>
-                          <VeneplastAnchorStore width={10.6} depth={6.6} />
+                          <VeneplastAnchorStore width={9.8} depth={6.2} />
                         </group>
                       )
                     return (

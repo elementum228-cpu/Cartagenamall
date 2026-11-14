@@ -43,13 +43,15 @@ export interface VeneplastAnchorStoreProps {
 
 /** Alto de cada piso. */
 const FLOOR_H = 3.3
+/** Altura de la planta alta: más baja que la de abajo para que el ancla no domine el pasillo (≈1,8 pisos en total). */
+const UP_H = 2.7
 
 /**
  * Huella y medidas del edificio, para colocarlo y detectar choques sin renderizarlo.
  * `bounds` está en el espacio local del componente (antes de aplicar posición, rotación y escala).
  */
 export function veneplastFootprint(width = 12, depth = 8) {
-  const height = FLOOR_H * 2 + 1.5
+  const height = FLOOR_H + UP_H + 0.9
   return {
     storeId: VENEPLAST_STORE_ID,
     width,
@@ -128,7 +130,7 @@ const GIFTS = ['#e8573f', '#2f86d6', '#f3b234', '#3aa57a']
 export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, width = 12, depth = 8, showInterior = true, interactive = true, onOpen }: VeneplastAnchorStoreProps) {
   const w = width
   const d = depth
-  const H = FLOOR_H * 2
+  const H = FLOOR_H + UP_H
   const front = d / 2
   // lo estático se funde en pocas mallas; solo cambia si cambian las medidas
   const version = `veneplast-${w}x${d}-${showInterior ? 'i' : 'x'}`
@@ -138,7 +140,7 @@ export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0
 
   const navy = mat(VENEPLAST.navy)
   const navy2 = mat(VENEPLAST.navy2)
-  const roof = mat("#22407f")
+  const roof = mat('#2c4a8c')
   const gold = mat(VENEPLAST.gold, { emissive: 0.28 })
   const white = mat(VENEPLAST.white)
   const dark = mat('#101a33')
@@ -152,7 +154,7 @@ export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0
   const winTop = sillH + winH
   const doorH = 2.45
   const upSill = FLOOR_H + 0.1 + 0.3
-  const upTop = upSill + 2.2
+  const upTop = upSill + 1.85
   const signW = Math.min(w * 0.56, 7.4)
   const signH = signW / S.aspect
 
@@ -234,13 +236,11 @@ export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0
           <mesh geometry={GEO.box} material={white} position={[0, FLOOR_H, front + 0.03]} scale={[w + 0.12, 0.12, 0.14]} />
           <mesh geometry={GEO.box} material={navy2} position={[0, 0.16, front + 0.04]} scale={[w + 0.1, 0.32, 0.12]} />
 
-          {/* azotea: antepecho y un volumen central escalonado que da jerarquía */}
+          {/* azotea limpia: solo un antepecho bajo */}
           <mesh geometry={GEO.box} material={navy2} position={[0, H + 0.34, front + 0.1]} scale={[w + 0.3, 0.28, 0.18]} />
           <mesh geometry={GEO.box} material={navy2} position={[0, H + 0.34, -front - 0.1]} scale={[w + 0.3, 0.28, 0.18]} />
           <mesh geometry={GEO.box} material={navy2} position={[-w / 2 - 0.1, H + 0.34, 0]} scale={[0.18, 0.28, d + 0.3]} />
           <mesh geometry={GEO.box} material={navy2} position={[w / 2 + 0.1, H + 0.34, 0]} scale={[0.18, 0.28, d + 0.3]} />
-          <mesh geometry={GEO.rounded} material={navy2} position={[0, H + 0.2 + 0.55, front * 0.15]} scale={[w * 0.5, 1.1, d * 0.5]} castShadow />
-          <mesh geometry={GEO.box} material={roof} position={[0, H + 0.2 + 1.12, front * 0.15]} scale={[w * 0.5 + 0.2, 0.12, d * 0.5 + 0.2]} />
 
           {/* ── vitrinas de planta baja a ambos lados de la entrada: marcos, vidrio y luz cálida detrás ── */}
           {[-1, 1].map((s) => {
@@ -277,11 +277,10 @@ export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0
           })}
           {/* franja amarilla fina: acento, no protagonista */}
           <mesh geometry={GEO.box} material={GOLD_GLOW()} position={[0, FLOOR_H + 0.16, front + 0.1]} scale={[w - 0.5, 0.06, 0.06]} />
-          <mesh geometry={GEO.box} material={GOLD_GLOW()} position={[0, H - 0.16, front + 0.1]} scale={[w - 0.5, 0.05, 0.06]} />
 
           {/* aletas amarillas verticales en la esquina (reconocibles de lejos) */}
           {[0, 1, 2].map((i) => (
-            <mesh key={i} geometry={GEO.box} material={gold} position={[-w / 2 + 0.55 + i * 0.34, FLOOR_H + 0.3 + 1.25, front + 0.18]} scale={[0.18, 2.5, 0.16]} castShadow />
+            <mesh key={i} geometry={GEO.box} material={gold} position={[-w / 2 + 0.55 + i * 0.3, FLOOR_H + 0.3 + 0.8, front + 0.16]} scale={[0.14, 1.6, 0.12]} castShadow />
           ))}
 
           {/* ── entrada: puertas dobles de vidrio, toldo amarillo y luces cálidas ── */}
@@ -315,7 +314,7 @@ export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0
 
           {/* costados: ventanas sobrias para que el edificio no quede ciego al girarlo */}
           {[-1, 1].map((s) =>
-            [FLOOR_H * 0.5 + 0.3, FLOOR_H * 1.5 + 0.2].map((y) =>
+            [FLOOR_H * 0.5 + 0.3, FLOOR_H + 1.45].map((y) =>
               [-1, 1].map((q) => (
                 <group key={`${s}${y}${q}`} position={[s * (w / 2 + 0.02), y, q * (d / 4)]}>
                   <mesh geometry={GEO.box} material={navy2} scale={[0.1, 1.5, 1.9]} />
@@ -326,6 +325,10 @@ export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0
             ),
           )}
 
+          {/* cinta clara que rodea el edificio entre pisos: los costados dejan de verse como muro liso */}
+          {[-1, 1].map((s) => (
+            <mesh key={s} geometry={GEO.box} material={white} position={[s * (w / 2 + 0.02), FLOOR_H, 0]} scale={[0.12, 0.12, d + 0.12]} />
+          ))}
           {/* luz interior: volumen tenue que aclara el interior de noche (no es una luz dinámica) */}
           <mesh geometry={GEO.box} material={INTERIOR()} position={[0, H / 2, 0]} scale={[w - 0.7, H - 0.5, d - 0.7]} />
           {/* piso interior por donde se asoman las vitrinas */}
@@ -341,14 +344,13 @@ export function VeneplastAnchorStore({ position = [0, 0, 0], rotation = [0, 0, 0
       <mesh geometry={GEO.plane} position={[0, (upSill + upTop) / 2, front + 0.07]} scale={[signW, signH, 1]}>
         <meshBasicMaterial map={S.texture} transparent toneMapped={false} />
       </mesh>
-      {/* disco amarillo con VP, sobre el volumen central de la azotea */}
-      <group position={[0, H + 0.2 + 1.55, front * 0.15 + (d * 0.5) / 2 + 0.12]}>
-        <mesh geometry={GEO.cylinder} material={gold} rotation={[Math.PI / 2, 0, 0]} scale={[1.7, 0.2, 1.7]} castShadow />
-        <mesh geometry={GEO.plane} position={[0, 0, 0.11]} scale={[1.25, 1.25, 1]}>
+      {/* disco amarillo con VP, asomado sobre la cornisa de la fachada */}
+      <group position={[0, H + 0.2 + 0.5, front + 0.12]}>
+        <mesh geometry={GEO.cylinder} material={gold} rotation={[Math.PI / 2, 0, 0]} scale={[1.3, 0.18, 1.3]} castShadow />
+        <mesh geometry={GEO.plane} position={[0, 0, 0.11]} scale={[0.95, 0.95, 1]}>
           <meshBasicMaterial map={E.texture} transparent toneMapped={false} />
         </mesh>
       </group>
-      <mesh geometry={GEO.box} material={GOLD_GLOW()} position={[0, H + 0.2 + 0.06, front * 0.15 + (d * 0.5) / 2 + 0.1]} scale={[w * 0.5, 0.05, 0.05]} />
 
       {/* halo cálido frente a la entrada (solo de noche) */}
       <mesh geometry={GEO.plane} material={POOL()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, front + 1.4]} scale={[w + 2.5, 4.2, 1]} />
