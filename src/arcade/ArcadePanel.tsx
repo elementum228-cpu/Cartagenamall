@@ -2,6 +2,7 @@ import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Trophy, Volume2
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFrameGate } from '../world/frameGate'
 import { usePrefs } from '../state/ui'
+import { useOnline } from '../lib/online'
 import { setArcadeSound, sfx, startMusic, stopMusic, suspendArcadeAudio, unlockArcadeAudio } from './audio'
 import { defaultNick, finishRun as finishRunRemote, startRun, type RunTicket } from './board'
 import { createGame, createRecorder, DIFFICULTIES, H, makeRand, MAX_WEAPON, STEP, update, W, type Difficulty, type Game, type Input } from './engine'
@@ -172,6 +173,7 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
   const best = useArcade((s) => s.best)
   const earnedToday = useArcade((s) => s.earnedToday)
   const playerId = useArcade((s) => s.playerId)
+  const online = useOnline()
   const canvas = useRef<HTMLCanvasElement>(null)
   const box = useRef<HTMLDivElement>(null)
   const game = useRef<Game | null>(null)
@@ -195,9 +197,10 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
       ticket.current = t
     })
   }, [playerId])
+  // al abrir y cada vez que vuelve la conexión se pide una partida al servidor (sin conexión se juega igual, solo sin ranking)
   useEffect(() => {
     prefetch()
-  }, [prefetch])
+  }, [prefetch, online])
   useEffect(() => {
     setArcadeSound(sound)
   }, [sound])
@@ -506,6 +509,11 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
             Récord: {best} · Hoy puedes ganar {daily} pts más
           </p>
         </>
+      )}
+      {!online && (
+        <p className="mx-auto mt-3 max-w-[310px] rounded-2xl bg-white/[0.07] px-3 py-2 text-[12.5px] leading-snug text-[#c8d3ff]">
+          <b className="text-white">Sin conexión:</b> puedes jugar igual. Tus puntos de premio se guardan en este celular; la partida no entra al ranking.
+        </p>
       )}
       <DifficultyPicker />
       <button

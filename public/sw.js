@@ -3,7 +3,8 @@
 // Archivos con hash en el nombre (assets/*-hash.js|css|woff2…) nunca cambian: copia guardada primero, sin volver a pedirlos.
 // Otros archivos del sitio (íconos, manifiesto): copia guardada y se refresca por detrás.
 // Nada de Supabase ni otros servicios se guarda aquí.
-const CACHE = 'cm-v4'
+// Sin conexión la app abre completa (la página avisa qué archivos ya bajó: mensaje «precache») y el Arcade se puede jugar.
+const CACHE = 'cm-v5'
 const SCOPE = new URL(self.registration.scope)
 const SHELL = new URL('./', SCOPE).href
 
@@ -17,6 +18,28 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
+  )
+})
+
+// La página manda la lista de archivos con hash que ya bajó (antes de que este service worker tomara el control no pasaron por aquí):
+// se guardan los que falten. Salen del caché del navegador, así que casi no cuestan red.
+self.addEventListener('message', (event) => {
+  if (!event.data || event.data.type !== 'precache' || !Array.isArray(event.data.urls)) return
+  event.waitUntil(
+    caches.open(CACHE).then(async (c) => {
+      for (const u of event.data.urls.slice(0, 120)) {
+        try {
+          const url = new URL(u)
+          if (!sameSite(url) || !/\/assets\/.+-[\w-]{8}\.(js|css|woff2?|png|webp|avif|svg|jpg)$/.test(url.pathname)) continue
+          if (await c.match(url.href, { ignoreVary: true })) continue
+          const res = await fetch(url.href)
+          if (res.ok) await c.put(url.href, res)
+        } catch {
+          /* sin red o archivo raro: se salta */
+        }
+      }
+      await trim(c)
+    }),
   )
 })
 
@@ -45,7 +68,7 @@ self.addEventListener('fetch', (event) => {
           if (res.ok) caches.open(CACHE).then((c) => c.put(SHELL, copy))
           return res
         })
-        .catch(() => caches.match(SHELL)),
+        .catch(() => caches.match(SHELL, { ignoreVary: true })),
     )
     return
   }
@@ -53,7 +76,7 @@ self.addEventListener('fetch', (event) => {
   if (sameSite(url) && /\/assets\/.+-[\w-]{8}\.(js|css|woff2?|png|webp|avif|svg|jpg)$/.test(url.pathname)) {
     event.respondWith(
       caches.open(CACHE).then(async (c) => {
-        const hit = await c.match(req)
+        const hit = await c.match(req, { ignoreVary: true })
         if (hit) return hit
         const res = await fetch(req)
         if (res.ok) {
@@ -69,7 +92,7 @@ self.addEventListener('fetch', (event) => {
   if (sameSite(url) || fonts(url)) {
     event.respondWith(
       caches.open(CACHE).then(async (c) => {
-        const hit = await c.match(req)
+        const hit = await c.match(req, { ignoreVary: true })
         const net = fetch(req)
           .then((res) => {
             if (res.ok || res.type === 'opaque') c.put(req, res.clone())

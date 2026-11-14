@@ -27,6 +27,7 @@ import { useHoy } from "./hoy/store";
 import { useFlight } from "./airport/flight";
 import { useCineUi } from "./state/cineUi";
 import { lazyWhen, prefetchIdle } from "./ui/lazyWhen";
+import { OfflineBanner } from "./ui/OfflineBanner";
 import { useArcadeUi } from "./arcade/store";
 import { detectProfile } from "./lib/deviceProfile";
 import { RouteFallback } from "./ui/RouteFallback";
@@ -189,8 +190,8 @@ function Shell() {
     const low = detectProfile().tier === "low";
     return prefetchIdle(
       low
-        ? [StoreSheet.preload, SpaceSheet.preload]
-        : [StoreSheet.preload, SpaceSheet.preload, ...(tourDone() ? [] : [GuidedTour.preload]), ShopPage.preload, ProductSheet.preload, OffersPage.preload, CartPage.preload, HoyHost.preload],
+        ? [StoreSheet.preload, SpaceSheet.preload, ArcadePanel.preload]
+        : [StoreSheet.preload, SpaceSheet.preload, ...(tourDone() ? [] : [GuidedTour.preload]), ShopPage.preload, ProductSheet.preload, OffersPage.preload, CartPage.preload, HoyHost.preload, ArcadePanel.preload],
       low ? 9000 : 3500,
     );
   }, [doorDone]);
@@ -311,6 +312,7 @@ function Shell() {
       <Toasts />
       <GuidedTour />
       <ArcadePanel />
+      <OfflineBanner />
       <InstallLayer />
       <StampToast />
       <ClueModal />
