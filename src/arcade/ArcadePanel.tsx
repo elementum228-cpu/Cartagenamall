@@ -1,4 +1,4 @@
-import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Trophy, Volume2, VolumeX, X } from 'lucide-react'
+import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFrameGate } from '../world/frameGate'
 import { usePrefs } from '../state/ui'
@@ -9,6 +9,8 @@ import { createGame, createRecorder, DIFFICULTIES, H, makeRand, MAX_WEAPON, STEP
 import { draw } from './render'
 import { DAILY_POINTS_CAP, useArcade, useArcadeUi } from './store'
 import { Prizes, Ranking } from './ArcadeTabs'
+import '@fontsource/press-start-2p/latin-400.css'
+import './arcade.css'
 
 // Pantalla de arcade de la isla de Entretenimiento: el juego «Nave Caribe» (canvas 2D), su música (que se puede apagar), el ranking de la
 // semana y los premios. Mientras se juega, la partida ocupa TODA la pantalla. El bucle de dibujo solo corre mientras se juega: en el menú,
@@ -73,15 +75,15 @@ function Cabinet({ onClose }: { onClose: () => void }) {
       {/* mientras se juega, la partida cubre la pantalla: el encabezado y las pestañas quedan ocultos para lectores de pantalla */}
       <div className="flex flex-col gap-2.5" aria-hidden={playing}>
         <div className="flex items-center gap-2">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e0558a] text-white">
+          <div className="grid size-10 shrink-0 place-items-center border-[3px] border-[#07031a] bg-[#ff2bd6] text-white shadow-[3px_3px_0_#07031a]">
             <Gamepad2 className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[15px] leading-tight font-extrabold tracking-tight text-white">ARCADE</h2>
-            <p className="truncate text-[12px] font-semibold text-[#9fb3ff]">Nave Caribe · Entretenimiento</p>
+            <h2 className="font-arcade arcade-cyan truncate text-[13px]">ARCADE</h2>
+            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">NAVE CARIBE</p>
           </div>
-          <span className="rounded-full bg-[#ffc83d] px-3 py-1.5 text-[13px] font-extrabold text-[#2a1a00]" aria-label={`${points} puntos`}>
-            {points} pts
+          <span className="font-arcade border-[3px] border-[#07031a] bg-[#ffd400] px-2.5 py-2 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]" aria-label={`${points} puntos`}>
+            {points} PTS
           </span>
           <SoundButton className="bg-white/10 active:bg-white/20" />
           <button onClick={onClose} aria-label="Cerrar el arcade" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-white active:bg-white/20">
@@ -101,7 +103,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
               role="tab"
               aria-selected={tab === id}
               onClick={() => setTab(id)}
-              className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-[14px] font-bold transition ${tab === id ? 'bg-[#4de1ff] text-[#04202b]' : 'bg-white/10 text-white'}`}
+              className={`font-arcade flex min-h-11 flex-1 items-center justify-center gap-2 border-[3px] text-[9px] uppercase transition active:translate-y-px ${tab === id ? 'border-[#07031a] bg-[#00f0ff] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]' : 'border-[#1d0b52] bg-[#12063a] text-[#e8ffff]'}`}
             >
               <Icon className="size-4" />
               {label}
@@ -140,7 +142,7 @@ function DifficultyPicker() {
   const setDifficulty = useArcade((s) => s.setDifficulty)
   return (
     <div className="mx-auto mt-4 w-full max-w-[330px]">
-      <p className="mb-2 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Dificultad</p>
+      <p className="font-arcade mb-2.5 text-[9px] text-[#ff2bd6]">ELIGE NIVEL</p>
       <div role="radiogroup" aria-label="Dificultad" className="grid grid-cols-4 gap-1.5">
         {DIFFICULTIES.map((d) => {
           const on = difficulty === d.id
@@ -151,11 +153,11 @@ function DifficultyPicker() {
               role="radio"
               aria-checked={on}
               onClick={() => setDifficulty(d.id)}
-              style={on ? { borderColor: c, boxShadow: `0 0 16px -4px ${c}`, color: c } : undefined}
-              className={`flex min-h-[58px] flex-col items-center justify-center rounded-2xl border-2 px-1 py-1.5 transition active:scale-95 ${on ? 'bg-white/10' : 'border-white/10 bg-white/[0.05] text-white/80'}`}
+              style={on ? { color: c, background: '#1d0b52' } : undefined}
+              className="arcade-chip font-arcade flex min-h-[62px] flex-col items-center justify-center px-0.5 py-1.5 transition active:translate-y-px"
             >
-              <span className="text-[13px] leading-tight font-extrabold">{d.name}</span>
-              <span className="mt-0.5 text-[12px] font-bold tabular-nums">{multLabel(d.mult)}</span>
+              <span className="text-[7px] leading-tight uppercase">{d.name}</span>
+              <span className="mt-1.5 text-[9px]">{multLabel(d.mult)}</span>
             </button>
           )
         })}
@@ -171,6 +173,8 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
   const quality = usePrefs((s) => s.quality)
   const sound = useArcade((s) => s.sound)
   const best = useArcade((s) => s.best)
+  const bestRef = useRef(best)
+  bestRef.current = best
   const earnedToday = useArcade((s) => s.earnedToday)
   const playerId = useArcade((s) => s.playerId)
   const online = useOnline()
@@ -230,7 +234,7 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
     const g = game.current
     if (ctx && g && phaseRef.current !== 'play') {
       ctx.setTransform(scale.current, 0, 0, scale.current, 0, 0)
-      draw(g, ctx, true)
+      draw(g, ctx, true, { hi: best, crt: quality !== 'low' })
     }
   }, [])
 
@@ -290,7 +294,7 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
       if (gate.shouldRender(now)) {
         gate.step(now)
         ctx.setTransform(scale.current, 0, 0, scale.current, 0, 0)
-        draw(g, ctx, reduce)
+        draw(g, ctx, reduce, { hi: bestRef.current, crt: quality !== 'low' })
       }
       if (g.over) {
         stop()
@@ -319,6 +323,7 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
 
   const start = () => {
     unlockArcadeAudio()
+    sfx('coin')
     // con partida del servidor (cuenta para el ranking) o, sin conexión, con semilla local (solo para jugar)
     const t = ticket.current
     ticket.current = null
@@ -416,13 +421,13 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
           )}
           {phase === 'pause' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#070b24]/85 px-6 text-center text-white">
-              <h3 className="text-3xl font-extrabold">En pausa</h3>
+              <h3 className="font-arcade arcade-title text-[24px]">PAUSA</h3>
               <button
                 autoFocus
                 onClick={resume}
-                className="mt-1 flex min-h-12 items-center gap-2 rounded-full bg-[#4de1ff] px-8 text-[16px] font-extrabold text-[#04202b] active:scale-95"
+                className="arcade-btn font-arcade mt-1 flex min-h-12 items-center gap-2 px-7 text-[12px]"
               >
-                <PlayIcon className="size-5" /> Seguir
+                <PlayIcon className="size-4 fill-current" /> SEGUIR
               </button>
               <div className="mt-1 flex items-center gap-2">
                 <SoundButton className="bg-white/10 active:bg-white/20" />
@@ -441,13 +446,18 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
 
   // ── Menú y fin de partida ────────────────────────────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-0 flex-col overflow-y-auto rounded-3xl border-2 border-[#4de1ff]/50 bg-gradient-to-b from-[#0b1448] to-[#070b24] px-5 py-6 text-center text-white shadow-[0_0_28px_-6px_#4de1ff]">
+    <div className="arcade-frame flex min-h-0 flex-col overflow-y-auto px-5 py-6 text-center text-white">
       {phase === 'over' && result ? (
         <>
-          <Trophy className="mx-auto size-10 text-[#ffc83d]" />
-          <h3 className="mt-1 text-2xl font-extrabold">{result.record ? '¡Nuevo récord!' : 'Fin de la partida'}</h3>
-          <p className="mt-1 text-6xl leading-none font-extrabold tabular-nums">{result.score}</p>
-          <p className="mt-1 text-[13px] font-extrabold" style={{ color: DIFF_STYLE[result.difficulty].color }}>
+          <h3 className="font-arcade mt-1 text-[26px] text-[#ff2b2b]" style={{ textShadow: '3px 3px 0 #07031a, 6px 6px 0 #7a0a3a' }}>
+            GAME OVER
+          </h3>
+          {result.record && <p className="font-arcade arcade-blink mt-4 text-[11px] text-[#ffd400]">¡NUEVO RÉCORD!</p>}
+          <p className="font-arcade mt-4 text-[9px] text-[#00f0ff]">PUNTAJE</p>
+          <p className="font-arcade mt-2 text-[28px] leading-none text-white" style={{ textShadow: '3px 3px 0 #ff2bd6' }}>
+            {String(result.score).padStart(6, '0')}
+          </p>
+          <p className="font-arcade mt-3 text-[9px] uppercase" style={{ color: DIFF_STYLE[result.difficulty].color }}>
             {DIFFICULTIES[result.difficulty].name} · {multLabel(DIFFICULTIES[result.difficulty].mult)}
           </p>
           <p className="mt-2 text-[15px] font-bold text-[#ffc83d]">+{result.awarded} puntos de premio</p>
@@ -471,10 +481,12 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
         </>
       ) : (
         <>
-          <span className="mx-auto grid size-16 place-items-center rounded-3xl bg-gradient-to-br from-[#4de1ff] to-[#2f86ff] text-[#04202b] shadow-[0_10px_30px_-10px_#4de1ff]">
-            <Rocket className="size-9" />
-          </span>
-          <h3 className="mt-3 text-3xl font-extrabold tracking-tight">Nave Caribe</h3>
+          <h3 className="font-arcade arcade-title mt-1 text-[26px] leading-[1.3]">
+            NAVE
+            <br />
+            CARIBE
+          </h3>
+          <p className="font-arcade arcade-blink mt-4 text-[10px] text-[#00f0ff]">INSERT COIN</p>
           <p className="mx-auto mt-1 max-w-[300px] text-[13.5px] leading-snug text-[#c8d3ff]">
             Arrastra la nave: dispara sola. Destruye los círculos y esquívalos: la partida no se acaba hasta que te quedes sin vidas.
           </p>
@@ -516,16 +528,12 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
         </p>
       )}
       <DifficultyPicker />
-      <button
-        autoFocus
-        onClick={start}
-        className="mx-auto mt-5 flex min-h-14 items-center gap-2 rounded-full bg-[#4de1ff] px-10 text-[17px] font-extrabold text-[#04202b] shadow-[0_12px_28px_-12px_#4de1ff] active:scale-95"
-      >
-        <PlayIcon className="size-5" />
-        {phase === 'over' ? 'Jugar otra vez' : 'Jugar'}
+      <button autoFocus onClick={start} className="arcade-btn font-arcade mx-auto mt-6 flex min-h-14 items-center gap-3 px-8 text-[13px]">
+        <PlayIcon className="size-4 fill-current" />
+        {phase === 'over' ? 'OTRA VEZ' : 'JUGAR'}
       </button>
-      <button onClick={onExit} className="mx-auto mt-1 min-h-11 px-4 text-[13px] font-semibold text-[#9fb3ff] underline underline-offset-2">
-        Salir del arcade
+      <button onClick={onExit} className="font-arcade mx-auto mt-2 min-h-11 px-4 text-[9px] text-[#9fb3ff] underline underline-offset-4">
+        SALIR DEL ARCADE
       </button>
     </div>
   )

@@ -149,7 +149,7 @@ export function suspendArcadeAudio() {
   if (ac && ac.state === 'running') void ac.suspend()
 }
 
-export type Sfx = 'pop' | 'power' | 'hurt' | 'over' | 'record'
+export type Sfx = 'pop' | 'power' | 'hurt' | 'over' | 'record' | 'coin'
 
 /** Efectos cortos: destruir un enemigo, recoger un premio, recibir un golpe, fin de la partida y récord. */
 export function sfx(kind: Sfx) {
@@ -157,7 +157,8 @@ export function sfx(kind: Sfx) {
   if (!c || !on || !sfxBus) return
   if (c.state === 'suspended') return
   const t = c.currentTime
-  if (kind === 'pop') tone('triangle', 520, t, 0.3, 0.1, sfxBus, 980)
+  if (kind === 'coin') [988, 1319].forEach((f, i) => tone('square', f, t + i * 0.07, 0.22, i ? 0.32 : 0.09, sfxBus!))
+  else if (kind === 'pop') tone('triangle', 520, t, 0.3, 0.1, sfxBus, 980)
   else if (kind === 'power') [660, 880, 1320].forEach((f, i) => tone('square', f, t + i * 0.055, 0.2, 0.12, sfxBus!))
   else if (kind === 'hurt') {
     tone('sawtooth', 240, t, 0.35, 0.28, sfxBus, 70)
