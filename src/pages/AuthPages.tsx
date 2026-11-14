@@ -1,4 +1,4 @@
-import { AlertCircle, ClipboardList, Eye, EyeOff, Gamepad2, Heart, KeyRound, Lock, Mail, ShoppingBag, UserPlus, UserRound, type LucideIcon } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, KeyRound, Lock, Mail, ShoppingBag, UserPlus, UserRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
@@ -147,7 +147,7 @@ export function AuthLoginPage() {
 export function RegisterPage() {
   const { signUp } = useSession()
   const navigate = useNavigate()
-  const { redirect, target, fromCheckout } = useAfterAuth()
+  const { redirect, target } = useAfterAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -168,7 +168,7 @@ export function RegisterPage() {
   }
   const q = redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''
   return (
-    <Shell title="Crea tu cuenta" subtitle="Gratis y en un minuto. Con ella el mall se acuerda de ti." icon={UserPlus} fromCheckout={fromCheckout}>
+    <Shell title="Crea tu cuenta" subtitle="Gratis y en un minuto." icon={UserPlus} fromCheckout={false}>
       {confirm ? (
         <div className="mt-7 rounded-2xl bg-teal/10 p-5 text-[15px] leading-snug">
           <Mail className="mb-2 size-6 text-teal" strokeWidth={1.8} />
@@ -178,22 +178,6 @@ export function RegisterPage() {
         </div>
       ) : (
         <>
-          <ul className="mt-5 flex flex-col gap-2">
-            {(
-              [
-                [Heart, 'Guarda tus tiendas y productos favoritos'],
-                [ClipboardList, 'Sigue el estado de tus pedidos'],
-                [Gamepad2, 'Juega en el Arcade y gana premios'],
-              ] as const
-            ).map(([Icon, text]) => (
-              <li key={text} className="flex items-center gap-3 text-[14px] font-medium">
-                <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-teal/10 text-teal">
-                  <Icon className="size-4" strokeWidth={2} />
-                </span>
-                {text}
-              </li>
-            ))}
-          </ul>
           <form className="mt-6 flex flex-col gap-4" onSubmit={submit} noValidate>
             <EmailField value={email} onChange={setEmail} />
             <div>
