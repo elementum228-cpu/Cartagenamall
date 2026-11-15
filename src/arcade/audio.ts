@@ -13,6 +13,7 @@ let nextAt = 0
 let step = 0
 let on = true
 
+const MUSIC_LEVEL = 0.5
 const STEP_S = 60 / 132 / 4 // semicorchea a 132 BPM
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12)
 
@@ -37,7 +38,7 @@ function context(): AudioContext | null {
     master.gain.value = 0.9
     master.connect(ac.destination)
     musicBus = ac.createGain()
-    musicBus.gain.value = 0.5
+    musicBus.gain.value = MUSIC_LEVEL
     musicBus.connect(master)
     sfxBus = ac.createGain()
     sfxBus.gain.value = 0.85
@@ -167,10 +168,11 @@ export function startMusic() {
   const c = context()
   if (!c || !on || timer) return
   if (c.state === 'suspended') void c.resume()
-  if (master) {
-    master.gain.cancelScheduledValues(c.currentTime)
-    master.gain.setValueAtTime(master.gain.value, c.currentTime)
-    master.gain.linearRampToValueAtTime(0.9, c.currentTime + 0.15)
+  // el volumen general nunca se baja (los efectos pasan por ahí); solo se sube/baja el de la música
+  if (musicBus) {
+    musicBus.gain.cancelScheduledValues(c.currentTime)
+    musicBus.gain.setValueAtTime(Math.max(musicBus.gain.value, 0.0001), c.currentTime)
+    musicBus.gain.linearRampToValueAtTime(MUSIC_LEVEL, c.currentTime + 0.15)
   }
   nextAt = c.currentTime + 0.08
   timer = window.setInterval(() => {
@@ -190,10 +192,11 @@ export function stopMusic() {
     timer = 0
   }
   step = 0
-  if (ac && master) {
-    master.gain.cancelScheduledValues(ac.currentTime)
-    master.gain.setValueAtTime(master.gain.value, ac.currentTime)
-    master.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 0.12)
+  // Solo se apaga la música. Antes se bajaba el volumen general y los sonidos de después (recibo de tiquetes, timbre final) quedaban mudos.
+  if (ac && musicBus) {
+    musicBus.gain.cancelScheduledValues(ac.currentTime)
+    musicBus.gain.setValueAtTime(musicBus.gain.value, ac.currentTime)
+    musicBus.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 0.12)
   }
 }
 
@@ -232,29 +235,38 @@ function playCoin(c: AudioContext) {
 }
 
 /** Cuánto dura la tirita al salir (segundos): más tiquetes, un poco más larga. */
-export const ticketDuration = (count: number) => Math.min(40, 18 + Math.floor(count / 2)) * 0.05
+/** Cada cuántos segundos sale un tiquete: más tiquetes, más rápido (pero todos se ven y se oyen). */
+export const ticketInterval = (count: number) => Math.min(0.2, Math.max(0.06, 2.4 / Math.max(1, count)))
+/** Cuánto tarda en salir toda la tanda (segundos). */
+export const ticketDuration = (count: number) => count * ticketInterval(count)
 
+/**
+ * Sonido de «recibir tiquetes», como en las ferias: por cada tiquete que sale, el «tz» de la impresora y su golpecito mecánico, cada vez
+ * un poco más agudo, un «ding» cada cinco y, al final, un arpegio de celebración. Va al ritmo exacto de la animación.
+ */
 export function ticketPrint(count: number): number {
   const dur = ticketDuration(count)
-  if (!on) return dur
+  if (!on || count < 1) return dur
   whenRunning((c) => playPrint(c, count))
   return dur
 }
 
 function playPrint(c: AudioContext, count: number) {
   if (!sfxBus) return
-  const n = Math.min(40, 18 + Math.floor(count / 2))
-  const gap = 0.05
-  const dur = ticketDuration(count)
-  const t = c.currentTime + 0.05
-  // (tone: tipo, frecuencia, momento, VOLUMEN, duración): antes el volumen era de 0,03 y casi no se oía
-  for (let i = 0; i < n; i++) {
+  const gap = ticketInterval(count)
+  const t = c.currentTime + 0.12
+  // (tone: tipo, frecuencia, momento, VOLUMEN, duración)
+  for (let i = 0; i < count; i++) {
     const at = t + i * gap
-    tone('square', 1100 + ((i * 37) % 5) * 90, at, 0.45, 0.035, sfxBus) // el «tz» de la impresora
-    tone('sawtooth', 190, at, 0.4, 0.03, sfxBus, 80) // el golpecito del rodillo
-    click(at, 0.9)
+    const rise = 1 + Math.min(0.5, i * 0.012)
+    tone('square', 1000 * rise + ((i * 37) % 5) * 60, at, 0.2, 0.04, sfxBus) // el «tz» de la impresora
+    tone('sawtooth', 200, at, 0.22, 0.035, sfxBus, 80) // el golpecito del rodillo
+    click(at, 0.4)
+    if ((i + 1) % 5 === 0) tone('sine', 1568 * rise, at + 0.01, 0.16, 0.18, sfxBus) // «ding» cada cinco
   }
-  ;[1319, 1760].forEach((f, i) => tone('triangle', f, t + dur + 0.04 + i * 0.09, 0.45, 0.4, sfxBus!))
+  const end = t + count * gap + 0.05
+  ;[784, 988, 1175, 1568].forEach((f, i) => tone('triangle', f, end + i * 0.08, 0.3, 0.45, sfxBus!)) // celebración
+  tone('sine', 2093, end + 0.32, 0.16, 0.5, sfxBus)
 }
 
 export type Sfx = 'pop' | 'power' | 'hurt' | 'over' | 'record' | 'coin'

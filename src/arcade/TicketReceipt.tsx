@@ -1,68 +1,118 @@
 import { Gift, Play as PlayIcon, Ticket } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ticketDuration, ticketPrint, unlockArcadeAudio } from './audio'
+import { ticketInterval, ticketPrint, unlockArcadeAudio } from './audio'
 import './arcade.css'
 
-// «Recibir tiquetes»: al terminar una partida sale de la máquina una tirita de papel (a pasos, con el sonido de la impresora de las
-// ferias), con el puntaje, los tiquetes ganados contando hasta su valor y el total acumulado. Al terminar de salir aparecen las dos
-// opciones: ver las recompensas o seguir jugando.
+// «Recibir tiquetes»: al terminar una partida salen de la máquina tantos tiquetes de colores como ganaste, uno tras otro (cada uno con
+// su «tz» de impresora), y se van apilando juntitos. Al final dice cuántos ganaste y cuántos tienes en total, con las dos opciones:
+// ver las recompensas o seguir jugando.
 
-const BARS = Array.from({ length: 34 }, (_, i) => 1 + ((i * 7 + (i % 3) * 5) % 4))
+const COLORS = ['#f0791a', '#f0608a', '#27a0d8', '#f4be2c', '#45c186']
+/** Cuántos tiquetes se ven a la vez en la pila (los demás se siguen contando). */
+const PILE = 14
+const T_W = 210
+const T_H = 62
+
+/** Un tiquete: borde dentado a los lados, marco rojo, «TICKET» al centro y el número de serie a cada lado. */
+function TicketArt({ color, serial }: { color: string; serial: number }) {
+  const teeth = 9
+  const step = T_H / teeth
+  const f = (n: number) => n.toFixed(1)
+  // borde dentado: baja por la derecha y sube por la izquierda, con una muesca por diente
+  let d = `M0 0 L${T_W} 0`
+  for (let i = 0; i < teeth; i++) d += ` L${f(T_W - 4)} ${f(i * step + step / 2)} L${T_W} ${f((i + 1) * step)}`
+  d += ` L0 ${T_H}`
+  for (let i = 0; i < teeth; i++) d += ` L4 ${f(T_H - i * step - step / 2)} L0 ${f(T_H - (i + 1) * step)}`
+  d += ' Z'
+  return (
+    <svg viewBox={`0 0 ${T_W} ${T_H}`} width={T_W} height={T_H} aria-hidden>
+      <path d={d} fill={color} />
+      <rect x="9" y="5" width={T_W - 18} height={T_H - 10} rx="5" fill="none" stroke="#d6283a" strokeWidth="1.6" />
+      <line x1="34" y1="5" x2="34" y2={T_H - 5} stroke="#d6283a" strokeWidth="1.4" />
+      <line x1={T_W - 34} y1="5" x2={T_W - 34} y2={T_H - 5} stroke="#d6283a" strokeWidth="1.4" />
+      <text x={T_W / 2} y={T_H / 2 + 8} textAnchor="middle" fontSize="22" fontWeight="900" fill="#14101e" fontFamily="ui-sans-serif, system-ui, -apple-system, Arial, sans-serif" letterSpacing="1">
+        TICKET
+      </text>
+      {[22, T_W - 22].map((x, i) => (
+        <text key={x} x={x} y={T_H / 2} textAnchor="middle" fontSize="9" fontWeight="700" fill="#14101e" fontFamily="ui-monospace, Menlo, monospace" transform={`rotate(${i ? 90 : -90} ${x} ${T_H / 2})`}>
+          {serial}
+        </text>
+      ))}
+    </svg>
+  )
+}
+
+/** Posición de reposo de cada tiquete de la pila: apilados hacia arriba, ladeados y corridos un poco (como cayeron). */
+const spot = (i: number) => {
+  const j = i % PILE
+  const r = (n: number) => {
+    const x = Math.sin((i + 1) * 12.9898 + n * 78.233) * 43758.5453
+    return x - Math.floor(x)
+  }
+  return { y: 12 + (PILE - 1 - j) * 12, x: (r(1) - 0.5) * 44, rot: (r(2) - 0.5) * 12 }
+}
 
 export function TicketReceipt({ game, score, awarded, total, capped, onPrizes, onAgain }: { game: string; score: number; awarded: number; total: number; capped?: boolean; onPrizes: () => void; onAgain?: () => void }) {
   const reduce = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
-  const dur = useRef(ticketDuration(awarded))
   const [shown, setShown] = useState(reduce ? awarded : 0)
-  const [done, setDone] = useState(reduce)
+  const [done, setDone] = useState(reduce || awarded < 1)
 
   useEffect(() => {
     ticketPrint(awarded)
-    if (reduce) return
-    const t0 = performance.now()
+    if (reduce || awarded < 1) return
+    const every = ticketInterval(awarded) * 1000
+    const t0 = performance.now() + 140
     let raf = 0
+    let end = 0
     const tick = (now: number) => {
-      const u = Math.min(1, (now - t0) / (dur.current * 1000))
-      setShown(Math.round(awarded * u))
-      if (u < 1) raf = requestAnimationFrame(tick)
-      else setDone(true)
+      const k = now < t0 ? 0 : Math.min(awarded, Math.floor((now - t0) / every) + 1)
+      setShown(k)
+      if (k < awarded) raf = requestAnimationFrame(tick)
+      else end = window.setTimeout(() => setDone(true), 500)
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(end)
+    }
   }, [awarded, reduce])
 
-  const style = { ['--receipt-dur' as string]: `${dur.current}s` }
-  const date = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
+  const first = Math.max(0, shown - PILE)
+  const ids = Array.from({ length: shown - first }, (_, k) => first + k)
   return (
-    <div className="mx-auto flex w-full max-w-[290px] flex-col items-stretch" style={style} aria-live="polite">
-      <div className="receipt-slot" aria-hidden />
-      <div className="receipt-window mx-3">
-        <div className="receipt-paper px-4 pt-4 pb-5 text-center text-[12.5px] leading-tight">
-          <p className="text-[13px] font-extrabold tracking-wider">★ ARCADE MALLPLAY ★</p>
-          <p className="mt-0.5 text-[11px] opacity-70">{game} · {date}</p>
-          <div className="my-2.5 border-t-2 border-dashed border-[#1a1530]/40" />
-          <div className="flex justify-between font-bold">
-            <span>PUNTAJE</span>
-            <span>{score}</span>
-          </div>
-          <div className="my-2.5 border-t-2 border-dashed border-[#1a1530]/40" />
-          <p className="text-[11px] font-bold tracking-widest">TIQUETES GANADOS</p>
-          <p className="my-1 text-[38px] leading-none font-black tabular-nums">+{shown}</p>
-          {capped && <p className="text-[10.5px] opacity-70">Tope de hoy alcanzado</p>}
-          <div className="my-2.5 border-t-2 border-dashed border-[#1a1530]/40" />
-          <div className="flex justify-between text-[13px] font-extrabold">
-            <span>TIENES</span>
-            <span className="tabular-nums">{done || reduce ? total : Math.max(0, total - awarded + shown)} TIQUETES</span>
-          </div>
-          <div className="mt-3 flex h-8 items-stretch justify-center gap-[2px]" aria-hidden>
-            {BARS.map((w, i) => (
-              <span key={i} className="bg-[#1a1530]" style={{ width: w }} />
-            ))}
-          </div>
-          <p className="mt-2 text-[10.5px] opacity-70">¡Gracias por jugar!</p>
-        </div>
+    <div className="mx-auto flex w-full max-w-[300px] flex-col items-center" aria-live="polite">
+      <p className="font-arcade text-[9px] text-[#00f0ff]">{game.toUpperCase()} · {score} PTS</p>
+      {/* máquina: la ranura de donde salen los tiquetes y, debajo, la pila */}
+      <div className="receipt-slot mt-2 w-[250px]" aria-hidden />
+      <div className="relative -mt-1 h-[236px] w-[250px] overflow-hidden" aria-hidden>
+        {ids.map((i) => {
+          const p = spot(i)
+          return (
+            <div
+              key={i}
+              className={`absolute left-1/2 ${reduce ? '' : 'ticket-drop'}`}
+              style={{ top: p.y, marginLeft: -T_W / 2 + p.x, zIndex: i % 1000, ['--rot' as string]: `${p.rot}deg`, ['--rot0' as string]: `${-p.rot * 2}deg`, transform: `rotate(${p.rot}deg)`, filter: 'drop-shadow(0 3px 0 rgba(0,0,0,.28))' }}
+            >
+              <TicketArt color={COLORS[i % COLORS.length]} serial={371416 + i} />
+            </div>
+          )
+        })}
+        {awarded < 1 && <p className="absolute inset-x-0 top-16 text-center text-[13px] text-[#c8d3ff]">Esta vez no hubo tiquetes. ¡Inténtalo otra vez!</p>}
       </div>
-      <div className="receipt-actions mt-5 flex flex-col items-center gap-2">
+      <div className="mt-1 text-center">
+        <p className="font-arcade text-[9px] text-[#ffd400]">{done ? '¡GANASTE!' : 'TIQUETES'}</p>
+        <p className={`font-arcade text-[34px] leading-none text-white tabular-nums ${done && awarded > 0 ? 'ticket-pop' : ''}`} style={{ textShadow: '3px 3px 0 #ff2bd6' }}>
+          +{shown}
+        </p>
+        {done && (
+          <p className="receipt-actions mt-2 text-[13px] font-bold text-[#e8ffff]" style={{ ['--receipt-dur' as string]: '0s' }}>
+            Ahora tienes <span className="text-[#ffd400]">{total}</span> {total === 1 ? 'tiquete' : 'tiquetes'}
+            {capped ? ' · tope por partida alcanzado' : ''}
+          </p>
+        )}
+      </div>
+      <div className={`mt-4 flex min-h-[110px] flex-col items-center gap-2 ${done ? 'receipt-actions' : 'invisible'}`} style={{ ['--receipt-dur' as string]: '0s' }}>
         <button onClick={onPrizes} className="arcade-btn font-arcade flex min-h-12 items-center gap-2 px-6 text-[11px]">
           <Gift className="size-4" /> VER RECOMPENSAS
         </button>
