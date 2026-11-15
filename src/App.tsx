@@ -532,26 +532,38 @@ function BottomNav() {
   return (
     <nav
       data-tour="nav"
-      className="tour-hide chrome-in-bottom glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 h-16 rounded-[26px] px-1.5 md:hidden"
+      className="tour-hide chrome-in-bottom glass fixed bottom-[max(10px,env(safe-area-inset-bottom))] left-1/2 z-30 h-[54px] -translate-x-1/2 rounded-full px-1.5 md:hidden"
       aria-label="Navegación principal"
     >
-      <ul className="grid h-full grid-cols-4 items-center">
+      {/* barra compacta, como la de Instagram: solo íconos, y la sección activa se despliega con su nombre */}
+      <ul className="flex h-full items-center gap-0.5">
         {tabs.map((t) => (
-          <li key={t.to} className="flex justify-center">
+          <li key={t.to}>
             <NavLink
               to={t.to}
               end={t.end}
+              aria-label={t.label}
+              title={t.label}
               className={({ isActive }) =>
-                `relative flex min-h-[48px] min-w-[58px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1.5 text-[10.5px] font-semibold transition duration-200 active:scale-[0.97] ${
-                  isActive ? "bg-teal/12 text-teal" : "text-[#66737C]"
+                `relative flex h-[42px] min-w-[46px] items-center justify-center rounded-full px-3 text-[13px] font-bold transition-[background-color,color] duration-200 active:scale-[0.96] ${
+                  isActive ? "bg-teal/15 text-teal" : "text-[#66737C]"
                 }`
               }
             >
-              <span className="relative">
-                <t.icon className="size-[21px]" strokeWidth={1.8} />
-                {t.badge ? <Badge n={t.badge} icon /> : null}
-              </span>
-              {t.label}
+              {({ isActive }) => (
+                <>
+                  <span className="relative">
+                    <t.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.8} />
+                    {t.badge ? <Badge n={t.badge} icon /> : null}
+                  </span>
+                  <span
+                    className={`overflow-hidden whitespace-nowrap transition-[max-width,margin,opacity] duration-300 ease-out ${isActive ? "ml-1.5 max-w-[72px] opacity-100" : "ml-0 max-w-0 opacity-0"}`}
+                    aria-hidden
+                  >
+                    {t.label}
+                  </span>
+                </>
+              )}
             </NavLink>
           </li>
         ))}

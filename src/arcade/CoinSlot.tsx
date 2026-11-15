@@ -29,6 +29,11 @@ export function CoinSlot({ onStart }: { onStart: () => void }) {
   return (
     <div className="mx-auto flex w-full max-w-[300px] flex-col items-center gap-3" aria-live="polite">
       {/* monedas del día */}
+      {!Number.isFinite(left) ? (
+        <p className="font-arcade flex items-center gap-2 border-[3px] border-[#07031a] bg-[#ffd400] px-3 py-1.5 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]">
+          <span className="text-[16px] leading-none">∞</span> MONEDAS · ADMIN
+        </p>
+      ) : (
       <div className="flex items-center gap-1.5" role="img" aria-label={`Te quedan ${left} de ${DAILY_COINS} monedas hoy`}>
         {Array.from({ length: DAILY_COINS }, (_, i) => (
           <span key={i} className={`grid size-6 place-items-center rounded-full border-2 text-[10px] font-black ${i < left ? 'border-[#07031a] bg-[#ffd400] text-[#7a4a00]' : 'border-[#3a2a70] bg-[#1a0f45] text-transparent'}`}>
@@ -36,6 +41,7 @@ export function CoinSlot({ onStart }: { onStart: () => void }) {
           </span>
         ))}
       </div>
+      )}
       {/* ranura con la moneda que cae */}
       <div className="coin-machine relative flex h-[84px] w-[120px] items-end justify-center overflow-hidden">
         <div className={`coin-slot ${state === 'drop' ? 'coin-slot-on' : ''}`} aria-hidden />
@@ -48,7 +54,7 @@ export function CoinSlot({ onStart }: { onStart: () => void }) {
       ) : (
         <p className="font-arcade max-w-[250px] text-center text-[9px] leading-relaxed text-[#ff9aa6]">SIN MONEDAS POR HOY. MAÑANA TENDRÁS {DAILY_COINS} NUEVAS.</p>
       )}
-      <p className="text-[11.5px] text-[#9fb3ff]">Cada moneda es una partida. Hoy: {left} de {DAILY_COINS}.</p>
+      <p className="text-[11.5px] text-[#9fb3ff]">{Number.isFinite(left) ? `Cada moneda es una partida. Hoy: ${left} de ${DAILY_COINS}.` : 'Cuenta de administrador: partidas ilimitadas para probar.'}</p>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useSession } from '../remote/session'
 import { rewardCode } from '../state/passport'
 import { safeStorage } from '../state/storage'
 import { cleanNick, defaultNick, newPlayerId } from './board'
@@ -96,6 +97,8 @@ export const useArcade = create<ArcadeState>()(
       coinDay: dayKey(),
       coins: DAILY_COINS,
       spendCoin: () => {
+        // la administración prueba todas las experiencias: monedas ilimitadas
+        if (useSession.getState().isAdmin) return true
         const s = get()
         const today = dayKey()
         const left = s.coinDay === today ? s.coins : DAILY_COINS
@@ -161,7 +164,11 @@ export const useArcadeUi = create<{ open: boolean; setOpen: (v: boolean) => void
 if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __cmArcadeUi?: unknown }).__cmArcadeUi = useArcadeUi
 
 /** Monedas que le quedan hoy a la persona (5 al empezar el día). */
-export const useCoinsLeft = () => useArcade((s) => (s.coinDay === dayKey() ? s.coins : DAILY_COINS))
+export const useCoinsLeft = () => {
+  const admin = useSession((s) => s.isAdmin)
+  const left = useArcade((s) => (s.coinDay === dayKey() ? s.coins : DAILY_COINS))
+  return admin ? Infinity : left
+}
 
 /** Tiquetes que lleva una partida con este puntaje (sin el tope del día): para mostrarlos mientras se juega. */
 export const liveTickets = (score: number) => Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))

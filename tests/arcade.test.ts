@@ -321,6 +321,26 @@ describe('puntos y premios del Arcade', () => {
   })
 })
 
+describe('monedas diarias', () => {
+  it('son 5 por día y la administración tiene ilimitadas', async () => {
+    const { useSession } = await import('../src/remote/session')
+    const { DAILY_COINS, dayKey } = await import('../src/arcade/store')
+    useSession.setState({ isAdmin: false })
+    useArcade.setState({ coinDay: dayKey(), coins: DAILY_COINS })
+    for (let i = 0; i < DAILY_COINS; i++) expect(useArcade.getState().spendCoin()).toBe(true)
+    expect(useArcade.getState().spendCoin()).toBe(false)
+    // un día nuevo vuelve a dar 5
+    useArcade.setState({ coinDay: '2000-01-01', coins: 0 })
+    expect(useArcade.getState().spendCoin()).toBe(true)
+    // administración: nunca se acaban ni se descuentan
+    useSession.setState({ isAdmin: true })
+    useArcade.setState({ coinDay: dayKey(), coins: 0 })
+    for (let i = 0; i < 20; i++) expect(useArcade.getState().spendCoin()).toBe(true)
+    expect(useArcade.getState().coins).toBe(0)
+    useSession.setState({ isAdmin: false })
+  })
+})
+
 describe('premios de las tiendas', () => {
   it('limpia lo que llega y solo deja canjeables las activas y sin vencer', () => {
     const list = cleanRewards([
