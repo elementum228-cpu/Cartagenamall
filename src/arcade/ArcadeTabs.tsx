@@ -16,13 +16,16 @@ import {
   type WeekSummary,
   type Winner,
 } from './board'
-import { ARCADE_REWARDS, useArcade, type ArcadeRedemption } from './store'
+import { liveRewards, useArcadeRewards } from './rewards'
+import { useArcade, type ArcadeRedemption } from './store'
 
 // Las pestañas «Ranking» y «Premios» del Arcade (se cargan junto con el juego, pero viven aparte para no mezclar el juego con las listas).
 
 export function Prizes() {
   const points = useArcade((s) => s.points)
   const redemptions = useArcade((s) => s.redemptions)
+  const all = useArcadeRewards((s) => s.rewards)
+  const rewards = liveRewards(all)
   const [shown, setShown] = useState<ArcadeRedemption | null>(null)
   const [copied, setCopied] = useState(false)
   const redeem = (id: string) => {
@@ -48,13 +51,20 @@ export function Prizes() {
           </button>
         </div>
       )}
-      {ARCADE_REWARDS.map((r) => {
+      {rewards.length === 0 && (
+        <div className="rounded-2xl bg-white/[0.07] p-4 text-center text-white">
+          <p className="text-[15px] font-extrabold">Muy pronto: premios de las tiendas</p>
+          <p className="mt-1 text-[12.5px] leading-snug text-[#c8d3ff]">Las tiendas están preparando descuentos y regalos para canjear con tus tiquetes. Sigue jugando y junta los tuyos.</p>
+        </div>
+      )}
+      {rewards.map((r) => {
         const ok = points >= r.cost
         return (
           <div key={r.id} className="rounded-2xl bg-white/[0.07] p-3.5 text-white">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[15px] font-extrabold">{r.name}</p>
+                {r.storeName && <p className="text-[11px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</p>}
+                <p className="text-[15px] font-extrabold">{r.title}</p>
                 <p className="text-[12.5px] leading-snug text-[#c8d3ff]">{r.detail}</p>
               </div>
               <span className="shrink-0 rounded-full bg-[#ffc83d] px-2.5 py-1 text-[12px] font-extrabold text-[#2a1a00]">{r.cost} tiquetes</span>

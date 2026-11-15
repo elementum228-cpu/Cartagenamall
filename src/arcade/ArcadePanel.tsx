@@ -81,7 +81,8 @@ function Cabinet({ onClose }: { onClose: () => void }) {
   const game = useArcadeUi((s) => s.game)
   const soundOn = useArcade((s) => s.sound)
   useEffect(() => setArcadeSound(soundOn), [soundOn])
-  const [tab, setTab] = useState<'play' | 'rank' | 'prizes'>('play')
+  const tab = useArcadeUi((s) => s.tab)
+  const setTab = useArcadeUi((s) => s.setTab)
   const points = useArcade((s) => s.points)
   const playing = useArcadeUi((s) => s.playing)
   return (
@@ -94,7 +95,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="font-arcade arcade-cyan truncate text-[13px]">ARCADE</h2>
-            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">{GAME_NAME[game].toUpperCase()}</p>
+            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">{(tab === 'prizes' ? 'RECOMPENSAS' : GAME_NAME[game].toUpperCase())}</p>
           </div>
           <span className="font-arcade flex items-center gap-1.5 border-[3px] border-[#07031a] bg-[#ffd400] px-2.5 py-2 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]" aria-label={`${points} tiquetes`}>
             <Ticket className="size-3.5" aria-hidden />

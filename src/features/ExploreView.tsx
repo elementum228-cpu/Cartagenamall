@@ -84,7 +84,6 @@ import { ShipPill, ShipTestButton } from '../ship/ShipLayer'
 import { usePirateShip } from '../state/pirate'
 import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
-import { ARCADE_ZONE } from '../config/preview'
 import { useServicesFeature } from '../state/servicesFeature'
 import { useFlight } from '../airport/flight'
 import { BOATS, BOAT_IDS } from '../tourism/config'
@@ -790,13 +789,6 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
     const next = floors[idx + d]
     if (next) setFloor(next.id)
   }
-  const entOn = useEntertainmentFeature((s) => s.enabled)
-  /** Lleva la cámara hasta la Zona Arcade (piso 1, isla del oeste) de un solo toque. */
-  const goArcade = () => {
-    const ui = useUI.getState()
-    if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
-    ui.requestFocus({ kind: 'arcade' })
-  }
   const btn = 'touch-hit relative grid h-8 w-full place-items-center text-ink-soft transition hover:text-ink disabled:opacity-25 max-md:hidden'
   return (
     <nav
@@ -827,17 +819,6 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
       <button className={btn} onClick={() => go(1)} disabled={idx >= floors.length - 1 && !overview} aria-label="Bajar un piso">
         <ChevronDown className="size-5" />
       </button>
-      {use3D && entOn && ARCADE_ZONE && (
-        <button
-          onClick={goArcade}
-          title="Ir directo a la Zona Arcade"
-          aria-label="Ir a la Zona Arcade"
-          className="touch-hit relative grid min-h-11 place-items-center rounded-[18px] px-1 text-[11px] leading-tight font-semibold text-ink transition duration-200 hover:bg-white/30 active:scale-[0.97] md:text-[12px]"
-        >
-          <Gamepad2 className="size-4 md:hidden" aria-hidden />
-          <span className="max-md:text-[9px]">Arcade</span>
-        </button>
-      )}
       {use3D && (
         <button
           onClick={() => setOverview(!overview)}

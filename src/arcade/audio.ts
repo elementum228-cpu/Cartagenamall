@@ -40,7 +40,7 @@ function context(): AudioContext | null {
     musicBus.gain.value = 0.5
     musicBus.connect(master)
     sfxBus = ac.createGain()
-    sfxBus.gain.value = 0.55
+    sfxBus.gain.value = 0.85
     sfxBus.connect(master)
     noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.12), ac.sampleRate)
     const d = noiseBuf.getChannelData(0)
@@ -54,7 +54,31 @@ function context(): AudioContext | null {
 /** Debe llamarse dentro de un toque de la persona (p. ej. el botón «Jugar»): activa el audio del navegador. */
 export function unlockArcadeAudio() {
   const c = context()
+  playbackMode()
   if (c && c.state === 'suspended') void c.resume()
+}
+
+let silentEl: HTMLAudioElement | null = null
+/**
+ * En el iPhone el audio del navegador se calla con el interruptor de silencio. Para que el arcade suene igual (es un juego: se espera
+ * oírlo), se pide al sistema la categoría de «reproducción» (iOS 17+) y, como respaldo, se mantiene un audio silencioso en marcha,
+ * que hace lo mismo en versiones anteriores.
+ */
+function playbackMode() {
+  try {
+    const nav = navigator as Navigator & { audioSession?: { type: string } }
+    if (nav.audioSession) nav.audioSession.type = 'playback'
+    if (!silentEl && typeof Audio !== 'undefined') {
+      // 0,1 s de silencio (WAV mono de 8 kHz)
+      silentEl = new Audio('data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRAAAACAgICAgICAgICAgICAgICA')
+      silentEl.loop = true
+      silentEl.volume = 0.01
+      silentEl.setAttribute('playsinline', '')
+    }
+    void silentEl?.play().catch(() => {})
+  } catch {
+    /* sin soporte: el audio sigue funcionando donde no hay interruptor de silencio */
+  }
 }
 
 /**
@@ -92,6 +116,22 @@ function tone(type: OscillatorType, freq: number, at: number, peak: number, deca
   o.connect(g).connect(bus)
   o.start(at)
   o.stop(at + decay + 0.03)
+}
+
+/** Chasquido corto de ruido (la cabeza de la impresora al marcar el papel). */
+function click(at: number, peak: number) {
+  if (!ac || !noiseBuf || !sfxBus) return
+  const s = ac.createBufferSource()
+  const f = ac.createBiquadFilter()
+  const g = ac.createGain()
+  s.buffer = noiseBuf
+  f.type = 'bandpass'
+  f.frequency.value = 2600
+  g.gain.setValueAtTime(peak, at)
+  g.gain.exponentialRampToValueAtTime(0.0001, at + 0.03)
+  s.connect(f).connect(g).connect(sfxBus)
+  s.start(at)
+  s.stop(at + 0.04)
 }
 
 function hat(at: number, peak: number) {
@@ -184,11 +224,11 @@ export function coinInsert(): number {
 function playCoin(c: AudioContext) {
   if (!sfxBus) return
   const t = c.currentTime + 0.02
-  tone('sine', 3136, t + 0.28, 0.14, 0.22, sfxBus) // ting al entrar en la ranura
-  tone('sine', 4186, t + 0.3, 0.1, 0.1, sfxBus)
-  for (let i = 0; i < 7; i++) tone('square', 1500 - i * 110, t + 0.38 + i * 0.035, 0.03, 0.05, sfxBus) // rueda por dentro
-  tone('sawtooth', 120, t + 0.66, 0.16, 0.3, sfxBus, 48) // golpe del mecanismo
-  ;[784, 988, 1319].forEach((f, i) => tone('square', f, t + 0.78 + i * 0.07, 0.18, 0.1, sfxBus!))
+  tone('sine', 3136, t + 0.28, 0.3, 0.3, sfxBus) // ting al entrar en la ranura
+  tone('sine', 4186, t + 0.3, 0.25, 0.14, sfxBus)
+  for (let i = 0; i < 7; i++) tone('square', 1500 - i * 110, t + 0.38 + i * 0.035, 0.22, 0.05, sfxBus) // rueda por dentro
+  tone('sawtooth', 120, t + 0.66, 0.3, 0.3, sfxBus, 48) // golpe del mecanismo
+  ;[784, 988, 1319].forEach((f, i) => tone('square', f, t + 0.78 + i * 0.07, 0.3, 0.14, sfxBus!))
 }
 
 /** Cuánto dura la tirita al salir (segundos): más tiquetes, un poco más larga. */
@@ -207,12 +247,14 @@ function playPrint(c: AudioContext, count: number) {
   const gap = 0.05
   const dur = ticketDuration(count)
   const t = c.currentTime + 0.05
+  // (tone: tipo, frecuencia, momento, VOLUMEN, duración): antes el volumen era de 0,03 y casi no se oía
   for (let i = 0; i < n; i++) {
     const at = t + i * gap
-    tone('square', 780 + ((i * 37) % 5) * 45, at, 0.03, 0.07, sfxBus)
-    tone('sawtooth', 150, at, 0.025, 0.05, sfxBus, 90)
+    tone('square', 1100 + ((i * 37) % 5) * 90, at, 0.45, 0.035, sfxBus) // el «tz» de la impresora
+    tone('sawtooth', 190, at, 0.4, 0.03, sfxBus, 80) // el golpecito del rodillo
+    click(at, 0.9)
   }
-  ;[1319, 1760].forEach((f, i) => tone('triangle', f, t + dur + 0.04 + i * 0.09, 0.3, 0.16, sfxBus!))
+  ;[1319, 1760].forEach((f, i) => tone('triangle', f, t + dur + 0.04 + i * 0.09, 0.45, 0.4, sfxBus!))
 }
 
 export type Sfx = 'pop' | 'power' | 'hurt' | 'over' | 'record' | 'coin'

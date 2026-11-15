@@ -5,7 +5,6 @@ import * as THREE from 'three'
 import { COURT, SPORTS_HALF } from '../football/config'
 import type { MapControls as MapControlsImpl } from 'three-stdlib'
 import { FLOOR_BY_ID, FLOOR_OF_ZONE, GATE, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
-import { ARCADE_CENTER } from '../entertainment/config'
 import { floorOrigin, liveOrigins, overviewCenter } from './floors'
 import { useUI } from '../state/ui'
 import { HARBOR_FOCUS, SHIP_BERTH } from '../tourism/config'
@@ -35,9 +34,8 @@ const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
 /** En el recorrido guiado, cuánto (fracción del alto) se sube el punto enfocado respecto al centro de la pantalla. */
 const TOUR_LIFT = 0.27
 const OVERVIEW_BOUNDS = 92
-const P1_BOUNDS = 62
-/** Con la Zona Arcade enfocada se puede recorrer su isla, que queda por fuera de los límites del piso. */
-const ARCADE_BOUNDS = 108
+/** Piso 1: llega hasta la Isla de Entretenimiento y la Zona Arcade, que están por fuera de la muralla, al oeste. */
+const P1_BOUNDS = 108
 /** Alcance de la cámara con el muelle turístico abierto. */
 const HARBOR_BOUNDS = 70
 const TOWARD_CAMERA = new THREE.Vector3(1, 0, 1).normalize()
@@ -324,9 +322,6 @@ export function CameraRig() {
       const cx = list.reduce((a, sp) => a + sp.position[0], 0) / list.length
       const cz = list.reduce((a, sp) => a + sp.position[1], 0) / list.length
       goal.current = { target: new THREE.Vector3(so.x + cx, so.y, so.z + cz), zoom: THREE.MathUtils.clamp(fit * (focus.zoom ?? 1.8), minZoom, maxZoom) }
-    } else if (focus.kind === 'arcade') {
-      cameraState.groundY = 0
-      goal.current = { target: new THREE.Vector3(ARCADE_CENTER[0] - 1, 0, ARCADE_CENTER[1] + 1), zoom: THREE.MathUtils.clamp(fit * 1.6, minZoom, maxZoom) }
     } else if (focus.kind === 'point') {
       cameraState.groundY = focus.y ?? 0
       goal.current = { target: new THREE.Vector3(focus.x, focus.y ?? 0, focus.z), zoom: THREE.MathUtils.clamp(fit * (focus.zoom ?? 1.6), minZoom, maxZoom) }
@@ -393,7 +388,7 @@ export function CameraRig() {
     const island = useFlight.getState().world === 'island'
     const center = island ? new THREE.Vector3(ISLAND.x, 0, ISLAND.z) : overview ? overviewCenter() : floorOrigin(FLOOR_BY_ID[activeFloor], false)
     // con el muelle abierto se puede ir hasta él (queda por fuera de la muralla)
-    const bound = island ? 60 : Math.max(overview ? OVERVIEW_BOUNDS : activeFloor === 'P1' ? P1_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0, lastFocus?.kind === 'arcade' ? ARCADE_BOUNDS : 0)
+    const bound = island ? 60 : Math.max(overview ? OVERVIEW_BOUNDS : activeFloor === 'P1' ? P1_BOUNDS : FLOOR_BY_ID[activeFloor].bounds, harbor || shipOpen || lastFocus?.kind === 'ship' ? HARBOR_BOUNDS : 0)
     const cx = THREE.MathUtils.clamp(t.x, center.x - bound, center.x + bound)
     const cz = THREE.MathUtils.clamp(t.z, center.z - bound, center.z + bound)
     if (cx !== t.x || cz !== t.z) {

@@ -10,6 +10,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
+import { liveRewards, useArcadeRewards } from '../arcade/rewards'
 import { useArcadeUi, type ArcadeGameId } from '../arcade/store'
 import { useUI } from '../state/ui'
 import { Person } from './Person'
@@ -215,8 +216,6 @@ function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright', o
 
 /** Cuarto de recompensas: edificio verde azulado con techo terracota a rayas, ventanilla dorada, estantes de premios y filas de cuerdas. */
 function RewardsRoom({ at, rot }: { at: [number, number]; rot: number }) {
-  const night = useIsNight()
-  const pill = useMemo(() => getGlassPill('Recompensas', { dot: '#f4cd79', sub: 'Canjea tus tiquetes', dark: night }), [night])
   const prizes: [number, string][] = [[-1.9, '#ef7d57'], [-1.1, '#f4cd79'], [-0.3, '#7fd0c4'], [0.5, '#e0558a'], [1.3, '#9d8cf0'], [2.1, '#6fb6ee']]
   return (
     <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
@@ -249,7 +248,6 @@ function RewardsRoom({ at, rot }: { at: [number, number]; rot: number }) {
           <mesh geometry={GEO.box} material={mat('#d9453d')} position={[s * 2.2, 0.9, 2.7]} scale={[1.4, 0.05, 0.05]} />
         </group>
       ))}
-      <ScreenLabel label={pill} position={[0, 5.2, 0]} pixelHeight={30} maxZoomRatio={2.2} priority={LABEL_PRIORITY.store} />
     </group>
   )
 }
@@ -515,6 +513,102 @@ const PLAYERS: [number, number, string, number][] = [
   [-5.6, 5.0, '#d9453d', Math.PI / 2], [3.4, 2.4, '#3d7ea6', -1.2],
 ]
 
+/** Rayo de luz de reflector: un cono abierto que nace en la punta y se mece, para que el cuarto de recompensas se vea desde lejos. */
+const BEAM_GEO = (() => {
+  const g = new THREE.ConeGeometry(1.5, 8, 20, 1, true)
+  g.rotateX(Math.PI)
+  g.translate(0, 4, 0)
+  return g
+})()
+
+/**
+ * Vida del cuarto de recompensas: reflectores que se mecen, una estrella dorada que gira sobre el techo, luces de marquesina que corren
+ * por el borde, un aro de luz que late frente al mostrador y una zona táctil que abre «Premios». Coordenadas del cuarto.
+ */
+function RewardsGlow({ at, rot, reduceMotion }: { at: [number, number]; rot: number; reduceMotion: boolean }) {
+  const night = useIsNight()
+  const live = liveRewards(useArcadeRewards((s) => s.rewards)).length
+  const label = useMemo(() => getGlassPill('Recompensas', { dot: '#f4cd79', sub: live > 0 ? `${live} ${live === 1 ? 'premio' : 'premios'} · toca para canjear` : 'Canjea tus tiquetes', dark: night }), [live, night])
+  const beams = useRef<(THREE.Group | null)[]>([])
+  const star = useRef<THREE.Group>(null)
+  const ring = useRef<THREE.Mesh>(null)
+  const bulbs = useRef<(THREE.Mesh | null)[]>([])
+  const beamMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#fff0b0', transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), [])
+  const NB = 14
+  useFrame(({ clock }) => {
+    const t = reduceMotion ? 0 : clock.elapsedTime
+    beamMat.opacity = night ? 0.3 : 0.14
+    beams.current.forEach((g, i) => {
+      if (!g) return
+      g.rotation.z = (i ? -1 : 1) * (0.5 + Math.sin(t * 0.9 + i * 2) * 0.35)
+      g.rotation.x = Math.cos(t * 0.7 + i) * 0.3
+    })
+    if (star.current) {
+      star.current.rotation.y = t * 1.4
+      star.current.position.y = 5.7 + Math.sin(t * 2) * 0.18
+    }
+    if (ring.current) {
+      const k = 1 + 0.12 * Math.sin(t * 3)
+      ring.current.scale.set(5.4 * k, 5.4 * k, 1)
+    }
+    const step = reduceMotion ? 0 : Math.floor(t * 6)
+    bulbs.current.forEach((m, i) => {
+      if (m) m.material = (i + step) % 3 === 0 ? BULB_ON : BULB_OFF
+    })
+  })
+  return (
+    <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
+      {[-1, 1].map((s, i) => (
+        <group
+          key={s}
+          ref={(g) => {
+            beams.current[i] = g
+          }}
+          position={[s * 3.2, 3.9, 0.2]}
+          userData={{ dynamic: true }}
+        >
+          <mesh geometry={BEAM_GEO} material={beamMat} raycast={() => null} />
+        </group>
+      ))}
+      <group ref={star} position={[0, 5.7, -0.4]} userData={{ dynamic: true }}>
+        <mesh geometry={GEO.box} material={glowMat('#ffd05a', 1.3, { dayGlow: 0.7 })} scale={[1.5, 1.5, 0.3]} rotation={[0, 0, Math.PI / 4]} />
+        <mesh geometry={GEO.box} material={glowMat('#ffefa0', 1.3, { dayGlow: 0.7 })} scale={[1.5, 1.5, 0.32]} />
+      </group>
+      {Array.from({ length: NB }, (_, i) => (
+        <mesh
+          key={i}
+          ref={(el) => {
+            bulbs.current[i] = el
+          }}
+          geometry={GEO.sphere}
+          material={BULB_OFF}
+          position={[(i - (NB - 1) / 2) * 0.5, 3.35, 1.15]}
+          scale={0.16}
+          raycast={() => null}
+        />
+      ))}
+      <mesh ref={ring} geometry={GEO.plane} material={lightPoolMat('#ffd27a', 2.2)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.13, 2.5]} scale={[5.4, 5.4, 1]} />
+      <ScreenLabel label={label} position={[0, 6.9, 0]} pixelHeight={30} maxZoomRatio={2.2} priority={LABEL_PRIORITY.store} onClick={openPrizes} />
+      <mesh
+        position={[0, 1.8, 0.6]}
+        onClick={(e) => {
+          if (e.delta > 8) return
+          e.stopPropagation()
+          openPrizes()
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => (document.body.style.cursor = '')}
+      >
+        <boxGeometry args={[7.2, 3.8, 5]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
 /** Pista de baile con losetas que cambian de color al ritmo (cada una con su desfase), en el piso del salón. */
 function DanceFloor({ at, cols = 4, rows = 3, reduceMotion }: { at: [number, number]; cols?: number; rows?: number; reduceMotion: boolean }) {
   const T = 1.15
@@ -646,6 +740,12 @@ const NEON: NeonSeg[] = [
   }),
 ]
 
+function openPrizes() {
+  const ui = useUI.getState()
+  if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
+  useArcadeUi.getState().openPrizes()
+}
+
 function openGame(game: ArcadeGameId) {
   const ui = useUI.getState()
   if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
@@ -707,6 +807,7 @@ export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
           <BankHit key={b.game} b={b} />
         ))}
         <NeonRun reduceMotion={reduceMotion} segs={NEON} thick={0.17} />
+        <RewardsGlow at={[-S + 2.3, 0]} rot={Math.PI / 2} reduceMotion={reduceMotion} />
         {/* la mitad sur del salón, antes vacía: pista de baile, grúas de peluches, hockey de aire y globos */}
         <DanceFloor at={[3.4, 5.4]} reduceMotion={reduceMotion} />
         <ClawMachine at={[-6.8, S - 2.0]} rot={Math.PI} color="#d9669a" reduceMotion={reduceMotion} />

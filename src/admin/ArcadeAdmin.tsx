@@ -4,6 +4,7 @@ import { fetchPrizes } from '../arcade/board'
 import { remoteEnabled, supabase } from '../remote/client'
 import { useUI } from '../state/ui'
 import { btn, input } from '../ui/bits'
+import { ArcadeRewardsAdmin } from './ArcadeRewardsAdmin'
 
 // Administración del Arcade: premios de los primeros puestos y revisión del podio. El puntaje de cada partida lo calcula el servidor
 // repitiéndola (ver supabase/functions/arcade-run), pero un programa que «juegue» de verdad sigue siendo posible: por eso los premios se
@@ -57,7 +58,13 @@ export function ArcadeAdmin() {
     void fetchPrizes().then((p) => p && setPrizes(p))
   }, [])
 
-  if (!remoteEnabled()) return <p className="text-sm text-ink-soft">El Arcade con ranking necesita la base de datos conectada.</p>
+  if (!remoteEnabled())
+    return (
+      <div className="space-y-6">
+        <ArcadeRewardsAdmin />
+        <p className="text-sm text-ink-soft">El ranking y el podio del Arcade necesitan la base de datos conectada.</p>
+      </div>
+    )
 
   const savePrizes = async () => {
     if (!supabase) return
@@ -78,6 +85,7 @@ export function ArcadeAdmin() {
 
   return (
     <div className="space-y-6">
+      <ArcadeRewardsAdmin />
       <section>
         <h2 className="mb-1 flex items-center gap-2 text-lg font-extrabold">
           <Trophy className="size-5" /> Premios del Arcade

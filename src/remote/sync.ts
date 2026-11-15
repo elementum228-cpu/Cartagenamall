@@ -14,6 +14,7 @@ import { useOrders } from '../state/orders'
 import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
 import { useServicesFeature } from '../state/servicesFeature'
+import { cleanRewards, useArcadeRewards } from '../arcade/rewards'
 import { cleanCine, useCine } from '../state/cine'
 import { cleanFeed, useCineFeed } from '../state/cineFeedStore'
 import { useStadiumEvent, useStadiumPhase, useStadiumSong } from '../state/stadium'
@@ -464,6 +465,24 @@ export async function loadFeatures() {
   })
 }
 
+/** Premios del Arcade que ofrecen las tiendas (mall_settings «arcade_rewards»): los carga la administración y los ven todos. */
+export async function loadArcadeRewards() {
+  if (!supabase) return
+  const { data, error } = await supabase.from('mall_settings').select('doc').eq('key', 'arcade_rewards').maybeSingle()
+  if (error) return
+  const doc = (data as Doc<{ rewards?: unknown }> | null)?.doc
+  if (!doc) return
+  applyRemote(() => useArcadeRewards.setState({ rewards: cleanRewards(doc.rewards) }))
+}
+
+function pushArcadeRewards() {
+  const doc = { rewards: cleanRewards(useArcadeRewards.getState().rewards) }
+  enqueue(async () => {
+    const { error } = await supabase!.from('mall_settings').upsert({ key: 'arcade_rewards', doc })
+    if (error) throw new Error(error.message)
+  })
+}
+
 /** Programación leída automáticamente de las cadenas de cine, en mall_settings «cine_feed» (la escribe la función `cine-sync`). */
 export async function loadCineFeed() {
   if (!supabase) return
@@ -652,7 +671,7 @@ export function startRemoteSync() {
   const slow = low ? 2.5 : 1
   void loadCatalog()
   void loadFeatures()
-  runCalm([loadPricing, loadSeason, loadHoy, loadCineFeed, loadMatch, loadShip, loadStadium], low ? 700 : 250)
+  runCalm([loadPricing, loadSeason, loadHoy, loadCineFeed, loadMatch, loadShip, loadStadium, loadArcadeRewards], low ? 700 : 250)
   setInterval(() => !document.hidden && void refreshPromotions(), 10_000 * slow)
   // las boletas vendidas cambian seguido: se refrescan para que el cupo sea real
   setInterval(() => !document.hidden && void loadStadium(), 15_000 * slow)
@@ -682,6 +701,10 @@ export function startRemoteSync() {
   useCine.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || (next.enabled === prev.enabled && next.boardOn === prev.boardOn && next.lobbyOn === prev.lobbyOn && next.posters === prev.posters && next.chains === prev.chains && next.movies === prev.movies && next.shows === prev.shows && next.demo === prev.demo)) return
     pushFeatures()
+  })
+  useArcadeRewards.subscribe((next, prev) => {
+    if (applying || !useSession.getState().isAdmin || next.rewards === prev.rewards) return
+    pushArcadeRewards()
   })
   useServicesFeature.subscribe((next, prev) => {
     if (applying || !useSession.getState().isAdmin || next.enabled === prev.enabled) return
@@ -779,6 +802,7 @@ export function startRemoteSync() {
       void loadCineFeed()
       void loadMatch()
       void loadShip()
+      void loadArcadeRewards()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ship_offers' }, () => void loadShip())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'stadium_events' }, () => void loadStadium())

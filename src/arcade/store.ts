@@ -4,6 +4,7 @@ import { rewardCode } from '../state/passport'
 import { safeStorage } from '../state/storage'
 import { cleanNick, defaultNick, newPlayerId } from './board'
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from './engine'
+import { liveRewards, useArcadeRewards } from './rewards'
 
 // Puntos del Arcade: cada partida de «Nave Caribe» suma puntos que la persona canjea por premios. Todo vive en este
 // dispositivo (igual que el pasaporte). Hay un tope por partida y por día para que nadie se lleve premios solo jugando
@@ -18,20 +19,6 @@ export const DAILY_POINTS_CAP = Infinity
 /** Monedas gratis cada día: cada una abre una partida en cualquiera de los juegos. */
 export const DAILY_COINS = 5
 
-export interface ArcadeReward {
-  id: string
-  name: string
-  detail: string
-  cost: number
-}
-
-/** Premios iniciales (los valores finales los define el mall). */
-export const ARCADE_REWARDS: ArcadeReward[] = [
-  { id: 'ficha', name: 'Ficha extra de arcade', detail: 'Una partida de cortesía en los juegos de la isla de entretenimiento.', cost: 100 },
-  { id: 'descuento', name: '10 % de descuento', detail: 'En tu próxima compra en cualquier tienda participante.', cost: 250 },
-  { id: 'bono', name: 'Bono de $10.000', detail: 'Para usar en la tienda o restaurante que elijas.', cost: 600 },
-]
-
 /** Una partida jugada en este dispositivo (se guardan las últimas 60). */
 export interface ArcadeRun {
   score: number
@@ -45,6 +32,8 @@ export interface ArcadeRun {
 export const MAX_SAVED_RUNS = 60
 
 export interface ArcadeRedemption {
+  /** Tienda que ofrece el premio. */
+  storeName?: string
   code: string
   rewardId: string
   name: string
@@ -140,10 +129,11 @@ export const useArcade = create<ArcadeState>()(
         return { awarded, capped: awarded < wanted, record }
       },
       redeem: (rewardId) => {
-        const reward = ARCADE_REWARDS.find((r) => r.id === rewardId)
+        // los premios son las promociones que las tiendas cargaron desde la administración (activas y sin vencer)
+        const reward = liveRewards(useArcadeRewards.getState().rewards).find((r) => r.id === rewardId)
         const s = get()
         if (!reward || s.points < reward.cost) return null
-        const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.name, cost: reward.cost, at: new Date().toISOString() }
+        const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.title, storeName: reward.storeName || undefined, cost: reward.cost, at: new Date().toISOString() }
         set({ points: s.points - reward.cost, redemptions: [r, ...s.redemptions].slice(0, 30) })
         return r
       },
@@ -154,11 +144,16 @@ export const useArcade = create<ArcadeState>()(
 
 /** Abre y cierra el juego (no se guarda). `playing`: hay una partida en curso (la pantalla se vuelve de pantalla completa). */
 export type ArcadeGameId = 'nave' | 'cangrejos' | 'bolos'
-export const useArcadeUi = create<{ open: boolean; setOpen: (v: boolean) => void; game: ArcadeGameId; openGame: (g: ArcadeGameId) => void; playing: boolean; setPlaying: (v: boolean) => void }>()((set) => ({
+export type ArcadeTab = 'play' | 'rank' | 'prizes'
+export const useArcadeUi = create<{ open: boolean; setOpen: (v: boolean) => void; game: ArcadeGameId; openGame: (g: ArcadeGameId) => void; tab: ArcadeTab; setTab: (t: ArcadeTab) => void; openPrizes: () => void; playing: boolean; setPlaying: (v: boolean) => void }>()((set) => ({
   open: false,
-  setOpen: (open) => set(open ? { open, game: 'nave' } : { open, playing: false }),
+  setOpen: (open) => set(open ? { open, game: 'nave', tab: 'play' } : { open, playing: false }),
   game: 'nave',
-  openGame: (game) => set({ open: true, game }),
+  tab: 'play',
+  setTab: (tab) => set({ tab }),
+  openGame: (game) => set({ open: true, game, tab: 'play' }),
+  /** Abre el arcade directo en «Premios» (el cuarto de recompensas de la isla). */
+  openPrizes: () => set({ open: true, game: 'nave', tab: 'prizes', playing: false }),
   playing: false,
   setPlaying: (playing) => set({ playing }),
 }))
