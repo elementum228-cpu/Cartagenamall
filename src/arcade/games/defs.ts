@@ -19,6 +19,8 @@ export interface GameDef<S> {
   update(s: S, dt: number): void
   draw(s: S, ctx: CanvasRenderingContext2D, t: number): void
   pointer(s: S, kind: PointerKind, x: number, y: number, t: number): { sfx?: 'pop' | 'power' | 'hurt' | 'coin' } | void
+  /** Sonidos que el juego produjo solo (al caer un coco, por ejemplo): se piden y se vacían después de cada avance. */
+  takeSounds?(s: S): ('pop' | 'power' | 'hurt' | 'coin')[]
   score(s: S): number
   done(s: S): boolean
 }
@@ -483,8 +485,8 @@ const RINGS: { r: number; v: number; c: string; hi: string }[] = [
   { r: 15, v: 50, c: '#f7f2e6', hi: '#ffffff' },
 ]
 const HOLES: { x: number; y: number; r: number; v: number }[] = [
-  { x: 40, y: 100, r: 18, v: 100 },
-  { x: BW - 40, y: 100, r: 18, v: 100 },
+  { x: 40, y: 100, r: 19, v: 100 },
+  { x: BW - 40, y: 100, r: 19, v: 100 },
 ]
 const START = { x: BW / 2, y: 500 }
 const RAMP_Y = 246
@@ -493,12 +495,22 @@ const BALLS = 9
 /** Fuerza del deslizamiento (px/s del campo): por debajo de MIN el coco no llega a la rampa; en ~1900 cae al centro; MAX es el tope. */
 const MIN_POWER = 700
 const MAX_POWER = 3300
+const SWEET = 1900
+/** Letra de los números: gruesa y de sistema, para que se lean nítidos incluso pequeños. */
+const SANS = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif'
 
 type BPhase = 'aim' | 'roll' | 'fly' | 'rest'
+type Snd = 'pop' | 'power' | 'hurt' | 'coin'
 interface Landed {
   x: number
   y: number
   v: number
+  age: number
+}
+interface Aim {
+  power: number
+  tx: number
+  ty: number
 }
 export interface BowlsState {
   left: number
@@ -514,9 +526,13 @@ export interface BowlsState {
   rest: number
   msg: { text: string; age: number; color: string } | null
   trail: { x: number; y: number; t: number }[]
-  /** Destellos al caer un coco (aro iluminado y chispas). */
-  bursts: { x: number; y: number; age: number; color: string; big: boolean }[]
+  /** Destellos al caer un coco: aro iluminado, onda y chispas. */
+  bursts: { x: number; y: number; v: number; age: number; color: string; big: boolean }[]
   drag: { x: number; y: number; t: number }[]
+  /** Mientras se arrastra: fuerza estimada y dónde caería el coco. */
+  aim: Aim | null
+  /** Sonidos pendientes (caída del coco). */
+  sounds: Snd[]
 }
 
 function ringValue(x: number, y: number): number {
@@ -526,23 +542,72 @@ function ringValue(x: number, y: number): number {
   return 0
 }
 
-function coconut(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
-  ctx.fillStyle = '#6b4423'
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
+/** Velocidad lateral que se le da al coco según el deslizamiento (poca, para que la puntería sea fácil de controlar). */
+const sideSpeed = (vx: number) => clamp(vx * 0.08, -140, 140)
+/** Velocidad con que rueda por el carril: más fuerza, más rápido (pero siempre visible). */
+const rollSpeed = (power: number) => 380 + power * 0.16
+
+/** Dónde caería el coco con esta posición y fuerza (lo usa la mira mientras se arrastra). */
+function predict(x: number, y: number, power: number, vxl: number): Aim {
+  const t = Math.max(0, (y - RAMP_Y) / rollSpeed(power))
+  const xe = clamp(x + vxl * t, LANE.l + 12, LANE.r - 12)
+  const k = clamp((power - MIN_POWER) / (MAX_POWER - MIN_POWER), 0, 1)
+  return { power, tx: BOARD.x + (xe - BW / 2) * 1.1 + vxl * 0.15, ty: RAMP_Y - 6 - k * 190 }
+}
+
+/** Velocidad del deslizamiento en los últimos ~120 ms (px/s del campo). */
+function swipe(drag: { x: number; y: number; t: number }[]) {
+  const last = drag[drag.length - 1]
+  let first = drag[0]
+  for (const d of drag) {
+    if (last.t - d.t <= 120) {
+      first = d
+      break
+    }
+  }
+  const dt = Math.max(0.03, (last.t - first.t) / 1000)
+  return { vx: (last.x - first.x) / dt, vy: (last.y - first.y) / dt }
+}
+
+function numText(ctx: CanvasRenderingContext2D, v: string, x: number, y: number, size: number, fill: string, outline?: string) {
+  ctx.font = `900 ${size}px ${SANS}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  if (outline) {
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = Math.max(3, size * 0.3)
+    ctx.strokeStyle = outline
+    ctx.strokeText(v, x, y)
+  }
+  ctx.fillStyle = fill
+  ctx.fillText(v, x, y)
+}
+
+function coconut(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, rot = 0) {
+  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r)
+  g.addColorStop(0, '#a8743c')
+  g.addColorStop(0.55, '#6b4423')
+  g.addColorStop(1, '#3b2310')
+  ctx.fillStyle = g
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
   ctx.fill()
-  ctx.fillStyle = '#8a5a2b'
-  ctx.beginPath()
-  ctx.arc(x - r * 0.25, y - r * 0.3, r * 0.55, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = '#2a170a'
-  for (const [dx, dy] of [[-0.2, 0.1], [0.2, 0.1], [0, 0.4]]) {
+  // los tres «ojos» del coco giran con el coco
+  ctx.fillStyle = '#1f1208'
+  for (const [dx, dy] of [[-0.28, -0.05], [0.28, -0.05], [0, 0.36]]) {
+    const c = Math.cos(rot)
+    const sn = Math.sin(rot)
     ctx.beginPath()
-    ctx.arc(x + dx * r, y + dy * r, r * 0.12, 0, Math.PI * 2)
+    ctx.arc(x + (dx * c - dy * sn) * r, y + (dx * sn + dy * c) * r, r * 0.13, 0, Math.PI * 2)
     ctx.fill()
   }
+  ctx.fillStyle = 'rgba(255,255,255,.22)'
+  ctx.beginPath()
+  ctx.ellipse(x - r * 0.35, y - r * 0.4, r * 0.28, r * 0.17, -0.6, 0, Math.PI * 2)
+  ctx.fill()
   ctx.strokeStyle = '#07031a'
-  ctx.lineWidth = 2
+  ctx.lineWidth = Math.max(1.5, r * 0.1)
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
   ctx.stroke()
@@ -553,12 +618,17 @@ export const BOWLS: GameDef<BowlsState> = {
   name: 'Bolos de coco',
   W: BW,
   H: BH,
-  how: 'Desliza el dedo hacia arriba para lanzar el coco. Más rápido llega más lejos. Apunta al centro: 50 puntos, y las esquinas dan 100.',
-  create: () => ({ left: BALLS, score: 0, phase: 'aim', x: START.x, y: START.y, vx: 0, vy: 0, power: 0, fly: null, landed: [], rest: 0, msg: null, trail: [], bursts: [], drag: [] }),
+  how: 'Arrastra el coco hacia arriba y suéltalo: la mira te muestra dónde caerá. Más rápido llega más lejos. Al centro: 50 puntos; en las esquinas, 100.',
+  create: () => ({ left: BALLS, score: 0, phase: 'aim', x: START.x, y: START.y, vx: 0, vy: 0, power: 0, fly: null, landed: [], rest: 0, msg: null, trail: [], bursts: [], drag: [], aim: null, sounds: [] }),
+  takeSounds(s) {
+    const q = s.sounds
+    s.sounds = []
+    return q
+  },
   update(s, dt) {
     if (s.msg) {
       s.msg.age += dt
-      if (s.msg.age > 1.2) s.msg = null
+      if (s.msg.age > 1.3) s.msg = null
     }
     if (s.phase === 'roll') {
       s.x += s.vx * dt
@@ -576,26 +646,27 @@ export const BOWLS: GameDef<BowlsState> = {
         s.phase = 'rest'
         s.rest = 0.9
         s.left--
+        s.sounds.push('hurt')
         s.msg = { text: '¡MUY SUAVE!', age: 0, color: '#ff9aa6' }
       } else if (s.y <= RAMP_Y) {
-        const k = Math.min(1, Math.max(0, (s.power - MIN_POWER) / (MAX_POWER - MIN_POWER)))
-        const landY = RAMP_Y - 6 - k * 190
-        s.fly = { t: 0, sx: s.x, sy: s.y, ex: BOARD.x + (s.x - BW / 2) * 1.1 + s.vx * 0.15, ey: landY }
+        const a = predict(s.x, RAMP_Y, s.power, s.vx)
+        s.fly = { t: 0, sx: s.x, sy: s.y, ex: a.tx, ey: a.ty }
         s.phase = 'fly'
       }
     } else if (s.phase === 'fly' && s.fly) {
-      s.fly.t += dt / 0.55
+      s.fly.t += dt / 0.62
       if (s.fly.t >= 1) {
         const { ex, ey } = s.fly
         const v = ringValue(ex, ey)
         s.score += v
-        s.landed.push({ x: ex, y: ey, v })
-        s.bursts.push({ x: ex, y: ey, age: 0, color: v >= 100 ? '#ffe36b' : v >= 40 ? '#7dffa6' : v > 0 ? '#00f0ff' : '#ff9aa6', big: v >= 40 })
+        s.landed.push({ x: ex, y: ey, v, age: 0 })
+        s.bursts.push({ x: ex, y: ey, v, age: 0, color: v >= 100 ? '#ffe36b' : v >= 40 ? '#7dffa6' : v > 0 ? '#00f0ff' : '#ff9aa6', big: v >= 40 })
+        s.sounds.push(v >= 40 ? 'power' : v > 0 ? 'pop' : 'hurt')
         s.fly = null
         s.phase = 'rest'
-        s.rest = 0.9
+        s.rest = 1
         s.left--
-        s.msg = v > 0 ? { text: `+${v}`, age: 0, color: v >= 100 ? '#ffe36b' : v >= 40 ? '#7dffa6' : '#00f0ff' } : { text: '¡FALLASTE!', age: 0, color: '#ff9aa6' }
+        s.msg = v > 0 ? { text: v >= 100 ? `¡+${v}!` : `+${v}`, age: 0, color: v >= 100 ? '#ffe36b' : v >= 40 ? '#7dffa6' : '#00f0ff' } : { text: '¡FALLASTE!', age: 0, color: '#ff9aa6' }
       }
     } else if (s.phase === 'rest') {
       s.rest -= dt
@@ -609,34 +680,46 @@ export const BOWLS: GameDef<BowlsState> = {
       }
     }
     for (const p of s.trail) p.t += dt
-    s.trail = s.trail.filter((p) => p.t < 0.35)
+    s.trail = s.trail.filter((p) => p.t < 0.4)
     for (const b of s.bursts) b.age += dt
-    s.bursts = s.bursts.filter((b) => b.age < 0.7)
+    s.bursts = s.bursts.filter((b) => b.age < 0.8)
+    for (const l of s.landed) l.age += dt
   },
   pointer(s, kind, x, y, t) {
     if (s.phase !== 'aim') return
-    if (kind === 'down') s.drag = [{ x, y, t }]
-    else if (kind === 'move' && s.drag.length) {
+    const back = () => {
+      s.drag = []
+      s.aim = null
+      s.x = START.x
+      s.y = START.y
+    }
+    if (kind === 'down') {
+      s.drag = [{ x, y, t }]
+    } else if (kind === 'move' && s.drag.length) {
       s.drag.push({ x, y, t })
-      if (s.drag.length > 8) s.drag.shift()
+      if (s.drag.length > 12) s.drag.shift()
+      // el coco sigue al dedo (un poco): se siente que lo agarras
+      const o = s.drag[0]
+      s.x = clamp(START.x + (x - o.x) * 0.55, LANE.l + 30, LANE.r - 30)
+      s.y = START.y - clamp(o.y - y, 0, 90) * 0.5
+      const v = swipe(s.drag)
+      s.aim = v.vy < -150 ? predict(s.x, s.y, Math.min(MAX_POWER, -v.vy), sideSpeed(v.vx)) : null
     } else if (kind === 'up' && s.drag.length > 1) {
       s.drag.push({ x, y, t })
-      const a = s.drag[0]
-      const b = s.drag[s.drag.length - 1]
-      const dtm = Math.max(0.04, (b.t - a.t) / 1000)
-      const vx = (b.x - a.x) / dtm
-      const vy = (b.y - a.y) / dtm
-      s.drag = []
-      if (vy > -300) return // no fue hacia arriba: se ignora y puede volver a intentar
-      s.power = Math.min(MAX_POWER, -vy)
-      s.vx = Math.max(-240, Math.min(240, vx * 0.12))
-      s.vy = -(420 + Math.min(MAX_POWER, -vy) * 0.28)
+      const v = swipe(s.drag)
+      if (v.vy > -300) return back() // no fue hacia arriba: el coco vuelve y puede intentar de nuevo
+      s.power = Math.min(MAX_POWER, -v.vy)
+      s.vx = sideSpeed(v.vx)
+      s.vy = -rollSpeed(s.power)
       s.phase = 'roll'
+      s.drag = []
+      s.aim = null
       return { sfx: 'pop' }
-    } else if (kind === 'up') s.drag = []
+    } else if (kind === 'up') back()
   },
   draw(s, ctx, t) {
     const lamp = (i: number, on: boolean) => (on ? ['#ffd400', '#ff2bd6', '#00f0ff'][i % 3] : '#2a2160')
+    ctx.imageSmoothingEnabled = true
     // ── fondo: interior de la máquina, con paneles y estrellitas ──
     const bg = ctx.createLinearGradient(0, 0, 0, BH)
     bg.addColorStop(0, '#1a0f55')
@@ -644,13 +727,11 @@ export const BOWLS: GameDef<BowlsState> = {
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, BW, BH)
     for (let i = 0; i < 26; i++) {
-      const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.5 + i))
-      ctx.globalAlpha = tw * 0.7
+      ctx.globalAlpha = (0.4 + 0.6 * Math.abs(Math.sin(t * 1.5 + i))) * 0.7
       ctx.fillStyle = i % 3 === 0 ? '#ff2bd6' : i % 3 === 1 ? '#00f0ff' : '#ffd400'
       ctx.fillRect((i * 83) % BW, 270 + ((i * 47) % 280), 3, 3)
     }
     ctx.globalAlpha = 1
-    // paneles laterales con franjas de colores
     for (const side of [0, 1]) {
       const x0 = side ? LANE.r + 22 : 0
       const w = side ? BW - (LANE.r + 22) : LANE.l - 22
@@ -696,23 +777,22 @@ export const BOWLS: GameDef<BowlsState> = {
       ctx.lineTo(LANE.l + 40 + (LANE.r - LANE.l - 80) * k, RAMP_Y)
       ctx.stroke()
     }
-    // flechas que suben (guían el lanzamiento)
-    for (let i = 0; i < 4; i++) {
-      const u = ((t * 0.5 + i / 4) % 1)
-      const y = BH - 60 - u * (BH - RAMP_Y - 90)
-      const w = 16 - u * 6
-      ctx.globalAlpha = 0.5 * (1 - u)
-      ctx.fillStyle = '#ffe9a8'
-      ctx.beginPath()
-      ctx.moveTo(BW / 2, y - w)
-      ctx.lineTo(BW / 2 + w, y + w * 0.4)
-      ctx.lineTo(BW / 2, y + w * 0.1)
-      ctx.lineTo(BW / 2 - w, y + w * 0.4)
-      ctx.closePath()
-      ctx.fill()
-    }
+    if (s.phase === 'aim' && !s.aim)
+      for (let i = 0; i < 4; i++) {
+        const u = (t * 0.5 + i / 4) % 1
+        const y = BH - 60 - u * (BH - RAMP_Y - 90)
+        const w = 16 - u * 6
+        ctx.globalAlpha = 0.5 * (1 - u)
+        ctx.fillStyle = '#ffe9a8'
+        ctx.beginPath()
+        ctx.moveTo(BW / 2, y - w)
+        ctx.lineTo(BW / 2 + w, y + w * 0.4)
+        ctx.lineTo(BW / 2, y + w * 0.1)
+        ctx.lineTo(BW / 2 - w, y + w * 0.4)
+        ctx.closePath()
+        ctx.fill()
+      }
     ctx.globalAlpha = 1
-    // rampa: labio iluminado donde el coco salta hacia el tablero
     const lip = ctx.createLinearGradient(0, RAMP_Y - 14, 0, RAMP_Y + 16)
     lip.addColorStop(0, '#ffe08a')
     lip.addColorStop(1, '#a8651f')
@@ -734,8 +814,7 @@ export const BOWLS: GameDef<BowlsState> = {
     ctx.fill()
     const nl = 30
     for (let i = 0; i < nl; i++) {
-      const u = i / nl
-      const x = 22 + u * (BW - 44)
+      const x = 22 + (i / nl) * (BW - 44)
       const on = (i + Math.floor(t * 8)) % 3 === 0
       ctx.fillStyle = lamp(i, on)
       ctx.beginPath()
@@ -743,6 +822,8 @@ export const BOWLS: GameDef<BowlsState> = {
       ctx.arc(x, 242, 2.6, 0, Math.PI * 2)
       ctx.fill()
     }
+    // el aro (o portal) donde cayó el último coco se ilumina
+    const lit = (v: number) => s.bursts.filter((b) => b.v === v).reduce((m, b) => Math.max(m, 1 - b.age / 0.8), 0)
     for (const r of RINGS) {
       ctx.fillStyle = r.c
       ctx.beginPath()
@@ -751,78 +832,128 @@ export const BOWLS: GameDef<BowlsState> = {
       ctx.strokeStyle = '#07031a'
       ctx.lineWidth = 3
       ctx.stroke()
-      // brillo del borde de arriba a la izquierda
       ctx.strokeStyle = r.hi
       ctx.globalAlpha = 0.65
-      ctx.lineWidth = 3
       ctx.beginPath()
       ctx.arc(BOARD.x, BOARD.y, r.r - 3, Math.PI * 1.05, Math.PI * 1.55)
       ctx.stroke()
       ctx.globalAlpha = 1
     }
-    // valores claros en la línea de cada aro (a la derecha del centro, uno por aro)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    const label = (v: string, x: number, y: number, size: number, fill: string, align: CanvasTextAlign = 'center') => {
-      ctx.textAlign = align
-      ctx.font = `${size}px ${FONT}`
-      ctx.lineWidth = 3
-      ctx.strokeStyle = '#07031a'
-      ctx.strokeText(v, x, y)
-      ctx.fillStyle = fill
-      ctx.fillText(v, x, y)
+    for (const r of RINGS) {
+      const f = lit(r.v)
+      if (f > 0) {
+        ctx.strokeStyle = '#ffffff'
+        ctx.globalAlpha = f
+        ctx.lineWidth = 5
+        ctx.beginPath()
+        ctx.arc(BOARD.x, BOARD.y, r.r - 2, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
     }
+    // números nítidos, uno por aro, en una columna sobre el centro del tablero
     const mids = [81.5, 61, 41.5, 23.5]
-    RINGS.slice(0, 4).forEach((r, i) => label(String(r.v), BOARD.x + mids[i] * 0.72, BOARD.y - mids[i] * 0.69, 10, '#ffffff'))
-    label('50', BOARD.x, BOARD.y + 1, 9, '#1a0f55')
-    // portales de 100 en las esquinas
+    RINGS.slice(0, 4).forEach((r, i) => numText(ctx, String(r.v), BOARD.x, BOARD.y - mids[i], 13, '#ffffff', '#0b0630'))
+    numText(ctx, '50', BOARD.x, BOARD.y, 13, '#1a0f55')
     for (const h of HOLES) {
+      const f = lit(h.v)
       ctx.fillStyle = '#07031a'
       ctx.beginPath()
       ctx.arc(h.x, h.y, h.r + 4, 0, Math.PI * 2)
       ctx.fill()
-      const g = ctx.createRadialGradient(h.x - 4, h.y - 4, 2, h.x, h.y, h.r)
-      g.addColorStop(0, '#fff3a0')
+      const g = ctx.createRadialGradient(h.x - 5, h.y - 5, 2, h.x, h.y, h.r)
+      g.addColorStop(0, '#fff6b8')
       g.addColorStop(1, '#ffb000')
       ctx.fillStyle = g
       ctx.beginPath()
       ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2)
       ctx.fill()
-      label('100', h.x, h.y + 1, 9, '#2a1405')
+      if (f > 0) {
+        ctx.strokeStyle = '#ffffff'
+        ctx.globalAlpha = f
+        ctx.lineWidth = 5
+        ctx.beginPath()
+        ctx.arc(h.x, h.y, h.r + 2, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+      numText(ctx, '100', h.x, h.y + 0.5, 12, '#3a2100')
     }
-    // destellos de los aciertos
+    // ondas y chispas de los aciertos
     for (const b of s.bursts) {
-      const u = b.age / 0.7
+      const u = b.age / 0.8
       ctx.globalAlpha = 1 - u
       ctx.strokeStyle = b.color
       ctx.lineWidth = 4
       ctx.beginPath()
-      ctx.arc(b.x, b.y, 10 + u * (b.big ? 46 : 28), 0, Math.PI * 2)
+      ctx.arc(b.x, b.y, 10 + u * (b.big ? 52 : 30), 0, Math.PI * 2)
       ctx.stroke()
       if (b.big)
-        for (let k = 0; k < 8; k++) {
-          const a = (k / 8) * Math.PI * 2
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * Math.PI * 2 + 0.3
           ctx.fillStyle = b.color
-          ctx.fillRect(b.x + Math.cos(a) * (14 + u * 54) - 2, b.y + Math.sin(a) * (14 + u * 54) - 2, 4, 4)
+          ctx.fillRect(b.x + Math.cos(a) * (12 + u * 62) - 2, b.y + Math.sin(a) * (12 + u * 62) - 2, 4, 4)
         }
     }
     ctx.globalAlpha = 1
-    // cocos ya caídos en el tablero
-    for (const l of s.landed) coconut(ctx, l.x, l.y, 9)
+    // cocos ya caídos: rebotan un poquito al caer y se asientan
+    for (const l of s.landed) {
+      const bounce = l.age < 0.4 ? Math.abs(Math.sin(l.age * 14)) * 12 * (1 - l.age / 0.4) : 0
+      ctx.fillStyle = 'rgba(0,0,0,.28)'
+      ctx.beginPath()
+      ctx.ellipse(l.x + 2, l.y + 8, 8, 3, 0, 0, Math.PI * 2)
+      ctx.fill()
+      coconut(ctx, l.x, l.y - bounce, 9, l.x)
+    }
 
-    // ── estela y coco en juego (con sombra sobre el carril) ──
+    // ── mira mientras se arrastra: dónde caerá y con qué fuerza ──
+    const ready = s.phase === 'aim' && s.aim
+    if (ready && s.aim) {
+      const a = s.aim
+      const soft = a.power < MIN_POWER
+      const col = soft ? '#ff6f8e' : ringValue(a.tx, a.ty) >= 40 ? '#7dffa6' : '#ffd400'
+      if (!soft) {
+        ctx.strokeStyle = col
+        ctx.globalAlpha = 0.5
+        ctx.setLineDash([5, 7])
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(s.x, s.y - 20)
+        ctx.lineTo(a.tx, a.ty + 14)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.globalAlpha = 1
+        const pr = 13 + Math.sin(t * 8) * 2.5
+        ctx.strokeStyle = col
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(a.tx, a.ty, pr, 0, Math.PI * 2)
+        ctx.moveTo(a.tx - pr - 6, a.ty)
+        ctx.lineTo(a.tx - pr + 5, a.ty)
+        ctx.moveTo(a.tx + pr - 5, a.ty)
+        ctx.lineTo(a.tx + pr + 6, a.ty)
+        ctx.moveTo(a.tx, a.ty - pr - 6)
+        ctx.lineTo(a.tx, a.ty - pr + 5)
+        ctx.moveTo(a.tx, a.ty + pr - 5)
+        ctx.lineTo(a.tx, a.ty + pr + 6)
+        ctx.stroke()
+      }
+    }
+
+    // ── estela y coco en juego: se achica al alejarse, gira y proyecta sombra ──
     for (const p of s.trail) {
-      ctx.globalAlpha = Math.max(0, 0.5 - p.t * 1.4)
+      ctx.globalAlpha = Math.max(0, 0.45 - p.t * 1.1)
       ctx.fillStyle = '#ffd36b'
       ctx.beginPath()
-      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2)
+      ctx.arc(p.x, p.y, 6 + (p.y - RAMP_Y) / 40, 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.globalAlpha = 1
-    const shadow = (x: number, y: number, r: number) => {
-      ctx.fillStyle = 'rgba(0,0,0,.35)'
+    const radiusAt = (y: number) => 12 + 11 * clamp((y - RAMP_Y) / (START.y - RAMP_Y), 0, 1)
+    const shadow = (x: number, y: number, r: number, a = 0.35) => {
+      ctx.fillStyle = `rgba(0,0,0,${a})`
       ctx.beginPath()
-      ctx.ellipse(x + 3, y + r * 0.9, r * 0.95, r * 0.4, 0, 0, Math.PI * 2)
+      ctx.ellipse(x + 3, y + r * 0.9, r * 0.95, r * 0.38, 0, 0, Math.PI * 2)
       ctx.fill()
     }
     if (s.phase === 'fly' && s.fly) {
@@ -830,37 +961,89 @@ export const BOWLS: GameDef<BowlsState> = {
       const u = f.t
       const x = f.sx + (f.ex - f.sx) * u
       const gy = f.sy + (f.ey - f.sy) * u
-      const y = gy - Math.sin(u * Math.PI) * 46
-      shadow(x, gy + 8, 14 - u * 5)
-      coconut(ctx, x, y, 17 - u * 8)
+      const h = Math.sin(u * Math.PI) * 54
+      const r = 15 - u * 5
+      shadow(x, gy, r, 0.3 * (1 - h / 80))
+      coconut(ctx, x, gy - h, r, u * 14)
     } else if (s.phase === 'aim' || s.phase === 'roll') {
-      shadow(s.x, s.y, 22)
-      coconut(ctx, s.x, s.y, 22)
+      const r = radiusAt(s.y)
+      shadow(s.x, s.y, r)
+      coconut(ctx, s.x, s.y, r, (START.y - s.y) * 0.07)
+      if (s.phase === 'aim' && s.drag.length) {
+        ctx.strokeStyle = 'rgba(255,255,255,.85)'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(s.x, s.y, r + 5, 0, Math.PI * 2)
+        ctx.stroke()
+      }
     }
+
+    // ── medidor de fuerza a la derecha: en la franja verde cae cerca del centro ──
+    const mx = BW - 30
+    const my0 = 300
+    const my1 = 520
+    const fy = (p: number) => my1 - ((clamp(p, 0, MAX_POWER) / MAX_POWER) * (my1 - my0))
+    ctx.fillStyle = '#07031a'
+    rr(ctx, mx - 9, my0 - 6, 18, my1 - my0 + 12, 6)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,111,142,.75)'
+    ctx.fillRect(mx - 6, fy(MIN_POWER), 12, my1 - fy(MIN_POWER))
+    ctx.fillStyle = 'rgba(255,212,0,.5)'
+    ctx.fillRect(mx - 6, my0, 12, fy(SWEET + 450) - my0)
+    ctx.fillStyle = 'rgba(125,255,166,.8)'
+    ctx.fillRect(mx - 6, fy(SWEET + 450), 12, fy(SWEET - 450) - fy(SWEET + 450))
+    ctx.fillStyle = 'rgba(255,212,0,.5)'
+    ctx.fillRect(mx - 6, fy(SWEET - 450), 12, fy(MIN_POWER) - fy(SWEET - 450))
+    if (s.aim) {
+      const y = fy(s.aim.power)
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.moveTo(mx - 14, y - 6)
+      ctx.lineTo(mx - 5, y)
+      ctx.lineTo(mx - 14, y + 6)
+      ctx.closePath()
+      ctx.fill()
+    }
+    ctx.font = `7px "Press Start 2P", monospace`
+    ctx.textAlign = 'center'
+    ctx.fillStyle = '#9fb3ff'
+    ctx.fillText('FUERZA', mx, my0 - 16)
+
     if (s.phase === 'aim') {
-      const k = (t % 1.2) / 1.2
-      ctx.globalAlpha = 0.9 * (1 - k)
-      label('DESLIZA ARRIBA', BW / 2, BH - 20, 9, '#ffffff')
-      ctx.globalAlpha = 1
+      if (s.aim) {
+        const soft = s.aim.power < MIN_POWER
+        numText(ctx, soft ? 'MÁS FUERTE' : s.aim.power > SWEET + 1000 ? '¡MUY FUERTE!' : 'SUELTA', BW / 2, BH - 20, 14, soft ? '#ff9aa6' : '#ffffff', '#07031a')
+      } else if (!s.drag.length) {
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 5)
+        numText(ctx, 'ARRASTRA Y SUELTA', BW / 2, BH - 20, 14, '#ffffff', '#07031a')
+        ctx.globalAlpha = 1
+      }
     }
 
     // ── marcador arriba: tiquetes y cocos que quedan ──
+    const label = (v: string, x: number, y: number, size: number, fill: string, align: CanvasTextAlign) => {
+      ctx.font = `${size}px "Press Start 2P", monospace`
+      ctx.textAlign = align
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = fill
+      ctx.fillText(v, x, y)
+    }
     ctx.fillStyle = '#07031a'
     ctx.fillRect(0, 0, BW, 44)
     ctx.fillStyle = '#ff2bd6'
     ctx.fillRect(0, 44, BW, 3)
     label('TIQUETES', 12, 15, 8, '#00f0ff', 'left')
-    label(String(liveTickets(s.score)), 12, 33, 14, '#ffd400', 'left')
+    numText(ctx, String(liveTickets(s.score)), 12 + String(liveTickets(s.score)).length * 8.5, 33, 20, '#ffd400', '#07031a')
+    label('COCOS', BW - 12, 12, 8, '#ffd400', 'right')
     for (let i = 0; i < BALLS; i++) {
-      const used = i >= s.left
-      ctx.globalAlpha = used ? 0.25 : 1
+      ctx.globalAlpha = i >= s.left ? 0.25 : 1
       coconut(ctx, BW - 20 - (BALLS - 1 - i) * 17, 28, 6.5)
     }
     ctx.globalAlpha = 1
-    label('COCOS', BW - 12, 12, 8, '#ffd400', 'right')
     if (s.msg) {
-      ctx.globalAlpha = Math.max(0, 1 - s.msg.age / 1.2)
-      label(s.msg.text, BW / 2, 150 - s.msg.age * 14, 20, s.msg.color)
+      const k = s.msg.age / 1.3
+      ctx.globalAlpha = Math.max(0, 1 - k * k)
+      numText(ctx, s.msg.text, BW / 2, 150 - s.msg.age * 16 + 6, 30 + Math.max(0, 0.3 - s.msg.age) * 40, s.msg.color, '#07031a')
       ctx.globalAlpha = 1
     }
   },

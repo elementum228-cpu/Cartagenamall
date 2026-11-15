@@ -66,6 +66,7 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
       const dt = last ? Math.min((now - last) / 1000, 0.05) : 0
       last = now
       def.update(state.current, dt)
+      def.takeSounds?.(state.current).forEach((k) => sfx(k))
       paint(now / 1000)
       if (def.done(state.current)) {
         cancelAnimationFrame(raf.current)
