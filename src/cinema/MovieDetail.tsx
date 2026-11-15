@@ -1,5 +1,5 @@
 import { Bookmark, BookmarkCheck, ExternalLink, Info, Play, Share2, Ticket, X } from 'lucide-react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CHAINS, dayLabel, showsOf, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useCineSocial } from '../state/cineSocial'
@@ -30,7 +30,7 @@ function TrailerPlayer({ trailer, movie, meta, onTimes, onClose }: { trailer: { 
   }, [onClose])
   const art = movie.image || movie.backdrop
   return (
-    <motion.div role="dialog" aria-modal="true" aria-label={`Tráiler de ${movie.title}`} className="fixed inset-0 z-[90] overflow-y-auto bg-[#04080f] text-[#F7F4EF]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+    <motion.div role="dialog" aria-modal="true" aria-label={`Tráiler de ${movie.title}`} className="fixed inset-0 z-[90] overflow-y-auto bg-[#04080f] text-[#F7F4EF]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }} transition={{ duration: 0.3 }}>
       {/* ambiente: el cartel desenfocado tiñe la sala */}
       <div className="pointer-events-none fixed inset-0" aria-hidden>
         {art && <img src={art} alt="" className="size-full scale-125 object-cover opacity-45 blur-3xl saturate-150" />}
@@ -49,7 +49,7 @@ function TrailerPlayer({ trailer, movie, meta, onTimes, onClose }: { trailer: { 
 
         <div className="flex flex-1 flex-col justify-center gap-6 py-2 md:gap-8">
           {/* pantalla */}
-          <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,.14),0_30px_80px_-20px_rgba(0,0,0,.9),0_0_90px_-30px_rgba(244,205,121,.35)] md:rounded-3xl">
+          <motion.div initial={{ opacity: 0, y: 28, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 28, delay: 0.08 }} className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-[0_0_0_1px_rgba(255,255,255,.14),0_30px_80px_-20px_rgba(0,0,0,.9),0_0_90px_-30px_rgba(244,205,121,.35)] md:rounded-3xl">
             {!loaded && (
               <div className="absolute inset-0 grid place-items-center" aria-live="polite">
                 {art && <img src={art} alt="" className="absolute inset-0 size-full object-cover opacity-40 blur-md" />}
@@ -69,10 +69,10 @@ function TrailerPlayer({ trailer, movie, meta, onTimes, onClose }: { trailer: { 
               sandbox="allow-scripts allow-same-origin allow-presentation"
               onLoad={() => setLoaded(true)}
             />
-          </div>
+          </motion.div>
 
           {/* ficha corta */}
-          <div className="flex items-end gap-4 md:gap-6">
+          <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }} className="flex items-end gap-4 md:gap-6">
             <div className="aspect-[2/3] w-[78px] shrink-0 overflow-hidden rounded-lg shadow-[0_10px_30px_rgba(0,0,0,.6)] ring-1 ring-white/25 md:w-[110px]">
               <Picture src={movie.image} title={movie.title} hue={movie.title.length} />
             </div>
@@ -80,17 +80,17 @@ function TrailerPlayer({ trailer, movie, meta, onTimes, onClose }: { trailer: { 
               <h2 className="text-[24px] leading-[1.05] font-black tracking-tight [overflow-wrap:anywhere] md:text-[36px]">{movie.title}</h2>
               {meta.length > 0 && <p className="mt-1.5 text-[13px] font-semibold text-white/65">{meta.join(' · ')}{movie.rating ? ` · ${movie.rating}` : ''}</p>}
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        <div className="mt-4 grid gap-2.5 md:mx-auto md:w-full md:max-w-[560px] md:grid-cols-[1fr_auto]">
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }} className="mt-4 grid gap-2.5 md:mx-auto md:w-full md:max-w-[560px] md:grid-cols-[1fr_auto]">
           <button onClick={onTimes} className="flex h-13 items-center justify-center gap-2 rounded-full text-[15px] font-extrabold text-[#2a1405] shadow-[0_10px_30px_-10px_rgba(244,205,121,.6)] transition active:scale-[0.98]" style={{ background: `linear-gradient(180deg,#ffe9b0,${C.gold})` }}>
             <Ticket className="size-4" /> Ver horarios
           </button>
           <a href={trailer.watch} target="_blank" rel="noopener noreferrer" className="flex h-13 items-center justify-center gap-1.5 rounded-full px-5 text-[13px] font-bold text-white/75 ring-1 ring-white/20 transition active:scale-95">
             Abrir en {trailer.provider === 'youtube' ? 'YouTube' : 'Vimeo'} <ExternalLink className="size-3.5" aria-hidden />
           </a>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   )
@@ -257,6 +257,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
                 </button>
               </div>
               {!trailer && <p className="mt-2 text-[12px] text-white/45">Tráiler oficial aún no disponible.</p>}
+              <AnimatePresence>
               {trailer && trailerOpen && (
                 <TrailerPlayer
                   trailer={trailer}
@@ -269,6 +270,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
                   onClose={() => setTrailerOpen(false)}
                 />
               )}
+              </AnimatePresence>
             </div>
 
             {/* dónde verla */}

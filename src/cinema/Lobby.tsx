@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { ArrowRight, ChevronLeft, Clapperboard, Info, Play, Ticket, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { detectProfile } from '../lib/deviceProfile'
@@ -18,6 +18,15 @@ import { C, Notice, Picture, SectionHead, StatusTag, shortDate } from './ui'
 // reales de la administración o de la lectura oficial; lo que no existe se dice (nada de horarios, planes ni eventos inventados).
 
 const EASE = [0.65, 0, 0.25, 1] as const
+/** Curva de Apple: arranca rápido y se asienta suave. */
+const APPLE = [0.22, 1, 0.36, 1] as const
+/** Cambio de pantalla (lobby ⇄ ficha): sale con un leve retroceso y entra subiendo desde abajo, solo con transform y opacidad. */
+const SCREEN = {
+  initial: { opacity: 0, y: 26, scale: 0.985 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.46, ease: APPLE } },
+  exit: { opacity: 0, y: -10, scale: 0.99, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] as const } },
+}
+const TAB_ORDER: CineTab[] = ['now', 'soon', 'cines', 'events']
 const VELVET = 'repeating-linear-gradient(90deg, #7a1020 0 16px, #5c0c18 16px 32px)'
 const reduceMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -219,9 +228,24 @@ export default function Lobby() {
   const movie = movies.find((m) => m.id === movieId)
   const content = useMemo(() => [...nowPlaying, ...soon], [nowPlaying, soon])
   const close = () => useCineUi.getState().close()
+  // al abrir una ficha se recuerda dónde estaba el lobby; al volver se regresa justo ahí
+  const lobbyScroll = useRef(0)
+  const prevTab = useRef<CineTab>(tab)
+  const dir = TAB_ORDER.indexOf(tab) >= TAB_ORDER.indexOf(prevTab.current) ? 1 : -1
+  useEffect(() => {
+    prevTab.current = tab
+  }, [tab])
+  useEffect(() => {
+    if (movieId) lobbyScroll.current = document.getElementById('cine-scroll')?.scrollTop ?? 0
+  }, [movieId])
+  const restoreScroll = () => {
+    const el = document.getElementById('cine-scroll')
+    if (el) el.scrollTop = useCineUi.getState().movieId ? 0 : lobbyScroll.current
+  }
 
   return (
     <motion.div role="dialog" aria-modal="true" aria-label="MallPlay Cinema" id="cine-scroll" onScroll={(e) => { const v = e.currentTarget.scrollTop > 24; if (v !== solid) setSolid(v) }} className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain text-[#F7F4EF]" style={{ background: C.night }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+    <MotionConfig reducedMotion="user">
       {!reduced && <Doors open={open} dur={dur} />}
       <motion.div initial={false} animate={{ opacity: open ? 1 : 0, y: open ? 0 : 12 }} transition={{ duration: 0.45, delay: open && !reduced ? dur * 0.7 : 0 }}>
         {/* barra superior: volver al mall */}
@@ -237,25 +261,26 @@ export default function Lobby() {
           </button>
         </header>
 
+        <AnimatePresence mode="wait" initial={false} onExitComplete={() => restoreScroll()}>
         {movie ? (
-          <div>
+          <motion.div key={`movie-${movie.id}`} {...SCREEN}>
             <MovieDetail key={movie.id} movie={movie} shows={shows} chains={visible} demo={demo} upcoming={upcoming.has(movie.id)} days={days} now={hhmm(clock)} />
-          </div>
+          </motion.div>
         ) : visible.length === 0 ? (
-          <div className="mx-auto max-w-md px-5 pt-28">
+          <motion.div key="closed" {...SCREEN} className="mx-auto max-w-md px-5 pt-28">
             <Notice icon={<Info className="size-4" />} title="El cine está cerrado por ahora" text="Vuelve pronto: MallPlay Cinema volverá a abrir sus puertas." />
-          </div>
+          </motion.div>
         ) : (
-          <div>
+          <motion.div key="lobby" {...SCREEN}>
             <Hero movies={featured} upcoming={upcoming} demo={demo} />
 
             {/* sección 02: navegación rápida */}
             <nav aria-label="Secciones de MallPlay Cinema" className="sticky top-[calc(max(0.75rem,env(safe-area-inset-top))+2.75rem+0.5rem)] z-10 -mt-px" style={{ background: C.night }}>
               <div role="tablist" className="mx-auto flex max-w-[1360px] gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] md:px-8 lg:px-12 [&::-webkit-scrollbar]:hidden">
                 {TABS.map((t) => (
-                  <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => useCineUi.getState().setTab(t.id)} className={`relative h-10 shrink-0 rounded-full px-4 text-[13.5px] font-bold whitespace-nowrap transition active:scale-95 lg:h-11 lg:px-5 lg:text-[14.5px] ${tab === t.id ? 'bg-white/[0.12] text-white ring-1 ring-white/25' : 'text-white/55'}`}>
-                    {t.label}
-                    {tab === t.id && <span className="absolute inset-x-5 -bottom-px h-0.5 rounded-full bg-[#F4CD79]" aria-hidden />}
+                  <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => useCineUi.getState().setTab(t.id)} className={`relative h-10 shrink-0 rounded-full px-4 text-[13.5px] font-bold whitespace-nowrap transition-colors duration-300 active:scale-95 lg:h-11 lg:px-5 lg:text-[14.5px] ${tab === t.id ? 'text-white' : 'text-white/55'}`}>
+                    {tab === t.id && <motion.span layoutId="cine-tab-pill" className="absolute inset-0 rounded-full bg-white/[0.12] ring-1 ring-white/25" transition={{ type: 'spring', stiffness: 420, damping: 34 }} aria-hidden />}
+                    <span className="relative">{t.label}</span>
                   </button>
                 ))}
               </div>
@@ -266,6 +291,8 @@ export default function Lobby() {
                 <Notice tone="warn" icon={<Info className="size-4" />} title="Cartelera de ejemplo" text="Las películas y horarios que ves son de muestra; la cartelera real llegará pronto. Para horarios reales, consulta el cine oficial." />
               )}
 
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div key={tab} className="space-y-9 lg:space-y-12" initial={{ opacity: 0, x: dir * 36 }} animate={{ opacity: 1, x: 0, transition: { duration: 0.38, ease: APPLE } }} exit={{ opacity: 0, x: dir * -24, transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } }}>
               {tab === 'now' && (
                 <>
                   <section aria-label="En cartelera en Cartagena" className="space-y-3">
@@ -325,10 +352,14 @@ export default function Lobby() {
                   </ul>
                 </section>
               )}
+                </motion.div>
+              </AnimatePresence>
             </main>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </motion.div>
+    </MotionConfig>
     </motion.div>
   )
 }
