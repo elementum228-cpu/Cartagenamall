@@ -69,7 +69,7 @@ export function PlanCard({ plan, onRemove }: { plan: GroupPlan; onRemove?: () =>
 /** Entrada al asistente + lo que ya se sabe del módulo social (honesto sobre lo que aún no existe). */
 export function PlanTeaser() {
   return (
-    <section aria-label="Arma tu salida" className="relative overflow-hidden rounded-3xl p-5 ring-1 ring-white/12" style={{ background: `radial-gradient(120% 90% at 100% 0%, rgba(244,205,121,.22), transparent 55%), linear-gradient(160deg, ${C.velvet}, #3a0a18 70%)` }}>
+    <section aria-label="Arma tu salida" className="relative flex flex-col justify-center overflow-hidden rounded-3xl p-5 ring-1 ring-white/12 lg:p-8" style={{ background: `radial-gradient(120% 90% at 100% 0%, rgba(244,205,121,.22), transparent 55%), linear-gradient(160deg, ${C.velvet}, #3a0a18 70%)` }}>
       <h3 className="text-[22px] leading-tight font-black tracking-tight text-[#F7F4EF]">Las mejores películas se disfrutan juntos 🍿</h3>
       <p className="mt-2 max-w-[34ch] text-[14px] leading-snug text-white/80">Organiza una salida, invita a tus amigos y conviértela en un plan inolvidable.</p>
       <button onClick={() => useCineUi.getState().openWizard(null)} className="mt-4 flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-extrabold text-[#2a1405] shadow-lg transition active:scale-[0.98]" style={{ background: `linear-gradient(180deg,#ffe9b0,${C.gold})` }}>
@@ -83,16 +83,18 @@ export function PlanTeaser() {
 export function PlansTab() {
   const plans = useCineSocial((s) => s.plans)
   return (
-    <div className="space-y-6">
-      <PlanTeaser />
-      <section aria-label="Mis planes" className="space-y-3">
+    <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10 lg:space-y-0">
+      <div className="space-y-6">
+        <PlanTeaser />
+        <section aria-label="Mis planes" className="space-y-3">
         <SectionHead title="Mis planes" sub={`Guardados en este dispositivo (${plans.length}/${MAX_PLANS}).`} />
         {plans.length === 0 ? (
           <Notice icon={<Ticket className="size-4" />} title="Aún no tienes planes" text="Crea uno y compártelo por WhatsApp para invitar a tus amigos." />
         ) : (
           plans.map((p) => <PlanCard key={p.id} plan={p} onRemove={() => useCineSocial.getState().removePlan(p.id)} />)
         )}
-      </section>
+        </section>
+      </div>
       <section aria-label="Planes públicos" className="space-y-3">
         <SectionHead title="¿Quién se apunta? 🍿" sub="Planes públicos de la comunidad." />
         <Notice tone="soon" icon={<ShieldCheck className="size-4" />} title="Planes públicos: próximamente" text="Antes de juntar a personas que no se conocen necesitamos reportes, bloqueo y moderación. Cuando estén listos, aquí verás los planes que sus organizadores decidan hacer públicos y podrás unirte. Por ahora, tus planes son privados y se comparten con un mensaje." />

@@ -9,7 +9,7 @@ export function Challenges() {
   return (
     <section aria-label="Pasaporte de cine" className="space-y-3">
       <SectionHead title="Pasaporte de cine" sub={`${doneCount} de ${CHALLENGES.filter((c) => c.available).length} retos completados.`} />
-      <ul className="space-y-2">
+      <ul className="space-y-2 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
         {CHALLENGES.map((c) => {
           const p = Math.min(c.goal, progressOf(c.id, s))
           const done = !!s.done[c.id]

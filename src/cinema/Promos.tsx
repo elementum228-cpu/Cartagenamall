@@ -33,7 +33,7 @@ export function AfterBefore({ limit }: { limit?: number }) {
       {list.length === 0 ? (
         <Notice icon={<UtensilsCrossed className="size-4" />} title="Pronto, negocios aliados" text="Aquí aparecerán los restaurantes, cafeterías y postres de MallPlay cuando estén disponibles." />
       ) : (
-        <ul className="grid gap-2.5 sm:grid-cols-2" aria-label="Dónde comer en MallPlay">
+        <ul className={`grid gap-2.5 sm:grid-cols-2 ${limit ? '' : 'lg:grid-cols-3'}`} aria-label="Dónde comer en MallPlay">
           {list.map((s) => (
             <li key={s.id}>
               <button onClick={() => openStore(s.id)} className="flex w-full items-center gap-3 rounded-2xl bg-white/[0.07] p-3 text-left ring-1 ring-white/12 transition active:scale-[0.99]">

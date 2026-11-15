@@ -68,7 +68,7 @@ function Theatre({ children, onClose, label, bare = false }: { children: React.R
       <button onClick={onClose} aria-label="Cerrar" className="fixed top-[max(1rem,env(safe-area-inset-top))] right-4 z-10 grid size-11 place-items-center rounded-full bg-black/55 text-white backdrop-blur transition active:scale-95">
         <X className="size-5" />
       </button>
-      <div className={bare ? 'relative mx-auto min-h-full w-full max-w-md' : 'relative mx-auto min-h-full w-full max-w-4xl px-[calc(9%+4px)] pt-[max(3.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] md:px-[14%]'}>{children}</div>
+      <div className={bare ? 'relative mx-auto min-h-full w-full max-w-md' : 'relative mx-auto flex min-h-full w-full max-w-[1500px] flex-col px-[calc(9%+4px)] pt-[max(3.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] md:justify-center md:px-[12%] lg:px-[13%]'}>{children}</div>
     </motion.div>
   )
 }
@@ -77,7 +77,7 @@ function Title({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
     <div className="text-center">
       <Bulbs />
-      <h2 className="mt-3 text-[28px] font-black tracking-[0.14em]" style={{ color: '#fff3c4', textShadow: `0 0 18px ${GOLD}, 0 0 4px #ff5fa8` }}>
+      <h2 className="mt-3 text-[28px] font-black tracking-[0.14em] md:text-[44px]" style={{ color: '#fff3c4', textShadow: `0 0 18px ${GOLD}, 0 0 4px #ff5fa8` }}>
         {children}
       </h2>
       {sub && <p className="mt-1 text-[13px] text-white/70">{sub}</p>}
@@ -96,19 +96,19 @@ function Board() {
   return (
     <Theatre onClose={close} label="Cartelera del cine">
       <Title sub="En cartelera">CARTELERA</Title>
-      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 md:mx-auto md:mt-10 md:max-w-[1100px] md:grid-cols-4 md:gap-x-8 md:gap-y-10">
         {posters.map((p, i) => (
           <button key={i} onClick={() => setZoom(i)} className="group text-left" aria-label={`Ver el cartel ${p.title || i + 1}`}>
             <div className="aspect-[2/3] overflow-hidden rounded-md transition group-active:scale-[0.97]" style={{ boxShadow: `0 0 0 3px #1b2247, 0 0 0 5px ${GOLD}, 0 10px 28px rgba(0,0,0,.55)` }}>
               <Poster image={p.image} title={p.title} hue={i} />
             </div>
-            <p className="mt-3 line-clamp-2 text-center text-[13px] font-bold leading-tight text-white/90">{p.title || 'Próximo estreno'}</p>
+            <p className="mt-3 line-clamp-2 text-center text-[13px] font-bold leading-tight text-white/90 md:mt-4 md:text-[16px]">{p.title || 'Próximo estreno'}</p>
           </button>
         ))}
       </div>
       {lobbyOn && (
-        <div className="mt-8 flex justify-center">
-          <button onClick={() => useCineUi.getState().open('lobby')} className="flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-extrabold text-[#2a1405] shadow-lg transition active:scale-95" style={{ background: `linear-gradient(180deg,#ffe19a,${GOLD})` }}>
+        <div className="mt-8 flex justify-center md:mt-12">
+          <button onClick={() => useCineUi.getState().open('lobby')} className="flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-extrabold text-[#2a1405] shadow-lg transition active:scale-95 md:px-9 md:py-4 md:text-[17px]" style={{ background: `linear-gradient(180deg,#ffe19a,${GOLD})` }}>
             <Clapperboard className="size-5" /> Entrar al cine
           </button>
         </div>
@@ -116,7 +116,7 @@ function Board() {
       <AnimatePresence>
         {zoom !== null && (
           <motion.div className="fixed inset-0 z-[80] grid place-items-center bg-black/80 p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setZoom(null)}>
-            <motion.div className="w-full max-w-[min(78vw,340px)]" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }}>
+            <motion.div className="w-full max-w-[min(78vw,340px)] md:max-w-[min(40vw,440px)]" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }}>
               <div className="aspect-[2/3] overflow-hidden rounded-lg" style={{ boxShadow: `0 0 0 4px ${GOLD}, 0 20px 50px rgba(0,0,0,.6)` }}>
                 <Poster image={posters[zoom].image} title={posters[zoom].title} hue={zoom} />
               </div>

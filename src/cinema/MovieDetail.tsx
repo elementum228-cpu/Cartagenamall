@@ -20,9 +20,21 @@ function TrailerPlayer({ embed, title, onClose }: { embed: string; title: string
   return (
     <div className="relative mt-4 overflow-hidden rounded-2xl bg-black ring-1 ring-white/15">
       <div className="aspect-video">
-        <iframe src={embed} title={`Tráiler de ${title}`} className="size-full" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-presentation" />
+        <iframe
+          src={embed}
+          title={`Tráiler de ${title}`}
+          className="size-full"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
+        />
       </div>
-      <button onClick={onClose} aria-label="Cerrar tráiler" className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/70 text-white transition active:scale-95">
+      <button
+        onClick={onClose}
+        aria-label="Cerrar tráiler"
+        className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/70 text-white transition active:scale-95"
+      >
         <X className="size-4" />
       </button>
     </div>
@@ -76,7 +88,13 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
   const today = day === days[0]
   const rows = visible.map((c) => {
     const info = CHAINS.find((x) => x.id === c.id)!
-    return { chain: c, info, list: showsOf(shows, movie.id, c.id, day), link: movieLink(c.id as ChainId, movie.links), venues: CINEMA_DIRECTORY.find((d) => d.id === c.id)?.venues ?? [] }
+    return {
+      chain: c,
+      info,
+      list: showsOf(shows, movie.id, c.id, day),
+      link: movieLink(c.id as ChainId, movie.links),
+      venues: CINEMA_DIRECTORY.find((d) => d.id === c.id)?.venues ?? [],
+    }
   })
   const known = visible.filter((c) => shows.some((s) => s.movieId === movie.id && s.chain === c.id) || movie.links[c.id])
   const anyShows = days.some((d) => visible.some((c) => showsOf(shows, movie.id, c.id, d).length > 0))
@@ -88,145 +106,218 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
     toast(now ? 'Guardada en tus películas' : 'Quitada de tus guardadas', 'success')
     announceChallenges()
   }
-  const share = () => void shareText(`🎬 ${movie.title} — mírala en MallPlay Cinema`, `${movie.title}${meta.length ? ` (${meta.join(' · ')})` : ''}. Descubre dónde verla y arma tu plan en MallPlay Cinema.`)
+  const share = () =>
+    void shareText(
+      `🎬 ${movie.title} — mírala en MallPlay Cinema`,
+      `${movie.title}${meta.length ? ` (${meta.join(' · ')})` : ''}. Descubre dónde verla y arma tu plan en MallPlay Cinema.`,
+    )
   const seeTimes = () => whereRef.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
 
   return (
     <div>
-      <section className="relative h-[46dvh] max-h-[460px] min-h-[300px]">
+      <section className="relative h-[46dvh] max-h-[460px] min-h-[300px] lg:h-[54dvh] lg:max-h-[560px]">
         <div className="absolute inset-0" aria-hidden>
           <Picture src={movie.backdrop || movie.image} title={movie.title} hue={movie.title.length} priority />
-          <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${C.night} 2%, rgba(8,24,39,.6) 40%, rgba(8,24,39,0) 70%), linear-gradient(to bottom, rgba(8,24,39,.6), rgba(8,24,39,0) 24%)` }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(to top, ${C.night} 2%, rgba(8,24,39,.6) 40%, rgba(8,24,39,0) 70%), linear-gradient(to bottom, rgba(8,24,39,.6), rgba(8,24,39,0) 24%)`,
+            }}
+          />
         </div>
-        <button onClick={() => useCineUi.getState().openMovie(null)} aria-label="Volver al lobby del cine" className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 flex h-11 items-center gap-1 rounded-full bg-black/55 pr-4 pl-2.5 text-[14px] font-bold backdrop-blur transition active:scale-95">
+        <button
+          onClick={() => useCineUi.getState().openMovie(null)}
+          aria-label="Volver al lobby del cine"
+          className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 flex h-11 items-center gap-1 rounded-full bg-black/55 pr-4 pl-2.5 text-[14px] font-bold backdrop-blur transition active:scale-95"
+        >
           <ChevronLeft className="size-5" /> Lobby
         </button>
       </section>
 
-      <section className="relative -mt-24 px-5 pb-12">
-        <div className="flex items-end gap-4">
-          <div className="aspect-[2/3] w-[104px] shrink-0 overflow-hidden rounded-xl shadow-[0_10px_30px_rgba(0,0,0,.55)] ring-2" style={{ ['--tw-ring-color' as string]: C.gold }}>
-            <Picture src={movie.image} title={movie.title} hue={movie.title.length} priority />
-          </div>
-          <div className="min-w-0 pb-1">
-            <div className="flex flex-wrap gap-1.5">
-              {demo && <StatusTag kind="demo" />}
-              {movie.isNew && <StatusTag kind="new" />}
-              <StatusTag kind={upcoming ? 'soon' : 'now'} />
+      <section className="relative -mt-24 px-5 pb-14 lg:-mt-36 lg:px-12">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-end gap-4 lg:gap-8">
+            <div
+              className="aspect-[2/3] w-[104px] shrink-0 overflow-hidden rounded-xl lg:w-[200px] shadow-[0_10px_30px_rgba(0,0,0,.55)] ring-2"
+              style={{ ['--tw-ring-color' as string]: C.gold }}
+            >
+              <Picture src={movie.image} title={movie.title} hue={movie.title.length} priority />
             </div>
-            <h2 className="mt-1.5 text-[28px] leading-[1.02] font-black tracking-tight text-[#F7F4EF] [overflow-wrap:anywhere]">{movie.title}</h2>
-          </div>
-        </div>
-
-        {meta.length > 0 && (
-          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] font-semibold text-white/80">
-            {meta.map((m, i) => (
-              <span key={i} className="flex items-center gap-2">
-                {i > 0 && <span className="size-1 rounded-full bg-white/35" aria-hidden />}
-                {m}
-              </span>
-            ))}
-            {movie.rating && <span className="rounded-md border border-white/30 px-1.5 py-px text-[12px] font-extrabold">{movie.rating}</span>}
-          </p>
-        )}
-        {movie.synopsis ? <p className="mt-3 text-[14px] leading-relaxed text-white/80">{movie.synopsis}</p> : <p className="mt-3 text-[13px] text-white/50">Sinopsis aún no disponible.</p>}
-        {age && <p className="mt-2 text-[12px] text-white/55">{age}</p>}
-        {movie.release && upcoming && <p className="mt-2 text-[13px] font-bold text-[#F4CD79]">Estreno: {new Date(`${movie.release}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
-
-        {/* acciones */}
-        <div className="mt-5 grid grid-cols-2 gap-2.5">
-          {trailer ? (
-            <button onClick={() => setTrailerOpen((v) => !v)} aria-expanded={trailerOpen} className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-extrabold text-[#2a1405] transition active:scale-[0.98]" style={{ background: `linear-gradient(180deg,#ffe9b0,${C.gold})` }}>
-              <Play className="size-5 fill-current" /> Ver tráiler
-            </button>
-          ) : null}
-          <button onClick={seeTimes} className="flex h-12 items-center justify-center gap-2 rounded-full bg-teal text-[14px] font-extrabold text-white transition active:scale-[0.98]">
-            <Ticket className="size-4" /> Ver horarios
-          </button>
-          <button onClick={() => useCineUi.getState().openWizard(movie.id)} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/12 text-[14px] font-extrabold transition active:scale-[0.98]">
-            <Users className="size-4" /> Crear plan
-          </button>
-          <button onClick={toggleSave} aria-pressed={saved} className={`flex h-12 items-center justify-center gap-2 rounded-full text-[14px] font-extrabold transition active:scale-[0.98] ${saved ? 'bg-[#F4CD79] text-[#2a1405]' : 'bg-white/12'}`}>
-            {saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />} {saved ? 'Guardada' : 'Guardar'}
-          </button>
-          <button onClick={share} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/12 text-[14px] font-extrabold transition active:scale-[0.98]">
-            <Share2 className="size-4" /> Compartir
-          </button>
-        </div>
-        {!trailer && <p className="mt-2 text-[12px] text-white/45">Tráiler oficial aún no disponible.</p>}
-        {trailer && trailerOpen && <TrailerPlayer embed={trailer.embed} title={movie.title} onClose={() => setTrailerOpen(false)} />}
-        {trailer && trailerOpen && (
-          <a href={trailer.watch} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-bold text-white/60 underline underline-offset-2">
-            Abrir en {trailer.provider === 'youtube' ? 'YouTube' : 'Vimeo'} <ExternalLink className="size-3" aria-hidden />
-          </a>
-        )}
-
-        {/* dónde verla */}
-        <section ref={whereRef} aria-label="¿Dónde puedo verla?" className="mt-9 scroll-mt-24">
-          <h3 className="text-[22px] leading-tight font-black tracking-tight text-[#F7F4EF]">¿Dónde puedo verla?</h3>
-          <p className="mt-1 text-[13px] leading-snug text-white/60">
-            {known.length ? `Verificada en: ${known.map((c) => CHAINS.find((x) => x.id === c.id)!.name).join(', ')}.` : 'Todavía no sabemos en qué cines está. Revisa la cartelera oficial de cada cine.'}
-          </p>
-          {demo && (
-            <div className="mt-3">
-              <Notice tone="warn" icon={<Info className="size-4" />} title="Programación de ejemplo" text="Las películas y horarios son de muestra, no son funciones reales. Consulta el cine oficial." />
-            </div>
-          )}
-
-          {anyShows && (
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Día">
-              {days.map((d) => (
-                <button key={d} onClick={() => setDay(d)} aria-pressed={day === d} className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-bold capitalize transition ${day === d ? 'bg-white text-[#081827]' : 'bg-white/10 text-white/80'}`}>
-                  {dayLabel(d, days[0])}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="mt-4 space-y-3">
-            {rows.map(({ chain, info, list, link, venues }) => (
-              <div key={chain.id} className="rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10">
-                <p className="flex items-center gap-2 text-[15px] font-extrabold">
-                  <span className="size-2.5 rounded-full" style={{ background: info.color }} /> {info.name}
-                  {chain.mode === 'auto' && !demo && (
-                    <span className="ml-auto flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                      <span className="size-1.5 rounded-full bg-emerald-400" /> Leído del sitio oficial
-                    </span>
-                  )}
-                </p>
-                {list.length ? (
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    {list.map((x) => (
-                      <ShowChip key={x.id} show={x} color={info.color} past={today && x.time < now} demo={demo} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-1.5 text-[13px] text-white/60">Horarios aún no disponibles aquí.</p>
-                )}
-                <a href={link.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13.5px] font-extrabold text-white transition active:scale-[0.98]" style={{ background: `color-mix(in srgb, ${info.color} 75%, #000)` }}>
-                  Consultar en {info.name} <ExternalLink className="size-3.5 opacity-80" aria-hidden />
-                </a>
-                {!link.direct && <p className="mt-1.5 text-center text-[11px] text-white/45">Abre la cartelera de {info.name} en Cartagena.</p>}
-                {venues.length > 0 && (
-                  <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={`Sedes de ${info.name}`}>
-                    {venues.map((v) => (
-                      <li key={v.name}>
-                        <a href={v.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded-full bg-white/8 px-2.5 py-1.5 text-[12px] font-semibold text-white/80">
-                          <MapPin className="size-3" aria-hidden /> {v.name}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+            <div className="min-w-0 pb-1">
+              <div className="flex flex-wrap gap-1.5">
+                {demo && <StatusTag kind="demo" />}
+                {movie.isNew && <StatusTag kind="new" />}
+                <StatusTag kind={upcoming ? 'soon' : 'now'} />
               </div>
-            ))}
+              <h2 className="mt-1.5 text-[28px] leading-[1.02] font-black tracking-tight text-[#F7F4EF] [overflow-wrap:anywhere] lg:text-[52px]">{movie.title}</h2>
+            </div>
           </div>
-          {visible.length === 0 && <Notice title="No hay cines disponibles por ahora" text="La administración tiene las cadenas apagadas." />}
-          <p className="mt-4 text-[11.5px] leading-snug text-white/45">
-            MallPlay te ayuda a decidir; la entrada se compra en el cine oficial. Horarios sujetos a cambios.
-            {movie.updatedAt ? ` Ficha revisada el ${new Date(`${movie.updatedAt}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}.` : ''}
-          </p>
-        </section>
+
+          <div className="lg:mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_470px] lg:items-start lg:gap-14">
+            <div className="min-w-0">
+              {meta.length > 0 && (
+                <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] font-semibold text-white/80">
+                  {meta.map((m, i) => (
+                    <span key={i} className="flex items-center gap-2">
+                      {i > 0 && <span className="size-1 rounded-full bg-white/35" aria-hidden />}
+                      {m}
+                    </span>
+                  ))}
+                  {movie.rating && <span className="rounded-md border border-white/30 px-1.5 py-px text-[12px] font-extrabold">{movie.rating}</span>}
+                </p>
+              )}
+              {movie.synopsis ? (
+                <p className="mt-3 text-[14px] leading-relaxed text-white/80 lg:text-[16.5px]">{movie.synopsis}</p>
+              ) : (
+                <p className="mt-3 text-[13px] text-white/50">Sinopsis aún no disponible.</p>
+              )}
+              {age && <p className="mt-2 text-[12px] text-white/55">{age}</p>}
+              {movie.release && upcoming && (
+                <p className="mt-2 text-[13px] font-bold text-[#F4CD79]">
+                  Estreno: {new Date(`${movie.release}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              )}
+
+              {/* acciones */}
+              <div className="mt-5 grid grid-cols-2 gap-2.5">
+                {trailer ? (
+                  <button
+                    onClick={() => setTrailerOpen((v) => !v)}
+                    aria-expanded={trailerOpen}
+                    className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-extrabold text-[#2a1405] transition active:scale-[0.98]"
+                    style={{ background: `linear-gradient(180deg,#ffe9b0,${C.gold})` }}
+                  >
+                    <Play className="size-5 fill-current" /> Ver tráiler
+                  </button>
+                ) : null}
+                <button
+                  onClick={seeTimes}
+                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-teal text-[14px] font-extrabold text-white transition active:scale-[0.98]"
+                >
+                  <Ticket className="size-4" /> Ver horarios
+                </button>
+                <button
+                  onClick={() => useCineUi.getState().openWizard(movie.id)}
+                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/12 text-[14px] font-extrabold transition active:scale-[0.98]"
+                >
+                  <Users className="size-4" /> Crear plan
+                </button>
+                <button
+                  onClick={toggleSave}
+                  aria-pressed={saved}
+                  className={`flex h-12 items-center justify-center gap-2 rounded-full text-[14px] font-extrabold transition active:scale-[0.98] ${saved ? 'bg-[#F4CD79] text-[#2a1405]' : 'bg-white/12'}`}
+                >
+                  {saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />} {saved ? 'Guardada' : 'Guardar'}
+                </button>
+                <button onClick={share} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/12 text-[14px] font-extrabold transition active:scale-[0.98]">
+                  <Share2 className="size-4" /> Compartir
+                </button>
+              </div>
+              {!trailer && <p className="mt-2 text-[12px] text-white/45">Tráiler oficial aún no disponible.</p>}
+              {trailer && trailerOpen && <TrailerPlayer embed={trailer.embed} title={movie.title} onClose={() => setTrailerOpen(false)} />}
+              {trailer && trailerOpen && (
+                <a
+                  href={trailer.watch}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-bold text-white/60 underline underline-offset-2"
+                >
+                  Abrir en {trailer.provider === 'youtube' ? 'YouTube' : 'Vimeo'} <ExternalLink className="size-3" aria-hidden />
+                </a>
+              )}
+            </div>
+
+            {/* dónde verla */}
+            <section ref={whereRef} aria-label="¿Dónde puedo verla?" className="mt-9 scroll-mt-24 lg:mt-3 lg:rounded-3xl lg:bg-white/[0.04] lg:p-6 lg:ring-1 lg:ring-white/10">
+              <h3 className="text-[22px] leading-tight font-black tracking-tight text-[#F7F4EF]">¿Dónde puedo verla?</h3>
+              <p className="mt-1 text-[13px] leading-snug text-white/60">
+                {known.length
+                  ? `Verificada en: ${known.map((c) => CHAINS.find((x) => x.id === c.id)!.name).join(', ')}.`
+                  : 'Todavía no sabemos en qué cines está. Revisa la cartelera oficial de cada cine.'}
+              </p>
+              {demo && (
+                <div className="mt-3">
+                  <Notice
+                    tone="warn"
+                    icon={<Info className="size-4" />}
+                    title="Programación de ejemplo"
+                    text="Las películas y horarios son de muestra, no son funciones reales. Consulta el cine oficial."
+                  />
+                </div>
+              )}
+
+              {anyShows && (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Día">
+                  {days.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setDay(d)}
+                      aria-pressed={day === d}
+                      className={`shrink-0 rounded-full px-3.5 py-2 text-[13px] font-bold capitalize transition ${day === d ? 'bg-white text-[#081827]' : 'bg-white/10 text-white/80'}`}
+                    >
+                      {dayLabel(d, days[0])}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-3">
+                {rows.map(({ chain, info, list, link, venues }) => (
+                  <div key={chain.id} className="rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10">
+                    <p className="flex items-center gap-2 text-[15px] font-extrabold">
+                      <span className="size-2.5 rounded-full" style={{ background: info.color }} /> {info.name}
+                      {chain.mode === 'auto' && !demo && (
+                        <span className="ml-auto flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                          <span className="size-1.5 rounded-full bg-emerald-400" /> Leído del sitio oficial
+                        </span>
+                      )}
+                    </p>
+                    {list.length ? (
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        {list.map((x) => (
+                          <ShowChip key={x.id} show={x} color={info.color} past={today && x.time < now} demo={demo} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1.5 text-[13px] text-white/60">Horarios aún no disponibles aquí.</p>
+                    )}
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13.5px] font-extrabold text-white transition active:scale-[0.98]"
+                      style={{ background: `color-mix(in srgb, ${info.color} 75%, #000)` }}
+                    >
+                      Consultar en {info.name} <ExternalLink className="size-3.5 opacity-80" aria-hidden />
+                    </a>
+                    {!link.direct && <p className="mt-1.5 text-center text-[11px] text-white/45">Abre la cartelera de {info.name} en Cartagena.</p>}
+                    {venues.length > 0 && (
+                      <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={`Sedes de ${info.name}`}>
+                        {venues.map((v) => (
+                          <li key={v.name}>
+                            <a
+                              href={v.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 rounded-full bg-white/8 px-2.5 py-1.5 text-[12px] font-semibold text-white/80"
+                            >
+                              <MapPin className="size-3" aria-hidden /> {v.name}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {visible.length === 0 && <Notice title="No hay cines disponibles por ahora" text="La administración tiene las cadenas apagadas." />}
+              <p className="mt-4 text-[11.5px] leading-snug text-white/45">
+                MallPlay te ayuda a decidir; la entrada se compra en el cine oficial. Horarios sujetos a cambios.
+                {movie.updatedAt ? ` Ficha revisada el ${new Date(`${movie.updatedAt}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}.` : ''}
+              </p>
+            </section>
+          </div>
+        </div>
       </section>
     </div>
   )

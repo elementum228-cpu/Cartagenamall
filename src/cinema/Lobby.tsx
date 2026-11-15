@@ -93,7 +93,7 @@ function Hero({ movies, upcoming, demo }: { movies: CineMovie[]; upcoming: Set<s
     )
   }
   return (
-    <section className="relative h-[min(64dvh,560px)] min-h-[420px]" aria-roledescription="carrusel" aria-label="Películas destacadas">
+    <section className="relative h-[min(64dvh,560px)] min-h-[420px] lg:h-[min(72dvh,720px)]" aria-roledescription="carrusel" aria-label="Películas destacadas">
       <div
         ref={ref}
         className="flex h-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -110,20 +110,20 @@ function Hero({ movies, upcoming, demo }: { movies: CineMovie[]; upcoming: Set<s
             </div>
             {/* sin imagen horizontal, en pantallas anchas el cartel vertical se ve completo a un lado */}
             {!m.backdrop && m.image && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-12 mx-auto hidden max-w-5xl justify-end px-8 md:flex" aria-hidden>
-                <div className="aspect-[2/3] w-[210px] overflow-hidden rounded-xl shadow-[0_14px_40px_rgba(0,0,0,.6)] ring-2" style={{ ['--tw-ring-color' as string]: C.gold }}>
+              <div className="pointer-events-none absolute inset-x-0 bottom-14 mx-auto hidden max-w-[1360px] justify-end px-8 md:flex lg:px-12" aria-hidden>
+                <div className="aspect-[2/3] w-[220px] lg:w-[270px] xl:w-[310px] overflow-hidden rounded-xl shadow-[0_14px_40px_rgba(0,0,0,.6)] ring-2" style={{ ['--tw-ring-color' as string]: C.gold }}>
                   <Picture src={m.image} title={m.title} hue={m.title.length} />
                 </div>
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 mx-auto max-w-5xl px-5 pb-12 md:px-8">
+            <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[1360px] px-5 pb-12 md:px-8 lg:px-12 lg:pb-16">
               <div className="flex flex-wrap gap-1.5">
                 {demo && <StatusTag kind="demo" />}
                 <StatusTag kind={movieTag(m, upcoming.has(m.id))} />
               </div>
-              <h2 className="mt-2 max-w-[18ch] text-[34px] leading-[1.02] font-black tracking-tight text-[#F7F4EF] uppercase [overflow-wrap:anywhere] md:text-[48px]">{m.title}</h2>
+              <h2 className="mt-2 max-w-[18ch] text-[34px] leading-[1.02] font-black tracking-tight text-[#F7F4EF] uppercase [overflow-wrap:anywhere] md:text-[48px] lg:max-w-[20ch] lg:text-[64px]">{m.title}</h2>
               <p className="mt-2 text-[13.5px] font-semibold text-white/80">{[m.year ? String(m.year) : '', m.genre, m.minutes ? `${m.minutes} min` : '', m.rating].filter(Boolean).join(' · ')}</p>
-              {m.synopsis && <p className="mt-2 line-clamp-2 max-w-[52ch] text-[13.5px] leading-snug text-white/75">{m.synopsis}</p>}
+              {m.synopsis && <p className="mt-2 line-clamp-2 max-w-[52ch] text-[13.5px] leading-snug text-white/75 lg:max-w-[60ch] lg:text-[16px]">{m.synopsis}</p>}
               <div className="mt-4 flex flex-wrap gap-2.5">
                 <button onClick={() => useCineUi.getState().openMovie(m.id)} className="flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-extrabold text-[#2a1405] shadow-lg transition active:scale-[0.98]" style={{ background: `linear-gradient(180deg,#ffe9b0,${C.gold})` }}>
                   <Play className="size-4 fill-current" /> Ver película
@@ -151,7 +151,7 @@ function Hero({ movies, upcoming, demo }: { movies: CineMovie[]; upcoming: Set<s
 function PosterCard({ m, upcoming, demo, fixed = false }: { m: CineMovie; upcoming: boolean; demo: boolean; fixed?: boolean }) {
   const sub = [m.genre, m.minutes ? `${m.minutes} min` : ''].filter(Boolean).join(' · ')
   return (
-    <button onClick={() => useCineUi.getState().openMovie(m.id)} className={`block text-left transition active:scale-[0.97] ${fixed ? 'w-[132px] shrink-0 snap-start md:w-[168px]' : 'w-full'}`} aria-label={`Ver ${m.title}`}>
+    <button onClick={() => useCineUi.getState().openMovie(m.id)} className={`block text-left transition active:scale-[0.97] ${fixed ? 'w-[132px] shrink-0 snap-start md:w-full' : 'w-full'}`} aria-label={`Ver ${m.title}`}>
       <div className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-[#10283F] ring-1 ring-white/15">
         <Picture src={m.image} title={m.title} hue={m.title.length} />
         <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
@@ -244,13 +244,16 @@ export default function Lobby() {
           <button onClick={() => (movie ? useCineUi.getState().openMovie(null) : close())} aria-label={movie ? 'Volver al lobby del cine' : 'Volver al mall'} className="pointer-events-auto flex h-11 items-center gap-1 rounded-full bg-black/55 pr-4 pl-2.5 text-[14px] font-bold backdrop-blur transition active:scale-95">
             <ChevronLeft className="size-5" /> {movie ? 'Lobby' : 'Mall'}
           </button>
+          <span className="pointer-events-none hidden self-center text-[13px] font-black tracking-[0.3em] text-[#F4CD79] md:block" aria-hidden>
+            MALLPLAY CINEMA
+          </span>
           <button onClick={close} aria-label="Cerrar el cine y volver al mall" className="pointer-events-auto grid size-11 place-items-center rounded-full bg-black/55 backdrop-blur transition active:scale-95">
             <X className="size-5" />
           </button>
         </header>
 
         {movie ? (
-          <div className="mx-auto max-w-3xl">
+          <div>
             <MovieDetail key={movie.id} movie={movie} shows={shows} chains={visible} demo={demo} upcoming={upcoming.has(movie.id)} days={days} now={hhmm(clock)} />
           </div>
         ) : visible.length === 0 ? (
@@ -258,21 +261,21 @@ export default function Lobby() {
             <Notice icon={<Info className="size-4" />} title="El cine está cerrado por ahora" text="Vuelve pronto: MallPlay Cinema volverá a abrir sus puertas." />
           </div>
         ) : (
-          <div className="mx-auto max-w-5xl">
+          <div>
             <Hero movies={featured} upcoming={upcoming} demo={demo} />
 
             {/* sección 02: navegación rápida */}
             <nav aria-label="Secciones de MallPlay Cinema" className="sticky top-[calc(max(0.75rem,env(safe-area-inset-top))+3.4rem)] z-10 -mt-px" style={{ background: C.night }}>
-              <div role="tablist" className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] md:px-8 [&::-webkit-scrollbar]:hidden">
+              <div role="tablist" className="mx-auto flex max-w-[1360px] gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] md:px-8 lg:px-12 [&::-webkit-scrollbar]:hidden">
                 {TABS.map((t) => (
-                  <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => useCineUi.getState().setTab(t.id)} className={`h-10 shrink-0 rounded-full px-4 text-[13.5px] font-bold whitespace-nowrap transition active:scale-95 ${tab === t.id ? 'bg-[#F4CD79] text-[#2a1405]' : 'bg-white/10 text-white/85'}`}>
+                  <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => useCineUi.getState().setTab(t.id)} className={`h-10 shrink-0 rounded-full px-4 text-[13.5px] font-bold whitespace-nowrap transition active:scale-95 lg:h-11 lg:px-5 lg:text-[14.5px] ${tab === t.id ? 'bg-[#F4CD79] text-[#2a1405]' : 'bg-white/10 text-white/85'}`}>
                     {t.label}
                   </button>
                 ))}
               </div>
             </nav>
 
-            <main className="space-y-9 px-4 pt-5 pb-16 md:px-8" aria-live="polite">
+            <main className="mx-auto max-w-[1360px] space-y-9 px-4 pt-5 pb-16 md:px-8 lg:space-y-12 lg:px-12 lg:pt-8" aria-live="polite">
               {demo && tab !== 'plans' && tab !== 'events' && tab !== 'promos' && (
                 <Notice tone="warn" icon={<Info className="size-4" />} title="Cartelera de ejemplo" text="Las películas y horarios que ves son de muestra; la cartelera real llegará pronto. Para horarios reales, consulta el cine oficial." />
               )}
@@ -282,9 +285,9 @@ export default function Lobby() {
                   <section aria-label="En cartelera en Cartagena" className="space-y-3">
                     <SectionHead title="En cartelera en Cartagena" sub={nowPlaying.length ? 'Toca una película para ver su ficha.' : undefined} />
                     {nowPlaying.length ? (
-                      <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:-mx-8 md:px-8 [&::-webkit-scrollbar]:hidden">
+                      <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-4 md:gap-5 md:overflow-visible md:px-0 lg:grid-cols-5 xl:grid-cols-6 [&::-webkit-scrollbar]:hidden">
                         {nowPlaying.map((m) => (
-                          <li key={m.id} className="shrink-0">
+                          <li key={m.id} className="shrink-0 md:shrink">
                             <PosterCard m={m} upcoming={false} demo={demo} fixed />
                           </li>
                         ))}
@@ -293,10 +296,14 @@ export default function Lobby() {
                       <Notice icon={<Clapperboard className="size-4" />} title="Aún no hay películas en cartelera" text="Cuando la cartelera esté cargada las verás aquí. Mientras tanto, mira los horarios en el sitio oficial de cada cine." />
                     )}
                   </section>
-                  <TodayTeaser />
-                  <PlanTeaser />
-                  <EventsPreview events={events} />
-                  <AfterBefore limit={4} />
+                  <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+                    <TodayTeaser />
+                    <PlanTeaser />
+                  </div>
+                  <div className="grid gap-9 lg:grid-cols-2 lg:gap-10">
+                    <EventsPreview events={events} />
+                    <AfterBefore limit={4} />
+                  </div>
                   <Challenges />
                 </>
               )}
@@ -305,7 +312,7 @@ export default function Lobby() {
                 <section aria-label="Próximamente" className="space-y-3">
                   <SectionHead title="Próximamente" sub="Estrenos que vienen." />
                   {soon.length ? (
-                    <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-5">
+                    <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-5 md:gap-x-5 lg:grid-cols-6">
                       {soon.map((m) => (
                         <li key={m.id}>
                           <PosterCard m={m} upcoming demo={demo} />
@@ -319,7 +326,7 @@ export default function Lobby() {
               )}
 
               {tab === 'cines' && (
-                <div className="space-y-8">
+                <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-12 lg:space-y-0">
                   <LiveShowtimes />
                   <Directory chains={visible} />
                 </div>
@@ -332,7 +339,7 @@ export default function Lobby() {
               {tab === 'now' && content.length > 6 && (
                 <section aria-label="Todas las películas" className="space-y-3">
                   <SectionHead title="Todas las películas" />
-                  <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-5">
+                  <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-5 md:gap-x-5 lg:grid-cols-6">
                     {content.map((m) => (
                       <li key={m.id}>
                         <PosterCard m={m} upcoming={upcoming.has(m.id)} demo={demo} />

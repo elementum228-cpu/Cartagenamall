@@ -104,7 +104,7 @@ export function EventsTab({ events }: { events: CineEvent[] }) {
   return (
     <section aria-label="Eventos" className="space-y-4">
       <SectionHead title="Eventos" sub="Lo que viene en MallPlay Cinema." />
-      {list.length === 0 ? <NoEvents /> : <div className="grid gap-3 md:grid-cols-2">{list.map((e) => <EventCard key={e.id} e={e} />)}</div>}
+      {list.length === 0 ? <NoEvents /> : <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{list.map((e) => <EventCard key={e.id} e={e} />)}</div>}
     </section>
   )
 }
