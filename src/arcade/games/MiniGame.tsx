@@ -1,7 +1,8 @@
-import { Play as PlayIcon, RotateCcw } from 'lucide-react'
+import { Play as PlayIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sfx, unlockArcadeAudio } from '../audio'
 import { useArcade } from '../store'
+import { TicketReceipt } from '../TicketReceipt'
 import type { GameDef, MiniGameId } from './defs'
 import { BOWLS, CRABS } from './defs'
 
@@ -15,9 +16,10 @@ interface Result {
   awarded: number
   capped: boolean
   record: boolean
+  total: number
 }
 
-export function MiniGame({ id }: { id: MiniGameId }) {
+export function MiniGame({ id, onPrizes }: { id: MiniGameId; onPrizes: () => void }) {
   const def = DEFS[id]
   const holder = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -68,7 +70,7 @@ export function MiniGame({ id }: { id: MiniGameId }) {
         const score = def.score(state.current)
         const r = useArcade.getState().finishRun(score, false)
         sfx(r.record ? 'record' : 'over')
-        setResult({ score, awarded: r.awarded, capped: r.capped, record: r.record })
+        setResult({ score, awarded: r.awarded, capped: r.capped, record: r.record, total: useArcade.getState().points })
         setPhase('over')
       }
     }
@@ -115,16 +117,9 @@ export function MiniGame({ id }: { id: MiniGameId }) {
           </div>
         )}
         {phase === 'over' && result && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#07031a]/92 px-6">
+          <div className="absolute inset-0 flex flex-col items-center justify-start gap-2 overflow-y-auto bg-[#07031a]/95 px-4 py-4">
             <p className="font-arcade text-[11px] text-[#ff2bd6]">{result.record ? '¡NUEVO RÉCORD!' : 'FIN DEL JUEGO'}</p>
-            <p className="font-arcade text-[26px] text-[#ffd400]">{result.score}</p>
-            <p className="font-arcade text-[10px] text-[#00f0ff]">+{result.awarded} PUNTOS</p>
-            {result.capped && <p className="max-w-[26ch] text-[12px] leading-snug text-[#c8d3ff]">Llegaste al tope de puntos de hoy. ¡Vuelve mañana!</p>}
-            <div className="mt-2 flex gap-2">
-              <button autoFocus onClick={start} className="arcade-btn font-arcade flex min-h-12 items-center gap-2 px-5 text-[11px]">
-                <RotateCcw className="size-4" /> OTRA VEZ
-              </button>
-            </div>
+            <TicketReceipt game={def.name} score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} onPrizes={onPrizes} onAgain={start} />
           </div>
         )}
       </div>

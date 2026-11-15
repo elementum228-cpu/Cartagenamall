@@ -59,3 +59,63 @@
     animation: none;
   }
 }
+
+/* Tiquetes que salen de la máquina: la tirita de papel baja a pasos desde la ranura, como una impresora de recibos. */
+.receipt-slot {
+  height: 12px;
+  border: 3px solid #07031a;
+  background: linear-gradient(180deg, #000, #1d0b52);
+  box-shadow: 0 0 0 2px #ff2bd6;
+}
+.receipt-window {
+  overflow: hidden;
+  padding-bottom: 14px;
+}
+.receipt-paper {
+  position: relative;
+  background: #fffdf3;
+  color: #1a1530;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  animation: receipt-out var(--receipt-dur, 1.6s) steps(18, end) both;
+  box-shadow: 0 6px 0 rgb(0 0 0 / 0.25);
+}
+.receipt-paper::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -11px;
+  height: 12px;
+  background: linear-gradient(135deg, #fffdf3 25%, transparent 25%) -6px 0, linear-gradient(225deg, #fffdf3 25%, transparent 25%) -6px 0;
+  background-size: 12px 12px;
+}
+@keyframes receipt-out {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes receipt-actions {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.receipt-actions {
+  animation: receipt-actions 0.35s ease-out both;
+  animation-delay: var(--receipt-dur, 1.6s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .receipt-paper {
+    animation: none;
+  }
+  .receipt-actions {
+    animation-delay: 0s;
+  }
+}

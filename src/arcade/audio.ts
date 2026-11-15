@@ -149,6 +149,29 @@ export function suspendArcadeAudio() {
   if (ac && ac.state === 'running') void ac.suspend()
 }
 
+/**
+ * Sonido de «recibir tiquetes»: una tirita de papel saliendo de la máquina, como en las ferias (clics rápidos de la impresora y un
+ * golpecito mecánico por cada paso), y un timbre al final al arrancarla. Devuelve cuánto dura (segundos) para sincronizar la animación.
+ */
+/** Cuánto dura la tirita al salir (segundos): más tiquetes, un poco más larga. */
+export const ticketDuration = (count: number) => Math.min(40, 18 + Math.floor(count / 2)) * 0.05
+
+export function ticketPrint(count: number): number {
+  const c = context()
+  const n = Math.min(40, 18 + Math.floor(count / 2))
+  const gap = 0.05
+  const dur = ticketDuration(count)
+  if (!c || !on || !sfxBus || c.state === 'suspended') return dur
+  const t = c.currentTime + 0.05
+  for (let i = 0; i < n; i++) {
+    const at = t + i * gap
+    tone('square', 780 + ((i * 37) % 5) * 45, at, 0.03, 0.07, sfxBus)
+    tone('sawtooth', 150, at, 0.025, 0.05, sfxBus, 90)
+  }
+  ;[1319, 1760].forEach((f, i) => tone('triangle', f, t + dur + 0.04 + i * 0.09, 0.3, 0.16, sfxBus!))
+  return dur
+}
+
 export type Sfx = 'pop' | 'power' | 'hurt' | 'over' | 'record' | 'coin'
 
 /** Efectos cortos: destruir un enemigo, recoger un premio, recibir un golpe, fin de la partida y récord. */

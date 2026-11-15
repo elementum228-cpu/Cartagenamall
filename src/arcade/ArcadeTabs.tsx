@@ -57,7 +57,7 @@ export function Prizes() {
                 <p className="text-[15px] font-extrabold">{r.name}</p>
                 <p className="text-[12.5px] leading-snug text-[#c8d3ff]">{r.detail}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-[#ffc83d] px-2.5 py-1 text-[12px] font-extrabold text-[#2a1a00]">{r.cost} pts</span>
+              <span className="shrink-0 rounded-full bg-[#ffc83d] px-2.5 py-1 text-[12px] font-extrabold text-[#2a1a00]">{r.cost} tiquetes</span>
             </div>
             <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
               <div className="h-full rounded-full bg-[#4de1ff]" style={{ width: `${Math.min(100, (points / r.cost) * 100)}%` }} />
@@ -67,7 +67,7 @@ export function Prizes() {
               onClick={() => redeem(r.id)}
               className={`mt-2.5 min-h-11 w-full rounded-xl text-[14px] font-extrabold ${ok ? 'bg-[#4de1ff] text-[#04202b] active:scale-[0.98]' : 'bg-white/10 text-white/50'}`}
             >
-              {ok ? 'Canjear' : `Te faltan ${r.cost - points} pts`}
+              {ok ? 'Canjear' : `Te faltan ${r.cost - points} tiquetes`}
             </button>
           </div>
         )

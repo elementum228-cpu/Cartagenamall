@@ -1,4 +1,4 @@
-import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Volume2, VolumeX, X } from 'lucide-react'
+import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Ticket, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFrameGate } from '../world/frameGate'
 import { usePrefs } from '../state/ui'
@@ -9,6 +9,7 @@ import { createGame, createRecorder, DIFFICULTIES, H, makeRand, MAX_WEAPON, STEP
 import { draw } from './render'
 import { DAILY_POINTS_CAP, useArcade, useArcadeUi } from './store'
 import { MiniGame } from './games/MiniGame'
+import { TicketReceipt } from './TicketReceipt'
 import { Prizes, Ranking } from './ArcadeTabs'
 import '@fontsource/press-start-2p/latin-400.css'
 import './arcade.css'
@@ -87,8 +88,9 @@ function Cabinet({ onClose }: { onClose: () => void }) {
             <h2 className="font-arcade arcade-cyan truncate text-[13px]">ARCADE</h2>
             <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">{GAME_NAME[game].toUpperCase()}</p>
           </div>
-          <span className="font-arcade border-[3px] border-[#07031a] bg-[#ffd400] px-2.5 py-2 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]" aria-label={`${points} puntos`}>
-            {points} PTS
+          <span className="font-arcade flex items-center gap-1.5 border-[3px] border-[#07031a] bg-[#ffd400] px-2.5 py-2 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]" aria-label={`${points} tiquetes`}>
+            <Ticket className="size-3.5" aria-hidden />
+            {points}
           </span>
           <SoundButton className="bg-white/10 active:bg-white/20" />
           <button onClick={onClose} aria-label="Cerrar el arcade" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-white active:bg-white/20">
@@ -118,7 +120,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
-      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onExit={onClose} /> : <MiniGame key={game} id={game} /> : tab === 'rank' ? <Ranking /> : <Prizes />}
+      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onPrizes={() => setTab('prizes')} onExit={onClose} /> : <MiniGame key={game} id={game} onPrizes={() => setTab('prizes')} /> : tab === 'rank' ? <Ranking /> : <Prizes />}
     </div>
   )
 }
@@ -133,6 +135,7 @@ interface Result {
   ranked: boolean
   pending: boolean
   difficulty: Difficulty
+  total: number
 }
 
 /** Elige la dificultad: a más difícil, todo baja más rápido y cada punto vale más. */
@@ -176,7 +179,7 @@ function DifficultyPicker() {
   )
 }
 
-function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void }) {
+function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes: () => void; onExit: () => void }) {
   const quality = usePrefs((s) => s.quality)
   const sound = useArcade((s) => s.sound)
   const best = useArcade((s) => s.best)
@@ -311,7 +314,7 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
         const ranked = !!rn?.ticket
         const r = st.finishRun(g.score, ranked, g.diff.id)
         sfx(r.record ? 'record' : 'over')
-        setResult({ score: g.score, ...r, picked: g.picked, ranked, pending: ranked, difficulty: g.diff.id })
+        setResult({ score: g.score, ...r, picked: g.picked, ranked, pending: ranked, difficulty: g.diff.id, total: useArcade.getState().points })
         // al servidor: repite la partida y guarda SU puntaje; el puesto llega unos instantes después
         if (rn?.ticket) {
           const nick = st.nickname || defaultNick(st.playerId)
@@ -467,13 +470,14 @@ function Play({ onRanking, onExit }: { onRanking: () => void; onExit: () => void
           <p className="font-arcade mt-3 text-[9px] uppercase" style={{ color: DIFF_STYLE[result.difficulty].color }}>
             {DIFFICULTIES[result.difficulty].name} · {multLabel(DIFFICULTIES[result.difficulty].mult)}
           </p>
-          <p className="mt-2 text-[15px] font-bold text-[#ffc83d]">+{result.awarded} puntos de premio</p>
+          <div className="mt-4">
+            <TicketReceipt game="Nave Caribe" score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} onPrizes={onPrizes} />
+          </div>
           {result.picked > 0 && (
             <p className="text-[12.5px] text-[#9fb3ff]">
               Recogiste {result.picked} {result.picked === 1 ? 'premio' : 'premios'} del camino
             </p>
           )}
-          {result.capped && <p className="mt-1 text-[12px] text-[#c8d3ff]">Llegaste al tope de {result.awarded === 0 ? 'hoy' : 'puntos'}: vuelve mañana por más.</p>}
           {result.pending && <p className="mt-2 text-[12px] text-[#9fb3ff]">Verificando tu partida…</p>}
           {!result.pending && result.rankWeek ? (
             <button onClick={onRanking} className="mx-auto mt-1 min-h-11 text-[13px] font-bold text-[#4de1ff] underline">
