@@ -4,6 +4,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { Component, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { DPR_CAP } from '../lib/deviceProfile'
 import { usePrefs } from '../state/ui'
+import { useEntry } from '../state/entry'
 import { createFrameGate } from './frameGate'
 import { cameraState } from './cameraState'
 import { CAMERA_DISTANCE, ISO_DIR } from './cameraIso'
@@ -35,6 +36,7 @@ function FrameDriver({ run, maxFps }: { run: boolean; maxFps: number }) {
     const gate = createFrameGate(maxFps)
     gate.start(clock.elapsedTime)
     let raf = 0
+    let drawn = 0
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
       if (document.hidden) {
@@ -43,6 +45,8 @@ function FrameDriver({ run, maxFps }: { run: boolean; maxFps: number }) {
       }
       if (!gate.shouldRender(now)) return
       advance(gate.step(now), true)
+      // con los primeros cuadros dibujados, el portón de entrada sabe que ya puede dejar ver el mundo
+      if (++drawn === 3) useEntry.getState().setWorldReady(true)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)

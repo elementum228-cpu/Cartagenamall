@@ -47,6 +47,31 @@ function preloadMainFont(): Plugin {
   }
 }
 
+/**
+ * Pide en reposo (rel=prefetch, prioridad más baja que todo) el código del mundo 3D, para que al tocar la puerta ya esté en el caché del
+ * navegador: la puerta responde sin competir con la descarga y el 3D arranca apenas se abre. No se ejecuta nada: solo se baja.
+ */
+function prefetchWorld(): Plugin {
+  return {
+    name: 'mallplay-prefetch-world',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const chunks = Object.values(ctx.bundle ?? {}).filter((c) => c.type === 'chunk') as { fileName: string; name: string; isEntry: boolean; imports: string[] }[]
+        const world = chunks.find((c) => c.name === 'WorldCanvas')
+        if (!world) return html
+        const entry = chunks.find((c) => c.isEntry)
+        const already = new Set([entry?.fileName, ...(entry?.imports ?? [])])
+        const files = [world.fileName, ...world.imports].filter((f) => !already.has(f))
+        const base = process.env.VITE_BASE ?? '/'
+        const tags = files.map((f) => `    <link rel="prefetch" as="script" crossorigin href="${base}${f}" />`).join('\n')
+        return html.replace('</head>', `${tags}\n  </head>`)
+      },
+    },
+  }
+}
+
 /** onnxruntime-web deja una copia del motor (15 MB) en assets/ que nunca se usa: el recorte de fotos lo carga de ort/. */
 function dropUnusedWasm(): Plugin {
   let outDir = ''
@@ -68,7 +93,7 @@ function dropUnusedWasm(): Plugin {
 // VITE_BASE permite publicar en una subcarpeta (p. ej. /cartagena-mall/). Por defecto, raíz.
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
-  plugins: [react(), tailwindcss(), preloadMainFont(), dropUnusedWasm(), ...(process.env.VITE_DEMO === '1' ? [noInstall()] : [])],
+  plugins: [react(), tailwindcss(), preloadMainFont(), prefetchWorld(), dropUnusedWasm(), ...(process.env.VITE_DEMO === '1' ? [noInstall()] : [])],
   // three + R3F viven en el chunk perezoso de WorldCanvas: Comprar y /admin no los esperan.
   build: {
     chunkSizeWarningLimit: 1100,

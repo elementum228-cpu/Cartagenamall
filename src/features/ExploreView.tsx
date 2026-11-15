@@ -94,6 +94,7 @@ import { InstallButton } from '../pwa/InstallApp'
 import { useHoy, hoySeenToday } from '../hoy/store'
 import { useCine } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
+import { useEntry } from '../state/entry'
 import { CategoriesSheet, DiscoverSheet, type CategoryItem, type CategoryStore, type DiscoverRow } from './ExploreSheets'
 
 const WorldCanvas = lazy(() => import('../world/WorldCanvas'))
@@ -119,6 +120,11 @@ export function ExploreView({ active }: { active: boolean }) {
   const cineOpen = useCineUi((s) => s.view !== null)
   const readingHoy = hoyOpen || arcadeOpen || cineOpen
   const root = useRef<HTMLDivElement>(null)
+  const worldGo = useEntry((s) => s.worldGo)
+  // sin 3D (plano 2D) no hay nada que esperar: el portón puede dejar pasar
+  useEffect(() => {
+    if (!use3D) useEntry.getState().setWorldReady(true)
+  }, [use3D])
 
   // De noche, mientras se explora, las barras y controles pasan a vidrio ahumado (ver index.css).
   useEffect(() => {
@@ -152,9 +158,12 @@ export function ExploreView({ active }: { active: boolean }) {
       {/* cielo nocturno: capa CSS que aparece encima del degradado de día */}
       <div className={`world-night pointer-events-none absolute inset-0 transition-opacity duration-[1200ms] ${night ? 'opacity-100' : 'opacity-0'}`} />
       {use3D ? (
-        <Suspense fallback={<Loading />}>
-          <WorldCanvas active={active && !readingHoy} night={night} fallback={<Map2D reason="Tu dispositivo no pudo cargar el 3D. Mostramos el plano 2D." />} />
-        </Suspense>
+        // el mundo se monta cuando la entrada lo permite (en gama baja, al abrir el portón: así la puerta responde sin trabas)
+        worldGo && (
+          <Suspense fallback={<Loading />}>
+            <WorldCanvas active={active && !readingHoy} night={night} fallback={<Map2D reason="Tu dispositivo no pudo cargar el 3D. Mostramos el plano 2D." />} />
+          </Suspense>
+        )
       ) : (
         <Map2D reason={!webgl ? 'Tu navegador no soporta 3D (WebGL). Mostramos el plano 2D con las mismas tiendas.' : autoPlano ? 'Plano 2D para ir más fluido · 3D en Opciones' : undefined} />
       )}

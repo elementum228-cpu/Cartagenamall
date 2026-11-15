@@ -3,6 +3,8 @@ import { animate, motion, useMotionValue, useTransform, type MotionValue } from 
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { doorSoundOn, playCartagena, playKnockOnce, playOpen, setDoorSound, stopCartagena, unlockDoorSound } from '../lib/doorSound'
 import { MALL } from '../config/mall'
+import { detectProfile } from '../lib/deviceProfile'
+import { isLiteDoor, median } from '../lib/doorMode'
 import { useEntry } from '../state/entry'
 import { useUI } from '../state/ui'
 import { useSeason } from '../state/season'
@@ -27,7 +29,17 @@ type Phase = 'idle' | 'open' | 'through' | 'done'
 /** Toques necesarios para abrir. */
 const KNOCKS = 3
 /** Momento (ms desde el último toque) en que empieza cada fase. */
-const TIMELINE = { open: 600, cartagena: 1700, enter: 2000, through: 2700, done: 4400, tour: 4900, overview: 6600 }
+/**
+ * `open`: abren las hojas · `cartagena`: empieza la música · `enter`: se revisa si el mundo ya está listo · `throughAfter`: tras estar listo,
+ * cuánto falta para cruzar · `doneAfter`: tras cruzar, cuánto dura el desvanecimiento. Con el equipo liviano o movimiento reducido, más corto.
+ */
+const TIMELINES = {
+  full: { open: 600, cartagena: 1700, enter: 2000, throughAfter: 700, doneAfter: 1700 },
+  lite: { open: 350, cartagena: 800, enter: 1200, throughAfter: 200, doneAfter: 900 },
+  reduce: { open: 0, cartagena: 0, enter: 0, throughAfter: 0, doneAfter: 400 },
+}
+/** Lo máximo que el portón espera al mundo 3D antes de dejar pasar de todos modos (ms). */
+const MAX_WORLD_WAIT = 9000
 const HINTS = [`Toca la puerta ${KNOCKS} veces para entrar`, '¡Otra vez!', '¡Una más!']
 const EASE = 'cubic-bezier(0.65, 0, 0.25, 1)'
 
@@ -42,6 +54,9 @@ function alreadySeen() {
 export function DoorIntro({ auto }: { auto: boolean }) {
   const [phase, setPhase] = useState<Phase>(() => (auto && !alreadySeen() ? 'idle' : 'done'))
   const [sound, setSound] = useState(doorSoundOn)
+  // versión liviana: gama baja, ahorro de datos o, al medir los primeros cuadros, un teléfono que va justo
+  const [lite, setLite] = useState(() => isLiteDoor({ tier: detectProfile().tier, saveData: (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true }))
+  const [waiting, setWaiting] = useState(false)
   const [knocks, setKnocks] = useState(0)
   const timers = useRef<number[]>([])
   const started = useRef(false)
@@ -75,7 +90,8 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     // cada golpe un poco más decidido
     void playKnockOnce(0.8 + n * 0.1)
     setKnocks(n)
-    if (!reduce) {
+    if (!reduce && lite) navigator.vibrate?.(12)
+    if (!reduce && !lite) {
       // ¿de qué lado tocó? (con teclado, al centro: las dos hojas por igual)
       let side = 0
       if (e && e.clientX) {
@@ -107,37 +123,58 @@ export function DoorIntro({ auto }: { auto: boolean }) {
     } catch {
       /* sin almacenamiento: se vuelve a mostrar la próxima vez */
     }
-    if (reduce) {
-      void playCartagena()
-      useUI.getState().arriveMall()
-      setPhase('through')
-      timers.current.push(window.setTimeout(() => setPhase('done'), 400))
-      return
-    }
+    // El mundo 3D empieza a construirse AHORA (si se había aplazado) y el portón lo espera antes de dejar pasar. Mientras tanto, las
+    // hojas y la luz se mueven solo con transformaciones y opacidad (las hace el compositor, no el hilo principal que está ocupado).
+    useEntry.getState().setWorldGo(true)
+    const tl = reduce ? TIMELINES.reduce : lite ? TIMELINES.lite : TIMELINES.full
     const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
-    at(TIMELINE.open, () => {
+    at(tl.open, () => {
       setPhase('open')
-      void playOpen()
+      if (!reduce) void playOpen()
     })
-    at(TIMELINE.enter, () => useUI.getState().arriveMall())
     // la música y el mar empiezan cuando entra la luz, antes de cruzar
-    at(TIMELINE.cartagena, () => void playCartagena())
-    at(TIMELINE.through, () => setPhase('through'))
-    // al aparecer el mall la música se va enseguida
-    at(TIMELINE.done, () => {
-      stopCartagena()
-      setPhase('done')
-    })
-    // La primera vez: recorrido guiado (termina en la vista «Fortaleza»). Las siguientes: tras
-    // mostrar de cerca el primer piso, la cámara se aleja a «Fortaleza». En ambos casos, solo si la
-    // persona no tocó nada mientras tanto (otro piso, una tienda, la cancha…).
+    at(tl.cartagena, () => void playCartagena())
+    // La primera vez: recorrido guiado (termina en la vista «Fortaleza»), solo si la persona no tocó nada mientras tanto.
     const untouched = () => {
       const ui = useUI.getState()
       return ui.focus?.kind === 'enter' && ui.overview && !ui.selectedSpaceId && !ui.openStoreId && !ui.courtOpen
     }
-    // la primera vez, el recorrido guiado; las siguientes ya se queda en la vista general
-    if (!tourDone()) at(TIMELINE.tour, () => untouched() && startTour())
+    const waitStart = tl.enter
+    const poll = (since: number) => {
+      const waited = performance.now() - since
+      if (!useEntry.getState().worldReady && waited < MAX_WORLD_WAIT) {
+        if (waited > 900) setWaiting(true)
+        timers.current.push(window.setTimeout(() => poll(since), 120))
+        return
+      }
+      setWaiting(false)
+      useUI.getState().arriveMall()
+      at(tl.throughAfter, () => setPhase('through'))
+      at(tl.throughAfter + tl.doneAfter, () => {
+        stopCartagena()
+        setPhase('done')
+      })
+      if (!tourDone()) at(tl.throughAfter + tl.doneAfter + 500, () => untouched() && startTour())
+    }
+    timers.current.push(window.setTimeout(() => poll(performance.now()), waitStart))
   }
+
+  // Equipo que va justo aunque el perfil diga lo contrario: se miran los primeros cuadros con la puerta quieta y, si van lentos, se pasa a la versión liviana.
+  useEffect(() => {
+    if (phase !== 'idle' || lite) return
+    let raf = 0
+    const dts: number[] = []
+    let last = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      if (last && now - start > 500) dts.push(now - last)
+      last = now
+      if (dts.length < 24) raf = requestAnimationFrame(tick)
+      else if (isLiteDoor({ tier: 'high', medianFrameMs: median(dts) })) setLite(true)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [phase, lite])
 
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
   useEffect(() => {
@@ -166,7 +203,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       className="door-intro fixed inset-0 z-[60] overflow-hidden"
       role="dialog"
       aria-label="Bienvenida a MallPlay"
-      style={{ opacity: through ? 0 : 1, transition: through ? `opacity 1.2s ease-in-out ${reduce ? 0 : 0.5}s` : undefined }}
+      style={{ opacity: through ? 0 : 1, transition: through ? `opacity ${lite ? 0.7 : 1.2}s ease-in-out ${reduce ? 0 : lite ? 0.1 : 0.5}s` : undefined }}
     >
       {/* escena que «avanza» hacia la puerta al atravesarla */}
       <div
@@ -175,13 +212,14 @@ export function DoorIntro({ auto }: { auto: boolean }) {
           background: halloween
             ? 'radial-gradient(120% 90% at 50% 0%, #f7b267 0%, #b5655e 38%, #4b2a52 75%, #2a1838 100%)'
             : 'radial-gradient(120% 90% at 50% 0%, #f0dcb4 0%, #dcc497 45%, #b99a68 100%)',
-          transform: through && !reduce ? 'scale(3.4)' : 'scale(1)',
+          // el «acercamiento» solo en la versión completa: agrandar toda la escena obliga a repintarla; la liviana solo se desvanece
+          transform: through && !reduce && !lite ? 'scale(3.4)' : 'scale(1)',
           transformOrigin: '50% 52%',
-          transition: `transform 1.7s ${EASE}`,
+          transition: lite ? undefined : `transform 1.7s ${EASE}`,
         }}
       >
-        <StoneWall />
-        {halloween && <HalloweenSky />}
+        <StoneWall lite={lite} />
+        {halloween && !lite && <HalloweenSky />}
         <div className="relative z-10 flex flex-col items-center px-4">
           {/* letrero sobre el portón */}
           <div
@@ -208,7 +246,7 @@ export function DoorIntro({ auto }: { auto: boolean }) {
               aspectRatio: '3 / 4',
               borderRadius: ARCH,
               // entrada suave; luego cada golpe mueve la puerta (motion: hojas y sacudida)
-              animation: phase !== 'idle' || knocks ? 'none' : 'door-rise 1s 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+              animation: lite && knocks && phase === 'idle' ? `door-knock-lite-${knocks % 2} 0.4s ease-out` : phase !== 'idle' || knocks ? 'none' : 'door-rise 1s 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both',
               x: doorX,
               rotate: doorTilt,
             }}
@@ -224,8 +262,9 @@ export function DoorIntro({ auto }: { auto: boolean }) {
               style={{ borderRadius: ARCH, perspective: 1100, clipPath: `inset(0 round ${ARCH})`, WebkitClipPath: `inset(0 round ${ARCH})` }}
             >
               <div className="absolute inset-0" style={{ background: 'radial-gradient(70% 60% at 50% 62%, #fff6dc 0%, #ffd08a 45%, #e59a4c 100%)' }} />
-              <MallGlimpse lit={opened} />
-              {/* rayos de luz que giran despacio */}
+              {lite ? <LiteGlimpse lit={opened} /> : <MallGlimpse lit={opened} />}
+              {/* rayos de luz que giran despacio (solo en la versión completa: es una capa enorme que se repinta) */}
+              {!lite && (
               <div
                 className="absolute -inset-1/2"
                 style={{
@@ -236,11 +275,21 @@ export function DoorIntro({ auto }: { auto: boolean }) {
                   mixBlendMode: 'screen',
                 }}
               />
+              )}
               <Fanlight lit={opened} />
-              <Leaf side="left" opened={opened} reduce={reduce} knocks={knocks} kick={kickL} />
-              <Leaf side="right" opened={opened} reduce={reduce} knocks={knocks} kick={kickR} />
+              {lite ? (
+                <>
+                  <LiteLeaf side="left" opened={opened} />
+                  <LiteLeaf side="right" opened={opened} />
+                </>
+              ) : (
+                <>
+                  <Leaf side="left" opened={opened} reduce={reduce} knocks={knocks} kick={kickL} />
+                  <Leaf side="right" opened={opened} reduce={reduce} knocks={knocks} kick={kickR} />
+                </>
+              )}
               {/* polvo que cae del marco con cada golpe */}
-              {knocks > 0 && !opened && (
+              {knocks > 0 && !opened && !lite && (
                 <div key={knocks} className="pointer-events-none absolute inset-x-0 top-[28%]" aria-hidden>
                   {[18, 34, 52, 66, 81].map((x, i) => (
                     <span
@@ -256,17 +305,17 @@ export function DoorIntro({ auto }: { auto: boolean }) {
                 className="absolute bottom-0 left-1/2 h-[72%] -translate-x-1/2"
                 style={{
                   width: `${3 + knocks * 2.2}%`,
-                  boxShadow: knocks ? `0 0 ${12 + knocks * 14}px ${knocks * 4}px rgba(255,214,140,${0.25 + knocks * 0.15})` : 'none',
+                  boxShadow: knocks && !lite ? `0 0 ${12 + knocks * 14}px ${knocks * 4}px rgba(255,214,140,${0.25 + knocks * 0.15})` : 'none',
                   background: 'linear-gradient(90deg, transparent, #ffe2a6 40%, #fff6dc 50%, #ffe2a6 60%, transparent)',
-                  filter: 'blur(2px)',
+                  filter: lite ? undefined : 'blur(2px)',
                   opacity: opened ? 0 : 1,
                   transition: 'opacity 0.3s, width 0.4s ease-out, box-shadow 0.4s ease-out',
-                  animation: 'door-breathe 2.6s ease-in-out infinite',
+                  animation: lite ? 'none' : 'door-breathe 2.6s ease-in-out infinite',
                 }}
               />
             </div>
             {/* faroles */}
-            {[-1, 1].map((s) => (
+            {!lite && [-1, 1].map((s) => (
               <span key={s} className="absolute top-[38%] hidden sm:block" style={{ [s < 0 ? 'left' : 'right']: '-17%' }}>
                 <Lantern delay={s < 0 ? 0 : 0.7} />
               </span>
@@ -323,11 +372,19 @@ export function DoorIntro({ auto }: { auto: boolean }) {
         }}
         aria-pressed={sound}
         aria-label={sound ? 'Silenciar sonidos de la puerta' : 'Activar sonidos de la puerta'}
-        className="touch-hit absolute top-[max(16px,calc(env(safe-area-inset-top)+8px))] right-4 z-20 flex items-center gap-1.5 rounded-full bg-white/80 px-3.5 py-2 text-xs font-bold text-[#5b4a35] shadow-soft backdrop-blur transition hover:bg-white"
+        className={`touch-hit absolute top-[max(16px,calc(env(safe-area-inset-top)+8px))] right-4 z-20 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-[#5b4a35] shadow-soft transition hover:bg-white ${lite ? 'bg-white/90' : 'bg-white/80 backdrop-blur'}`}
         style={{ opacity: phase === 'idle' ? 1 : 0, transition: 'opacity 0.3s' }}
       >
         {sound ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />} {sound ? 'Sonido' : 'Sin sonido'}
       </button>
+      {/* mientras el centro comercial termina de construirse (equipos lentos), se avisa */}
+      {waiting && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[max(28px,calc(env(safe-area-inset-bottom)+16px))] z-20 flex justify-center px-4" role="status">
+          <p className="flex items-center gap-2.5 rounded-full bg-[#2c4d39] px-4 py-2.5 text-sm font-bold text-white shadow-soft">
+            <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden /> Construyendo el centro comercial…
+          </p>
+        </div>
+      )}
       {/* destello cálido al cruzar el umbral */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -337,6 +394,45 @@ export function DoorIntro({ auto }: { auto: boolean }) {
           transition: `opacity 0.9s ease-in-out ${reduce ? 0 : 0.35}s`,
         }}
       />
+    </div>
+  )
+}
+
+/**
+ * Hoja de la versión liviana: un solo bloque de madera con dos tableros dibujados con bordes; se abre deslizándose hacia el lado
+ * (solo transform: la hace el compositor, sin tocar el hilo principal ni crear perspectiva 3D).
+ */
+function LiteLeaf({ side, opened }: { side: 'left' | 'right'; opened: boolean }) {
+  const s = side === 'left' ? -1 : 1
+  return (
+    <div
+      className="absolute bottom-0 h-[72%] w-1/2"
+      style={{
+        [side]: 0,
+        transform: opened ? `translate3d(${s * 101}%,0,0)` : 'translate3d(0,0,0)',
+        transition: 'transform 1.1s cubic-bezier(0.45, 0, 0.2, 1)',
+        willChange: 'transform',
+        background: `linear-gradient(${side === 'left' ? 90 : 270}deg, ${WOOD_DARK}, ${WOOD} 30%, ${WOOD} 85%, ${WOOD_DARK})`,
+      }}
+    >
+      <span className="absolute inset-x-[12%] top-[7%] h-[38%] rounded-sm border-2" style={{ borderColor: WOOD_DARK }} />
+      <span className="absolute inset-x-[12%] bottom-[7%] h-[38%] rounded-sm border-2" style={{ borderColor: WOOD_DARK }} />
+      <span className="absolute top-[46%] w-[22%] rounded-full border-[3px]" style={{ [side === 'left' ? 'right' : 'left']: '10%', aspectRatio: '1', borderColor: BRASS }} />
+    </div>
+  )
+}
+
+/** Lo que se ve al abrir, en la versión liviana: la luz del interior y las siluetas de los locales, solo con degradados. */
+function LiteGlimpse({ lit }: { lit: boolean }) {
+  return (
+    <div className="absolute inset-0" style={{ opacity: lit ? 1 : 0.6, transition: 'opacity 0.8s', background: 'linear-gradient(180deg, #fff7e3 0%, #ffe2ad 45%, #f3e3c3 46%, #e8d2a8 100%)' }} aria-hidden>
+      {[-1, 1].map((side) => (
+        <div
+          key={side}
+          className="absolute top-[24%] bottom-[22%] w-[24%]"
+          style={{ [side < 0 ? 'left' : 'right']: 0, background: side < 0 ? 'linear-gradient(90deg, #e0735f 0 100%)' : 'linear-gradient(90deg, #3b82a6 0 100%)', opacity: 0.55, clipPath: side < 0 ? 'polygon(0 0, 100% 18%, 100% 82%, 0 100%)' : 'polygon(0 18%, 100% 0, 100% 100%, 0 82%)' }}
+        />
+      ))}
     </div>
   )
 }
@@ -544,7 +640,7 @@ function Lantern({ delay }: { delay: number }) {
 }
 
 /** Muro de piedra de la fortaleza de fondo, con almenas arriba. */
-function StoneWall() {
+function StoneWall({ lite = false }: { lite?: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden>
       <div
@@ -555,7 +651,7 @@ function StoneWall() {
         }}
       />
       <div className="absolute inset-x-0 top-0 flex h-10 justify-center gap-6 sm:h-14">
-        {Array.from({ length: 24 }, (_, i) => (
+        {Array.from({ length: lite ? 8 : 24 }, (_, i) => (
           <span key={i} className="h-full w-10 shrink-0 rounded-b-sm sm:w-14" style={{ background: '#b4986a' }} />
         ))}
       </div>

@@ -333,6 +333,16 @@ select:not([multiple]):disabled {
   80% { transform: rotate(-5deg); }
   100% { transform: rotate(0deg); }
 }
+@keyframes door-knock-lite-0 {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+}
+@keyframes door-knock-lite-1 {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  60% { transform: translateX(3px); }
+}
 @keyframes door-pop {
   from { transform: scale(0.8); opacity: 0.4; }
   to { transform: scale(1); opacity: 1; }
