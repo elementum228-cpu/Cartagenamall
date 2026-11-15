@@ -69,13 +69,13 @@ export function GlassPill({ children, tint, className = '', size = 'md' }: { chi
     <span
       className={`relative inline-flex items-center gap-1.5 overflow-hidden rounded-full font-semibold tracking-[0.01em] whitespace-nowrap text-white backdrop-blur-xl backdrop-saturate-150 ${size === 'sm' ? 'h-7 px-3 text-[11.5px]' : 'h-8 px-3.5 text-[12.5px]'} ${className}`}
       style={{
-        background: `linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.07) 55%, rgba(255,255,255,.12))${tint ? `, ${tint}` : ''}`,
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.22), 0 6px 18px -8px rgba(0,0,0,.55)',
+        background: `linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03) 60%)${tint ? `, ${tint}` : ''}`,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), inset 0 0 0 1px rgba(255,255,255,.16), 0 6px 18px -8px rgba(0,0,0,.55)',
         textShadow: '0 1px 2px rgba(0,0,0,.35)',
       }}
     >
       {/* reflejo de espejo: franja de luz en la mitad de arriba */}
-      <span className="pointer-events-none absolute inset-x-2 top-0 h-1/2 rounded-b-full bg-gradient-to-b from-white/35 to-transparent opacity-70" aria-hidden />
+      <span className="pointer-events-none absolute inset-x-3 top-px h-[42%] rounded-full bg-gradient-to-b from-white/25 to-transparent" aria-hidden />
       <span className="relative flex items-center gap-1.5">{children}</span>
     </span>
   )
@@ -84,14 +84,13 @@ export function GlassPill({ children, tint, className = '', size = 'md' }: { chi
 /** Etiquetas de estado de una película: píldoras de vidrio, cada una con su tinte. */
 export function StatusTag({ kind }: { kind: 'new' | 'now' | 'soon' | 'demo' }) {
   const map = {
-    new: { text: 'Estreno', tint: 'rgba(244,205,121,.38)', dot: '#F4CD79' },
-    now: { text: 'En cartelera', tint: undefined, dot: '#7CF2C4' },
-    soon: { text: 'Próximamente', tint: 'rgba(214,60,90,.34)', dot: '#FF8FA6' },
-    demo: { text: 'Ejemplo', tint: 'rgba(252,211,77,.3)', dot: '#FCD34D' },
+    new: { text: 'Estreno', tint: 'rgba(244,205,121,.30)' },
+    now: { text: 'En cartelera', tint: undefined },
+    soon: { text: 'Próximamente', tint: 'rgba(214,60,90,.28)' },
+    demo: { text: 'Ejemplo', tint: 'rgba(252,211,77,.24)' },
   }[kind]
   return (
     <GlassPill size="sm" tint={map.tint}>
-      <span className="size-1.5 rounded-full" style={{ background: map.dot, boxShadow: `0 0 8px ${map.dot}` }} aria-hidden />
       {map.text}
     </GlassPill>
   )

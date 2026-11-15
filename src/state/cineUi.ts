@@ -4,7 +4,7 @@ import { create } from 'zustand'
 export type CineView = 'board' | 'lobby' | null
 
 /** Secciones del lobby (las pestañas de la navegación rápida). */
-export type CineTab = 'now' | 'soon' | 'cines' | 'plans' | 'events' | 'promos'
+export type CineTab = 'now' | 'soon' | 'cines' | 'plans' | 'events' | 'promos' | 'saved'
 
 interface CineUiState {
   view: CineView

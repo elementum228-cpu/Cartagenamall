@@ -1,10 +1,11 @@
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
-import { ArrowRight, ChevronLeft, Clapperboard, Info, Play, Ticket, X } from 'lucide-react'
+import { ArrowRight, ChevronLeft, Clapperboard, Heart, Info, Play, Ticket, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { detectProfile } from '../lib/deviceProfile'
 import { DAYS_AHEAD, nextDays, useCine, type CineMovie } from '../state/cine'
 import { partitionMovies, useEffectiveCine } from '../state/cineFeed'
 import { useCineSocial } from '../state/cineSocial'
+import type { MovieFavorite } from './types'
 import { useCineUi, type CineTab } from '../state/cineUi'
 import { Directory } from './Directory'
 import { EventsPreview, EventsTab } from './Events'
@@ -26,7 +27,7 @@ const SCREEN = {
   animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.46, ease: APPLE } },
   exit: { opacity: 0, y: -10, scale: 0.99, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] as const } },
 }
-const TAB_ORDER: CineTab[] = ['now', 'soon', 'cines', 'events']
+const TAB_ORDER: CineTab[] = ['now', 'soon', 'cines', 'events', 'saved']
 const VELVET = 'repeating-linear-gradient(90deg, #7a1020 0 16px, #5c0c18 16px 32px)'
 const reduceMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -71,6 +72,7 @@ const TABS: { id: CineTab; label: string }[] = [
   { id: 'soon', label: 'Próximamente' },
   { id: 'cines', label: 'Cines' },
   { id: 'events', label: 'Eventos' },
+  { id: 'saved', label: 'Guardadas' },
 ]
 
 function movieTag(m: CineMovie, upcoming: boolean) {
@@ -185,6 +187,43 @@ function TodayTeaser() {
   )
 }
 
+/** «Guardadas»: las películas que la persona marcó con el corazón, para verlas o agendarlas después (se guardan en este dispositivo). */
+function SavedTab({ favorites, content, upcoming, demo }: { favorites: MovieFavorite[]; content: CineMovie[]; upcoming: Set<string>; demo: boolean }) {
+  const byId = new Map(content.map((m) => [m.id, m]))
+  const remove = (f: MovieFavorite) => useCineSocial.getState().toggleFavorite({ id: f.id, title: f.title })
+  return (
+    <section aria-label="Películas guardadas" className="space-y-3">
+      <SectionHead title="Tus películas guardadas" sub={favorites.length ? 'Para ver o agendar más adelante.' : undefined} />
+      {favorites.length === 0 ? (
+        <Notice icon={<Heart className="size-4" />} title="Aún no has guardado películas" text="Toca «Guardar» en la ficha de una película y la tendrás aquí para verla o agendarla más adelante." />
+      ) : (
+        <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-5 md:gap-x-5 lg:grid-cols-6">
+          {favorites.map((f) => {
+            const m = byId.get(f.id)
+            return (
+              <li key={f.id} className="relative">
+                {m ? (
+                  <PosterCard m={m} upcoming={upcoming.has(m.id)} demo={demo} />
+                ) : (
+                  <div className="w-full">
+                    <div className="grid aspect-[2/3] place-items-center rounded-2xl bg-white/[0.06] p-3 text-center ring-1 ring-white/12">
+                      <p className="text-[12.5px] leading-snug text-white/65">Ya no está en la cartelera</p>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-[14px] leading-tight font-extrabold">{f.title}</p>
+                  </div>
+                )}
+                <button onClick={() => remove(f)} aria-label={`Quitar ${f.title} de guardadas`} className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/45 text-[#F4CD79] backdrop-blur-md transition active:scale-90">
+                  <Heart className="size-[18px] fill-current" />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export default function Lobby() {
   const chains = useCine((s) => s.chains)
   const events = useCine((s) => s.events)
@@ -228,6 +267,8 @@ export default function Lobby() {
   const { nowPlaying, soon } = useMemo(() => partitionMovies(movies, shows, visible.map((c) => c.id), 'all'), [movies, shows, visible])
   const upcoming = useMemo(() => new Set(soon.map((m) => m.id)), [soon])
   const featured = useMemo(() => (nowPlaying.length ? nowPlaying : soon).slice(0, 4), [nowPlaying, soon])
+  const favorites = useCineSocial((s) => s.favorites)
+  const savedCount = favorites.length
   const days = nextDays(DAYS_AHEAD, clock)
   const movie = movies.find((m) => m.id === movieId)
   const content = useMemo(() => [...nowPlaying, ...soon], [nowPlaying, soon])
@@ -284,7 +325,11 @@ export default function Lobby() {
                 {TABS.map((t) => (
                   <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => useCineUi.getState().setTab(t.id)} className={`relative h-10 shrink-0 rounded-full px-4 text-[13.5px] font-bold whitespace-nowrap transition-colors duration-300 active:scale-95 lg:h-11 lg:px-5 lg:text-[14.5px] ${tab === t.id ? 'text-white' : 'text-white/55'}`}>
                     {tab === t.id && <motion.span layoutId="cine-tab-pill" className="absolute inset-0 rounded-full bg-white/[0.12] ring-1 ring-white/25" transition={{ type: 'spring', stiffness: 420, damping: 34 }} aria-hidden />}
-                    <span className="relative">{t.label}</span>
+                    <span className="relative flex items-center gap-1.5">
+                      {t.id === 'saved' && <Heart className="size-3.5" aria-hidden />}
+                      {t.label}
+                      {t.id === 'saved' && savedCount > 0 && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#F4CD79] px-1 text-[10.5px] font-extrabold text-[#2a1405]">{savedCount}</span>}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -343,6 +388,7 @@ export default function Lobby() {
               )}
 
               {tab === 'events' && <EventsTab events={events} />}
+              {tab === 'saved' && <SavedTab favorites={favorites} content={content} upcoming={upcoming} demo={demo} />}
 
               {tab === 'now' && content.length > 6 && (
                 <section aria-label="Todas las películas" className="space-y-3">

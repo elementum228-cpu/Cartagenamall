@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkCheck, ExternalLink, Info, Play, Share2, Ticket, X } from 'lucide-react'
+import { ExternalLink, Heart, Info, Play, Share2, Ticket, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CHAINS, dayLabel, showsOf, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
@@ -175,7 +175,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
 
   const toggleSave = () => {
     const now = useCineSocial.getState().toggleFavorite(movie)
-    toast(now ? 'Guardada en tus películas' : 'Quitada de tus guardadas', 'success')
+    toast(now ? 'Guardada en tu lista · pestaña Guardadas' : 'Quitada de tus guardadas', 'success')
     announceChallenges()
   }
   const share = () =>
@@ -247,7 +247,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
                   <Ticket className="size-4" /> Ver horarios
                 </button>
                 <button onClick={toggleSave} aria-pressed={saved} className={`flex h-12 items-center justify-center gap-2 rounded-full text-[14px] font-bold ring-1 transition active:scale-[0.98] ${saved ? 'bg-white/15 text-[#F4CD79] ring-[#F4CD79]/60' : 'text-white/90 ring-white/25'}`}>
-                  {saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />} {saved ? 'Guardada' : 'Guardar'}
+                  <Heart className={`size-4 ${saved ? 'fill-current' : ''}`} /> {saved ? 'Guardada' : 'Guardar'}
                 </button>
                 <button onClick={share} className="flex h-12 items-center justify-center gap-2 rounded-full text-[14px] font-bold text-white/90 ring-1 ring-white/25 transition active:scale-[0.98]">
                   <Share2 className="size-4" /> Compartir
