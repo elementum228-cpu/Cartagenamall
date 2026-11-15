@@ -138,3 +138,42 @@ describe('navegación del lobby', () => {
     expect(ui().wizard).toBeNull()
   })
 })
+
+describe('el lobby usa los carteles ya cargados', async () => {
+  const { postersAsMovies, mergePosterArt, withDemo } = await import('../src/state/cineFeed')
+  const posters = [
+    { title: 'Marea Roja', image: 'data:image/png;base64,aa' },
+    { title: '', image: 'data:image/png;base64,bb' },
+    { title: 'Sin imagen', image: null },
+    { title: '', image: null },
+  ] as Parameters<typeof postersAsMovies>[0]
+
+  it('cada cartel con imagen o título pasa a ser una película en cartelera (sin horarios inventados)', () => {
+    const r = postersAsMovies(posters)
+    expect(r.movies.map((m) => m.id)).toEqual(['cartel-1', 'cartel-2', 'cartel-3'])
+    expect(r.movies.map((m) => m.title)).toEqual(['Marea Roja', 'Próximo estreno', 'Sin imagen'])
+    expect(r.movies[0].image).toBe('data:image/png;base64,aa')
+    expect(r.movies.every((m) => !m.soon && !m.isNew)).toBe(true)
+    expect(r.shows).toEqual([])
+  })
+  it('con carteles cargados ya no se muestra el ejemplo; sin nada, sí', () => {
+    expect(withDemo(true, postersAsMovies(posters), NOW).demo).toBe(false)
+    expect(withDemo(true, postersAsMovies([]), NOW).demo).toBe(true)
+  })
+  it('una película del catálogo sin imagen toma la del cartel con su mismo título', () => {
+    const [m] = mergePosterArt([{ id: 'a', title: 'MAREA  roja', image: null, genre: '', minutes: null, rating: '', synopsis: '', links: {}, release: '', soon: false, isNew: false }], posters)
+    expect(m.image).toBe('data:image/png;base64,aa')
+    const keep = mergePosterArt([{ id: 'b', title: 'Marea Roja', image: 'propia', genre: '', minutes: null, rating: '', synopsis: '', links: {}, release: '', soon: false, isNew: false }], posters)
+    expect(keep[0].image).toBe('propia')
+  })
+})
+
+describe('orden de los carteles en el lobby', async () => {
+  const { postersAsMovies, partitionMovies } = await import('../src/state/cineFeed')
+  it('el primer cartel de la cartelera del frente es el primero del lobby (no se ordena por título)', () => {
+    const posters = [{ title: 'Zeta', image: 'a' }, { title: 'Alfa', image: 'b' }, { title: 'Mitad', image: 'c' }, { title: '', image: null }] as Parameters<typeof postersAsMovies>[0]
+    const { movies, shows } = postersAsMovies(posters)
+    const { nowPlaying } = partitionMovies(movies, shows, ['cine-colombia', 'royal-films', 'procinal'], 'all', '2026-11-15')
+    expect(nowPlaying.map((m) => m.title)).toEqual(['Zeta', 'Alfa', 'Mitad'])
+  })
+})

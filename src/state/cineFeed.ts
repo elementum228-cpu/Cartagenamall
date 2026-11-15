@@ -53,7 +53,8 @@ export function partitionMovies(movies: CineMovie[], shows: CineShow[], visible:
   const upcoming = (m: CineMovie) => m.soon || (m.release !== '' && m.release > today)
   const shown = pick === 'all' ? visible : visible.filter((c) => c === pick)
   const inChain = (m: CineMovie, ids: ChainId[]) => shows.some((s) => s.movieId === m.id && ids.includes(s.chain)) || ids.some((c) => !!m.links[c])
-  const order = (a: CineMovie, b: CineMovie) => Number(b.isNew) - Number(a.isNew) || a.title.localeCompare(b.title)
+  // los carteles cargados conservan su orden (el primero de la cartelera del frente es el destacado); el resto, por título
+  const order = (a: CineMovie, b: CineMovie) => Number(b.isNew) - Number(a.isNew) || (a.id.startsWith('cartel-') && b.id.startsWith('cartel-') ? a.id.localeCompare(b.id) : a.title.localeCompare(b.title))
   return {
     nowPlaying: movies.filter((m) => !upcoming(m) && (inChain(m, shown) || !inChain(m, visible))).sort(order),
     soon: movies.filter(upcoming).sort((a, b) => (a.release || '9').localeCompare(b.release || '9') || order(a, b)),
@@ -75,14 +76,38 @@ export function withDemoPosters(demoOn: boolean, posters: CineState['posters'], 
   return demoOn && posters.every((p) => !p.image && !p.title) ? exampleCine(now).posters : posters
 }
 
-/** Catálogo y funciones tal como se ven en la app (manual + automático, o el ejemplo si no hay nada). */
+/**
+ * Los carteles de la cartelera del frente (los que la administración ya cargó) también son películas en cartelera dentro del cine: si el
+ * catálogo está vacío, cada cartel con imagen o título se vuelve una película (sin horarios: su ficha manda al cine oficial). Así el
+ * lobby usa lo que ya está cargado en vez del ejemplo.
+ */
+export function postersAsMovies(posters: CineState['posters']): { movies: CineMovie[]; shows: CineShow[] } {
+  const movies: CineMovie[] = []
+  posters.forEach((p, i) => {
+    if (!p.image && !p.title) return
+    movies.push({ id: `cartel-${i + 1}`, title: p.title || 'Próximo estreno', image: p.image, genre: '', minutes: null, rating: '', synopsis: '', links: {}, release: '', soon: false, isNew: false })
+  })
+  return { movies, shows: [] }
+}
+
+/** Una película del catálogo sin imagen toma la del cartel que se llama igual (si lo hay). */
+export function mergePosterArt(movies: CineMovie[], posters: CineState['posters']): CineMovie[] {
+  const art = new Map(posters.filter((p) => p.image && p.title).map((p) => [normalizeTitle(p.title), p.image as string]))
+  return movies.map((m) => (m.image ? m : { ...m, image: art.get(normalizeTitle(m.title)) ?? null }))
+}
+
+/** Catálogo y funciones tal como se ven en la app (manual + automático, los carteles cargados, o el ejemplo si no hay nada). */
 export function useEffectiveCine() {
   const chains = useCine((s) => s.chains)
   const movies = useCine((s) => s.movies)
   const shows = useCine((s) => s.shows)
   const demo = useCine((s) => s.demo)
   const feed = useCineFeed((s) => s.doc)
-  return useMemo(() => withDemo(demo, effectiveCine({ chains, movies, shows }, feed)), [chains, movies, shows, feed, demo])
+  const posters = useCine((s) => s.posters)
+  return useMemo(() => {
+    const base = effectiveCine({ chains, movies, shows }, feed)
+    return withDemo(demo, base.movies.length ? { ...base, movies: mergePosterArt(base.movies, posters) } : postersAsMovies(posters))
+  }, [chains, movies, shows, feed, posters, demo])
 }
 
 /** Los cuatro carteles que se ven (los cargados, o los del ejemplo). */

@@ -105,9 +105,17 @@ function Hero({ movies, upcoming, demo }: { movies: CineMovie[]; upcoming: Set<s
         {movies.map((m, i) => (
           <article key={m.id} className="relative h-full min-w-full snap-center" aria-roledescription="diapositiva" aria-label={`${i + 1} de ${movies.length}: ${m.title}`}>
             <div className="absolute inset-0" aria-hidden>
-              <Picture src={m.backdrop || m.image} title={m.title} hue={m.title.length} priority={i === 0} />
+              <Picture src={m.backdrop || m.image} title={m.title} hue={m.title.length} priority={i === 0} className={m.backdrop ? '' : 'object-top'} />
               <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${C.night} 6%, rgba(8,24,39,.9) 34%, rgba(8,24,39,.45) 54%, rgba(8,24,39,.05) 74%), linear-gradient(to bottom, rgba(8,24,39,.7), rgba(8,24,39,0) 26%)` }} />
             </div>
+            {/* sin imagen horizontal, en pantallas anchas el cartel vertical se ve completo a un lado */}
+            {!m.backdrop && m.image && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-12 mx-auto hidden max-w-5xl justify-end px-8 md:flex" aria-hidden>
+                <div className="aspect-[2/3] w-[210px] overflow-hidden rounded-xl shadow-[0_14px_40px_rgba(0,0,0,.6)] ring-2" style={{ ['--tw-ring-color' as string]: C.gold }}>
+                  <Picture src={m.image} title={m.title} hue={m.title.length} />
+                </div>
+              </div>
+            )}
             <div className="absolute inset-x-0 bottom-0 mx-auto max-w-5xl px-5 pb-12 md:px-8">
               <div className="flex flex-wrap gap-1.5">
                 {demo && <StatusTag kind="demo" />}
