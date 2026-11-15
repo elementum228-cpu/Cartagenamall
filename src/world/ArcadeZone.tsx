@@ -15,7 +15,7 @@ import { useUI } from '../state/ui'
 import { Person } from './Person'
 import { Wanderers } from './Wanderers'
 
-// Zona Arcade (propuesta de diseño, solo vista previa con «?arcade=1»): una isla cuadrada al oeste de la Isla de Entretenimiento, unida
+// Zona Arcade (aprobada; se ve con la Isla de Entretenimiento activada): una isla cuadrada al oeste de la Isla de Entretenimiento, unida
 // por un puente de piedra a una puerta en su muralla oeste. Es un salón de juegos al aire libre: piso de tablero con confeti, tres bancos
 // de máquinas (uno por juego), el cuarto de recompensas con su mostrador de premios y una plaza con el monumento del tiquete.
 // Todavía no hay juegos nuevos ni canje: es solo la escena.
