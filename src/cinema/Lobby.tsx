@@ -147,7 +147,7 @@ function PosterCard({ m, upcoming, demo, fixed = false }: { m: CineMovie; upcomi
         <Picture src={m.image} title={m.title} hue={m.title.length} />
         <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
           {demo && <StatusTag kind="demo" />}
-          <StatusTag kind={movieTag(m, upcoming)} />
+          {(upcoming || m.isNew) && <StatusTag kind={movieTag(m, upcoming)} />}
         </div>
       </div>
       <p className="mt-2 line-clamp-2 text-[14px] leading-tight font-extrabold text-[#F7F4EF]">{m.title}</p>
@@ -253,8 +253,9 @@ export default function Lobby() {
             <nav aria-label="Secciones de MallPlay Cinema" className="sticky top-[calc(max(0.75rem,env(safe-area-inset-top))+2.75rem+0.5rem)] z-10 -mt-px" style={{ background: C.night }}>
               <div role="tablist" className="mx-auto flex max-w-[1360px] gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] md:px-8 lg:px-12 [&::-webkit-scrollbar]:hidden">
                 {TABS.map((t) => (
-                  <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => useCineUi.getState().setTab(t.id)} className={`h-10 shrink-0 rounded-full px-4 text-[13.5px] font-bold whitespace-nowrap transition active:scale-95 lg:h-11 lg:px-5 lg:text-[14.5px] ${tab === t.id ? 'bg-[#F4CD79] text-[#2a1405]' : 'bg-white/10 text-white/85'}`}>
+                  <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => useCineUi.getState().setTab(t.id)} className={`relative h-10 shrink-0 rounded-full px-4 text-[13.5px] font-bold whitespace-nowrap transition active:scale-95 lg:h-11 lg:px-5 lg:text-[14.5px] ${tab === t.id ? 'bg-white/[0.12] text-white ring-1 ring-white/25' : 'text-white/55'}`}>
                     {t.label}
+                    {tab === t.id && <span className="absolute inset-x-5 -bottom-px h-0.5 rounded-full bg-[#F4CD79]" aria-hidden />}
                   </button>
                 ))}
               </div>
