@@ -42,6 +42,8 @@ export interface CinePoster {
   title: string
   /** null = arte por defecto «Próximo estreno». */
   image: string | null
+  /** Sinopsis opcional: se ve en la ficha de la película. */
+  synopsis?: string
 }
 
 /** Una película del catálogo (se carga una sola vez, las funciones cuelgan de ella). */
@@ -376,7 +378,7 @@ export const cleanCine = (v: unknown, now = new Date()): CineState => {
   const today = isoDay(now)
   const old = o as { screens?: unknown[]; screen?: unknown; posters?: unknown[] }
   const rawPosters: unknown[] = Array.isArray(old.posters) && old.posters.some((p) => p && typeof p === 'object') ? old.posters : [old.screens?.[0] ?? old.screen, old.screens?.[1], old.screens?.[2], old.posters?.[0]]
-  const poster = (p: unknown): CinePoster => (p && typeof p === 'object' ? { title: str((p as CinePoster).title, 60), image: img((p as CinePoster).image) } : { title: '', image: img(p) })
+  const poster = (p: unknown): CinePoster => (p && typeof p === 'object' ? { title: str((p as CinePoster).title, 60), image: img((p as CinePoster).image), synopsis: str((p as CinePoster).synopsis, 400) } : { title: '', image: img(p) })
   const p = [0, 1, 2, 3].map((i) => poster(rawPosters[i])) as CineState['posters']
   const rawChains = Array.isArray(o.chains) ? (o.chains as { id?: string; enabled?: boolean; mode?: string; movies?: unknown[] }[]) : []
   const chains = CHAINS.map((c) => {

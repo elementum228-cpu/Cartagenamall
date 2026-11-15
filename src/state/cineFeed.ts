@@ -85,15 +85,18 @@ export function postersAsMovies(posters: CineState['posters']): { movies: CineMo
   const movies: CineMovie[] = []
   posters.forEach((p, i) => {
     if (!p.image && !p.title) return
-    movies.push({ id: `cartel-${i + 1}`, title: p.title || 'Próximo estreno', image: p.image, genre: '', minutes: null, rating: '', synopsis: '', links: {}, release: '', soon: false, isNew: false })
+    movies.push({ id: `cartel-${i + 1}`, title: p.title || 'Próximo estreno', image: p.image, genre: '', minutes: null, rating: '', synopsis: p.synopsis ?? '', links: {}, release: '', soon: false, isNew: false })
   })
   return { movies, shows: [] }
 }
 
 /** Una película del catálogo sin imagen toma la del cartel que se llama igual (si lo hay). */
 export function mergePosterArt(movies: CineMovie[], posters: CineState['posters']): CineMovie[] {
-  const art = new Map(posters.filter((p) => p.image && p.title).map((p) => [normalizeTitle(p.title), p.image as string]))
-  return movies.map((m) => (m.image ? m : { ...m, image: art.get(normalizeTitle(m.title)) ?? null }))
+  const art = new Map(posters.filter((p) => p.image && p.title).map((p) => [normalizeTitle(p.title), p]))
+  return movies.map((m) => {
+    const p = art.get(normalizeTitle(m.title))
+    return m.image && m.synopsis ? m : { ...m, image: m.image ?? p?.image ?? null, synopsis: m.synopsis || p?.synopsis || '' }
+  })
 }
 
 /** Catálogo y funciones tal como se ven en la app (manual + automático, los carteles cargados, o el ejemplo si no hay nada). */

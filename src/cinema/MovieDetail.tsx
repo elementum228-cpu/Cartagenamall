@@ -1,4 +1,4 @@
-import { Bookmark, BookmarkCheck, ChevronLeft, ExternalLink, Info, MapPin, Play, Share2, Ticket, Users, X } from 'lucide-react'
+import { Bookmark, BookmarkCheck, ChevronLeft, ExternalLink, Info, MapPin, Play, Share2, Ticket, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CHAINS, dayLabel, showsOf, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
@@ -109,7 +109,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
   const share = () =>
     void shareText(
       `🎬 ${movie.title} — mírala en MallPlay Cinema`,
-      `${movie.title}${meta.length ? ` (${meta.join(' · ')})` : ''}. Descubre dónde verla y arma tu plan en MallPlay Cinema.`,
+      `${movie.title}${meta.length ? ` (${meta.join(' · ')})` : ''}. Descubre dónde verla en MallPlay Cinema.`,
     )
   const seeTimes = () => whereRef.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
 
@@ -192,15 +192,9 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
                 ) : null}
                 <button
                   onClick={seeTimes}
-                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-teal text-[14px] font-extrabold text-white transition active:scale-[0.98]"
+                  className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-full bg-teal text-[14px] font-extrabold text-white transition active:scale-[0.98]"
                 >
                   <Ticket className="size-4" /> Ver horarios
-                </button>
-                <button
-                  onClick={() => useCineUi.getState().openWizard(movie.id)}
-                  className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/12 text-[14px] font-extrabold transition active:scale-[0.98]"
-                >
-                  <Users className="size-4" /> Crear plan
                 </button>
                 <button
                   onClick={toggleSave}

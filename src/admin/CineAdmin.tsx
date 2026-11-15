@@ -514,6 +514,7 @@ export function CineAdmin() {
           <div key={i} className="space-y-2 rounded-2xl border border-line bg-sand/50 p-3">
             <Photo tall label={`Cartel ${i + 1}`} value={p.image} onChange={(image) => set({ posters: posters.map((x, k) => (k === i ? { ...x, image } : x)) as typeof posters })} />
             <input className={input} placeholder="Título (opcional)" maxLength={60} value={p.title} onChange={(e) => set({ posters: posters.map((x, k) => (k === i ? { ...x, title: e.target.value } : x)) as typeof posters })} />
+            <textarea className={`${input} min-h-20`} placeholder="Sinopsis (se ve en la ficha de la película)" maxLength={400} value={p.synopsis ?? ''} onChange={(e) => set({ posters: posters.map((x, k) => (k === i ? { ...x, synopsis: e.target.value } : x)) as typeof posters })} />
           </div>
         ))}
         <p className="text-[11px] text-ink-soft">Mejor imágenes verticales (2:3).</p>
