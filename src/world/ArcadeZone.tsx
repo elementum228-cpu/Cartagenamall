@@ -10,6 +10,8 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
+import { useArcadeUi, type ArcadeGameId } from '../arcade/store'
+import { useUI } from '../state/ui'
 import { Person } from './Person'
 import { Wanderers } from './Wanderers'
 
@@ -115,38 +117,44 @@ function MoleTable({ x, color, dark, screen }: { x: number; color: string; dark:
   )
 }
 
-/** Torre de «Torre de Cocos»: una vitrina alta de vidrio con cocos apilados y un botón grande al frente. Frente a +z. */
-function TowerMachine({ x, color, dark }: { x: number; color: string; dark: string }) {
-  const blocks = [0, 1, 2, 3, 4, 5]
+/** Máquina de «Bolos de coco» (tipo Skee-Ball): un carril inclinado que sube hacia un tablero de aros, con cocos en la bandeja. Frente a +z. */
+function SkeeLane({ x, color, dark }: { x: number; color: string; dark: string }) {
   return (
-    <group position={[x, 0, 0]}>
-      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 0.5, 0]} scale={[1.3, 1.0, 1.3]} castShadow receiveShadow />
-      <mesh geometry={GEO.box} material={mat(color)} position={[0, 1.04, 0]} scale={[1.4, 0.1, 1.4]} castShadow />
-      {/* vidrio y cocos apilados, desfasados como en el juego */}
-      <mesh geometry={GEO.box} material={mat('#cfe8f0', { opacity: 0.22, rough: 0.2 })} position={[0, 2.35, 0]} scale={[1.1, 2.5, 1.1]} />
-      {blocks.map((k) => (
-        <mesh key={k} geometry={GEO.rounded} material={mat(k % 2 ? color : '#8a5a2b')} position={[Math.sin(k * 1.7) * 0.18, 1.25 + k * 0.38, Math.cos(k * 1.3) * 0.1]} scale={[0.72, 0.34, 0.72]} castShadow />
+    <group position={[x, 0, 0.4]}>
+      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 0.3, 0]} scale={[1.3, 0.6, 3.2]} castShadow receiveShadow />
+      {/* carril: sube hacia el fondo */}
+      <mesh geometry={GEO.box} material={mat('#b57a3a')} position={[0, 0.68, 0.1]} rotation={[0.12, 0, 0]} scale={[0.95, 0.1, 3.1]} castShadow />
+      {[-1, 1].map((sx) => (
+        <mesh key={sx} geometry={GEO.box} material={mat(color)} position={[sx * 0.55, 0.78, 0.1]} rotation={[0.12, 0, 0]} scale={[0.1, 0.22, 3.1]} castShadow />
       ))}
-      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <mesh key={`${sx}${sz}`} geometry={GEO.box} material={mat(color)} position={[sx * 0.55, 2.35, sz * 0.55]} scale={[0.07, 2.5, 0.07]} />))}
-      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 3.66, 0]} scale={[1.4, 0.2, 1.4]} castShadow />
-      <mesh geometry={GEO.cylinder} material={glowMat(color, 1.0, { dayGlow: 0.5 })} position={[0, 3.86, 0]} scale={[0.9, 0.2, 0.9]} />
-      {/* botón grande de «poner coco» */}
-      <mesh geometry={GEO.cylinder} material={mat('#d93d3d')} position={[0, 1.12, 0.45]} scale={[0.4, 0.1, 0.4]} />
-      <mesh geometry={GEO.cylinder} material={mat('#f4eadb')} position={[0, 1.08, 0.45]} scale={[0.5, 0.05, 0.5]} />
+      {/* tablero de aros al fondo */}
+      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 1.55, -1.5]} scale={[1.4, 1.8, 0.22]} castShadow />
+      {[['#e0525f', 0.62], ['#f4eadb', 0.46], ['#3f8fd8', 0.3], ['#f0b530', 0.16]].map(([c, r]) => (
+        <mesh key={String(c)} geometry={GEO.cylinder} material={mat(String(c))} position={[0, 1.4, -1.38]} rotation={[Math.PI / 2, 0, 0]} scale={[Number(r) * 2, 0.05, Number(r) * 2]} />
+      ))}
+      {[-1, 1].map((sx) => (
+        <mesh key={sx} geometry={GEO.cylinder} material={mat('#10150f')} position={[sx * 0.5, 2.05, -1.38]} rotation={[Math.PI / 2, 0, 0]} scale={[0.22, 0.05, 0.22]} />
+      ))}
+      <mesh geometry={GEO.box} material={glowMat(color, 1.0, { dayGlow: 0.5 })} position={[0, 2.55, -1.5]} scale={[1.4, 0.22, 0.26]} />
+      {/* bandeja de cocos al frente */}
+      <mesh geometry={GEO.box} material={mat(color)} position={[0, 0.66, 1.9]} scale={[1.0, 0.1, 0.5]} />
+      {[-0.25, 0.25].map((cx) => (
+        <mesh key={cx} geometry={GEO.sphere} material={mat('#6b4423')} position={[cx, 0.84, 1.9]} scale={0.28} castShadow />
+      ))}
     </group>
   )
 }
 
 /** Banco de máquinas contra un lado de la isla: n máquinas, un cartel arriba y una alfombrilla del color del juego. */
-function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright' }: { at: [number, number]; rot: number; n: number; color: string; dark: string; screen: string; label: string; sub: string; kind?: 'upright' | 'mole' | 'tower' }) {
+function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright', onOpen }: { at: [number, number]; rot: number; n: number; color: string; dark: string; screen: string; label: string; sub: string; kind?: 'upright' | 'mole' | 'lane'; onOpen?: () => void }) {
   const night = useIsNight()
   const pill = useMemo(() => getGlassPill(label, { dot: color, sub, dark: night }), [label, sub, color, night])
-  const pitch = kind === 'mole' ? 3.1 : kind === 'tower' ? 2.0 : 1.45
+  const pitch = kind === 'mole' ? 3.1 : kind === 'lane' ? 1.9 : 1.45
   const W = n * pitch + 0.4
   return (
     <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
       {Array.from({ length: n }, (_, i) => (
-        kind === 'mole' ? <MoleTable key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} /> : kind === 'tower' ? <TowerMachine key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} /> : <Cabinet key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} />
+        kind === 'mole' ? <MoleTable key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} /> : kind === 'lane' ? <SkeeLane key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} /> : <Cabinet key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} />
       ))}
       {/* taburetes redondos frente a las máquinas */}
       {Array.from({ length: n }, (_, i) => (
@@ -157,7 +165,7 @@ function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright' }:
       ))}
       {/* las máquinas iluminan el piso con el color de su juego */}
       <mesh geometry={GEO.plane} material={lightPoolMat(color, 1.3)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 1.6]} scale={[W + 2.4, 5.4, 1]} />
-      <ScreenLabel label={pill} position={[0, 3.7, 0]} pixelHeight={30} maxZoomRatio={2.2} priority={LABEL_PRIORITY.store} />
+      <ScreenLabel label={pill} position={[0, 3.7, 0]} pixelHeight={30} maxZoomRatio={2.2} priority={LABEL_PRIORITY.store} onClick={onOpen} />
     </group>
   )
 }
@@ -464,6 +472,45 @@ const PLAYERS: [number, number, string, number][] = [
   [-5.6, 5.0, '#d9453d', Math.PI / 2], [3.4, 2.4, '#3d7ea6', -1.2],
 ]
 
+/** Los tres bancos de juego: dónde están, de qué tipo son y qué juego abren al tocarlos. */
+const BANKS: { at: [number, number]; rot: number; n: number; kind: 'upright' | 'mole' | 'lane'; game: ArcadeGameId; color: string; dark: string; screen: string; label: string }[] = [
+  { at: [-1.2, -S + 1.2], rot: 0, n: 4, kind: 'upright', game: 'nave', color: BLUE, dark: '#1b2c55', screen: '#7cc4ff', label: 'Nave Caribe' },
+  { at: [-1.2, S - 1.6], rot: Math.PI, n: 2, kind: 'mole', game: 'cangrejos', color: RED, dark: '#4a1a24', screen: '#ff9aa6', label: 'Cangrejos Locos' },
+  { at: [S - 1.4, -6.0], rot: -Math.PI / 2, n: 3, kind: 'lane', game: 'bolos', color: YELLOW, dark: '#4a3a10', screen: '#ffe08a', label: 'Bolos de coco' },
+]
+const PITCH = { upright: 1.45, mole: 3.1, lane: 1.9 } as const
+
+function openGame(game: ArcadeGameId) {
+  const ui = useUI.getState()
+  if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
+  useArcadeUi.getState().openGame(game)
+}
+
+/** Zona táctil de un banco (fuera del lote de piedra, para que reciba el toque): abre su juego. */
+function BankHit({ b }: { b: (typeof BANKS)[number] }) {
+  const W = b.n * PITCH[b.kind] + 0.6
+  return (
+    <group position={[b.at[0], Y, b.at[1]]} rotation={[0, b.rot, 0]}>
+      <mesh
+        position={[0, 1.4, 1.2]}
+        onClick={(e) => {
+          if (e.delta > 8) return
+          e.stopPropagation()
+          openGame(b.game)
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => (document.body.style.cursor = '')}
+      >
+        <boxGeometry args={[W, 2.8, 3.4]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
 export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const label = useMemo(() => getGlassPill('Zona Arcade', { dot: YELLOW, sub: 'Juega y gana tiquetes', dark: night }), [night])
@@ -476,9 +523,9 @@ export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
           <IslandBody />
           <EntryArch />
           {/* tres bancos de máquinas, uno por juego */}
-          <Bank at={[-1.2, -S + 1.2]} rot={0} n={4} color={BLUE} dark="#1b2c55" screen="#7cc4ff" label="Nave Caribe" sub="Zona Arcade" />
-          <Bank at={[-1.2, S - 1.6]} rot={Math.PI} n={2} kind="mole" color={RED} dark="#4a1a24" screen="#ff9aa6" label="Cangrejos Locos" sub="Zona Arcade" />
-          <Bank at={[S - 1.4, -6.0]} rot={-Math.PI / 2} n={3} kind="tower" color={YELLOW} dark="#4a3a10" screen="#ffe08a" label="Torre de Cocos" sub="Zona Arcade" />
+          {BANKS.map((b) => (
+            <Bank key={b.game} at={b.at} rot={b.rot} n={b.n} kind={b.kind} color={b.color} dark={b.dark} screen={b.screen} label={b.label} sub="Toca para jugar" onOpen={() => openGame(b.game)} />
+          ))}
           <RewardsRoom at={[-S + 2.3, 0]} rot={Math.PI / 2} />
           <Palm x={S - 1.4} z={5.6} seed={0.4} />
           <Palm x={S - 1.4} z={7.4} h={2.8} seed={1.1} />
@@ -490,6 +537,9 @@ export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
       </Batch>
       <group position={[AC.x, 0, AC.z]}>
         <TicketMonument reduceMotion={reduceMotion} />
+        {BANKS.map((b) => (
+          <BankHit key={b.game} b={b} />
+        ))}
         {PLAYERS.map(([x, z, color, rot], i) => (
           <group key={i} position={[x, Y, z]} rotation={[0, rot, 0]}>
             <Person color={color} skin={i % 2 ? '#c58c64' : '#e5b48f'} />

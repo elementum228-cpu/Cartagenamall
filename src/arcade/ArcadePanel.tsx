@@ -8,6 +8,7 @@ import { defaultNick, finishRun as finishRunRemote, startRun, type RunTicket } f
 import { createGame, createRecorder, DIFFICULTIES, H, makeRand, MAX_WEAPON, STEP, update, W, type Difficulty, type Game, type Input } from './engine'
 import { draw } from './render'
 import { DAILY_POINTS_CAP, useArcade, useArcadeUi } from './store'
+import { MiniGame } from './games/MiniGame'
 import { Prizes, Ranking } from './ArcadeTabs'
 import '@fontsource/press-start-2p/latin-400.css'
 import './arcade.css'
@@ -22,6 +23,7 @@ type Phase = 'menu' | 'play' | 'pause' | 'over'
 
 export function ArcadePanel() {
   const open = useArcadeUi((s) => s.open)
+  const game = useArcadeUi((s) => s.game)
   const close = useCallback(() => useArcadeUi.getState().setOpen(false), [])
   useEffect(() => {
     if (!open) return
@@ -36,7 +38,7 @@ export function ArcadePanel() {
   }, [open, close])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#04061a]/95 p-3" role="dialog" aria-modal="true" aria-label="Arcade: Nave Caribe">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#04061a]/95 p-3" role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
       <Cabinet onClose={close} />
     </div>
   )
@@ -66,7 +68,10 @@ function SoundButton({ className = '' }: { className?: string }) {
   )
 }
 
+const GAME_NAME = { nave: 'Nave Caribe', cangrejos: 'Cangrejos Locos', bolos: 'Bolos de coco' } as const
+
 function Cabinet({ onClose }: { onClose: () => void }) {
+  const game = useArcadeUi((s) => s.game)
   const [tab, setTab] = useState<'play' | 'rank' | 'prizes'>('play')
   const points = useArcade((s) => s.points)
   const playing = useArcadeUi((s) => s.playing)
@@ -80,7 +85,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="font-arcade arcade-cyan truncate text-[13px]">ARCADE</h2>
-            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">NAVE CARIBE</p>
+            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">{GAME_NAME[game].toUpperCase()}</p>
           </div>
           <span className="font-arcade border-[3px] border-[#07031a] bg-[#ffd400] px-2.5 py-2 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]" aria-label={`${points} puntos`}>
             {points} PTS
@@ -97,7 +102,9 @@ function Cabinet({ onClose }: { onClose: () => void }) {
               ['rank', 'Ranking', Crown],
               ['prizes', 'Premios', Gift],
             ] as const
-          ).map(([id, label, Icon]) => (
+          )
+            .filter(([id]) => game === 'nave' || id !== 'rank') /* el ranking en línea es solo de Nave Caribe, por ahora */
+            .map(([id, label, Icon]) => (
             <button
               key={id}
               role="tab"
@@ -111,7 +118,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
-      {tab === 'play' ? <Play onRanking={() => setTab('rank')} onExit={onClose} /> : tab === 'rank' ? <Ranking /> : <Prizes />}
+      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onExit={onClose} /> : <MiniGame key={game} id={game} /> : tab === 'rank' ? <Ranking /> : <Prizes />}
     </div>
   )
 }
