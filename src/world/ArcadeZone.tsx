@@ -13,6 +13,7 @@ import { glowMat, lightPoolMat } from './night'
 import { useLiveRewards } from '../arcade/rewards'
 import { useArcadeUi, type ArcadeGameId } from '../arcade/store'
 import { useUI } from '../state/ui'
+import { cameraState } from './cameraState'
 import { Person } from './Person'
 import { NeonRun, type NeonSeg } from './Neon'
 import { Wanderers } from './Wanderers'
@@ -740,15 +741,23 @@ const NEON: NeonSeg[] = [
   }),
 ]
 
-function openPrizes() {
+/**
+ * Pasa al piso 1 SIN mover la cámara. `setFloor` pide a la cámara ir al centro del piso, y al cerrar el juego la persona se encontraba en
+ * la plaza del mall en vez de seguir en el arcade.
+ */
+function stayOnArcade() {
   const ui = useUI.getState()
-  if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
+  if (ui.overview || ui.activeFloor !== 'P1') useUI.setState({ activeFloor: 'P1', overview: false, selectedSpaceId: null })
+  cameraState.groundY = 0
+}
+
+function openPrizes() {
+  stayOnArcade()
   useArcadeUi.getState().openPrizes()
 }
 
 function openGame(game: ArcadeGameId) {
-  const ui = useUI.getState()
-  if (ui.overview || ui.activeFloor !== 'P1') ui.setFloor('P1')
+  stayOnArcade()
   useArcadeUi.getState().openGame(game)
 }
 
