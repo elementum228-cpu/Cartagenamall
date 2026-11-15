@@ -231,3 +231,48 @@
     animation: none;
   }
 }
+
+/* Felicitaciones: confeti, regalo que salta y título con rebote. */
+.confetti-bit {
+  position: absolute;
+  top: -20px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.3, 0.1, 0.6, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(var(--drift, 0px), 105vh, 0) rotate(var(--spin, 360deg));
+  }
+}
+.celebrate-gift {
+  animation: celebrate-gift 1.1s ease-in-out infinite;
+}
+@keyframes celebrate-gift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg) scale(1);
+  }
+  50% {
+    transform: translateY(-14px) rotate(4deg) scale(1.08);
+  }
+}
+.celebrate-title {
+  animation: ticket-pop 0.7s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti-bit,
+  .celebrate-gift,
+  .celebrate-title {
+    animation: none;
+  }
+  .confetti-bit {
+    display: none;
+  }
+}

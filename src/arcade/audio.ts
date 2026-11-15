@@ -235,6 +235,18 @@ function playCoin(c: AudioContext) {
 }
 
 /** Cuánto dura la tirita al salir (segundos): más tiquetes, un poco más larga. */
+/** Fanfarria de «¡ganaste un premio!»: arpegio ascendente, acorde final y destellos agudos. */
+export function celebrate() {
+  if (!on) return
+  whenRunning((c) => {
+    if (!sfxBus) return
+    const t = c.currentTime + 0.03
+    ;[523, 659, 784, 1047].forEach((f, i) => tone('square', f, t + i * 0.1, 0.22, 0.22, sfxBus!))
+    ;[784, 988, 1175, 1568].forEach((f) => tone('triangle', f, t + 0.46, 0.3, 0.9, sfxBus!))
+    for (let i = 0; i < 7; i++) tone('sine', 2093 + i * 260, t + 0.55 + i * 0.07, 0.14, 0.25, sfxBus!)
+  })
+}
+
 /** Cada cuántos segundos sale un tiquete: más tiquetes, más rápido (pero todos se ven y se oyen). */
 export const ticketInterval = (count: number) => Math.min(0.2, Math.max(0.06, 2.4 / Math.max(1, count)))
 /** Cuánto tarda en salir toda la tanda (segundos). */

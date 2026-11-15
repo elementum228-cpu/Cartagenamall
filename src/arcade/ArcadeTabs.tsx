@@ -1,6 +1,6 @@
-import { Trophy } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Ticket, Trophy } from 'lucide-react'
 import { copyText } from '../lib/clipboard'
+import { useEffect, useState } from 'react'
 import {
   defaultNick,
   fetchBoard,
@@ -17,7 +17,8 @@ import {
   type Winner,
 } from './board'
 import { useLiveRewards } from './rewards'
-import { useArcade, type ArcadeRedemption } from './store'
+import { Celebration, VoucherView } from './Voucher'
+import { useArcade } from './store'
 
 // Las pestañas «Ranking» y «Premios» del Arcade (se cargan junto con el juego, pero viven aparte para no mezclar el juego con las listas).
 
@@ -25,31 +26,17 @@ export function Prizes() {
   const points = useArcade((s) => s.points)
   const redemptions = useArcade((s) => s.redemptions)
   const rewards = useLiveRewards()
-  const [shown, setShown] = useState<ArcadeRedemption | null>(null)
-  const [copied, setCopied] = useState(false)
+  /** Qué se ve: la lista, la felicitación de un canje nuevo o un bono. */
+  const [view, setView] = useState<{ kind: 'list' } | { kind: 'won'; code: string } | { kind: 'voucher'; code: string }>({ kind: 'list' })
   const redeem = (id: string) => {
     const r = useArcade.getState().redeem(id)
-    if (r) setShown(r)
+    if (r) setView({ kind: 'won', code: r.code })
   }
-  const code = shown ?? null
+  const won = view.kind === 'won' ? redemptions.find((r) => r.code === view.code) : undefined
+  if (won) return <Celebration r={won} onContinue={() => setView({ kind: 'voucher', code: won.code })} />
+  if (view.kind === 'voucher') return <VoucherView code={view.code} onBack={() => setView({ kind: 'list' })} />
   return (
     <div className="flex min-h-0 flex-col gap-2 overflow-y-auto pb-2">
-      {code && (
-        <div className="rounded-2xl border-2 border-[#ffc83d] bg-[#ffc83d]/10 p-4 text-center text-white" role="status">
-          <p className="text-[13px] font-semibold text-[#ffe08a]">¡Canjeado! Muestra este código en caja:</p>
-          <p className="my-1 text-3xl font-extrabold tracking-widest text-[#ffc83d]">{code.code}</p>
-          <p className="text-[13px] font-bold">{code.name}</p>
-          <button
-            onClick={async () => {
-              setCopied(await copyText(code.code))
-              setTimeout(() => setCopied(false), 1500)
-            }}
-            className="mt-2 min-h-11 rounded-full bg-white/15 px-5 text-[13px] font-bold"
-          >
-            {copied ? 'Copiado' : 'Copiar código'}
-          </button>
-        </div>
-      )}
       {rewards.length === 0 && (
         <div className="rounded-2xl bg-white/[0.07] p-4 text-center text-white">
           <p className="text-[15px] font-extrabold">Muy pronto: premios de las tiendas</p>
@@ -83,12 +70,21 @@ export function Prizes() {
       })}
       {redemptions.length > 0 && (
         <div className="mt-1 text-white">
-          <p className="mb-1 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Mis códigos</p>
+          <p className="mb-1 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Mis bonos</p>
           <ul className="flex flex-col gap-1.5">
-            {redemptions.slice(0, 6).map((r) => (
-              <li key={r.code} className="flex items-center justify-between rounded-xl bg-white/[0.06] px-3 py-2 text-[13px]">
-                <span className="font-extrabold tracking-wider text-[#ffc83d]">{r.code}</span>
-                <span className="truncate pl-3 text-[#c8d3ff]">{r.name}</span>
+            {redemptions.slice(0, 20).map((r) => (
+              <li key={r.code}>
+                <button onClick={() => setView({ kind: 'voucher', code: r.code })} className="flex w-full items-center gap-3 rounded-xl bg-white/[0.08] px-3 py-2.5 text-left active:scale-[0.99]">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[#ffd45c] text-[#1a1530]">
+                    <Ticket className="size-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    {r.storeName && <span className="block truncate text-[10.5px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</span>}
+                    <span className="block truncate text-[13.5px] font-extrabold">{r.name}</span>
+                    <span className="block font-mono text-[11.5px] tracking-wider text-[#ffc83d]">{r.code}</span>
+                  </span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${r.used ? 'bg-white/15 text-white/60' : 'bg-emerald-400/20 text-emerald-300'}`}>{r.used ? 'Usado' : 'Disponible'}</span>
+                </button>
               </li>
             ))}
           </ul>

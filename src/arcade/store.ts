@@ -35,6 +35,11 @@ export const MAX_SAVED_RUNS = 60
 export interface ArcadeRedemption {
   /** Tienda que ofrece el premio. */
   storeName?: string
+  /** Condiciones y vencimiento del premio al canjearlo (para el bono). */
+  detail?: string
+  until?: string
+  /** La persona ya lo usó en la tienda. */
+  used?: boolean
   code: string
   rewardId: string
   name: string
@@ -81,6 +86,8 @@ interface ArcadeState {
   /** Registra una partida terminada; devuelve cuántos puntos dio y si el tope del día lo recortó. */
   finishRun: (score: number, ranked?: boolean, difficulty?: Difficulty) => { awarded: number; capped: boolean; record: boolean }
   redeem: (rewardId: string) => ArcadeRedemption | null
+  /** Marca un bono como usado (o lo devuelve a disponible). */
+  markUsed: (code: string, used: boolean) => void
 }
 
 export const useArcade = create<ArcadeState>()(
@@ -136,10 +143,11 @@ export const useArcade = create<ArcadeState>()(
         const reward = currentLiveRewards().find((r) => r.id === rewardId)
         const s = get()
         if (!reward || s.points < reward.cost) return null
-        const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.title, storeName: reward.storeName || undefined, cost: reward.cost, at: new Date().toISOString() }
+        const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.title, storeName: reward.storeName || undefined, detail: reward.detail || undefined, until: reward.until || undefined, cost: reward.cost, at: new Date().toISOString() }
         set({ points: s.points - reward.cost, redemptions: [r, ...s.redemptions].slice(0, 30) })
         return r
       },
+      markUsed: (code, used) => set((s) => ({ redemptions: s.redemptions.map((r) => (r.code === code ? { ...r, used } : r)) })),
     }),
     { name: 'cm:arcade:v1', storage: safeStorage },
   ),
