@@ -712,7 +712,7 @@ const WALK_SPEED = 1.1
 function Walkers({ services }: { services: boolean }) {
   const refs = useRef<(THREE.Group | null)[]>([])
   const route = services ? ROUTE_TERRACE : ROUTE_BASE
-  const n = services ? 9 : 6
+  const n = services ? 14 : 9
   const people = useMemo(() => Array.from({ length: n }, (_, i) => ({ phase: i / n, lane: (i % 3 - 1) * 0.55 })), [n])
   useFrame(({ clock }) => {
     const t = clock.elapsedTime

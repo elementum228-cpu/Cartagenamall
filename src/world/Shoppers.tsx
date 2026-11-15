@@ -63,7 +63,7 @@ interface Group {
 const HURRY_SPEED = 2.9
 const RETURN_SPEED = 2.4
 /** Visitantes por pasillo (los que pueden acudir a una oferta de ese pasillo). */
-const PER_WING = 16
+const PER_WING = 9
 const TURN = 6 // rad/s de suavizado del giro
 /** Cuánto se queda el grupo frente a la vitrina una vez completo. */
 const DWELL = 40
@@ -127,7 +127,7 @@ export function Shoppers({ maxReacting = 3 }: { maxReacting?: number }) {
   const helmets = useHelmetsOn()
   const agents = useMemo<Agent[]>(() => {
     const routes: Route[] = []
-    for (let i = 0; i < 5; i++) routes.push({ kind: 'circle', r: 3.6 + (i % 2) * 0.6, speed: (i % 2 ? 1 : -1) * 0.36, phase: i * 1.3 })
+    for (let i = 0; i < 3; i++) routes.push({ kind: 'circle', r: 3.6 + (i % 2) * 0.6, speed: (i % 2 ? 1 : -1) * 0.36, phase: i * 1.3 })
     P1.zones.forEach((z, zi) => {
       for (let i = 0; i < PER_WING; i++)
         routes.push({

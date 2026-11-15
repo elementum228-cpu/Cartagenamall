@@ -12,6 +12,7 @@ import { LABEL_PRIORITY } from './labels'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
 import { BUILD_H, BX, BZ, CART, CART_DX, CART_W, CX, CZ, DECK, DX, FZ, HALF, STAIR } from './cinemaLayout'
+import { Wanderers } from './Wanderers'
 import { cameraState } from './cameraState'
 import { useCineUi } from '../state/cineUi'
 import { useEffectivePosters } from '../state/cineFeed'
@@ -503,6 +504,21 @@ function Hit({ position, scale, onOpen }: { position: [number, number, number]; 
   )
 }
 
+/** Puntos de paseo de la plaza del cine (coordenadas de la isla): frente a la cartelera, la fuente, las puertas y el pie de la escalera. */
+const CINEMA_STROLL: [number, number][] = [
+  [CART.x - 7, -55.6],
+  [CART.x + 7, -55.6],
+  [CART.x - 3, -55],
+  [CART.x + 3, -55],
+  [BX - 9, -62],
+  [BX + 9, -62],
+  [BX - 8.5, -67],
+  [BX + 8.5, -67],
+  [BX - 3, -68.5],
+  [BX + 3, -68.5],
+  [STAIR.x, -57.2],
+]
+
 export function Cinema() {
   const night = useIsNight()
   const boardOn = useCine((s) => s.boardOn)
@@ -512,6 +528,8 @@ export function Cinema() {
   const boardLabel = useMemo(() => getGlassPill('Cartelera', { dot: '#ffb454', sub: 'Toca para ver', dark: night }), [night])
   return (
     <group position={[DX, 0, 0]}>
+      {/* gente que pasea por la plaza del cine: cartelera, puertas, fuente y escalera */}
+      <Wanderers points={CINEMA_STROLL} count={9} y={DECK} reach={14} seed={3} />
       <Batch version="cine-9">
         <Island />
         <Building />

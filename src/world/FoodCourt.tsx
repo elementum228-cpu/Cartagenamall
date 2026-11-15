@@ -1,10 +1,11 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { FLOOR_BY_ID, FOOD_ISLAND_AT, FOOD_LAYOUT, onP1Walkway } from '../config/mall'
+import { FLOOR_BY_ID, FOOD_ISLAND_AT, FOOD_LAYOUT, SPACES, onP1Walkway, spaceFrontPoint } from '../config/mall'
 import { JOYERIA, P2_GROW as G } from '../config/preview'
 import { Batch } from './Batch'
 import { helmetColor, useHelmetsOn } from './helmets'
 import { FoodCrowd } from './FlashCrowd'
+import { Wanderers } from './Wanderers'
 import { ScreenLabel } from './Billboard'
 import { LABEL_PRIORITY } from './labels'
 import { getGlassPill } from './labelTexture'
@@ -513,10 +514,18 @@ export function FoodCourtShell() {
 }
 
 /** Mobiliario y ambiente de la terraza (solo con el piso en detalle). */
+/** Puntos de paseo de la terraza: el frente de cada puesto y de cada isla, y el pie de las escaleras. */
+const FOOD_STROLL: [number, number][] = [
+  ...SPACES.filter((s) => s.floorId === 'P2').map((s) => spaceFrontPoint(s, 1.5)),
+  [FOOD_LAYOUT.arrival.x - 1.6, FOOD_LAYOUT.arrival.z - 1.6],
+  [0, 0],
+]
+
 export function FoodCourtDetail({ detail, crowd = 6 }: { detail: 'high' | 'low'; crowd?: number }) {
   return (
     <>
       <Furniture detail={detail} />
+      {crowd > 0 && <Wanderers points={FOOD_STROLL} count={crowd * 2 + 2} y={0.2} reach={13} seed={2} />}
       {crowd > 0 && <FoodCrowd count={crowd} />}
     </>
   )

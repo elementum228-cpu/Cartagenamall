@@ -15,6 +15,7 @@ import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat, nightState } from './night'
 import { useStadiumBoard, useStadiumConfig, useStadiumEvents } from '../state/stadiumEvents'
 import { Fireworks, IndoorScoreboard } from './MatchEffects'
+import { Wanderers } from './Wanderers'
 import { boardWhen, resolveBoard } from '../stadium/board'
 import { BOARD_H, BOARD_W, drawCover, loadImage, paintBoard } from '../stadium/boardPaint'
 
@@ -1955,6 +1956,8 @@ const WALK_BOB = 6
 // ── gente que llega al estadio por el puente ────────────────────────────────────────────────────────
 const ARRIVALS = 16
 /** Puertas de la fachada hacia donde se dirigen los que llegan. */
+/** Explanada del estadio: puntos de paseo frente a las entradas (coordenadas del conjunto). */
+const FORECOURT: [number, number][] = [[GATE_X, 22], [GATE_X - 7, 20], [GATE_X + 7, 20], [GATE_X, 28], [GATE_X - 9, 26], [GATE_X + 9, 26]]
 const DOORS: [number, number][] = [17, 19, 21, 23, 28, 34].map((i) => at(i, FACADE_D + 0.7))
 
 /**
@@ -2231,6 +2234,7 @@ export function Stadium({ reduceMotion, quality = 'high' }: { reduceMotion: bool
           {concert && <Stage reduceMotion={reduceMotion} beamsOn={quality !== 'low'} />}
           {concert && <Crowd spots={PISTA_SPOTS} reduceMotion={reduceMotion} hideWhenOff density={DENSITY[quality]} arms={quality !== 'low'} />}
           {open && <Arrivals reduceMotion={reduceMotion} count={quality === 'low' ? 8 : 16} />}
+          {phase !== 'construction' && !reduceMotion && <Wanderers points={FORECOURT} count={quality === 'low' ? 5 : 9} y={Y} reach={14} seed={4} />}
           {open && <InnerLights reduceMotion={reduceMotion} cones={quality === 'high'} />}
         </group>
       </group>
