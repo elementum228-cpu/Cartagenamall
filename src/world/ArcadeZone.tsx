@@ -81,8 +81,6 @@ function Bank({ at, rot, n, color, dark, screen, label, sub }: { at: [number, nu
   const W = n * pitch + 0.4
   return (
     <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
-      <mesh geometry={GEO.box} material={mat(color)} position={[0, 0.03, 1.5]} scale={[W + 0.6, 0.05, 3.2]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat('#f4eadb')} position={[0, 0.06, 1.5]} scale={[W + 0.2, 0.03, 2.8]} receiveShadow />
       {Array.from({ length: n }, (_, i) => (
         <Cabinet key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} />
       ))}
@@ -107,7 +105,6 @@ function RewardsRoom({ at, rot }: { at: [number, number]; rot: number }) {
   const prizes: [number, string][] = [[-1.9, '#ef7d57'], [-1.1, '#f4cd79'], [-0.3, '#7fd0c4'], [0.5, '#e0558a'], [1.3, '#9d8cf0'], [2.1, '#6fb6ee']]
   return (
     <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
-      <mesh geometry={GEO.rounded} material={mat('#f4eadb')} position={[0, 0.06, 0.5]} scale={[8, 0.1, 5.8]} receiveShadow />
       <mesh geometry={GEO.box} material={mat(TEAL)} position={[0, 1.7, -1.0]} scale={[6.4, 3.4, 3.4]} castShadow receiveShadow />
       {Array.from({ length: 11 }, (_, i) => (
         <mesh key={i} geometry={GEO.box} material={mat(i % 2 ? TERRA : '#f0b189')} position={[(i - 5) * 0.62, 3.55, -0.9]} scale={[0.62, 0.34, 4.0]} castShadow />
@@ -197,16 +194,35 @@ function Lamp({ x, z }: { x: number; z: number }) {
   )
 }
 
-/** Piso de un solo color, liso (índigo oscuro): las luces de las máquinas y de la plaza lo iluminan; el paseo crema lleva del arco a la plaza. */
-const FLOOR = '#2b2f5c'
+/** Mármol claro: el mismo piso de la zona de joyería (losas blancas con vetas), liso y sin zonas aparte. */
+function useMarble() {
+  return useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = c.height = 256
+    const g = c.getContext('2d')!
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++) {
+        g.fillStyle = (i + j) % 2 ? '#fbf9f4' : '#eeeae0'
+        g.fillRect(i * 64, j * 64, 64, 64)
+        g.strokeStyle = 'rgba(150,150,160,0.28)'
+        for (let k = 0; k < 3; k++) {
+          g.beginPath()
+          g.moveTo(i * 64 + ((k * 23 + i * 7) % 64), j * 64)
+          g.bezierCurveTo(i * 64 + 20, j * 64 + 20, i * 64 + 44, j * 64 + 40, i * 64 + ((k * 31 + j * 11) % 64), j * 64 + 64)
+          g.stroke()
+        }
+      }
+    const t = new THREE.CanvasTexture(c)
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set((S * 2) / 4, (S * 2) / 4)
+    t.colorSpace = THREE.SRGBColorSpace
+    return new THREE.MeshStandardMaterial({ map: t, roughness: 0.28, metalness: 0.08 })
+  }, [])
+}
+
 function Floor() {
-  return (
-    <group>
-      <mesh geometry={GEO.box} material={mat(FLOOR)} position={[0, Y + 0.02, 0]} scale={[S * 2, 0.06, S * 2]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat('#e9dcc0')} position={[S / 2 + 1, Y + 0.06, 0]} scale={[S - 2, 0.03, 2.4]} receiveShadow />
-      <mesh geometry={GEO.cylinder} material={mat('#e9dcc0')} position={[0, Y + 0.06, 0]} scale={[6.4, 0.03, 6.4]} receiveShadow />
-    </group>
-  )
+  const marble = useMarble()
+  return <mesh geometry={GEO.box} material={marble} position={[0, Y + 0.02, 0]} scale={[S * 2, 0.06, S * 2]} receiveShadow />
 }
 
 /** Isla cuadrada: base de piedra, piso de tablero y muralla baja con almenas; el lado este (hacia el puente) queda abierto. */
@@ -234,10 +250,10 @@ function IslandBody() {
           return (
             <group key={`${si}${i}`} position={[px, Y, pz]} rotation={[0, sd.rot, 0]}>
               {/* los lados lejanos (norte y oeste) son altos como una muralla; los cercanos (sur y este) quedan bajos para ver el interior */}
-              <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, tall ? 0.9 : 0.45, 0]} scale={[step + 0.02, tall ? 1.8 : 0.9, 0.9]} castShadow receiveShadow />
-              <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, tall ? 1.84 : 0.93, 0]} scale={[step + 0.02, 0.12, 1.05]} />
-              {tall && <mesh geometry={GEO.box} material={mat(STONE[1])} position={[0, 2.12, 0]} scale={[step + 0.02, 0.5, 0.6]} castShadow />}
-              {i % 2 === 0 && <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, tall ? 2.6 : 1.25, 0]} scale={[0.85, 0.5, 0.6]} castShadow />}
+              <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, tall ? 1.2 : 0.55, 0]} scale={[step + 0.02, tall ? 2.4 : 1.1, 0.9]} castShadow receiveShadow />
+              <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, tall ? 2.44 : 1.14, 0]} scale={[step + 0.02, 0.12, 1.05]} />
+              {tall && <mesh geometry={GEO.box} material={mat(STONE[1])} position={[0, 2.72, 0]} scale={[step + 0.02, 0.5, 0.6]} castShadow />}
+              {i % 2 === 0 && <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, tall ? 3.2 : 1.5, 0]} scale={[0.85, 0.5, 0.6]} castShadow />}
             </group>
           )
         }),
@@ -250,13 +266,13 @@ function IslandBody() {
         [S, S],
       ].map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
-          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[0, 1.7, 0]} scale={[2.9, 3.6, 2.9]} castShadow receiveShadow />
-          <mesh geometry={GEO.cylinder} material={mat(CORDON)} position={[0, 3.55, 0]} scale={[3.15, 0.16, 3.15]} />
+          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[0, 2.1, 0]} scale={[2.9, 4.4, 2.9]} castShadow receiveShadow />
+          <mesh geometry={GEO.cylinder} material={mat(CORDON)} position={[0, 4.35, 0]} scale={[3.15, 0.16, 3.15]} />
           {Array.from({ length: 8 }, (_, k) => {
             const a = (k / 8) * Math.PI * 2
-            return <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[Math.cos(a) * 1.3, 3.9, Math.sin(a) * 1.3]} rotation={[0, -a, 0]} scale={[0.35, 0.5, 0.7]} castShadow />
+            return <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[Math.cos(a) * 1.3, 4.7, Math.sin(a) * 1.3]} rotation={[0, -a, 0]} scale={[0.35, 0.5, 0.7]} castShadow />
           })}
-          <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[0, 4.3, 0]} scale={[1.8, 0.7, 1.8]} castShadow />
+          <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[0, 5.1, 0]} scale={[1.8, 0.7, 1.8]} castShadow />
         </group>
       ))}
       {/* rocas en la orilla */}
