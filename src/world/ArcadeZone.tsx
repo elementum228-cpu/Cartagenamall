@@ -156,8 +156,9 @@ function TicketMonument({ reduceMotion }: { reduceMotion: boolean }) {
   const pouf = ['#e0525f', '#f0b530', '#3f8fd8', '#7fd0c4']
   return (
     <group>
-      <mesh geometry={GEO.box} material={mat('#f4eadb')} position={[0, Y + 0.12, 0]} scale={[5.4, 0.12, 5.4]} receiveShadow />
-      <mesh geometry={GEO.box} material={mat(INK)} position={[0, Y + 0.2, 0]} scale={[4.6, 0.1, 4.6]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat(INK)} position={[0, Y + 0.14, 0]} scale={[5.2, 0.16, 5.2]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#f0b530')} position={[0, Y + 0.24, 0]} scale={[4.4, 0.05, 4.4]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat(INK)} position={[0, Y + 0.27, 0]} scale={[4.1, 0.05, 4.1]} receiveShadow />
       <mesh geometry={GEO.cylinder} material={mat(INK)} position={[0, Y + 0.7, 0]} scale={[1.4, 1.0, 1.4]} castShadow />
       <mesh geometry={GEO.cylinder} material={mat('#f0b530')} position={[0, Y + 1.25, 0]} scale={[1.6, 0.1, 1.6]} />
       <group ref={ref} userData={{ dynamic: true }}>
@@ -199,18 +200,20 @@ function Lamp({ x, z }: { x: number; z: number }) {
   )
 }
 
-/** Piso de tablero (índigo y crema) con confeti de colores sobre las casillas claras, como una alfombra de salón de juegos. */
+/** Piso de alfombra de salón de juegos: losetas índigo oscuras de tonos casi iguales y confeti de colores esparcido, como las alfombras de los arcades. */
 function Floor() {
-  const T = 2
-  const n = (S * 2) / T
+  const T = 1.25
+  const n = Math.round((S * 2) / T)
+  const tones = ['#272b52', '#2d3260', '#232748']
   const confetti = useMemo(() => {
-    const cols = ['#e0525f', '#f0b530', '#3f8fd8', '#7fd0c4', '#e0558a']
-    return Array.from({ length: 46 }, (_, i) => ({
-      x: (rnd(i * 3 + 1) - 0.5) * (S * 2 - 1.5),
-      z: (rnd(i * 5 + 2) - 0.5) * (S * 2 - 1.5),
+    const cols = ['#e0525f', '#f0b530', '#3f8fd8', '#5fc9b8', '#d9669a', '#f4eadb']
+    return Array.from({ length: 150 }, (_, i) => ({
+      x: (rnd(i * 3 + 1) - 0.5) * (S * 2 - 1.2),
+      z: (rnd(i * 5 + 2) - 0.5) * (S * 2 - 1.2),
       r: rnd(i + 9) * Math.PI,
       c: cols[i % cols.length],
-      w: 0.2 + rnd(i + 4) * 0.22,
+      w: 0.16 + rnd(i + 4) * 0.2,
+      tri: i % 3 === 0,
     }))
   }, [])
   return (
@@ -218,11 +221,14 @@ function Floor() {
       {Array.from({ length: n * n }, (_, k) => {
         const i = k % n
         const j = Math.floor(k / n)
-        return <mesh key={k} geometry={GEO.box} material={mat((i + j) % 2 ? '#efe3c4' : '#2b3070')} position={[-S + T / 2 + i * T, Y + 0.01, -S + T / 2 + j * T]} scale={[T, 0.05, T]} receiveShadow />
+        return <mesh key={k} geometry={GEO.box} material={mat(tones[Math.floor(rnd(k * 1.7 + 3) * 3)])} position={[-S + T / 2 + i * T, Y + 0.01, -S + T / 2 + j * T]} scale={[T - 0.03, 0.05, T - 0.03]} receiveShadow />
       })}
       {confetti.map((c, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(c.c)} position={[c.x, Y + 0.05, c.z]} rotation={[0, c.r, 0]} scale={[c.w, 0.01, c.w * 0.45]} />
+        <mesh key={i} geometry={GEO.box} material={mat(c.c)} position={[c.x, Y + 0.045, c.z]} rotation={[0, c.r, 0]} scale={c.tri ? [c.w * 0.5, 0.01, c.w] : [c.w, 0.01, c.w * 0.4]} />
       ))}
+      {/* paseo crema del arco a la plaza y anillo claro alrededor del monumento */}
+      <mesh geometry={GEO.box} material={mat('#e9dcc0')} position={[S / 2 + 1, Y + 0.06, 0]} scale={[S - 2, 0.03, 2.4]} receiveShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#e9dcc0')} position={[0, Y + 0.06, 0]} scale={[6.4, 0.03, 6.4]} receiveShadow />
     </group>
   )
 }
@@ -274,8 +280,6 @@ function IslandBody() {
       {[[-S - 1.6, -3], [-S - 1.5, 5], [-4, S + 1.6], [4, -S - 1.6], [S + 1.5, 6.2], [6, S + 1.5]].map(([x, z], n) => (
         <mesh key={n} geometry={GEO.sphere} material={mat(STONE_DARK)} position={[x, SEA + 0.1, z]} scale={[1.6 + (n % 2), 0.9, 1.3]} />
       ))}
-      {/* sendero del puente a la plaza */}
-      <mesh geometry={GEO.box} material={mat('#f4eadb')} position={[S / 2 + 0.8, Y + 0.07, 0]} scale={[S - 3.4, 0.04, 2.6]} receiveShadow />
     </group>
   )
 }
