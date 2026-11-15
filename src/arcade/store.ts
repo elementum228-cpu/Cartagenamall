@@ -34,6 +34,7 @@ export const MAX_SAVED_RUNS = 60
 
 export interface ArcadeRedemption {
   /** Tienda que ofrece el premio. */
+  storeId?: string
   storeName?: string
   /** Condiciones y vencimiento del premio al canjearlo (para el bono). */
   detail?: string
@@ -143,7 +144,7 @@ export const useArcade = create<ArcadeState>()(
         const reward = currentLiveRewards().find((r) => r.id === rewardId)
         const s = get()
         if (!reward || s.points < reward.cost) return null
-        const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.title, storeName: reward.storeName || undefined, detail: reward.detail || undefined, until: reward.until || undefined, cost: reward.cost, at: new Date().toISOString() }
+        const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.title, storeId: reward.storeId || undefined, storeName: reward.storeName || undefined, detail: reward.detail || undefined, until: reward.until || undefined, cost: reward.cost, at: new Date().toISOString() }
         set({ points: s.points - reward.cost, redemptions: [r, ...s.redemptions].slice(0, 30) })
         return r
       },

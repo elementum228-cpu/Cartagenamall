@@ -1,6 +1,11 @@
 import { ArrowLeft, Check, Copy, Download, Gift, Send, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import markWhite from '../assets/mallplay-mark-white.png'
+import type { Store } from '../domain/types'
 import { copyText } from '../lib/clipboard'
+import { useCatalog } from '../state/catalog'
+import { MallLogoWhite } from '../ui/MallMark'
+import { StoreLogo } from '../ui/bits'
 import { useUI } from '../state/ui'
 import { celebrate } from './audio'
 import { useArcade, type ArcadeRedemption } from './store'
@@ -71,39 +76,45 @@ export function Celebration({ r, onContinue }: { r: ArcadeRedemption; onContinue
   )
 }
 
-/** El bono dibujado en pantalla: un tiquete con el premio, las condiciones y el código. */
+type StoreLook = Pick<Store, 'logoText' | 'brandColor' | 'logo'>
+
+/** La tienda del bono (para su logo y su color): por su identificador o, en bonos viejos, por su nombre. */
+function useStoreOf(r: ArcadeRedemption): StoreLook | null {
+  const stores = useCatalog((s) => s.stores)
+  return useMemo(() => stores.find((s) => (r.storeId ? s.id === r.storeId : !!r.storeName && s.name === r.storeName)) ?? null, [stores, r.storeId, r.storeName])
+}
+
+/** El bono dibujado en pantalla: arriba el logo de MallPlay, al centro la tienda con su logo y el premio, abajo (más discreto) el código. */
 export function VoucherCard({ r }: { r: ArcadeRedemption }) {
+  const store = useStoreOf(r)
   return (
-    <article className="relative mx-auto w-full max-w-[340px] overflow-hidden rounded-[22px] text-[#1a1530] shadow-[0_10px_0_rgba(0,0,0,.35)]" style={{ background: 'linear-gradient(160deg,#fff7d6,#ffe9a0 45%,#ffd45c)' }} aria-label={`Bono: ${r.name}`}>
-      <div className="flex items-center justify-between bg-[#1a1530] px-4 py-2.5 text-[#ffd400]">
-        <span className="font-arcade text-[9px]">BONO ARCADE</span>
-        <span className="font-arcade text-[9px]">MALLPLAY</span>
+    <article className="relative mx-auto w-full max-w-[340px] shrink-0 overflow-hidden rounded-[24px] text-[#1a1530] shadow-[0_10px_0_rgba(0,0,0,.35)]" style={{ background: 'linear-gradient(165deg,#fffaf0,#fff0c4 55%,#ffe39a)' }} aria-label={`Bono: ${r.name}`}>
+      <div className="flex items-center justify-between bg-[#171233] px-5 py-3.5">
+        <MallLogoWhite height={26} />
+        <span className="text-[10.5px] font-bold tracking-[0.22em] text-[#ffd45c] uppercase">Bono Arcade</span>
       </div>
-      <div className="px-5 pt-4 pb-3 text-center">
-        {r.storeName && <p className="text-[12px] font-extrabold tracking-[0.18em] uppercase opacity-70">{r.storeName}</p>}
-        <p className="mt-1 text-[24px] leading-[1.1] font-black">{r.name}</p>
-        {r.detail && <p className="mt-2 text-[12.5px] leading-snug opacity-75">{r.detail}</p>}
+      <div className="flex flex-col items-center px-6 pt-6 pb-5 text-center">
+        {store ? <StoreLogo store={store} size={68} round /> : <span className="grid size-[68px] place-items-center rounded-full bg-[#171233] text-[26px] font-black text-[#ffd45c]">{(r.storeName || 'M').charAt(0)}</span>}
+        {r.storeName && <p className="mt-3 text-[12.5px] font-bold tracking-[0.16em] text-[#1a1530]/60 uppercase">{r.storeName}</p>}
+        <p className="mt-2 text-[27px] leading-[1.08] font-extrabold tracking-[-0.02em]">{r.name}</p>
+        {r.detail && <p className="mt-2.5 text-[13px] leading-snug font-medium text-[#1a1530]/65">{r.detail}</p>}
       </div>
       {/* línea de corte con muescas */}
-      <div className="relative my-1 h-5" aria-hidden>
-        <span className="absolute inset-x-6 top-1/2 border-t-2 border-dashed border-[#1a1530]/35" />
+      <div className="relative h-5" aria-hidden>
+        <span className="absolute inset-x-6 top-1/2 border-t-2 border-dashed border-[#1a1530]/25" />
         <span className="absolute top-1/2 -left-3 size-6 -translate-y-1/2 rounded-full bg-[#06021a]" />
         <span className="absolute top-1/2 -right-3 size-6 -translate-y-1/2 rounded-full bg-[#06021a]" />
       </div>
-      <div className="px-5 pt-2 pb-4 text-center">
-        <p className="text-[10.5px] font-extrabold tracking-[0.2em] opacity-60">TU CÓDIGO</p>
-        <p className="mt-0.5 font-mono text-[34px] leading-none font-black tracking-[0.12em]">{r.code}</p>
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-left text-[11.5px]">
-          <div className="rounded-xl bg-white/55 px-2.5 py-1.5">
-            <dt className="font-bold opacity-60">Canjeado</dt>
-            <dd className="font-extrabold">{dateEs(r.at)}</dd>
-          </div>
-          <div className="rounded-xl bg-white/55 px-2.5 py-1.5">
-            <dt className="font-bold opacity-60">Válido hasta</dt>
-            <dd className="font-extrabold">{r.until ? untilEs(r.until) : 'Sin vencimiento'}</dd>
-          </div>
-        </dl>
-        <p className="mt-3 text-[11px] font-semibold opacity-65">Muéstralo en caja. Se usa una sola vez.</p>
+      {/* talón: letra más chica y discreta que el premio */}
+      <div className="px-6 pt-3 pb-4 text-center">
+        <p className="text-[9.5px] font-bold tracking-[0.24em] text-[#1a1530]/50">CÓDIGO</p>
+        <p className="mt-0.5 font-mono text-[22px] leading-none font-bold tracking-[0.14em] text-[#1a1530]/90">{r.code}</p>
+        <p className="mt-2.5 text-[10.5px] leading-snug font-medium text-[#1a1530]/55">
+          Canjeado el {dateEs(r.at)}
+          <br />
+          {r.until ? `Válido hasta el ${untilEs(r.until)}` : 'Sin vencimiento'}
+        </p>
+        <p className="mt-0.5 text-[10.5px] font-medium text-[#1a1530]/45">Muéstralo en caja · se usa una sola vez</p>
       </div>
       {r.used && (
         <div className="absolute inset-0 grid place-items-center bg-[#1a1530]/55" aria-label="Bono usado">
@@ -114,111 +125,195 @@ export function VoucherCard({ r }: { r: ArcadeRedemption }) {
   )
 }
 
-function wrap(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number, maxLines = 4): number {
-  const words = text.split(/\s+/)
+const loadImg = (src: string) =>
+  new Promise<HTMLImageElement | null>((res) => {
+    const im = new Image()
+    im.onload = () => res(im)
+    im.onerror = () => res(null)
+    im.src = src
+  })
+
+/** Parte un texto en líneas que caben en `maxW` con la letra que esté puesta en el lienzo. */
+function lines(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number): string[] {
+  const out: string[] = []
   let line = ''
-  let lines = 0
-  for (const w of words) {
+  for (const w of text.split(/\s+/).filter(Boolean)) {
     const test = line ? `${line} ${w}` : w
     if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, x, y)
-      y += lineH
+      out.push(line)
       line = w
-      if (++lines >= maxLines) return y
+      if (out.length >= maxLines) return out
     } else line = test
   }
-  if (line) ctx.fillText(line, x, y)
-  return y + lineH
+  if (line && out.length < maxLines) out.push(line)
+  return out
 }
 
-/** El bono como imagen (PNG vertical, lista para guardar o mandar por WhatsApp). */
-export async function voucherImage(r: ArcadeRedemption): Promise<Blob> {
+/** El bono como imagen (PNG vertical, lista para guardar o mandar por WhatsApp): mismo diseño que en pantalla. */
+export async function voucherImage(r: ArcadeRedemption, store: StoreLook | null): Promise<Blob> {
   const W = 1080
-  const H = 1500
+  const F = 'Manrope, "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+  try {
+    await Promise.all([document.fonts.load('800 60px Manrope'), document.fonts.load('600 30px Manrope'), document.fonts.load('700 30px Manrope')])
+  } catch {
+    /* sin la letra de la app se usa la del sistema */
+  }
+  const [mark, logo] = await Promise.all([loadImg(markWhite), store?.logo ? loadImg(store.logo) : Promise.resolve(null)])
   const c = document.createElement('canvas')
   c.width = W
-  c.height = H
+  c.height = 2200
   const g = c.getContext('2d')!
-  const sans = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+  const x0 = 80
+  const w = W - 160
+  const mid = w - 150
+
+  // medidas del texto (la altura de la tarjeta depende de cuántas líneas ocupa el premio y las condiciones)
+  g.font = `800 84px ${F}`
+  const prize = lines(g, r.name, mid, 4)
+  g.font = `500 37px ${F}`
+  const detail = r.detail ? lines(g, r.detail, mid, 4) : []
+  const headH = 150
+  const bodyH = 70 + 170 + (r.storeName ? 76 : 20) + prize.length * 92 + (detail.length ? 24 + detail.length * 52 : 0) + 60
+  const stubH = 350
+  const y0 = 110
+  const cardH = headH + bodyH + stubH
+  const H = y0 + cardH + 170
+  c.height = H
   const bg = g.createLinearGradient(0, 0, 0, H)
   bg.addColorStop(0, '#1a0f55')
   bg.addColorStop(1, '#06021a')
   g.fillStyle = bg
   g.fillRect(0, 0, W, H)
+
   // tarjeta
-  const x0 = 90
-  const w = W - 180
-  const y0 = 150
-  const h = 1200
-  const card = g.createLinearGradient(0, y0, 0, y0 + h)
-  card.addColorStop(0, '#fff7d6')
-  card.addColorStop(0.5, '#ffe9a0')
-  card.addColorStop(1, '#ffd45c')
+  const card = g.createLinearGradient(0, y0, 0, y0 + cardH)
+  card.addColorStop(0, '#fffaf0')
+  card.addColorStop(0.55, '#fff0c4')
+  card.addColorStop(1, '#ffe39a')
   g.fillStyle = card
   g.beginPath()
-  g.roundRect(x0, y0, w, h, 48)
+  g.roundRect(x0, y0, w, cardH, 56)
   g.fill()
-  g.fillStyle = '#1a1530'
+  g.fillStyle = '#171233'
   g.beginPath()
-  g.roundRect(x0, y0, w, 120, [48, 48, 0, 0])
+  g.roundRect(x0, y0, w, headH, [56, 56, 0, 0])
   g.fill()
+  // cabecera: logo de MallPlay y «BONO ARCADE»
   g.textBaseline = 'middle'
-  g.fillStyle = '#ffd400'
-  g.font = `900 40px ${sans}`
+  let lx = x0 + 56
+  if (mark) {
+    const mh = 72
+    const mw = (mark.width / mark.height) * mh
+    g.drawImage(mark, lx, y0 + headH / 2 - mh / 2, mw, mh)
+    lx += mw + 18
+  }
+  g.fillStyle = '#ffffff'
   g.textAlign = 'left'
-  g.fillText('BONO ARCADE', x0 + 48, y0 + 60)
+  g.font = `800 50px ${F}`
+  g.fillText('MallPlay', lx, y0 + headH / 2 + 2)
+  g.fillStyle = '#ffd45c'
   g.textAlign = 'right'
-  g.fillText('MALLPLAY', x0 + w - 48, y0 + 60)
+  g.font = `700 28px ${F}`
+  g.fillText('BONO ARCADE', x0 + w - 56, y0 + headH / 2 + 2)
+
+  // cuerpo: logo de la tienda, su nombre y el premio
+  let y = y0 + headH + 70
+  const cx = W / 2
+  const lr = 85
+  g.save()
+  g.beginPath()
+  g.arc(cx, y + lr, lr, 0, Math.PI * 2)
+  g.clip()
+  if (logo) {
+    g.fillStyle = '#ffffff'
+    g.fillRect(cx - lr, y, lr * 2, lr * 2)
+    const s = Math.max((lr * 2) / logo.width, (lr * 2) / logo.height)
+    g.drawImage(logo, cx - (logo.width * s) / 2, y + lr - (logo.height * s) / 2, logo.width * s, logo.height * s)
+  } else {
+    g.fillStyle = store?.brandColor || '#171233'
+    g.fillRect(cx - lr, y, lr * 2, lr * 2)
+    g.fillStyle = '#ffffff'
+    g.textAlign = 'center'
+    g.font = `800 ${store?.logoText && store.logoText.length > 3 ? 40 : 60}px ${F}`
+    g.fillText((store?.logoText || (r.storeName || 'M').charAt(0)).toUpperCase(), cx, y + lr + 3)
+  }
+  g.restore()
+  g.strokeStyle = 'rgba(26,21,48,.12)'
+  g.lineWidth = 4
+  g.beginPath()
+  g.arc(cx, y + lr, lr, 0, Math.PI * 2)
+  g.stroke()
+  y += lr * 2
   g.textAlign = 'center'
   g.textBaseline = 'alphabetic'
-  g.fillStyle = 'rgba(26,21,48,.7)'
-  g.font = `800 40px ${sans}`
-  if (r.storeName) g.fillText(r.storeName.toUpperCase(), W / 2, y0 + 230)
+  if (r.storeName) {
+    y += 62
+    g.fillStyle = 'rgba(26,21,48,.6)'
+    g.font = `700 34px ${F}`
+    g.fillText(r.storeName.toUpperCase().split('').join(' '), cx, y)
+    y += 14
+  } else y += 20
   g.fillStyle = '#1a1530'
-  g.font = `900 84px ${sans}`
-  let y = wrap(g, r.name, W / 2, y0 + 340, w - 120, 96, 3)
-  if (r.detail) {
-    g.fillStyle = 'rgba(26,21,48,.75)'
-    g.font = `500 38px ${sans}`
-    y = wrap(g, r.detail, W / 2, y + 10, w - 140, 52, 4)
+  g.font = `800 84px ${F}`
+  y += 86
+  for (const l of prize) {
+    g.fillText(l, cx, y)
+    y += 92
   }
-  // línea de corte
-  const cy = y0 + 800
+  y -= 92
+  if (detail.length) {
+    g.fillStyle = 'rgba(26,21,48,.65)'
+    g.font = `500 37px ${F}`
+    y += 24
+    for (const l of detail) {
+      y += 52
+      g.fillText(l, cx, y)
+    }
+  }
+
+  // línea de corte con muescas
+  const cy = y0 + headH + bodyH
   g.fillStyle = '#06021a'
   g.beginPath()
-  g.arc(x0, cy, 38, 0, Math.PI * 2)
-  g.arc(x0 + w, cy, 38, 0, Math.PI * 2)
+  g.arc(x0, cy, 40, 0, Math.PI * 2)
+  g.arc(x0 + w, cy, 40, 0, Math.PI * 2)
   g.fill()
-  g.strokeStyle = 'rgba(26,21,48,.4)'
+  g.strokeStyle = 'rgba(26,21,48,.25)'
   g.lineWidth = 5
   g.setLineDash([22, 16])
   g.beginPath()
-  g.moveTo(x0 + 70, cy)
-  g.lineTo(x0 + w - 70, cy)
+  g.moveTo(x0 + 72, cy)
+  g.lineTo(x0 + w - 72, cy)
   g.stroke()
   g.setLineDash([])
-  g.fillStyle = 'rgba(26,21,48,.6)'
-  g.font = `800 34px ${sans}`
-  g.fillText('TU CÓDIGO', W / 2, cy + 100)
-  g.fillStyle = '#1a1530'
-  g.font = `900 120px ui-monospace, Menlo, Consolas, monospace`
-  g.fillText(r.code, W / 2, cy + 230)
-  g.font = `700 36px ${sans}`
-  g.fillStyle = 'rgba(26,21,48,.8)'
-  g.fillText(`Canjeado: ${dateEs(r.at)}`, W / 2, cy + 310)
-  g.fillText(`Válido hasta: ${r.until ? untilEs(r.until) : 'sin vencimiento'}`, W / 2, cy + 362)
-  g.fillStyle = 'rgba(255,255,255,.75)'
-  g.font = `600 36px ${sans}`
-  g.fillText('Muéstralo en caja · se usa una sola vez', W / 2, y0 + h + 90)
+
+  // talón: más discreto que el premio
+  g.fillStyle = 'rgba(26,21,48,.5)'
+  g.font = `700 26px ${F}`
+  g.fillText('C Ó D I G O', cx, cy + 86)
+  g.fillStyle = 'rgba(26,21,48,.9)'
+  g.font = `700 62px ui-monospace, "SF Mono", Menlo, Consolas, monospace`
+  g.fillText(r.code.split('').join(' '), cx, cy + 160)
+  g.fillStyle = 'rgba(26,21,48,.55)'
+  g.font = `500 28px ${F}`
+  g.fillText(`Canjeado el ${dateEs(r.at)}`, cx, cy + 222)
+  g.fillText(r.until ? `Válido hasta el ${untilEs(r.until)}` : 'Sin vencimiento', cx, cy + 262)
+  g.fillStyle = 'rgba(26,21,48,.45)'
+  g.font = `500 26px ${F}`
+  g.fillText('Muéstralo en caja · se usa una sola vez', cx, cy + 308)
+  g.fillStyle = 'rgba(255,255,255,.6)'
+  g.font = `600 30px ${F}`
+  g.fillText('mallplay · Cartagena', cx, y0 + cardH + 90)
+
   if (r.used) {
     g.save()
-    g.translate(W / 2, y0 + 500)
+    g.translate(cx, y0 + headH + bodyH / 2)
     g.rotate(-0.2)
     g.strokeStyle = '#ff4d6d'
     g.fillStyle = '#ff4d6d'
     g.lineWidth = 14
     g.strokeRect(-230, -80, 460, 160)
-    g.font = `900 110px ${sans}`
+    g.font = `900 110px ${F}`
     g.textAlign = 'center'
     g.textBaseline = 'middle'
     g.fillText('USADO', 0, 4)
@@ -241,6 +336,7 @@ function download(blob: Blob, name: string) {
 /** Pantalla del bono con sus acciones: guardar la imagen, mandarla al negocio, copiar el código y marcarlo como usado. */
 export function VoucherView({ code, onBack }: { code: string; onBack: () => void }) {
   const r = useArcade((s) => s.redemptions.find((x) => x.code === code))
+  const store = useStoreOf(r ?? { code: '', rewardId: '', name: '', cost: 0, at: '' })
   const toast = useUI((s) => s.toast)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -265,7 +361,7 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
   const save = async () => {
     setBusy(true)
     try {
-      download(await voucherImage(r), `bono-${r.code}.png`)
+      download(await voucherImage(r, store), `bono-${r.code}.png`)
       toast('Imagen guardada. Puedes enviarla al negocio.', 'success')
     } catch {
       toast('No se pudo crear la imagen. Haz una captura de pantalla.', 'error')
@@ -275,7 +371,7 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
   const send = async () => {
     setBusy(true)
     try {
-      const blob = await voucherImage(r)
+      const blob = await voucherImage(r, store)
       const file = new File([blob], `bono-${r.code}.png`, { type: 'image/png' })
       const text = `Mi bono de MallPlay: ${r.name}${r.storeName ? ` en ${r.storeName}` : ''}. Código ${r.code}.`
       if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'Mi bono de MallPlay', text })
