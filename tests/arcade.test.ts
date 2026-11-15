@@ -297,12 +297,12 @@ describe('oleadas sin fin y jefes de Nave Caribe', () => {
 })
 
 describe('puntos y premios del Arcade', () => {
-  it('1 punto por cada 10, con tope por partida y por día', () => {
+  it('1 punto por cada 10, con tope por partida y sin tope diario (el límite son las monedas)', () => {
     expect(awardFor(0, 0)).toBe(0)
     expect(awardFor(95, 0)).toBe(9)
     expect(awardFor(100_000, 0)).toBe(MAX_POINTS_PER_RUN)
-    expect(awardFor(100_000, DAILY_POINTS_CAP - 10)).toBe(10)
-    expect(awardFor(100_000, DAILY_POINTS_CAP)).toBe(0)
+    expect(awardFor(100_000, 5_000)).toBe(MAX_POINTS_PER_RUN)
+    expect(DAILY_POINTS_CAP).toBe(Infinity)
   })
 
   it('registra partidas, récord y canjea con código sin dejar saldo negativo', () => {

@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { ENT_BRIDGE_Z, ENT_CENTER, ENT_HX } from '../entertainment/config'
+import { ARCADE_BRIDGE_LEN, ARCADE_CENTER, ARCADE_S, ARCADE_WALL_X, ENT_BRIDGE_Z, ENT_CENTER, ENT_HX } from '../entertainment/config'
 import { useIsNight } from '../lib/useIsNight'
 import { Batch } from './Batch'
 import { ScreenLabel } from './Billboard'
@@ -23,12 +23,12 @@ import { Wanderers } from './Wanderers'
 
 const Y = 0.12
 const SEA = -0.5
-const S = 10 // medio lado de la isla
-const WALL_X = ENT_CENTER[0] - ENT_HX * 0.99 - 0.45 // cara exterior de la muralla oeste de entretenimiento
-const BRIDGE_LEN = 7
+const S = ARCADE_S // medio lado de la isla
+const WALL_X = ARCADE_WALL_X // cara exterior de la muralla oeste de entretenimiento
+const BRIDGE_LEN = ARCADE_BRIDGE_LEN
 const BRIDGE_W = 3.2
 /** Centro de la isla arcade (mundo). */
-const AC = { x: WALL_X - BRIDGE_LEN - S + 0.6, z: ENT_CENTER[1] }
+const AC = { x: ARCADE_CENTER[0], z: ARCADE_CENTER[1] }
 const IRON = '#2f3438'
 
 // colores de los tres juegos: vivos pero sin neón
@@ -52,6 +52,10 @@ const STROLL: [number, number][] = [
   [6.5, 3],
   [1, -7],
   [1, 7],
+  [-4, 4.2],
+  [-6, 3.6],
+  [3.4, 4],
+  [-2.2, 6.6],
 ]
 
 /** Una máquina de arcade: cuerpo de color, paneles laterales, pantalla, tablero con palanca y botones, y marquesina. Su frente mira a +z. */
@@ -511,6 +515,112 @@ const PLAYERS: [number, number, string, number][] = [
   [-5.6, 5.0, '#d9453d', Math.PI / 2], [3.4, 2.4, '#3d7ea6', -1.2],
 ]
 
+/** Pista de baile con losetas que cambian de color al ritmo (cada una con su desfase), en el piso del salón. */
+function DanceFloor({ at, cols = 4, rows = 3, reduceMotion }: { at: [number, number]; cols?: number; rows?: number; reduceMotion: boolean }) {
+  const T = 1.15
+  const mats = useMemo(() => Array.from({ length: cols * rows }, () => new THREE.MeshBasicMaterial({ color: '#ff2bd6', toneMapped: false })), [cols, rows])
+  const tmp = useMemo(() => new THREE.Color(), [])
+  useFrame(({ clock }) => {
+    const t = reduceMotion ? 0 : clock.elapsedTime
+    mats.forEach((m, i) => {
+      const x = i % cols
+      const z = Math.floor(i / cols)
+      m.color.copy(tmp.setHSL((t * 0.12 + (x + z) * 0.11 + ((x * 7 + z * 3) % 5) * 0.04) % 1, 0.95, 0.5 + 0.1 * Math.sin(t * 3 + x * 1.3 + z)))
+    })
+  })
+  return (
+    <group position={[at[0], Y + 0.075, at[1]]}>
+      <mesh geometry={GEO.box} material={mat('#10153a')} position={[0, -0.02, 0]} scale={[cols * T + 0.35, 0.04, rows * T + 0.35]} receiveShadow />
+      {mats.map((m, i) => (
+        <mesh key={i} geometry={GEO.box} material={m} position={[((i % cols) - (cols - 1) / 2) * T, 0.02, (Math.floor(i / cols) - (rows - 1) / 2) * T]} scale={[T - 0.08, 0.04, T - 0.08]} raycast={() => null} userData={{ dynamic: true }} />
+      ))}
+    </group>
+  )
+}
+
+/** Máquina de peluches (grúa): vitrina de vidrio con premios de colores y un brazo que sube y baja. Frente a +z. */
+function ClawMachine({ at, rot, color, reduceMotion }: { at: [number, number]; rot: number; color: string; reduceMotion: boolean }) {
+  const claw = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    if (!claw.current || reduceMotion) return
+    const t = clock.elapsedTime
+    claw.current.position.x = Math.sin(t * 0.9 + at[0]) * 0.28
+    claw.current.position.y = 2.25 - (0.5 + 0.5 * Math.sin(t * 1.6 + at[0] * 2)) * 0.7
+  })
+  const prizes = ['#e0525f', '#f0b530', '#5fc9b8', '#d9669a', '#9d8cf0', '#6fb6ee']
+  return (
+    <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
+      <mesh geometry={GEO.box} material={mat('#232857')} position={[0, 0.45, 0]} scale={[1.3, 0.9, 1.3]} castShadow />
+      <mesh geometry={GEO.box} material={mat('#cfe8f0', { opacity: 0.22, rough: 0.2 })} position={[0, 1.7, 0]} scale={[1.2, 1.6, 1.2]} />
+      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <mesh key={`${sx}${sz}`} geometry={GEO.box} material={mat(color)} position={[sx * 0.6, 1.7, sz * 0.6]} scale={[0.08, 1.7, 0.08]} />))}
+      <mesh geometry={GEO.box} material={mat(color)} position={[0, 2.62, 0]} scale={[1.34, 0.18, 1.34]} castShadow />
+      <mesh geometry={GEO.box} material={glowMat(color, 1.2, { dayGlow: 0.55 })} position={[0, 2.84, 0]} scale={[1.34, 0.22, 1.34]} />
+      {prizes.map((c, i) => (
+        <mesh key={i} geometry={GEO.sphere} material={mat(c)} position={[((i % 3) - 1) * 0.34, 0.98 + Math.floor(i / 3) * 0.3, ((i * 5) % 3 - 1) * 0.2]} scale={0.26} />
+      ))}
+      <group ref={claw} position={[0, 2.25, 0]} userData={{ dynamic: true }}>
+        <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 0.4, 0]} scale={[0.04, 0.8, 0.04]} />
+        <mesh geometry={GEO.box} material={mat('#d9d9e0')} position={[0, 0, 0]} scale={[0.22, 0.12, 0.22]} />
+        {[-1, 1].map((s) => (
+          <mesh key={s} geometry={GEO.box} material={mat('#d9d9e0')} position={[s * 0.12, -0.12, 0]} rotation={[0, 0, s * 0.35]} scale={[0.05, 0.28, 0.05]} />
+        ))}
+      </group>
+      <mesh geometry={GEO.box} material={mat('#10153a')} position={[0, 0.98, 0.68]} scale={[1.0, 0.1, 0.4]} />
+      <mesh geometry={GEO.sphere} material={mat('#d93d3d')} position={[-0.25, 1.08, 0.7]} scale={0.1} />
+      <mesh geometry={GEO.plane} material={lightPoolMat(color, 1.5)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 1.2]} scale={[3.6, 3.6, 1]} />
+    </group>
+  )
+}
+
+/** Mesa de hockey de aire: tablero azul con aros de neón, palas y el disco. */
+function AirHockey({ at, rot }: { at: [number, number]; rot: number }) {
+  return (
+    <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
+      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <mesh key={`${sx}${sz}`} geometry={GEO.box} material={mat(IRON)} position={[sx * 1.05, 0.35, sz * 0.5]} scale={[0.1, 0.7, 0.1]} />))}
+      <mesh geometry={GEO.box} material={mat('#e0525f')} position={[0, 0.78, 0]} scale={[2.5, 0.18, 1.4]} castShadow />
+      <mesh geometry={GEO.box} material={mat('#3f8fd8')} position={[0, 0.9, 0]} scale={[2.2, 0.06, 1.1]} />
+      <mesh geometry={GEO.box} material={mat('#f4eadb')} position={[0, 0.94, 0]} scale={[0.05, 0.02, 1.0]} />
+      <mesh geometry={GEO.cylinder} material={mat('#f4eadb')} position={[0, 0.95, 0]} scale={[0.5, 0.02, 0.5]} />
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh geometry={GEO.cylinder} material={mat('#f0b530')} position={[s * 0.8, 1.0, s * 0.1]} scale={[0.26, 0.1, 0.26]} />
+          <mesh geometry={GEO.cylinder} material={mat('#10150f')} position={[s * 1.1, 0.95, 0]} scale={[0.3, 0.02, 0.5]} />
+        </group>
+      ))}
+      <mesh geometry={GEO.cylinder} material={mat('#d93d3d')} position={[0.2, 0.97, 0.15]} scale={[0.16, 0.04, 0.16]} />
+      <mesh geometry={GEO.plane} material={lightPoolMat('#4de1ff', 1.4)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 0]} scale={[4.2, 3.2, 1]} />
+    </group>
+  )
+}
+
+/** Globos de colores atados a un peso, que se mecen: ponen fiesta en las esquinas vacías. */
+function Balloons({ at, reduceMotion }: { at: [number, number]; reduceMotion: boolean }) {
+  const g = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    if (!g.current || reduceMotion) return
+    g.current.rotation.z = Math.sin(clock.elapsedTime * 1.1 + at[0]) * 0.05
+    g.current.rotation.x = Math.cos(clock.elapsedTime * 0.9 + at[1]) * 0.05
+  })
+  const cols = ['#e0525f', '#f0b530', '#3f8fd8', '#5fc9b8', '#d9669a']
+  return (
+    <group position={[at[0], Y, at[1]]}>
+      <mesh geometry={GEO.cylinder} material={mat(IRON)} position={[0, 0.12, 0]} scale={[0.5, 0.24, 0.5]} />
+      <group ref={g} position={[0, 0.2, 0]} userData={{ dynamic: true }}>
+        {cols.map((c, i) => {
+          const a = (i / cols.length) * Math.PI * 2
+          const h = 2.4 + (i % 3) * 0.45
+          return (
+            <group key={i}>
+              <mesh geometry={GEO.cylinderLow} material={mat('#c9c9d2')} position={[Math.cos(a) * 0.22, h / 2, Math.sin(a) * 0.22]} scale={[0.015, h, 0.015]} />
+              <mesh geometry={GEO.sphereSmooth} material={mat(c)} position={[Math.cos(a) * 0.3, h + 0.28, Math.sin(a) * 0.3]} scale={[0.58, 0.7, 0.58]} castShadow />
+            </group>
+          )
+        })}
+      </group>
+    </group>
+  )
+}
+
 /** Los tres bancos de juego: dónde están, de qué tipo son y qué juego abren al tocarlos. */
 const BANKS: { at: [number, number]; rot: number; n: number; kind: 'upright' | 'mole' | 'lane'; game: ArcadeGameId; color: string; dark: string; screen: string; label: string }[] = [
   { at: [-6.9, -S + 1.3], rot: 0, n: 3, kind: 'upright', game: 'nave', color: BLUE, dark: '#1b2c55', screen: '#7cc4ff', label: 'Nave Caribe' },
@@ -597,6 +707,15 @@ export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
           <BankHit key={b.game} b={b} />
         ))}
         <NeonRun reduceMotion={reduceMotion} segs={NEON} thick={0.17} />
+        {/* la mitad sur del salón, antes vacía: pista de baile, grúas de peluches, hockey de aire y globos */}
+        <DanceFloor at={[3.4, 5.4]} reduceMotion={reduceMotion} />
+        <ClawMachine at={[-6.8, S - 2.0]} rot={Math.PI} color="#d9669a" reduceMotion={reduceMotion} />
+        <ClawMachine at={[-4.9, S - 2.0]} rot={Math.PI} color="#5fc9b8" reduceMotion={reduceMotion} />
+        <ClawMachine at={[-3.0, S - 2.0]} rot={Math.PI} color="#f0b530" reduceMotion={reduceMotion} />
+        <AirHockey at={[-5.3, 5.2]} rot={0.35} />
+        <Balloons at={[-S + 1.5, S - 1.5]} reduceMotion={reduceMotion} />
+        <Balloons at={[S - 1.6, S - 1.5]} reduceMotion={reduceMotion} />
+        <Balloons at={[S - 1.6, -S + 1.5]} reduceMotion={reduceMotion} />
         {PLAYERS.map(([x, z, color, rot], i) => (
           <group key={i} position={[x, Y, z]} rotation={[0, rot, 0]}>
             <Person color={color} skin={i % 2 ? '#c58c64' : '#e5b48f'} />

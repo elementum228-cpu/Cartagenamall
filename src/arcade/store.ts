@@ -13,7 +13,8 @@ import { DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from './engine'
 export const SCORE_PER_POINT = 10
 /** Máximo de puntos por partida y por día. */
 export const MAX_POINTS_PER_RUN = 60
-export const DAILY_POINTS_CAP = 240
+/** Sin tope diario de tiquetes: el límite del día son las 5 monedas (cada moneda = una partida). */
+export const DAILY_POINTS_CAP = Infinity
 /** Monedas gratis cada día: cada una abre una partida en cualquiera de los juegos. */
 export const DAILY_COINS = 5
 

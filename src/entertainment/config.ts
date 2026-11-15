@@ -57,3 +57,9 @@ export const TRACK_INFO = {
   ],
 }
 export const trackPriceAt = (hour: number) => (hour >= TRACK_INFO.nightFrom ? TRACK_INFO.nightPricePerTurn : TRACK_INFO.pricePerTurn)
+
+/** Zona Arcade: centro de su isla cuadrada (mundo), al oeste de la Isla de Entretenimiento unida por un puente. Lo usan el mundo 3D y el selector de pisos. */
+export const ARCADE_S = 10
+export const ARCADE_BRIDGE_LEN = 7
+export const ARCADE_WALL_X = ENT_CENTER[0] - ENT_HX * 0.99 - 0.45
+export const ARCADE_CENTER: [number, number] = [ARCADE_WALL_X - ARCADE_BRIDGE_LEN - ARCADE_S + 0.6, ENT_CENTER[1]]
