@@ -69,24 +69,88 @@ function Cabinet({ x, z = 0, color, dark, screen }: { x: number; z?: number; col
         <mesh key={b} geometry={GEO.sphere} material={mat(['#ffd34e', '#4de1ff', '#ff6fa6'][i])} position={[b + 0.06, 1.28, 0.42]} scale={0.07} />
       ))}
       <mesh geometry={GEO.box} material={glowMat(color, 1.0, { dayGlow: 0.5 })} position={[0, 2.62, -0.28]} scale={[1.05, 0.26, 0.62]} />
+      {/* nave sobre la marquesina: la firma de este juego */}
+      <mesh geometry={GEO.cylinder} material={mat('#f4eadb')} position={[0, 3.0, -0.28]} scale={[0.22, 0.6, 0.22]} castShadow />
+      <mesh geometry={GEO.cylinder} material={mat('#d93d3d')} position={[0, 3.38, -0.28]} scale={[0.12, 0.2, 0.12]} />
+      <mesh geometry={GEO.box} material={mat(color)} position={[0, 2.85, -0.28]} scale={[0.7, 0.08, 0.3]} castShadow />
+    </group>
+  )
+}
+
+/** Mesa de «Cangrejos Locos»: una mesa baja y ancha con agujeros, cangrejos que asoman, un mazo y una cartelera atrás. Frente a +z. */
+function MoleTable({ x, color, dark, screen }: { x: number; color: string; dark: string; screen: string }) {
+  const holes: [number, number][] = [[-0.8, -0.3], [0, -0.3], [0.8, -0.3], [-0.8, 0.35], [0, 0.35], [0.8, 0.35]]
+  return (
+    <group position={[x, 0, 0]}>
+      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 0.45, 0]} scale={[2.6, 0.9, 1.7]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(color)} position={[0, 0.94, 0.02]} scale={[2.75, 0.1, 1.85]} castShadow />
+      <mesh geometry={GEO.box} material={mat('#2f6b3d')} position={[0, 1.0, 0.02]} scale={[2.4, 0.03, 1.5]} />
+      {holes.map(([hx, hz], i) => (
+        <group key={i} position={[hx, 1.02, hz]}>
+          <mesh geometry={GEO.cylinder} material={mat('#10150f')} scale={[0.42, 0.03, 0.42]} />
+          {i % 2 === 0 && (
+            <group position={[0, 0.2, 0]}>
+              <mesh geometry={GEO.sphere} material={mat(color)} scale={[0.34, 0.26, 0.3]} castShadow />
+              {[-1, 1].map((sx) => (
+                <mesh key={sx} geometry={GEO.sphere} material={mat('#f6a3a8')} position={[sx * 0.24, 0.1, 0.06]} scale={0.13} />
+              ))}
+              {[-1, 1].map((sx) => (
+                <mesh key={`e${sx}`} geometry={GEO.sphere} material={mat('#ffffff')} position={[sx * 0.09, 0.18, 0.12]} scale={0.07} />
+              ))}
+            </group>
+          )}
+        </group>
+      ))}
+      {/* mazo apoyado al borde */}
+      <group position={[1.55, 0.95, 0.9]} rotation={[0, 0.5, 0.15]}>
+        <mesh geometry={GEO.cylinderLow} material={mat('#8a6a4a')} position={[0, 0.5, 0]} scale={[0.07, 1.0, 0.07]} />
+        <mesh geometry={GEO.rounded} material={mat('#ffd34e')} position={[0, 1.05, 0]} rotation={[0, 0, Math.PI / 2]} scale={[0.34, 0.32, 0.34]} castShadow />
+      </group>
+      {/* cartelera atrás con el cangrejo */}
+      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 1.55, -0.78]} scale={[2.6, 1.2, 0.12]} castShadow />
+      <mesh geometry={GEO.box} material={glowMat(screen, 1.0, { dayGlow: 0.55 })} position={[0, 1.55, -0.71]} scale={[2.3, 0.9, 0.04]} />
+      <mesh geometry={GEO.sphere} material={mat(color)} position={[0, 1.55, -0.68]} scale={[0.7, 0.5, 0.1]} />
+      <mesh geometry={GEO.box} material={glowMat(color, 1.0, { dayGlow: 0.5 })} position={[0, 2.22, -0.78]} scale={[2.6, 0.16, 0.14]} />
+    </group>
+  )
+}
+
+/** Torre de «Torre de Cocos»: una vitrina alta de vidrio con cocos apilados y un botón grande al frente. Frente a +z. */
+function TowerMachine({ x, color, dark }: { x: number; color: string; dark: string }) {
+  const blocks = [0, 1, 2, 3, 4, 5]
+  return (
+    <group position={[x, 0, 0]}>
+      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 0.5, 0]} scale={[1.3, 1.0, 1.3]} castShadow receiveShadow />
+      <mesh geometry={GEO.box} material={mat(color)} position={[0, 1.04, 0]} scale={[1.4, 0.1, 1.4]} castShadow />
+      {/* vidrio y cocos apilados, desfasados como en el juego */}
+      <mesh geometry={GEO.box} material={mat('#cfe8f0', { opacity: 0.22, rough: 0.2 })} position={[0, 2.35, 0]} scale={[1.1, 2.5, 1.1]} />
+      {blocks.map((k) => (
+        <mesh key={k} geometry={GEO.rounded} material={mat(k % 2 ? color : '#8a5a2b')} position={[Math.sin(k * 1.7) * 0.18, 1.25 + k * 0.38, Math.cos(k * 1.3) * 0.1]} scale={[0.72, 0.34, 0.72]} castShadow />
+      ))}
+      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <mesh key={`${sx}${sz}`} geometry={GEO.box} material={mat(color)} position={[sx * 0.55, 2.35, sz * 0.55]} scale={[0.07, 2.5, 0.07]} />))}
+      <mesh geometry={GEO.box} material={mat(dark)} position={[0, 3.66, 0]} scale={[1.4, 0.2, 1.4]} castShadow />
+      <mesh geometry={GEO.cylinder} material={glowMat(color, 1.0, { dayGlow: 0.5 })} position={[0, 3.86, 0]} scale={[0.9, 0.2, 0.9]} />
+      {/* botón grande de «poner coco» */}
+      <mesh geometry={GEO.cylinder} material={mat('#d93d3d')} position={[0, 1.12, 0.45]} scale={[0.4, 0.1, 0.4]} />
+      <mesh geometry={GEO.cylinder} material={mat('#f4eadb')} position={[0, 1.08, 0.45]} scale={[0.5, 0.05, 0.5]} />
     </group>
   )
 }
 
 /** Banco de máquinas contra un lado de la isla: n máquinas, un cartel arriba y una alfombrilla del color del juego. */
-function Bank({ at, rot, n, color, dark, screen, label, sub }: { at: [number, number]; rot: number; n: number; color: string; dark: string; screen: string; label: string; sub: string }) {
+function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright' }: { at: [number, number]; rot: number; n: number; color: string; dark: string; screen: string; label: string; sub: string; kind?: 'upright' | 'mole' | 'tower' }) {
   const night = useIsNight()
   const pill = useMemo(() => getGlassPill(label, { dot: color, sub, dark: night }), [label, sub, color, night])
-  const pitch = 1.45
+  const pitch = kind === 'mole' ? 3.1 : kind === 'tower' ? 2.0 : 1.45
   const W = n * pitch + 0.4
   return (
     <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
       {Array.from({ length: n }, (_, i) => (
-        <Cabinet key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} />
+        kind === 'mole' ? <MoleTable key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} /> : kind === 'tower' ? <TowerMachine key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} /> : <Cabinet key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} />
       ))}
       {/* taburetes redondos frente a las máquinas */}
       {Array.from({ length: n }, (_, i) => (
-        <group key={i} position={[(i - (n - 1) / 2) * pitch, 0, 1.55]}>
+        <group key={i} position={[(i - (n - 1) / 2) * pitch, 0, kind === 'mole' ? 1.5 : 1.55]}>
           <mesh geometry={GEO.cylinderLow} material={mat(IRON)} position={[0, 0.25, 0]} scale={[0.08, 0.5, 0.08]} />
           <mesh geometry={GEO.cylinder} material={mat(i % 2 ? '#f4eadb' : color)} position={[0, 0.55, 0]} scale={[0.5, 0.14, 0.5]} />
         </group>
@@ -250,10 +314,10 @@ function IslandBody() {
           return (
             <group key={`${si}${i}`} position={[px, Y, pz]} rotation={[0, sd.rot, 0]}>
               {/* los lados lejanos (norte y oeste) son altos como una muralla; los cercanos (sur y este) quedan bajos para ver el interior */}
-              <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, tall ? 1.2 : 0.55, 0]} scale={[step + 0.02, tall ? 2.4 : 1.1, 0.9]} castShadow receiveShadow />
-              <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, tall ? 2.44 : 1.14, 0]} scale={[step + 0.02, 0.12, 1.05]} />
-              {tall && <mesh geometry={GEO.box} material={mat(STONE[1])} position={[0, 2.72, 0]} scale={[step + 0.02, 0.5, 0.6]} castShadow />}
-              {i % 2 === 0 && <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, tall ? 3.2 : 1.5, 0]} scale={[0.85, 0.5, 0.6]} castShadow />}
+              <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, tall ? 1.5 : 0.55, 0]} scale={[step + 0.02, tall ? 3.0 : 1.1, 0.9]} castShadow receiveShadow />
+              <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, tall ? 3.04 : 1.14, 0]} scale={[step + 0.02, 0.12, 1.05]} />
+              {tall && <mesh geometry={GEO.box} material={mat(STONE[1])} position={[0, 3.32, 0]} scale={[step + 0.02, 0.5, 0.6]} castShadow />}
+              {i % 2 === 0 && <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, tall ? 3.8 : 1.5, 0]} scale={[0.85, 0.5, 0.6]} castShadow />}
             </group>
           )
         }),
@@ -266,13 +330,13 @@ function IslandBody() {
         [S, S],
       ].map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
-          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[0, 2.1, 0]} scale={[2.9, 4.4, 2.9]} castShadow receiveShadow />
-          <mesh geometry={GEO.cylinder} material={mat(CORDON)} position={[0, 4.35, 0]} scale={[3.15, 0.16, 3.15]} />
+          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[0, 2.5, 0]} scale={[2.9, 5.2, 2.9]} castShadow receiveShadow />
+          <mesh geometry={GEO.cylinder} material={mat(CORDON)} position={[0, 5.15, 0]} scale={[3.15, 0.16, 3.15]} />
           {Array.from({ length: 8 }, (_, k) => {
             const a = (k / 8) * Math.PI * 2
-            return <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[Math.cos(a) * 1.3, 4.7, Math.sin(a) * 1.3]} rotation={[0, -a, 0]} scale={[0.35, 0.5, 0.7]} castShadow />
+            return <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[Math.cos(a) * 1.3, 5.5, Math.sin(a) * 1.3]} rotation={[0, -a, 0]} scale={[0.35, 0.5, 0.7]} castShadow />
           })}
-          <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[0, 5.1, 0]} scale={[1.8, 0.7, 1.8]} castShadow />
+          <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[0, 5.9, 0]} scale={[1.8, 0.7, 1.8]} castShadow />
         </group>
       ))}
       {/* rocas en la orilla */}
@@ -413,8 +477,8 @@ export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
           <EntryArch />
           {/* tres bancos de máquinas, uno por juego */}
           <Bank at={[-1.2, -S + 1.2]} rot={0} n={4} color={BLUE} dark="#1b2c55" screen="#7cc4ff" label="Nave Caribe" sub="Zona Arcade" />
-          <Bank at={[-1.2, S - 1.2]} rot={Math.PI} n={4} color={RED} dark="#4a1a24" screen="#ff9aa6" label="Cangrejos Locos" sub="Zona Arcade" />
-          <Bank at={[S - 1.2, -6.2]} rot={-Math.PI / 2} n={3} color={YELLOW} dark="#4a3a10" screen="#ffe08a" label="Torre de Cocos" sub="Zona Arcade" />
+          <Bank at={[-1.2, S - 1.6]} rot={Math.PI} n={2} kind="mole" color={RED} dark="#4a1a24" screen="#ff9aa6" label="Cangrejos Locos" sub="Zona Arcade" />
+          <Bank at={[S - 1.4, -6.0]} rot={-Math.PI / 2} n={3} kind="tower" color={YELLOW} dark="#4a3a10" screen="#ffe08a" label="Torre de Cocos" sub="Zona Arcade" />
           <RewardsRoom at={[-S + 2.3, 0]} rot={Math.PI / 2} />
           <Palm x={S - 1.4} z={5.6} seed={0.4} />
           <Palm x={S - 1.4} z={7.4} h={2.8} seed={1.1} />
