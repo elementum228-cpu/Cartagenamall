@@ -1,9 +1,10 @@
-import { ArrowLeft, Check, Copy, Download, Gift, Send } from 'lucide-react'
+import { ArrowLeft, Check, Copy, Download, Gift, Send, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { copyText } from '../lib/clipboard'
 import { useUI } from '../state/ui'
 import { celebrate } from './audio'
 import { useArcade, type ArcadeRedemption } from './store'
+import { walletKinds, walletLink, walletSupport, type WalletKind } from './wallet'
 import './arcade.css'
 
 // El bono del premio: al canjear, una pantalla de felicitaciones con confeti y, después, el bono (un tiquete con la tienda, el premio,
@@ -243,7 +244,24 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
   const toast = useUI((s) => s.toast)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [wallets, setWallets] = useState<WalletKind[]>([])
+  useEffect(() => {
+    let on = true
+    void walletSupport().then((s) => on && setWallets(walletKinds(s)))
+    return () => {
+      on = false
+    }
+  }, [])
   if (!r) return null
+  const toWallet = async (kind: WalletKind) => {
+    setBusy(true)
+    const url = await walletLink(kind, r)
+    setBusy(false)
+    if (!url) return toast('No se pudo preparar el pase. Guarda la imagen e inténtalo más tarde.', 'error')
+    // Apple abre el .pkpass al seguir el enlace; Google abre su pantalla «Guardar»
+    if (kind === 'google') window.open(url, '_blank', 'noopener')
+    else window.location.href = url
+  }
   const save = async () => {
     setBusy(true)
     try {
@@ -277,7 +295,12 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
       </button>
       <VoucherCard r={r} />
       <div className="mx-auto flex w-full max-w-[340px] flex-col gap-2">
-        <button disabled={busy} onClick={send} className="arcade-btn font-arcade flex min-h-12 items-center justify-center gap-2 px-4 text-[10.5px]">
+        {wallets.map((k) => (
+          <button key={k} disabled={busy} onClick={() => void toWallet(k)} className={`flex min-h-12 items-center justify-center gap-2.5 rounded-xl px-4 text-[14px] font-extrabold active:scale-[0.98] ${k === 'apple' ? 'bg-black text-white ring-1 ring-white/40' : 'bg-white text-[#1f1f1f]'}`}>
+            <Wallet className="size-5" /> {k === 'apple' ? 'Añadir a Apple Wallet' : 'Guardar en Google Wallet'}
+          </button>
+        ))}
+        <button disabled={busy} onClick={send} className={`${wallets.length ? 'bg-white/12 text-white' : 'arcade-btn'} font-arcade flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-[10.5px]`}>
           <Send className="size-4" /> ENVIAR AL NEGOCIO
         </button>
         <div className="grid grid-cols-2 gap-2">
