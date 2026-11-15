@@ -95,14 +95,14 @@ function Board() {
   useEscape(zoom === null, close)
   return (
     <Theatre onClose={close} label="Cartelera del cine">
-      <Title sub="En cartelera">CARTELERA</Title>
+      <Title sub="En cartelera en Cartagena">CARTELERA</Title>
       <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 md:mx-auto md:mt-10 md:max-w-[1100px] md:grid-cols-4 md:gap-x-8 md:gap-y-10">
         {posters.map((p, i) => (
-          <button key={i} onClick={() => setZoom(i)} className="group text-left" aria-label={`Ver el cartel ${p.title || i + 1}`}>
+          <button key={i} onClick={() => setZoom(i)} className="group flex flex-col items-stretch justify-start self-start text-left" aria-label={`Ver el cartel ${p.title || i + 1}`}>
             <div className="aspect-[2/3] overflow-hidden rounded-md transition group-active:scale-[0.97]" style={{ boxShadow: `0 0 0 3px #1b2247, 0 0 0 5px ${GOLD}, 0 10px 28px rgba(0,0,0,.55)` }}>
               <Poster image={p.image} title={p.title} hue={i} />
             </div>
-            <p className="mt-3 line-clamp-2 text-center text-[13px] font-bold leading-tight text-white/90 md:mt-4 md:text-[16px]">{p.title || 'Próximo estreno'}</p>
+            <p className="mt-3 line-clamp-2 min-h-[2.5em] text-center text-[13px] font-bold leading-tight text-white/90 md:mt-4 md:text-[16px]">{p.title || 'Próximo estreno'}</p>
           </button>
         ))}
       </div>
