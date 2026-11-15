@@ -85,7 +85,7 @@ export function postersAsMovies(posters: CineState['posters']): { movies: CineMo
   const movies: CineMovie[] = []
   posters.forEach((p, i) => {
     if (!p.image && !p.title) return
-    movies.push({ id: `cartel-${i + 1}`, title: p.title || 'Próximo estreno', image: p.image, genre: '', minutes: null, rating: '', synopsis: p.synopsis ?? '', links: {}, release: '', soon: false, isNew: false })
+    movies.push({ id: `cartel-${i + 1}`, title: p.title || 'Próximo estreno', image: p.image, genre: '', minutes: null, rating: '', synopsis: p.synopsis ?? '', ...(p.trailer ? { trailer: p.trailer } : {}), links: {}, release: '', soon: false, isNew: false })
   })
   return { movies, shows: [] }
 }
@@ -95,7 +95,7 @@ export function mergePosterArt(movies: CineMovie[], posters: CineState['posters'
   const art = new Map(posters.filter((p) => p.image && p.title).map((p) => [normalizeTitle(p.title), p]))
   return movies.map((m) => {
     const p = art.get(normalizeTitle(m.title))
-    return m.image && m.synopsis ? m : { ...m, image: m.image ?? p?.image ?? null, synopsis: m.synopsis || p?.synopsis || '' }
+    return m.image && m.synopsis && m.trailer ? m : { ...m, image: m.image ?? p?.image ?? null, synopsis: m.synopsis || p?.synopsis || '', ...(m.trailer || p?.trailer ? { trailer: m.trailer || p?.trailer } : {}) }
   })
 }
 

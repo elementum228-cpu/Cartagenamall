@@ -15,28 +15,43 @@ function ageText(rating: string) {
   return n > 0 ? `Recomendada para mayores de ${n} años` : rating ? `Clasificación: ${rating}` : ''
 }
 
-/** Tráiler incrustado: no se descarga nada hasta que la persona lo pide, y se quita al cerrarlo. */
-function TrailerPlayer({ embed, title, onClose }: { embed: string; title: string; onClose: () => void }) {
+/** Pantalla del tráiler: se abre con un toque, no descarga nada antes, y se quita (con su video) al cerrarla. */
+function TrailerPlayer({ trailer, title, onClose }: { trailer: { embed: string; watch: string; provider: string }; title: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.stopImmediatePropagation()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [onClose])
   return (
-    <div className="relative mt-4 overflow-hidden rounded-2xl bg-black ring-1 ring-white/15">
-      <div className="aspect-video">
-        <iframe
-          src={embed}
-          title={`Tráiler de ${title}`}
-          className="size-full"
-          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-        />
+    <div role="dialog" aria-modal="true" aria-label={`Tráiler de ${title}`} className="fixed inset-0 z-[90] flex flex-col bg-black" onClick={onClose}>
+      <div className="flex items-center justify-between gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+        <p className="min-w-0 truncate text-[15px] font-extrabold text-white">{title}</p>
+        <button onClick={onClose} aria-label="Cerrar tráiler" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/15 text-white transition active:scale-95">
+          <X className="size-5" />
+        </button>
       </div>
-      <button
-        onClick={onClose}
-        aria-label="Cerrar tráiler"
-        className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-black/70 text-white transition active:scale-95"
-      >
-        <X className="size-4" />
-      </button>
+      <div className="grid flex-1 place-items-center px-0 md:px-6" onClick={(e) => e.stopPropagation()}>
+        <div className="aspect-video w-full max-w-[1100px] bg-black md:overflow-hidden md:rounded-2xl">
+          <iframe
+            src={trailer.embed}
+            title={`Tráiler de ${title}`}
+            className="size-full"
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
+          />
+        </div>
+      </div>
+      <div className="px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center" onClick={(e) => e.stopPropagation()}>
+        <a href={trailer.watch} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-1.5 rounded-full bg-white/10 px-5 text-[13px] font-bold text-white/80 transition active:scale-95">
+          ¿No carga? Abrir en {trailer.provider === 'youtube' ? 'YouTube' : 'Vimeo'} <ExternalLink className="size-3.5" aria-hidden />
+        </a>
+      </div>
     </div>
   )
 }
@@ -176,7 +191,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
                 {trailer ? (
                   <button
                     onClick={() => setTrailerOpen((v) => !v)}
-                    aria-expanded={trailerOpen}
+                    aria-haspopup="dialog"
                     className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-full text-[15px] font-extrabold text-[#2a1405] transition active:scale-[0.98]"
                     style={{ background: `linear-gradient(180deg,#ffe9b0,${C.gold})` }}
                   >
@@ -201,17 +216,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
                 </button>
               </div>
               {!trailer && <p className="mt-2 text-[12px] text-white/45">Tráiler oficial aún no disponible.</p>}
-              {trailer && trailerOpen && <TrailerPlayer embed={trailer.embed} title={movie.title} onClose={() => setTrailerOpen(false)} />}
-              {trailer && trailerOpen && (
-                <a
-                  href={trailer.watch}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-bold text-white/60 underline underline-offset-2"
-                >
-                  Abrir en {trailer.provider === 'youtube' ? 'YouTube' : 'Vimeo'} <ExternalLink className="size-3" aria-hidden />
-                </a>
-              )}
+              {trailer && trailerOpen && <TrailerPlayer trailer={trailer} title={movie.title} onClose={() => setTrailerOpen(false)} />}
             </div>
 
             {/* dónde verla */}
