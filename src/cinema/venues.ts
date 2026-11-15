@@ -5,8 +5,9 @@ import { CHAINS, type ChainId } from '../state/cine'
  * oficial, cada sala con su dirección y el enlace a su página. Los horarios se consultan en el sitio oficial de la cadena.
  *
  * Verificado el 13-nov-2026 en cinecolombia.com (datos estructurados de su página de Cartagena y enlaces de sus salas).
- * Royal Films y Procinal: solo se enlaza su cartelera de Cartagena; sus salas no se listan hasta poder verificarlas en su
- * sitio (no se publican aquí sedes que solo aparecen en directorios o prensa).
+ * Procinal: la sala de Cartagena y su dirección vienen de la página oficial de la sala (procinal.com.co/ciudad/cartagena/teatros/plazuela).
+ * Royal Films: su sitio no se pudo leer desde aquí; la sala (C.C. San Fernando, sobre la Av. Pedro de Heredia) coincide en todas las carteleras
+ * y directorios consultados, pero la numeración exacta varía entre fuentes, por eso solo se muestra la referencia y no un número.
  */
 export interface Venue {
   name: string
@@ -37,6 +38,8 @@ const VENUES: Partial<Record<ChainId, Venue[]>> = {
     { name: 'Paseo La Castellana', address: 'Calle 30 #30-31', url: 'https://www.cinecolombia.com/cartelera/cartagena/paseo-la-castellana' },
     { name: 'Plaza Bocagrande', address: 'Carrera 1 # 12-118', url: 'https://www.cinecolombia.com/cartelera/cartagena/plaza-bocagrande' },
   ],
+  procinal: [{ name: 'La Plazuela', address: 'Multicentro La Plazuela · Diagonal 31 # 71-136, piso 2, local E4', url: 'https://procinal.com.co/ciudad/cartagena/teatros/plazuela' }],
+  'royal-films': [{ name: 'Multicine San Fernando', address: 'C.C. San Fernando · Av. Pedro de Heredia', url: 'https://cinemasroyal.com/cartelera/cartagena' }],
 }
 
 export const CINEMA_DIRECTORY: ChainDirectory[] = CHAINS.map((c) => ({ id: c.id, name: c.name, color: c.color, logo: `${import.meta.env.BASE_URL}brands/${c.id}.webp`, url: URLS[c.id], venues: VENUES[c.id] ?? [] }))

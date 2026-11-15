@@ -53,12 +53,13 @@ describe('guía de salas', () => {
     for (const d of CINEMA_DIRECTORY) expect(d.url).toBe(OFFICIAL_CINEMAS.find((o) => o.id === byId[d.id])!.url)
   })
 
-  it('solo lista las salas verificadas (las tres de Cine Colombia, con dirección); las otras cadenas, solo su cartelera', () => {
+  it('lista las salas conocidas de cada cadena, con dirección y enlace oficial (https)', () => {
     const cc = CINEMA_DIRECTORY.find((d) => d.id === 'cine-colombia')!
     expect(cc.venues.map((v) => v.name)).toEqual(['Caribe Plaza', 'Paseo La Castellana', 'Plaza Bocagrande'])
     expect(cc.venues.every((v) => v.address.length > 5)).toBe(true)
-    expect(CINEMA_DIRECTORY.find((d) => d.id === 'royal-films')!.venues).toEqual([])
-    expect(CINEMA_DIRECTORY.find((d) => d.id === 'procinal')!.venues).toEqual([])
+    expect(CINEMA_DIRECTORY.find((d) => d.id === 'royal-films')!.venues.map((v) => v.name)).toEqual(['Multicine San Fernando'])
+    expect(CINEMA_DIRECTORY.find((d) => d.id === 'procinal')!.venues.map((v) => v.name)).toEqual(['La Plazuela'])
+    for (const d of CINEMA_DIRECTORY) for (const v of d.venues) expect(v.url.startsWith('https://')).toBe(true)
   })
 
   it('cada cadena tiene sus dominios oficiales definidos', () => {
