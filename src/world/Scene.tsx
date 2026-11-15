@@ -4,7 +4,9 @@ import { JewelryZone } from './JewelryZone'
 import { isServicesSpace, useServicesFeature } from '../state/servicesFeature'
 import { useCine } from '../state/cine'
 import { Cinema } from './Cinema'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { detectProfile } from '../lib/deviceProfile'
+import { useEntry } from '../state/entry'
 import { COURT_SPACE, FLOORS, FLOOR_BY_ID, FLOOR_OF_ZONE, SPACES, SPACE_BY_ID, ZONES, ZONE_BY_ID } from '../config/mall'
 import type { FloorConfig, Product, SpaceSlot } from '../domain/types'
 import { isPromotionLive } from '../lib/pricing'
@@ -144,32 +146,9 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
   // Detalle de locales y mobiliario: solo la calidad baja lo reduce (nunca quita tiendas).
   const detail = quality === 'low' ? 'low' : 'high'
   const active = FLOOR_BY_ID[activeFloor]
+  const stage = useBuildStage()
 
-  return (
-    <>
-      <Lighting night={night} shadows={shadows} quality={quality} />
-      <CameraRig />
-      <group dispose={null}>
-        <BatchScope>
-        <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
-        <Harbor reduceMotion={reduceMotion} />
-        {entOn && <Entertainment reduceMotion={reduceMotion} />}
-        {airportOn && <Airport reduceMotion={reduceMotion} />}
-        <Stadium reduceMotion={reduceMotion} quality={quality} />
-        <StairFans reduceMotion={reduceMotion} />
-        <MallToStadium reduceMotion={reduceMotion} />
-        {airportOn && <Island reduceMotion={reduceMotion} />}
-        <District reduceMotion={reduceMotion} />
-        {JOYERIA && <JewelryZone services={svcOn} />}
-        {cineOn && <Cinema />}
-        {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
-        <Batch version="jardines">
-          <Diorama />
-        </Batch>
-        <GlobalAmbient detail={quality === 'high' ? 'high' : 'low'} />
-        {/* visitantes que recorren ambos pisos y usan las escaleras (fuera de MallFloor: cambian de piso) */}
-        {quality !== 'low' && <Travelers count={quality === 'high' ? 22 : 10} />}
-        {FLOORS.map((floor) => {
+  const renderFloor = (floor: FloorConfig) => {
           const mode = modeFor(floor, active, overview)
           const interactive = mode === 'full'
           const spaces = SPACES.filter((s) => s.floorId === floor.id && (entOn || s.zoneId !== 'G') && (svcOn || !isServicesSpace(s)))
@@ -260,11 +239,75 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
               }
             />
           )
-        })}
+  }
+
+  return (
+    <>
+      <Lighting night={night} shadows={shadows} quality={quality} />
+      <CameraRig />
+      <group dispose={null}>
+        {/* Etapa 0: lo primero que se ve al entrar (la fortaleza y el piso 1). Cada etapa tiene su propio BatchScope: fusionar una no repite el trabajo de las otras. */}
+        <BatchScope>
+          <FortressEnvironment onEnter={() => useUI.getState().enterMall()} sparse={quality === 'low'} />
+          {FLOORS.filter((f) => f.id === 'P1').map(renderFloor)}
         </BatchScope>
+        {/* Etapa 1: el entorno cercano */}
+        {stage >= 1 && (
+          <BatchScope>
+            <Harbor reduceMotion={reduceMotion} />
+            <Stadium reduceMotion={reduceMotion} quality={quality} />
+            <StairFans reduceMotion={reduceMotion} />
+            <MallToStadium reduceMotion={reduceMotion} />
+            <Batch version="jardines">
+              <Diorama />
+            </Batch>
+          </BatchScope>
+        )}
+        {/* Etapa 2: las demás zonas */}
+        {stage >= 2 && (
+          <BatchScope>
+            {entOn && <Entertainment reduceMotion={reduceMotion} />}
+            {airportOn && <Airport reduceMotion={reduceMotion} />}
+            {airportOn && <Island reduceMotion={reduceMotion} />}
+            <District reduceMotion={reduceMotion} />
+            {JOYERIA && <JewelryZone services={svcOn} />}
+            {cineOn && <Cinema />}
+            {season === 'halloween' && <Halloween reduceMotion={reduceMotion} />}
+          </BatchScope>
+        )}
+        {/* Etapa 3: el piso 2 y los visitantes que usan las escaleras */}
+        {stage >= 3 && (
+          <BatchScope>
+            <GlobalAmbient detail={quality === 'high' ? 'high' : 'low'} />
+            {/* visitantes que recorren ambos pisos y usan las escaleras (fuera de MallFloor: cambian de piso) */}
+            {quality !== 'low' && <Travelers count={quality === 'high' ? 22 : 10} />}
+            {FLOORS.filter((f) => f.id !== 'P1').map(renderFloor)}
+          </BatchScope>
+        )}
+
       </group>
     </>
   )
+}
+
+/** Etapas en que se monta el mundo: 0 = fortaleza y piso 1 · 1 = entorno cercano · 2 = demás zonas · 3 = piso 2 y visitantes. */
+const BUILD_STAGES = 3
+
+/**
+ * Construir todo el mundo de una vez bloquea el teléfono varios segundos antes del primer cuadro. En equipos que no son potentes se monta
+ * por etapas: primero lo que se ve al entrar y, cuando ya se dibujaron los primeros cuadros, el resto de a poco (una etapa por turno,
+ * con un respiro entre ellas para que se siga dibujando y respondiendo a los toques). En equipos potentes se monta todo junto.
+ */
+function useBuildStage(): number {
+  const ready = useEntry((s) => s.worldReady)
+  const staged = useMemo(() => detectProfile().tier !== 'high', [])
+  const [stage, setStage] = useState(staged ? 0 : BUILD_STAGES)
+  useEffect(() => {
+    if (!staged || !ready || stage >= BUILD_STAGES) return
+    const t = window.setTimeout(() => setStage((n) => n + 1), stage === 0 ? 300 : 150)
+    return () => clearTimeout(t)
+  }, [staged, ready, stage])
+  return stage
 }
 
 const EMPTY: Product[] = []
