@@ -310,20 +310,20 @@ export const CRABS: GameDef<CrabsState> = {
 
 const BW = 360
 const BH = 560
-const BOARD = { x: BW / 2, y: 112 }
-const RINGS: { r: number; v: number; c: string }[] = [
-  { r: 74, v: 10, c: '#3f8fd8' },
-  { r: 56, v: 20, c: '#5fc9b8' },
-  { r: 40, v: 30, c: '#f0b530' },
-  { r: 25, v: 40, c: '#e0525f' },
-  { r: 11, v: 50, c: '#ffffff' },
+const BOARD = { x: BW / 2, y: 152 }
+const RINGS: { r: number; v: number; c: string; hi: string }[] = [
+  { r: 92, v: 10, c: '#3f8fd8', hi: '#7cc4ff' },
+  { r: 71, v: 20, c: '#35b5a0', hi: '#7fe3d0' },
+  { r: 51, v: 30, c: '#f0b530', hi: '#ffe08a' },
+  { r: 32, v: 40, c: '#e0525f', hi: '#ff9aa6' },
+  { r: 15, v: 50, c: '#f7f2e6', hi: '#ffffff' },
 ]
 const HOLES: { x: number; y: number; r: number; v: number }[] = [
-  { x: 42, y: 80, r: 15, v: 100 },
-  { x: BW - 42, y: 80, r: 15, v: 100 },
+  { x: 40, y: 100, r: 18, v: 100 },
+  { x: BW - 40, y: 100, r: 18, v: 100 },
 ]
 const START = { x: BW / 2, y: 500 }
-const RAMP_Y = 205
+const RAMP_Y = 246
 const LANE = { l: 92, r: BW - 92 }
 const BALLS = 9
 /** Fuerza del deslizamiento (px/s del campo): por debajo de MIN el coco no llega a la rampa; en ~1900 cae al centro; MAX es el tope. */
@@ -350,6 +350,8 @@ export interface BowlsState {
   rest: number
   msg: { text: string; age: number; color: string } | null
   trail: { x: number; y: number; t: number }[]
+  /** Destellos al caer un coco (aro iluminado y chispas). */
+  bursts: { x: number; y: number; age: number; color: string; big: boolean }[]
   drag: { x: number; y: number; t: number }[]
 }
 
@@ -388,7 +390,7 @@ export const BOWLS: GameDef<BowlsState> = {
   W: BW,
   H: BH,
   how: 'Desliza el dedo hacia arriba para lanzar el coco. Más rápido llega más lejos. Apunta al centro: 50 puntos, y las esquinas dan 100.',
-  create: () => ({ left: BALLS, score: 0, phase: 'aim', x: START.x, y: START.y, vx: 0, vy: 0, power: 0, fly: null, landed: [], rest: 0, msg: null, trail: [], drag: [] }),
+  create: () => ({ left: BALLS, score: 0, phase: 'aim', x: START.x, y: START.y, vx: 0, vy: 0, power: 0, fly: null, landed: [], rest: 0, msg: null, trail: [], bursts: [], drag: [] }),
   update(s, dt) {
     if (s.msg) {
       s.msg.age += dt
@@ -424,6 +426,7 @@ export const BOWLS: GameDef<BowlsState> = {
         const v = ringValue(ex, ey)
         s.score += v
         s.landed.push({ x: ex, y: ey, v })
+        s.bursts.push({ x: ex, y: ey, age: 0, color: v >= 100 ? '#ffe36b' : v >= 40 ? '#7dffa6' : v > 0 ? '#00f0ff' : '#ff9aa6', big: v >= 40 })
         s.fly = null
         s.phase = 'rest'
         s.rest = 0.9
@@ -443,6 +446,8 @@ export const BOWLS: GameDef<BowlsState> = {
     }
     for (const p of s.trail) p.t += dt
     s.trail = s.trail.filter((p) => p.t < 0.35)
+    for (const b of s.bursts) b.age += dt
+    s.bursts = s.bursts.filter((b) => b.age < 0.7)
   },
   pointer(s, kind, x, y, t) {
     if (s.phase !== 'aim') return
@@ -466,104 +471,232 @@ export const BOWLS: GameDef<BowlsState> = {
       return { sfx: 'pop' }
     } else if (kind === 'up') s.drag = []
   },
-  draw(s, ctx) {
-    // fondo del salón
-    ctx.fillStyle = '#10153a'
+  draw(s, ctx, t) {
+    const lamp = (i: number, on: boolean) => (on ? ['#ffd400', '#ff2bd6', '#00f0ff'][i % 3] : '#2a2160')
+    // ── fondo: interior de la máquina, con paneles y estrellitas ──
+    const bg = ctx.createLinearGradient(0, 0, 0, BH)
+    bg.addColorStop(0, '#1a0f55')
+    bg.addColorStop(1, '#0a0624')
+    ctx.fillStyle = bg
     ctx.fillRect(0, 0, BW, BH)
-    // carril en perspectiva
-    ctx.fillStyle = '#7a4a1f'
-    ctx.beginPath()
-    ctx.moveTo(LANE.l - 14, BH)
-    ctx.lineTo(LANE.l + 30, RAMP_Y)
-    ctx.lineTo(LANE.r - 30, RAMP_Y)
-    ctx.lineTo(LANE.r + 14, BH)
-    ctx.closePath()
-    ctx.fill()
-    ctx.fillStyle = '#b57a3a'
-    ctx.beginPath()
-    ctx.moveTo(LANE.l, BH)
-    ctx.lineTo(LANE.l + 36, RAMP_Y)
-    ctx.lineTo(LANE.r - 36, RAMP_Y)
-    ctx.lineTo(LANE.r, BH)
-    ctx.closePath()
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(255,255,255,.12)'
-    ctx.lineWidth = 2
-    for (let i = 1; i < 5; i++) {
-      const k = i / 5
+    for (let i = 0; i < 26; i++) {
+      const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.5 + i))
+      ctx.globalAlpha = tw * 0.7
+      ctx.fillStyle = i % 3 === 0 ? '#ff2bd6' : i % 3 === 1 ? '#00f0ff' : '#ffd400'
+      ctx.fillRect((i * 83) % BW, 270 + ((i * 47) % 280), 3, 3)
+    }
+    ctx.globalAlpha = 1
+    // paneles laterales con franjas de colores
+    for (const side of [0, 1]) {
+      const x0 = side ? LANE.r + 22 : 0
+      const w = side ? BW - (LANE.r + 22) : LANE.l - 22
+      ctx.fillStyle = '#150a45'
+      ctx.fillRect(x0, RAMP_Y + 8, w, BH - RAMP_Y)
+      for (let k = 0; k < 6; k++) {
+        ctx.fillStyle = ['#ff2bd6', '#00f0ff', '#ffd400'][k % 3]
+        ctx.globalAlpha = 0.5
+        ctx.fillRect(x0 + (side ? 4 : w - 10), RAMP_Y + 24 + k * 54, 6, 38)
+      }
+      ctx.globalAlpha = 1
+    }
+    // ── carril de madera con perspectiva, rieles de neón y flechas que suben ──
+    const lane = (inset: number, color: string) => {
+      ctx.fillStyle = color
       ctx.beginPath()
-      ctx.moveTo(LANE.l + (LANE.r - LANE.l) * k, BH)
-      ctx.lineTo(LANE.l + 36 + (LANE.r - LANE.l - 72) * k, RAMP_Y)
+      ctx.moveTo(LANE.l - 18 + inset, BH)
+      ctx.lineTo(LANE.l + 34 + inset, RAMP_Y)
+      ctx.lineTo(LANE.r - 34 - inset, RAMP_Y)
+      ctx.lineTo(LANE.r + 18 - inset, BH)
+      ctx.closePath()
+      ctx.fill()
+    }
+    lane(0, '#ff2bd6')
+    lane(5, '#1a0f55')
+    const wood = ctx.createLinearGradient(0, RAMP_Y, 0, BH)
+    wood.addColorStop(0, '#8d5a26')
+    wood.addColorStop(1, '#c98f4c')
+    ctx.fillStyle = wood
+    ctx.beginPath()
+    ctx.moveTo(LANE.l - 8, BH)
+    ctx.lineTo(LANE.l + 40, RAMP_Y)
+    ctx.lineTo(LANE.r - 40, RAMP_Y)
+    ctx.lineTo(LANE.r + 8, BH)
+    ctx.closePath()
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(60,30,8,.45)'
+    ctx.lineWidth = 2
+    for (let i = 1; i < 6; i++) {
+      const k = i / 6
+      ctx.beginPath()
+      ctx.moveTo(LANE.l - 8 + (LANE.r - LANE.l + 16) * k, BH)
+      ctx.lineTo(LANE.l + 40 + (LANE.r - LANE.l - 80) * k, RAMP_Y)
       ctx.stroke()
     }
-    // tablero con aros
-    ctx.fillStyle = '#1d2250'
-    rr(ctx, 12, 14, BW - 24, 178, 22)
+    // flechas que suben (guían el lanzamiento)
+    for (let i = 0; i < 4; i++) {
+      const u = ((t * 0.5 + i / 4) % 1)
+      const y = BH - 60 - u * (BH - RAMP_Y - 90)
+      const w = 16 - u * 6
+      ctx.globalAlpha = 0.5 * (1 - u)
+      ctx.fillStyle = '#ffe9a8'
+      ctx.beginPath()
+      ctx.moveTo(BW / 2, y - w)
+      ctx.lineTo(BW / 2 + w, y + w * 0.4)
+      ctx.lineTo(BW / 2, y + w * 0.1)
+      ctx.lineTo(BW / 2 - w, y + w * 0.4)
+      ctx.closePath()
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+    // rampa: labio iluminado donde el coco salta hacia el tablero
+    const lip = ctx.createLinearGradient(0, RAMP_Y - 14, 0, RAMP_Y + 16)
+    lip.addColorStop(0, '#ffe08a')
+    lip.addColorStop(1, '#a8651f')
+    ctx.fillStyle = lip
+    ctx.beginPath()
+    ctx.moveTo(LANE.l + 34, RAMP_Y + 14)
+    ctx.quadraticCurveTo(BW / 2, RAMP_Y - 22, LANE.r - 34, RAMP_Y + 14)
+    ctx.lineTo(LANE.r - 40, RAMP_Y + 16)
+    ctx.quadraticCurveTo(BW / 2, RAMP_Y - 6, LANE.l + 40, RAMP_Y + 16)
+    ctx.closePath()
     ctx.fill()
-    ctx.strokeStyle = '#07031a'
-    ctx.lineWidth = 4
-    ctx.stroke()
+
+    // ── tablero: marco con luces corredoras y aros con brillo ──
+    ctx.fillStyle = '#07031a'
+    rr(ctx, 8, 48, BW - 16, 206, 26)
+    ctx.fill()
+    ctx.fillStyle = '#1d2250'
+    rr(ctx, 13, 53, BW - 26, 196, 22)
+    ctx.fill()
+    const nl = 30
+    for (let i = 0; i < nl; i++) {
+      const u = i / nl
+      const x = 22 + u * (BW - 44)
+      const on = (i + Math.floor(t * 8)) % 3 === 0
+      ctx.fillStyle = lamp(i, on)
+      ctx.beginPath()
+      ctx.arc(x, 60, 2.6, 0, Math.PI * 2)
+      ctx.arc(x, 242, 2.6, 0, Math.PI * 2)
+      ctx.fill()
+    }
     for (const r of RINGS) {
       ctx.fillStyle = r.c
       ctx.beginPath()
       ctx.arc(BOARD.x, BOARD.y, r.r, 0, Math.PI * 2)
       ctx.fill()
       ctx.strokeStyle = '#07031a'
-      ctx.lineWidth = 2
+      ctx.lineWidth = 3
       ctx.stroke()
+      // brillo del borde de arriba a la izquierda
+      ctx.strokeStyle = r.hi
+      ctx.globalAlpha = 0.65
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(BOARD.x, BOARD.y, r.r - 3, Math.PI * 1.05, Math.PI * 1.55)
+      ctx.stroke()
+      ctx.globalAlpha = 1
     }
-    ctx.fillStyle = '#07031a'
-    for (const [i, r] of RINGS.entries()) text(ctx, String(r.v), BOARD.x, BOARD.y - r.r + (i === 4 ? 11 : 9), i === 4 ? 6 : 8, r.c === '#ffffff' || r.c === '#f0b530' ? '#07031a' : '#ffffff', 'center')
+    // valores claros en la línea de cada aro (a la derecha del centro, uno por aro)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const label = (v: string, x: number, y: number, size: number, fill: string, align: CanvasTextAlign = 'center') => {
+      ctx.textAlign = align
+      ctx.font = `${size}px ${FONT}`
+      ctx.lineWidth = 3
+      ctx.strokeStyle = '#07031a'
+      ctx.strokeText(v, x, y)
+      ctx.fillStyle = fill
+      ctx.fillText(v, x, y)
+    }
+    const mids = [81.5, 61, 41.5, 23.5]
+    RINGS.slice(0, 4).forEach((r, i) => label(String(r.v), BOARD.x + mids[i] * 0.72, BOARD.y - mids[i] * 0.69, 10, '#ffffff'))
+    label('50', BOARD.x, BOARD.y + 1, 9, '#1a0f55')
+    // portales de 100 en las esquinas
     for (const h of HOLES) {
       ctx.fillStyle = '#07031a'
       ctx.beginPath()
-      ctx.arc(h.x, h.y, h.r + 3, 0, Math.PI * 2)
+      ctx.arc(h.x, h.y, h.r + 4, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = '#ffd400'
+      const g = ctx.createRadialGradient(h.x - 4, h.y - 4, 2, h.x, h.y, h.r)
+      g.addColorStop(0, '#fff3a0')
+      g.addColorStop(1, '#ffb000')
+      ctx.fillStyle = g
       ctx.beginPath()
-      ctx.arc(h.x, h.y, h.r - 3, 0, Math.PI * 2)
+      ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2)
       ctx.fill()
-      text(ctx, '100', h.x, h.y + 1, 7, '#07031a', 'center')
+      label('100', h.x, h.y + 1, 9, '#2a1405')
     }
+    // destellos de los aciertos
+    for (const b of s.bursts) {
+      const u = b.age / 0.7
+      ctx.globalAlpha = 1 - u
+      ctx.strokeStyle = b.color
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.arc(b.x, b.y, 10 + u * (b.big ? 46 : 28), 0, Math.PI * 2)
+      ctx.stroke()
+      if (b.big)
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2
+          ctx.fillStyle = b.color
+          ctx.fillRect(b.x + Math.cos(a) * (14 + u * 54) - 2, b.y + Math.sin(a) * (14 + u * 54) - 2, 4, 4)
+        }
+    }
+    ctx.globalAlpha = 1
     // cocos ya caídos en el tablero
-    for (const l of s.landed) {
-      coconut(ctx, l.x, l.y, 7)
-    }
-    // estela
+    for (const l of s.landed) coconut(ctx, l.x, l.y, 9)
+
+    // ── estela y coco en juego (con sombra sobre el carril) ──
     for (const p of s.trail) {
       ctx.globalAlpha = Math.max(0, 0.5 - p.t * 1.4)
       ctx.fillStyle = '#ffd36b'
       ctx.beginPath()
-      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2)
+      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2)
       ctx.fill()
     }
     ctx.globalAlpha = 1
-    // coco en juego
+    const shadow = (x: number, y: number, r: number) => {
+      ctx.fillStyle = 'rgba(0,0,0,.35)'
+      ctx.beginPath()
+      ctx.ellipse(x + 3, y + r * 0.9, r * 0.95, r * 0.4, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
     if (s.phase === 'fly' && s.fly) {
       const f = s.fly
       const u = f.t
       const x = f.sx + (f.ex - f.sx) * u
-      const y = f.sy + (f.ey - f.sy) * u - Math.sin(u * Math.PI) * 38
-      coconut(ctx, x, y, 14 - u * 5)
+      const gy = f.sy + (f.ey - f.sy) * u
+      const y = gy - Math.sin(u * Math.PI) * 46
+      shadow(x, gy + 8, 14 - u * 5)
+      coconut(ctx, x, y, 17 - u * 8)
     } else if (s.phase === 'aim' || s.phase === 'roll') {
-      coconut(ctx, s.x, s.y, 17)
+      shadow(s.x, s.y, 22)
+      coconut(ctx, s.x, s.y, 22)
     }
-    // guía de lanzamiento
     if (s.phase === 'aim') {
-      const t = (performance.now() % 1200) / 1200
-      ctx.globalAlpha = 0.6 * (1 - t)
-      text(ctx, '^', START.x, START.y - 40 - t * 60, 18, '#ffffff', 'center')
+      const k = (t % 1.2) / 1.2
+      ctx.globalAlpha = 0.9 * (1 - k)
+      label('DESLIZA ARRIBA', BW / 2, BH - 20, 9, '#ffffff')
       ctx.globalAlpha = 1
-      text(ctx, 'DESLIZA ARRIBA', START.x, BH - 22, 9, '#ffffff', 'center')
     }
-    // marcador
-    ctx.fillStyle = 'rgba(7,3,26,.78)'
-    ctx.fillRect(0, BH - 56, 0, 0)
-    text(ctx, `TIQUETES ${liveTickets(s.score)}`, 18, 218, 10, '#ffd400')
-    text(ctx, `COCOS ${Math.max(0, s.left)}`, BW - 18, 218, 10, '#00f0ff', 'right')
+
+    // ── marcador arriba: tiquetes y cocos que quedan ──
+    ctx.fillStyle = '#07031a'
+    ctx.fillRect(0, 0, BW, 44)
+    ctx.fillStyle = '#ff2bd6'
+    ctx.fillRect(0, 44, BW, 3)
+    label('TIQUETES', 12, 15, 8, '#00f0ff', 'left')
+    label(String(liveTickets(s.score)), 12, 33, 14, '#ffd400', 'left')
+    for (let i = 0; i < BALLS; i++) {
+      const used = i >= s.left
+      ctx.globalAlpha = used ? 0.25 : 1
+      coconut(ctx, BW - 20 - (BALLS - 1 - i) * 17, 28, 6.5)
+    }
+    ctx.globalAlpha = 1
+    label('COCOS', BW - 12, 12, 8, '#ffd400', 'right')
     if (s.msg) {
       ctx.globalAlpha = Math.max(0, 1 - s.msg.age / 1.2)
-      text(ctx, s.msg.text, BW / 2, 250 - s.msg.age * 20, 18, s.msg.color, 'center')
+      label(s.msg.text, BW / 2, 150 - s.msg.age * 14, 20, s.msg.color)
       ctx.globalAlpha = 1
     }
   },

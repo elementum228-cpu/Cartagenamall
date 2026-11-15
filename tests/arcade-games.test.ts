@@ -40,7 +40,7 @@ describe('Bolos de coco', () => {
     expect(s.left).toBe(8)
     expect(s.score).toBeGreaterThan(0)
     const t = BOWLS.create()
-    throwBall(t, 800)
+    throwBall(t, 500)
     expect(t.score).toBe(0)
     expect(t.left).toBe(8)
   })
