@@ -6,7 +6,7 @@ import { useCineSocial } from '../state/cineSocial'
 import { useUI } from '../state/ui'
 import { announceChallenges, shareText } from './actions'
 import { parseTrailer } from './trailer'
-import { C, Notice, Picture, StatusTag } from './ui'
+import { C, GlassPill, Notice, Picture, StatusTag } from './ui'
 import { ChainCard } from './ChainCard'
 import { CINEMA_DIRECTORY, movieLink } from './venues'
 
@@ -221,14 +221,11 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
           <div className="lg:mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_470px] lg:items-start lg:gap-14">
             <div className="min-w-0">
               {meta.length > 0 && (
-                <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] font-semibold text-white/80">
+                <p className="mt-4 flex flex-wrap items-center gap-2">
                   {meta.map((m, i) => (
-                    <span key={i} className="flex items-center gap-2">
-                      {i > 0 && <span className="size-1 rounded-full bg-white/35" aria-hidden />}
-                      {m}
-                    </span>
+                    <GlassPill key={i}>{m}</GlassPill>
                   ))}
-                  {movie.rating && <span className="rounded-md border border-white/30 px-1.5 py-px text-[12px] font-extrabold">{movie.rating}</span>}
+                  {movie.rating && <GlassPill tint="rgba(255,255,255,.1)" className="font-extrabold">{movie.rating}</GlassPill>}
                 </p>
               )}
               {movie.synopsis ? (

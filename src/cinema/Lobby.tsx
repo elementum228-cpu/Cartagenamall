@@ -11,7 +11,7 @@ import { EventsPreview, EventsTab } from './Events'
 import { LiveShowtimes } from './LiveShowtimes'
 import { MovieDetail } from './MovieDetail'
 import { announceChallenges } from './actions'
-import { C, Notice, Picture, SectionHead, StatusTag, shortDate } from './ui'
+import { C, GlassPill, Notice, Picture, SectionHead, StatusTag, shortDate } from './ui'
 
 // MallPlay Cinema, el lobby: se llega desde las puertas rojas del cine del mapa. Pantalla completa, de arriba abajo: película destacada,
 // navegación rápida por secciones y, en la cartelera, funciones de hoy, «arma tu salida», eventos y «antes o después». Todo con datos
@@ -125,7 +125,11 @@ function Hero({ movies, upcoming, demo }: { movies: CineMovie[]; upcoming: Set<s
                 <StatusTag kind={movieTag(m, upcoming.has(m.id))} />
               </div>
               <h2 className="mt-2 max-w-[18ch] text-[34px] leading-[1.02] font-black tracking-tight text-[#F7F4EF] uppercase [overflow-wrap:anywhere] md:text-[48px] lg:max-w-[20ch] lg:text-[64px]">{m.title}</h2>
-              <p className="mt-2 text-[13.5px] font-semibold text-white/80">{[m.year ? String(m.year) : '', m.genre, m.minutes ? `${m.minutes} min` : '', m.rating].filter(Boolean).join(' · ')}</p>
+              <p className="mt-3 flex flex-wrap gap-1.5">
+                {[m.year ? String(m.year) : '', m.genre, m.minutes ? `${m.minutes} min` : '', m.rating].filter(Boolean).map((x) => (
+                  <GlassPill key={x} size="sm">{x}</GlassPill>
+                ))}
+              </p>
               {m.synopsis && <p className="mt-2 line-clamp-2 max-w-[52ch] text-[13.5px] leading-snug text-white/75 lg:max-w-[60ch] lg:text-[16px]">{m.synopsis}</p>}
               <div className="mt-4 flex flex-wrap gap-2.5">
                 <button onClick={() => useCineUi.getState().openMovie(m.id)} className="flex h-12 items-center gap-2 rounded-full px-6 text-[15px] font-extrabold text-[#2a1405] shadow-lg transition active:scale-[0.98]" style={{ background: `linear-gradient(180deg,#ffe9b0,${C.gold})` }}>
