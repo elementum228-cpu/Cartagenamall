@@ -1,5 +1,5 @@
 import { CalendarDays, Clock, ExternalLink, MapPin, Sparkles, Users } from 'lucide-react'
-import { EVENT_KINDS, publicEvents, seatsLeft, type CineEvent, type CineEventStatus } from '../state/cine'
+import { EVENT_KINDS, publicEvents, seatsLeft, useCine, type CineEvent, type CineEventStatus } from '../state/cine'
 import { useCineUi } from '../state/cineUi'
 import { Notice, Picture, SectionHead, longDate } from './ui'
 
@@ -16,6 +16,7 @@ const MODE_TEXT = { presencial: 'Presencial', virtual: 'Virtual', mixto: 'Presen
 
 function EventCard({ e }: { e: CineEvent }) {
   const kind = EVENT_KINDS.find((k) => k.id === e.kind)
+  const movie = useCine((s) => (e.movieId ? s.movies.find((m) => m.id === e.movieId) : undefined))
   const left = seatsLeft(e)
   const ended = e.status === 'finished' || e.status === 'cancelled'
   return (
@@ -27,6 +28,7 @@ function EventCard({ e }: { e: CineEvent }) {
       <div className="p-4">
         <p className="text-[11px] font-extrabold tracking-wider text-[#F4CD79] uppercase">{kind?.name}</p>
         <h4 className="mt-1 text-[19px] leading-tight font-black [overflow-wrap:anywhere]">{e.title}</h4>
+        {movie?.title && <p className="mt-1.5 text-[13px] font-bold text-white/85">🎬 {movie.title}</p>}
         {e.description && <p className="mt-2 text-[13.5px] leading-snug text-white/75">{e.description}</p>}
         <ul className="mt-3 space-y-1.5 text-[13px] text-white/80">
           <li className="flex items-center gap-2">
@@ -49,7 +51,7 @@ function EventCard({ e }: { e: CineEvent }) {
         </ul>
         {e.status === 'open' && e.url ? (
           <a href={e.url} target="_blank" rel="noopener noreferrer" className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-teal text-[14.5px] font-extrabold text-white transition active:scale-[0.98]">
-            Participar en Planly <ExternalLink className="size-4 opacity-80" aria-hidden />
+            {e.kind === 'plan' ? 'Unirme al plan en Planly' : 'Participar en Planly'} <ExternalLink className="size-4 opacity-80" aria-hidden />
           </a>
         ) : (
           <p className="mt-4 rounded-xl bg-white/[0.06] px-3 py-2.5 text-center text-[13px] font-bold text-white/70">

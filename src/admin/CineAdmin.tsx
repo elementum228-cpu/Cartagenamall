@@ -5,7 +5,7 @@ import { remoteEnabled } from '../remote/client'
 import { runCineSync } from '../remote/sync'
 import { uploadStadiumImage } from '../remote/photos'
 import { parseTrailer } from '../cinema/trailer'
-import { CHAINS, EVENT_KINDS, EVENT_STATUS, MAX_EVENTS, MAX_MOVIES, newEvent, type CineEvent, type CineEventKind, type CineEventStatus, OFFICIAL_HOSTS, isOfficialLink, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
+import { CHAINS, isoDay, EVENT_KINDS, EVENT_STATUS, MAX_EVENTS, MAX_MOVIES, newEvent, type CineEvent, type CineEventKind, type CineEventStatus, OFFICIAL_HOSTS, isOfficialLink, dayLabel, formatShows, newMovie, nextDays, parseShows, repeatWeek, showsOf, useCine, withShows, type CineChain, type CineMovie, type CineShow, type ChainId, type ChainMode } from '../state/cine'
 import { CINE_COLOMBIA_SNAPSHOT, CINE_COLOMBIA_SNAPSHOT_DATE } from '../cinema/cineColombiaSnapshot'
 import { importMovies, parseMovieList } from '../state/cineImport'
 import { exampleCine } from '../state/cineExample'
@@ -117,7 +117,7 @@ function TrailerInput({ value, onChange }: { value: string; onChange: (v: string
 }
 
 /** Un evento de MallPlay Cinema: nada se ve hasta salir de «Borrador». */
-function EventEditor({ event, onChange, onRemove }: { event: CineEvent; onChange: (e: CineEvent) => void; onRemove: () => void }) {
+function EventEditor({ event, movies, onChange, onRemove }: { event: CineEvent; movies: CineMovie[]; onChange: (e: CineEvent) => void; onRemove: () => void }) {
   const [url, setUrl] = useState(event.url)
   const badUrl = url.trim() !== '' && !/^https:\/\/[^\s]+$/.test(url.trim())
   return (
@@ -156,11 +156,20 @@ function EventEditor({ event, onChange, onRemove }: { event: CineEvent; onChange
         <input className={input} placeholder="Cupos totales" inputMode="numeric" value={event.capacity ?? ''} onChange={(e) => onChange({ ...event, capacity: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
         <input className={input} placeholder="Cupos tomados" inputMode="numeric" value={event.taken ?? ''} onChange={(e) => onChange({ ...event, taken: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
       </div>
+      <select className={input} value={event.movieId} onChange={(e) => onChange({ ...event, movieId: e.target.value })} aria-label="Película del plan (opcional)">
+        <option value="">Sin película asociada</option>
+        {movies.filter((m) => m.title.trim()).map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.title}
+          </option>
+        ))}
+      </select>
       <label className="block">
+        {event.kind === 'plan' && <span className="mb-1 block text-xs font-bold">Enlace del plan en Planly</span>}
         <input
           className={`${input} ${badUrl ? 'border-red-400' : ''}`}
           inputMode="url"
-          placeholder="Enlace para participar (https, opcional)"
+          placeholder={event.kind === 'plan' ? 'https://… (pega aquí el enlace de Planly)' : 'Enlace para participar (https, opcional)'}
           value={url}
           aria-invalid={badUrl}
           onChange={(e) => {
@@ -176,19 +185,27 @@ function EventEditor({ event, onChange, onRemove }: { event: CineEvent; onChange
 
 function EventsAdmin() {
   const events = useCine((s) => s.events)
+  const movies = useCine((s) => s.movies)
   const set = useCine((s) => s.set)
   return (
     <div className="space-y-3 rounded-3xl border border-line bg-card p-4">
       <div>
         <p className="font-bold">3 · Eventos de MallPlay Cinema</p>
-        <p className="text-xs text-ink-soft">Noches de estreno, trivias, cine en pareja, maratones, encuentros y noches de tráileres. Un evento nuevo empieza en «Borrador» y no se ve: cámbialo a «Próximamente» o «Abierto» cuando sea real. No hay eventos de ejemplo ({events.length}/{MAX_EVENTS}).</p>
+        <p className="text-xs text-ink-soft">
+          Planes en grupo con Planly, noches de estreno, trivias, cine en pareja, maratones, encuentros y noches de tráileres. Para un <b>plan</b>, elige la película y pega el enlace de Planly: el botón «Unirme al plan en Planly» lleva ahí. Un evento nuevo empieza en «Borrador» y no se ve: cámbialo a «Próximamente» o «Abierto» cuando sea real. No hay eventos de ejemplo ({events.length}/{MAX_EVENTS}).
+        </p>
       </div>
       {events.map((ev, i) => (
-        <EventEditor key={ev.id} event={ev} onChange={(next) => set({ events: events.map((x, k) => (k === i ? next : x)) })} onRemove={() => set({ events: events.filter((_, k) => k !== i) })} />
+        <EventEditor key={ev.id} event={ev} movies={movies} onChange={(next) => set({ events: events.map((x, k) => (k === i ? next : x)) })} onRemove={() => set({ events: events.filter((_, k) => k !== i) })} />
       ))}
-      <button type="button" className={btn.secondary} disabled={events.length >= MAX_EVENTS} onClick={() => set({ events: [...events, newEvent()] })}>
-        <Plus className="size-4" /> Agregar evento
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={btn.primary} disabled={events.length >= MAX_EVENTS} onClick={() => set({ events: [...events, { ...newEvent(), kind: 'plan', title: 'Plan de cine con Planly' }] })}>
+          <Plus className="size-4" /> Agregar plan (Planly)
+        </button>
+        <button type="button" className={btn.secondary} disabled={events.length >= MAX_EVENTS} onClick={() => set({ events: [...events, newEvent()] })}>
+          <Plus className="size-4" /> Otro evento
+        </button>
+      </div>
     </div>
   )
 }
@@ -477,6 +494,9 @@ function ShowsAdmin() {
 }
 
 /** Cine: la administración lo enciende o apaga y gestiona sus dos interacciones (cartelera y entrada al cine). */
+/** Película que aún no se estrena: marcada «Próximamente» o con fecha de estreno futura (igual que en el cine). */
+const upcoming = (m: CineMovie) => m.soon || (!!m.release && m.release > isoDay(new Date()))
+
 export function CineAdmin() {
   const on = useCine((s) => s.enabled)
   const boardOn = useCine((s) => s.boardOn)
@@ -563,22 +583,50 @@ export function CineAdmin() {
 
         <ExampleTools />
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <p className="font-bold">Catálogo de películas</p>
-            <p className="text-xs text-ink-soft">Cada película se carga una sola vez; sus horarios se ponen por cadena más abajo ({movies.length}/{MAX_MOVIES}).</p>
+            <p className="text-xs text-ink-soft">Cada película se carga una sola vez, con su sinopsis y su tráiler; sus horarios se ponen por cadena más abajo ({movies.length}/{MAX_MOVIES}). Las que marques «Próximamente» salen en esa pestaña del cine.</p>
           </div>
-          {movies.map((m, i) => (
-            <MovieEditor
-              key={m.id}
-              movie={m}
-              onChange={(next) => set({ movies: movies.map((x, k) => (k === i ? next : x)) })}
-              onRemove={() => set({ movies: movies.filter((_, k) => k !== i), shows: shows.filter((x) => x.movieId !== m.id) })}
-            />
-          ))}
-          <button type="button" className={btn.secondary} disabled={movies.length >= MAX_MOVIES} onClick={() => set({ movies: [...movies, newMovie()] })}>
-            <Plus className="size-4" /> Agregar película
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={btn.secondary} disabled={movies.length >= MAX_MOVIES} onClick={() => set({ movies: [...movies, newMovie()] })}>
+              <Plus className="size-4" /> Película en cartelera
+            </button>
+            <button type="button" className={btn.primary} disabled={movies.length >= MAX_MOVIES} onClick={() => set({ movies: [...movies, { ...newMovie(), soon: true }] })}>
+              <Plus className="size-4" /> Próximamente
+            </button>
+          </div>
+          {([
+            ['En cartelera', (m: CineMovie) => !upcoming(m)],
+            ['Próximamente', upcoming],
+          ] as const).map(([title, pick]) => {
+            const group = movies.map((m, i) => ({ m, i })).filter(({ m }) => pick(m))
+            return (
+              <div key={title} className="space-y-2">
+                <p className="text-sm font-extrabold">
+                  {title} <span className="font-semibold text-ink-soft">({group.length})</span>
+                </p>
+                {group.length === 0 && <p className="rounded-xl bg-sand/60 p-3 text-xs text-ink-soft">Aún no hay películas aquí.</p>}
+                {group.map(({ m, i }) => (
+                  <details key={m.id} className="group rounded-2xl border border-line bg-white" open={!m.title}>
+                    <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5">
+                      <span className="min-w-0 flex-1 truncate text-sm font-bold">{m.title || 'Película nueva'}</span>
+                      {!m.synopsis.trim() && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-bold text-amber-800">Falta sinopsis</span>}
+                      {!parseTrailer(m.trailer) && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-bold text-amber-800">Falta tráiler</span>}
+                      {m.release && <span className="shrink-0 text-[11px] text-ink-soft">{m.release}</span>}
+                    </summary>
+                    <div className="border-t border-line p-2">
+                      <MovieEditor
+                        movie={m}
+                        onChange={(next) => set({ movies: movies.map((x, k) => (k === i ? next : x)) })}
+                        onRemove={() => set({ movies: movies.filter((_, k) => k !== i), shows: shows.filter((x) => x.movieId !== m.id) })}
+                      />
+                    </div>
+                  </details>
+                ))}
+              </div>
+            )
+          })}
         </div>
 
         <ShowsAdmin />

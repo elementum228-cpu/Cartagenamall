@@ -79,11 +79,12 @@ export interface CineMovie {
 
 // ── Eventos de MallPlay Cinema ────────────────────────────────────────────────────────────────────
 
-export type CineEventKind = 'premiere' | 'trivia' | 'couples' | 'marathon' | 'cinephiles' | 'trailers'
+export type CineEventKind = 'plan' | 'premiere' | 'trivia' | 'couples' | 'marathon' | 'cinephiles' | 'trailers'
 export type CineEventStatus = 'draft' | 'soon' | 'open' | 'full' | 'finished' | 'cancelled'
 export type CineEventMode = 'presencial' | 'virtual' | 'mixto'
 
 export const EVENT_KINDS: { id: CineEventKind; name: string; hint: string }[] = [
+  { id: 'plan', name: 'Plan en grupo (Planly)', hint: 'Una salida a ver una película con más personas, organizada en Planly.' },
   { id: 'premiere', name: 'Noche de estreno', hint: 'Varias personas se organizan para ver una función real.' },
   { id: 'trivia', name: 'Trivia de películas', hint: 'Preguntas sobre películas, géneros y personajes.' },
   { id: 'couples', name: 'Cine en pareja', hint: 'Película + restaurante + postre.' },
