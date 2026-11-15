@@ -36,11 +36,6 @@ const TEAL = '#0d6b73'
 const TERRA = '#d9733e'
 const INK = '#1d2250'
 
-const rnd = (n: number) => {
-  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453
-  return s - Math.floor(s)
-}
-
 /** Puntos de paseo de los visitantes (coordenadas de la isla): la plaza y el frente de cada banco de máquinas. */
 const STROLL: [number, number][] = [
   [4, 0],
@@ -98,6 +93,8 @@ function Bank({ at, rot, n, color, dark, screen, label, sub }: { at: [number, nu
           <mesh geometry={GEO.cylinder} material={mat(i % 2 ? '#f4eadb' : color)} position={[0, 0.55, 0]} scale={[0.5, 0.14, 0.5]} />
         </group>
       ))}
+      {/* las máquinas iluminan el piso con el color de su juego */}
+      <mesh geometry={GEO.plane} material={lightPoolMat(color, 1.3)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 1.6]} scale={[W + 2.4, 5.4, 1]} />
       <ScreenLabel label={pill} position={[0, 3.7, 0]} pixelHeight={30} maxZoomRatio={2.2} priority={LABEL_PRIORITY.store} />
     </group>
   )
@@ -200,33 +197,12 @@ function Lamp({ x, z }: { x: number; z: number }) {
   )
 }
 
-/** Piso de alfombra de salón de juegos: losetas índigo oscuras de tonos casi iguales y confeti de colores esparcido, como las alfombras de los arcades. */
+/** Piso de un solo color, liso (índigo oscuro): las luces de las máquinas y de la plaza lo iluminan; el paseo crema lleva del arco a la plaza. */
+const FLOOR = '#2b2f5c'
 function Floor() {
-  const T = 1.25
-  const n = Math.round((S * 2) / T)
-  const tones = ['#272b52', '#2d3260', '#232748']
-  const confetti = useMemo(() => {
-    const cols = ['#e0525f', '#f0b530', '#3f8fd8', '#5fc9b8', '#d9669a', '#f4eadb']
-    return Array.from({ length: 150 }, (_, i) => ({
-      x: (rnd(i * 3 + 1) - 0.5) * (S * 2 - 1.2),
-      z: (rnd(i * 5 + 2) - 0.5) * (S * 2 - 1.2),
-      r: rnd(i + 9) * Math.PI,
-      c: cols[i % cols.length],
-      w: 0.16 + rnd(i + 4) * 0.2,
-      tri: i % 3 === 0,
-    }))
-  }, [])
   return (
     <group>
-      {Array.from({ length: n * n }, (_, k) => {
-        const i = k % n
-        const j = Math.floor(k / n)
-        return <mesh key={k} geometry={GEO.box} material={mat(tones[Math.floor(rnd(k * 1.7 + 3) * 3)])} position={[-S + T / 2 + i * T, Y + 0.01, -S + T / 2 + j * T]} scale={[T - 0.03, 0.05, T - 0.03]} receiveShadow />
-      })}
-      {confetti.map((c, i) => (
-        <mesh key={i} geometry={GEO.box} material={mat(c.c)} position={[c.x, Y + 0.045, c.z]} rotation={[0, c.r, 0]} scale={c.tri ? [c.w * 0.5, 0.01, c.w] : [c.w, 0.01, c.w * 0.4]} />
-      ))}
-      {/* paseo crema del arco a la plaza y anillo claro alrededor del monumento */}
+      <mesh geometry={GEO.box} material={mat(FLOOR)} position={[0, Y + 0.02, 0]} scale={[S * 2, 0.06, S * 2]} receiveShadow />
       <mesh geometry={GEO.box} material={mat('#e9dcc0')} position={[S / 2 + 1, Y + 0.06, 0]} scale={[S - 2, 0.03, 2.4]} receiveShadow />
       <mesh geometry={GEO.cylinder} material={mat('#e9dcc0')} position={[0, Y + 0.06, 0]} scale={[6.4, 0.03, 6.4]} receiveShadow />
     </group>
@@ -254,11 +230,14 @@ function IslandBody() {
           const px = sd.rot === 0 ? sd.a[0] + along : sd.a[0]
           const pz = sd.rot === 0 ? sd.a[1] : sd.a[1] + along
           if (si === 3 && Math.abs(pz) < 2.3) return null // puerta al puente
+          const tall = si === 0 || si === 2
           return (
             <group key={`${si}${i}`} position={[px, Y, pz]} rotation={[0, sd.rot, 0]}>
-              <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, 0.45, 0]} scale={[step + 0.02, 0.9, 0.7]} castShadow receiveShadow />
-              <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, 0.93, 0]} scale={[step + 0.02, 0.09, 0.84]} />
-              {i % 2 === 0 && <mesh geometry={GEO.box} material={mat(STONE[1])} position={[0, 1.2, 0]} scale={[0.8, 0.5, 0.5]} castShadow />}
+              {/* los lados lejanos (norte y oeste) son altos como una muralla; los cercanos (sur y este) quedan bajos para ver el interior */}
+              <mesh geometry={GEO.box} material={mat(STONE[0])} position={[0, tall ? 0.9 : 0.45, 0]} scale={[step + 0.02, tall ? 1.8 : 0.9, 0.9]} castShadow receiveShadow />
+              <mesh geometry={GEO.box} material={mat(CORDON)} position={[0, tall ? 1.84 : 0.93, 0]} scale={[step + 0.02, 0.12, 1.05]} />
+              {tall && <mesh geometry={GEO.box} material={mat(STONE[1])} position={[0, 2.12, 0]} scale={[step + 0.02, 0.5, 0.6]} castShadow />}
+              {i % 2 === 0 && <mesh geometry={GEO.box} material={mat(STONE[2])} position={[0, tall ? 2.6 : 1.25, 0]} scale={[0.85, 0.5, 0.6]} castShadow />}
             </group>
           )
         }),
@@ -271,9 +250,13 @@ function IslandBody() {
         [S, S],
       ].map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
-          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[0, 0.9, 0]} scale={[2.6, 2.1, 2.6]} castShadow receiveShadow />
-          <mesh geometry={GEO.cylinder} material={mat(CORDON)} position={[0, 1.95, 0]} scale={[2.8, 0.14, 2.8]} />
-          <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[0, 2.35, 0]} scale={[1.9, 0.7, 1.9]} />
+          <mesh geometry={GEO.cylinder} material={mat(STONE[2])} position={[0, 1.7, 0]} scale={[2.9, 3.6, 2.9]} castShadow receiveShadow />
+          <mesh geometry={GEO.cylinder} material={mat(CORDON)} position={[0, 3.55, 0]} scale={[3.15, 0.16, 3.15]} />
+          {Array.from({ length: 8 }, (_, k) => {
+            const a = (k / 8) * Math.PI * 2
+            return <mesh key={k} geometry={GEO.box} material={mat(STONE[1])} position={[Math.cos(a) * 1.3, 3.9, Math.sin(a) * 1.3]} rotation={[0, -a, 0]} scale={[0.35, 0.5, 0.7]} castShadow />
+          })}
+          <mesh geometry={GEO.cylinder} material={mat(TERRA)} position={[0, 4.3, 0]} scale={[1.8, 0.7, 1.8]} castShadow />
         </group>
       ))}
       {/* rocas en la orilla */}
