@@ -1,12 +1,12 @@
-import { Bookmark, BookmarkCheck, ChevronLeft, ExternalLink, Info, MapPin, Play, Share2, Ticket, X } from 'lucide-react'
+import { Bookmark, BookmarkCheck, ExternalLink, Info, Play, Share2, Ticket, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CHAINS, dayLabel, showsOf, type CineChain, type CineMovie, type CineShow, type ChainId } from '../state/cine'
-import { useCineUi } from '../state/cineUi'
 import { useCineSocial } from '../state/cineSocial'
 import { useUI } from '../state/ui'
 import { announceChallenges, shareText } from './actions'
 import { parseTrailer } from './trailer'
 import { C, Notice, Picture, StatusTag } from './ui'
+import { ChainCard } from './ChainCard'
 import { CINEMA_DIRECTORY, movieLink } from './venues'
 
 /** «12+» → «Recomendada para mayores de 12 años». */
@@ -255,51 +255,17 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
 
               <div className="mt-4 space-y-3">
                 {rows.map(({ chain, info, list, link, venues }) => (
-                  <div key={chain.id} className="rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10">
-                    <p className="flex items-center gap-2 text-[15px] font-extrabold">
-                      <span className="size-2.5 rounded-full" style={{ background: info.color }} /> {info.name}
-                      {chain.mode === 'auto' && !demo && (
-                        <span className="ml-auto flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                          <span className="size-1.5 rounded-full bg-emerald-400" /> Leído del sitio oficial
-                        </span>
-                      )}
-                    </p>
+                  <ChainCard key={chain.id} id={chain.id as ChainId} name={info.name} color={info.color} tagline={info.tagline} href={link.url} hint={link.direct ? undefined : `Abre la cartelera de ${info.name} en Cartagena.`} venues={venues} live={chain.mode === 'auto' && !demo && list.length > 0}>
                     {list.length ? (
-                      <div className="mt-2.5 flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {list.map((x) => (
                           <ShowChip key={x.id} show={x} color={info.color} past={today && x.time < now} demo={demo} />
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-1.5 text-[13px] text-white/60">Horarios aún no disponibles aquí.</p>
+                      <p className="text-[13.5px] text-white/65">Horarios aún no disponibles aquí.</p>
                     )}
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13.5px] font-extrabold text-white transition active:scale-[0.98]"
-                      style={{ background: `color-mix(in srgb, ${info.color} 75%, #000)` }}
-                    >
-                      Consultar en {info.name} <ExternalLink className="size-3.5 opacity-80" aria-hidden />
-                    </a>
-                    {!link.direct && <p className="mt-1.5 text-center text-[11px] text-white/45">Abre la cartelera de {info.name} en Cartagena.</p>}
-                    {venues.length > 0 && (
-                      <ul className="mt-3 flex flex-wrap gap-1.5" aria-label={`Sedes de ${info.name}`}>
-                        {venues.map((v) => (
-                          <li key={v.name}>
-                            <a
-                              href={v.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 rounded-full bg-white/8 px-2.5 py-1.5 text-[12px] font-semibold text-white/80"
-                            >
-                              <MapPin className="size-3" aria-hidden /> {v.name}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                  </ChainCard>
                 ))}
               </div>
               {visible.length === 0 && <Notice title="No hay cines disponibles por ahora" text="La administración tiene las cadenas apagadas." />}
