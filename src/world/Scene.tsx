@@ -1,5 +1,5 @@
 import { openCourtOrClaim, useCourtOperator } from '../football/open'
-import { JOYERIA } from '../config/preview'
+import { ARCADE_ZONE, JOYERIA } from '../config/preview'
 import { JewelryZone } from './JewelryZone'
 import { isServicesSpace, useServicesFeature } from '../state/servicesFeature'
 import { useCine } from '../state/cine'
@@ -28,6 +28,7 @@ import { CrossLabels, CrossShell, Diorama } from './MallStructure'
 import { FortressEnvironment } from './Fortress'
 import { useAirportFeature } from '../state/airportFeature'
 import { useEntertainmentFeature } from '../state/entertainmentFeature'
+import { ArcadeZone } from './ArcadeZone'
 import { Entertainment } from './Entertainment'
 import { Airport } from './Airport'
 import { MallToStadium, Stadium, StairFans } from './Stadium'
@@ -267,6 +268,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
         {stage >= 2 && (
           <BatchScope>
             {entOn && <Entertainment reduceMotion={reduceMotion} />}
+            {entOn && ARCADE_ZONE && <ArcadeZone reduceMotion={reduceMotion} />}
             {airportOn && <Airport reduceMotion={reduceMotion} />}
             {airportOn && <Island reduceMotion={reduceMotion} />}
             <District reduceMotion={reduceMotion} />
