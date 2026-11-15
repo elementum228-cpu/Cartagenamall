@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { sfx, startMusic, stopMusic, unlockArcadeAudio } from '../audio'
 import { CoinSlot } from '../CoinSlot'
 import { useArcade } from '../store'
-import { TicketReceipt } from '../TicketReceipt'
+import { GameEnd } from '../TicketReceipt'
 import type { GameDef, MiniGameId } from './defs'
 import { BOWLS, CRABS } from './defs'
 
@@ -129,9 +129,8 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
           </div>
         )}
         {phase === 'over' && result && (
-          <div className="absolute inset-0 flex flex-col items-center justify-start gap-2 overflow-y-auto bg-[#07031a]/95 px-4 py-4">
-            <p className="font-arcade text-[11px] text-[#ff2bd6]">{result.record ? '¡NUEVO RÉCORD!' : 'FIN DEL JUEGO'}</p>
-            <TicketReceipt game={def.name} score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} onPrizes={onPrizes} onAgain={() => setPhase('menu')} />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 overflow-y-auto bg-[#07031a]/95 px-4 py-4">
+            <GameEnd game={def.name} score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} record={result.record} onPrizes={onPrizes} onAgain={() => setPhase('menu')} />
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
-import { Gift, Play as PlayIcon } from 'lucide-react'
+import { Gift, Play as PlayIcon, Ticket } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ticketDuration, ticketPrint } from './audio'
+import type { ReactNode } from 'react'
+import { ticketDuration, ticketPrint, unlockArcadeAudio } from './audio'
 import './arcade.css'
 
 // «Recibir tiquetes»: al terminar una partida sale de la máquina una tirita de papel (a pasos, con el sonido de la impresora de las
@@ -71,6 +72,40 @@ export function TicketReceipt({ game, score, awarded, total, capped, onPrizes, o
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Pantalla de fin de partida: «Juego finalizado» con el puntaje y un solo botón, «Ver mis tiquetes». Al tocarlo sale el recibo
+ * (con el sonido de la impresora) y muestra cuántos tiquetes ganaste y cuántos tienes en total.
+ */
+export function GameEnd({ game, score, awarded, total, capped, record, children, onPrizes, onAgain }: { game: string; score: number; awarded: number; total: number; capped?: boolean; record?: boolean; children?: ReactNode; onPrizes: () => void; onAgain: () => void }) {
+  const [shown, setShown] = useState(false)
+  if (shown) return <TicketReceipt game={game} score={score} awarded={awarded} total={total} capped={capped} onPrizes={onPrizes} onAgain={onAgain} />
+  return (
+    <div className="flex flex-col items-center gap-2.5">
+      <h3 className="font-arcade text-[20px] leading-snug text-[#ff2b2b]" style={{ textShadow: '3px 3px 0 #07031a, 5px 5px 0 #7a0a3a' }}>
+        JUEGO
+        <br />
+        FINALIZADO
+      </h3>
+      {record && <p className="font-arcade arcade-blink text-[10px] text-[#ffd400]">¡NUEVO RÉCORD!</p>}
+      <p className="font-arcade mt-2 text-[9px] text-[#00f0ff]">PUNTAJE</p>
+      <p className="font-arcade text-[28px] leading-none text-white" style={{ textShadow: '3px 3px 0 #ff2bd6' }}>
+        {score}
+      </p>
+      {children}
+      <button
+        autoFocus
+        onClick={() => {
+          unlockArcadeAudio()
+          setShown(true)
+        }}
+        className="arcade-btn font-arcade mt-3 flex min-h-14 items-center gap-3 px-6 text-[12px]"
+      >
+        <Ticket className="size-5" /> VER MIS TIQUETES
+      </button>
     </div>
   )
 }

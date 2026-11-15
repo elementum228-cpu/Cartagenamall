@@ -57,6 +57,23 @@ export function unlockArcadeAudio() {
   if (c && c.state === 'suspended') void c.resume()
 }
 
+/**
+ * Ejecuta `fn` cuando el audio ya está sonando. En el celular el audio nace «suspendido» y `resume()` tarda un instante: si se
+ * programaran los sonidos antes, se perderían (por eso al insertar la moneda no se oía nada).
+ */
+function whenRunning(fn: (c: AudioContext) => void) {
+  const c = context()
+  if (!c) return
+  if (c.state === 'running') fn(c)
+  else
+    void c
+      .resume()
+      .then(() => {
+        if (c.state === 'running') fn(c)
+      })
+      .catch(() => {})
+}
+
 export function setArcadeSound(enabled: boolean) {
   on = enabled
   if (!enabled) stopMusic()
@@ -159,26 +176,36 @@ export function suspendArcadeAudio() {
  */
 export const COIN_SOUND_S = 1.05
 export function coinInsert(): number {
-  const c = context()
-  if (!c || !on || !sfxBus || c.state === 'suspended') return COIN_SOUND_S
+  if (!on) return COIN_SOUND_S
+  whenRunning(playCoin)
+  return COIN_SOUND_S
+}
+
+function playCoin(c: AudioContext) {
+  if (!sfxBus) return
   const t = c.currentTime + 0.02
   tone('sine', 3136, t + 0.28, 0.14, 0.22, sfxBus) // ting al entrar en la ranura
   tone('sine', 4186, t + 0.3, 0.1, 0.1, sfxBus)
   for (let i = 0; i < 7; i++) tone('square', 1500 - i * 110, t + 0.38 + i * 0.035, 0.03, 0.05, sfxBus) // rueda por dentro
   tone('sawtooth', 120, t + 0.66, 0.16, 0.3, sfxBus, 48) // golpe del mecanismo
   ;[784, 988, 1319].forEach((f, i) => tone('square', f, t + 0.78 + i * 0.07, 0.18, 0.1, sfxBus!))
-  return COIN_SOUND_S
 }
 
 /** Cuánto dura la tirita al salir (segundos): más tiquetes, un poco más larga. */
 export const ticketDuration = (count: number) => Math.min(40, 18 + Math.floor(count / 2)) * 0.05
 
 export function ticketPrint(count: number): number {
-  const c = context()
+  const dur = ticketDuration(count)
+  if (!on) return dur
+  whenRunning((c) => playPrint(c, count))
+  return dur
+}
+
+function playPrint(c: AudioContext, count: number) {
+  if (!sfxBus) return
   const n = Math.min(40, 18 + Math.floor(count / 2))
   const gap = 0.05
   const dur = ticketDuration(count)
-  if (!c || !on || !sfxBus || c.state === 'suspended') return dur
   const t = c.currentTime + 0.05
   for (let i = 0; i < n; i++) {
     const at = t + i * gap
@@ -186,16 +213,19 @@ export function ticketPrint(count: number): number {
     tone('sawtooth', 150, at, 0.025, 0.05, sfxBus, 90)
   }
   ;[1319, 1760].forEach((f, i) => tone('triangle', f, t + dur + 0.04 + i * 0.09, 0.3, 0.16, sfxBus!))
-  return dur
 }
 
 export type Sfx = 'pop' | 'power' | 'hurt' | 'over' | 'record' | 'coin'
 
 /** Efectos cortos: destruir un enemigo, recoger un premio, recibir un golpe, fin de la partida y récord. */
 export function sfx(kind: Sfx) {
-  const c = context()
-  if (!c || !on || !sfxBus) return
-  if (c.state === 'suspended') return
+  if (!on) return
+  whenRunning(() => playSfx(kind))
+}
+
+function playSfx(kind: Sfx) {
+  const c = ac
+  if (!c || !sfxBus) return
   const t = c.currentTime
   if (kind === 'coin') [988, 1319].forEach((f, i) => tone('square', f, t + i * 0.07, 0.22, i ? 0.32 : 0.09, sfxBus!))
   else if (kind === 'pop') tone('triangle', 520, t, 0.3, 0.1, sfxBus, 980)

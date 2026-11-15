@@ -5,12 +5,12 @@ import { usePrefs } from '../state/ui'
 import { useOnline } from '../lib/online'
 import { setArcadeSound, sfx, startMusic, stopMusic, suspendArcadeAudio, unlockArcadeAudio } from './audio'
 import { defaultNick, finishRun as finishRunRemote, startRun, type RunTicket } from './board'
-import { createGame, createRecorder, DIFFICULTIES, H, makeRand, MAX_WEAPON, STEP, update, W, type Difficulty, type Game, type Input } from './engine'
+import { createGame, createRecorder, DIFFICULTIES, H, makeRand, STEP, update, W, type Difficulty, type Game, type Input } from './engine'
 import { draw } from './render'
-import { DAILY_POINTS_CAP, useArcade, useArcadeUi } from './store'
+import { useArcade, useArcadeUi } from './store'
 import { MiniGame } from './games/MiniGame'
 import { CoinSlot } from './CoinSlot'
-import { TicketReceipt } from './TicketReceipt'
+import { GameEnd } from './TicketReceipt'
 import { Prizes, Ranking } from './ArcadeTabs'
 import '@fontsource/press-start-2p/latin-400.css'
 import './arcade.css'
@@ -79,6 +79,8 @@ function ListFrame({ children }: { children: React.ReactNode }) {
 
 function Cabinet({ onClose }: { onClose: () => void }) {
   const game = useArcadeUi((s) => s.game)
+  const soundOn = useArcade((s) => s.sound)
+  useEffect(() => setArcadeSound(soundOn), [soundOn])
   const [tab, setTab] = useState<'play' | 'rank' | 'prizes'>('play')
   const points = useArcade((s) => s.points)
   const playing = useArcadeUi((s) => s.playing)
@@ -197,7 +199,6 @@ function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes
   const best = useArcade((s) => s.best)
   const bestRef = useRef(best)
   bestRef.current = best
-  const earnedToday = useArcade((s) => s.earnedToday)
   const playerId = useArcade((s) => s.playerId)
   const online = useOnline()
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -414,8 +415,6 @@ function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes
     input.current.targetX = Math.max(0, Math.min(W, Math.round(((e.clientX - r.left) / r.width) * W)))
   }
 
-  const daily = Math.max(0, DAILY_POINTS_CAP - earnedToday)
-
   // ── Partida (pantalla completa) ──────────────────────────────────────────────────────────────────────────────────────────────
   if (immersive)
     return (
@@ -462,95 +461,42 @@ function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes
       </div>
     )
 
-  // ── Menú y fin de partida ────────────────────────────────────────────────────────────────────────────────────────────────────
-  return (
-    <div className="arcade-frame flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-6 text-center text-white">
-      {phase === 'over' && result ? (
-        <>
-          <h3 className="font-arcade mt-1 text-[26px] text-[#ff2b2b]" style={{ textShadow: '3px 3px 0 #07031a, 6px 6px 0 #7a0a3a' }}>
-            GAME OVER
-          </h3>
-          {result.record && <p className="font-arcade arcade-blink mt-4 text-[11px] text-[#ffd400]">¡NUEVO RÉCORD!</p>}
-          <p className="font-arcade mt-4 text-[9px] text-[#00f0ff]">PUNTAJE</p>
-          <p className="font-arcade mt-2 text-[28px] leading-none text-white" style={{ textShadow: '3px 3px 0 #ff2bd6' }}>
-            {String(result.score).padStart(6, '0')}
-          </p>
-          <p className="font-arcade mt-3 text-[9px] uppercase" style={{ color: DIFF_STYLE[result.difficulty].color }}>
+  // ── Fin de partida: «Juego finalizado» → ver mis tiquetes (sale el recibo) ─────────────────────────────────────────────────
+  if (phase === 'over' && result)
+    return (
+      <div className="arcade-frame flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-6 text-center text-white">
+        <GameEnd game="Nave Caribe" score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} record={result.record} onPrizes={onPrizes} onAgain={() => setPhase('menu')}>
+          <p className="font-arcade mt-1 text-[9px] uppercase" style={{ color: DIFF_STYLE[result.difficulty].color }}>
             {DIFFICULTIES[result.difficulty].name} · {multLabel(DIFFICULTIES[result.difficulty].mult)}
           </p>
-          <div className="mt-4">
-            <TicketReceipt game="Nave Caribe" score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} onPrizes={onPrizes} />
-          </div>
-          {result.picked > 0 && (
-            <p className="text-[12.5px] text-[#9fb3ff]">
-              Recogiste {result.picked} {result.picked === 1 ? 'premio' : 'premios'} del camino
-            </p>
-          )}
-          {result.pending && <p className="mt-2 text-[12px] text-[#9fb3ff]">Verificando tu partida…</p>}
+          {result.pending && <p className="mt-1 text-[12px] text-[#9fb3ff]">Verificando tu partida…</p>}
           {!result.pending && result.rankWeek ? (
-            <button onClick={onRanking} className="mx-auto mt-1 min-h-11 text-[13px] font-bold text-[#4de1ff] underline">
+            <button onClick={onRanking} className="mx-auto min-h-11 text-[13px] font-bold text-[#4de1ff] underline">
               Puesto #{result.rankWeek} esta semana · ver ranking
             </button>
           ) : null}
-          {!result.pending && !result.ranked && (
-            <p className="mx-auto mt-1 max-w-[280px] text-[11.5px] leading-snug text-[#9fb3ff]">
-              Esta partida no entra al ranking (sin conexión). Tus puntos de premio sí se guardaron.
-            </p>
-          )}
-        </>
-      ) : (
-        <>
-          <h3 className="font-arcade arcade-title mt-1 text-[26px] leading-[1.3]">
-            NAVE
-            <br />
-            CARIBE
-          </h3>
-          <p className="font-arcade arcade-blink mt-4 text-[10px] text-[#00f0ff]">INSERT COIN</p>
-          <p className="mx-auto mt-1 max-w-[300px] text-[13.5px] leading-snug text-[#c8d3ff]">
-            Arrastra la nave: dispara sola. Destruye los círculos y esquívalos: la partida no se acaba hasta que te quedes sin vidas.
-          </p>
-          <ul className="mx-auto mt-4 flex w-full max-w-[320px] flex-col gap-2 text-left text-[13px]">
-            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#c9ffdc] to-[#0a7d3e] text-[18px] font-extrabold text-white">+</span>
-              <span>
-                <b className="text-[#5dff9b]">Arma:</b> los premios verdes mejoran tu nave: más cañones y más disparos (hasta {MAX_WEAPON} niveles).
-              </span>
-            </li>
-            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffe6b8] to-[#b34d00] text-[16px] text-white">⚡</span>
-              <span>
-                <b className="text-[#ffb347]">Rápido:</b> los naranjas aceleran tu disparo por unos segundos.
-              </span>
-            </li>
-            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffd0b0] to-[#7d1f0a] text-[16px] text-white">!</span>
-              <span>
-                <b className="text-[#ff9a6b]">Cañoneros:</b> los naranjas te disparan. Esquiva sus tiros y destrúyelos: valen mucho. Cada oleada llega más fuerte.
-              </span>
-            </li>
-            <li className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#c5adff] to-[#2a1170] text-[17px] text-white">★</span>
-              <span>
-                <b className="text-[#c5adff]">Jefe:</b> al terminar la oleada 5 llega un jefe enorme. Si lo derrotas, ganas una vida y sigues con la oleada 6… y cada jefe es más duro.
-              </span>
-            </li>
-          </ul>
-          <p className="mt-3 text-[12px] leading-snug text-[#9fb3ff]">Un golpe te quita una vida y un nivel de arma.</p>
-          <p className="mt-2 text-[12.5px] font-semibold text-[#9fb3ff]">
-            Récord: {best} · Hoy puedes ganar {daily} pts más
-          </p>
-        </>
-      )}
-      {!online && (
-        <p className="mx-auto mt-3 max-w-[310px] rounded-2xl bg-white/[0.07] px-3 py-2 text-[12.5px] leading-snug text-[#c8d3ff]">
-          <b className="text-white">Sin conexión:</b> puedes jugar igual. Tus puntos de premio se guardan en este celular; la partida no entra al ranking.
-        </p>
-      )}
+        </GameEnd>
+        <button onClick={onExit} className="font-arcade mx-auto mt-3 min-h-11 px-4 text-[9px] text-[#9fb3ff] underline underline-offset-4">
+          SALIR DEL ARCADE
+        </button>
+      </div>
+    )
+
+  // ── Menú: igual de sencillo que los otros juegos (título, una frase, nivel y moneda) ──────────────────────────────────────────
+  return (
+    <div className="arcade-frame flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-6 text-center text-white">
+      <h3 className="font-arcade arcade-title text-[24px] leading-[1.3]">
+        NAVE
+        <br />
+        CARIBE
+      </h3>
+      <p className="mx-auto mt-3 max-w-[28ch] text-[13.5px] leading-snug text-[#e8ffff]">Arrastra la nave: dispara sola. Destruye los círculos, esquiva los tiros y recoge los premios verdes.</p>
       <DifficultyPicker />
-      <div className="mt-6">
+      <div className="mt-5">
         <CoinSlot onStart={start} />
       </div>
-      <button onClick={onExit} className="font-arcade mx-auto mt-2 min-h-11 px-4 text-[9px] text-[#9fb3ff] underline underline-offset-4">
+      {!online && <p className="mx-auto mt-3 max-w-[280px] text-[11.5px] leading-snug text-[#9fb3ff]">Sin conexión: juegas igual y tus tiquetes se guardan en este celular.</p>}
+      <button onClick={onExit} className="font-arcade mx-auto mt-3 min-h-11 px-4 text-[9px] text-[#9fb3ff] underline underline-offset-4">
         SALIR DEL ARCADE
       </button>
     </div>
