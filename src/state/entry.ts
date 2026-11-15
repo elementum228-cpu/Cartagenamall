@@ -22,10 +22,14 @@ export function doorWillShow(path = typeof location === 'undefined' ? '/' : loca
 
 /**
  * ¿Se aplaza el mundo 3D hasta que la persona toque la puerta? Construir el mundo completo detrás del portón deja el teléfono sin
- * poder responder a los toques (en gama baja, segundos). Así que, salvo en equipos potentes, el 3D empieza a construirse al tercer toque
- * y el portón espera a que esté listo para dejarlo pasar. Sin portón (ya entró, otra página), nada se aplaza.
+ * poder responder a los toques (en gama baja, segundos). Así que en gama baja y en celulares de gama media el 3D empieza a construirse
+ * al tercer toque y el portón espera a que esté listo para dejarlo pasar. Los computadores y los equipos potentes lo construyen detrás
+ * del portón, como siempre. Sin portón (ya entró, otra página), nada se aplaza.
  */
-export const shouldDeferWorld = (tier: Tier, doorShows: boolean) => doorShows && tier !== 'high'
+export const shouldDeferWorld = (tier: Tier, doorShows: boolean, phone = true) => doorShows && (tier === 'low' || (tier === 'medium' && phone))
+
+/** ¿Es un celular? (pantalla táctil y menor a 768 px). Un computador de gama media construye el 3D sin problema detrás del portón. */
+export const isPhone = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches && Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight) < 768
 
 /**
  * Estado de la entrada: `doorDone` es verdadero cuando el portón de bienvenida ya terminó (o no hay portón porque la persona
@@ -35,7 +39,7 @@ export const shouldDeferWorld = (tier: Tier, doorShows: boolean) => doorShows &&
 export const useEntry = create<{ doorDone: boolean; setDoorDone: (v: boolean) => void; worldGo: boolean; setWorldGo: (v: boolean) => void; worldReady: boolean; setWorldReady: (v: boolean) => void }>()((set) => ({
   doorDone: false,
   setDoorDone: (doorDone) => set({ doorDone }),
-  worldGo: !shouldDeferWorld(detectProfile().tier, doorWillShow()),
+  worldGo: !shouldDeferWorld(detectProfile().tier, doorWillShow(), isPhone()),
   setWorldGo: (worldGo) => set({ worldGo }),
   worldReady: false,
   setWorldReady: (worldReady) => set({ worldReady }),

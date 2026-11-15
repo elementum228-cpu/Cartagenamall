@@ -3,10 +3,10 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { watchAppHeight } from './lib/appHeight'
 import { detectProfile, shouldPreload3D } from './lib/deviceProfile'
-import { doorWillShow, shouldDeferWorld } from './state/entry'
+import { doorWillShow, isPhone, shouldDeferWorld } from './state/entry'
 
 // Con portón y un equipo que no es potente, el mundo espera al tercer toque (ver state/entry): sus bytes se piden en reposo con <link rel=prefetch>.
-const deferWorld = shouldDeferWorld(detectProfile().tier, doorWillShow())
+const deferWorld = shouldDeferWorld(detectProfile().tier, doorWillShow(), isPhone())
 
 // Dos aplicaciones del mismo código: la completa y la versión de prueba (build con VITE_DEMO=1).
 // La condición se resuelve al compilar: cada build solo incluye la que le toca.

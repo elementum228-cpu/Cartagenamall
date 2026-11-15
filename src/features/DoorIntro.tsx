@@ -5,7 +5,7 @@ import { doorSoundOn, playCartagena, playKnockOnce, playOpen, setDoorSound, stop
 import { MALL } from '../config/mall'
 import { detectProfile } from '../lib/deviceProfile'
 import { isLiteDoor, median } from '../lib/doorMode'
-import { useEntry } from '../state/entry'
+import { isPhone, shouldDeferWorld, useEntry } from '../state/entry'
 import { useUI } from '../state/ui'
 import { useSeason } from '../state/season'
 import { startTour, tourDone } from './tourState'
@@ -39,7 +39,7 @@ const TIMELINES = {
   reduce: { open: 0, cartagena: 0, enter: 0, throughAfter: 0, doneAfter: 400 },
 }
 /** Lo máximo que el portón espera al mundo 3D antes de dejar pasar de todos modos (ms). */
-const MAX_WORLD_WAIT = 9000
+const MAX_WORLD_WAIT = 6000
 const HINTS = [`Toca la puerta ${KNOCKS} veces para entrar`, '¡Otra vez!', '¡Una más!']
 const EASE = 'cubic-bezier(0.65, 0, 0.25, 1)'
 
@@ -140,9 +140,11 @@ export function DoorIntro({ auto }: { auto: boolean }) {
       return ui.focus?.kind === 'enter' && ui.overview && !ui.selectedSpaceId && !ui.openStoreId && !ui.courtOpen
     }
     const waitStart = tl.enter
+    // un equipo potente ya trae el mundo en marcha desde el arranque: apenas se le espera; en los demás, hasta que esté listo (con tope)
+    const maxWait = shouldDeferWorld(detectProfile().tier, true, isPhone()) ? MAX_WORLD_WAIT : 1500
     const poll = (since: number) => {
       const waited = performance.now() - since
-      if (!useEntry.getState().worldReady && waited < MAX_WORLD_WAIT) {
+      if (!useEntry.getState().worldReady && waited < maxWait) {
         if (waited > 900) setWaiting(true)
         timers.current.push(window.setTimeout(() => poll(since), 120))
         return

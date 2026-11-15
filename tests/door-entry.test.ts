@@ -4,12 +4,15 @@ import { doorWillShow, isHomePath, shouldDeferWorld } from '../src/state/entry'
 
 describe('entrada: el 3D espera al portón en equipos que no son potentes', () => {
   it('se aplaza solo si hay portón y el equipo no es de gama alta', () => {
-    expect(shouldDeferWorld('low', true)).toBe(true)
-    expect(shouldDeferWorld('medium', true)).toBe(true)
-    expect(shouldDeferWorld('high', true)).toBe(false)
+    expect(shouldDeferWorld('low', true, true)).toBe(true)
+    expect(shouldDeferWorld('low', true, false)).toBe(true)
+    expect(shouldDeferWorld('medium', true, true)).toBe(true) // celular de gama media
+    expect(shouldDeferWorld('medium', true, false)).toBe(false) // computador de gama media: lo construye detrás del portón
+    expect(shouldDeferWorld('high', true, true)).toBe(false)
+    expect(shouldDeferWorld('high', true, false)).toBe(false)
     // sin portón (ya entró en la sesión, o es otra página) nada se aplaza
     expect(shouldDeferWorld('low', false)).toBe(false)
-    expect(shouldDeferWorld('medium', false)).toBe(false)
+    expect(shouldDeferWorld('medium', false, true)).toBe(false)
   })
   it('el portón solo sale en la portada y una vez por sesión', () => {
     expect(isHomePath('/', '/')).toBe(true)
