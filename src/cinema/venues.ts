@@ -18,6 +18,8 @@ export interface ChainDirectory {
   id: ChainId
   name: string
   color: string
+  /** Logo oficial optimizado (en /public/brands). */
+  logo: string
   /** Cartelera oficial de la cadena en Cartagena. */
   url: string
   venues: Venue[]
@@ -37,7 +39,7 @@ const VENUES: Partial<Record<ChainId, Venue[]>> = {
   ],
 }
 
-export const CINEMA_DIRECTORY: ChainDirectory[] = CHAINS.map((c) => ({ id: c.id, name: c.name, color: c.color, url: URLS[c.id], venues: VENUES[c.id] ?? [] }))
+export const CINEMA_DIRECTORY: ChainDirectory[] = CHAINS.map((c) => ({ id: c.id, name: c.name, color: c.color, logo: `${import.meta.env.BASE_URL}brands/${c.id}.webp`, url: URLS[c.id], venues: VENUES[c.id] ?? [] }))
 
 /** A dónde lleva el botón de una película en una cadena: su enlace oficial si la administración lo cargó; si no, la cartelera de la cadena. */
 export function movieLink(chain: ChainId, links: Partial<Record<ChainId, string>> | undefined): { url: string; direct: boolean } {

@@ -15,9 +15,9 @@ export type ChainId = 'cine-colombia' | 'royal-films' | 'procinal'
 
 /** Las tres cadenas del cine. Los colores son de acento de la app (no logotipos). */
 export const CHAINS: { id: ChainId; name: string; color: string; tagline: string }[] = [
-  { id: 'cine-colombia', name: 'Cine Colombia', color: '#d7263d', tagline: 'Estrenos y cine para toda la familia' },
-  { id: 'royal-films', name: 'Royal Films', color: '#8a5cf6', tagline: 'Salas y funciones para disfrutar' },
-  { id: 'procinal', name: 'Procinal', color: '#0f9d8a', tagline: 'Tu cine en la ciudad' },
+  { id: 'cine-colombia', name: 'Cine Colombia', color: '#2a4a9c', tagline: 'Estrenos y cine para toda la familia' },
+  { id: 'royal-films', name: 'Royal Films', color: '#0a52d4', tagline: 'Salas y funciones para disfrutar' },
+  { id: 'procinal', name: 'Procinal', color: '#e11d2e', tagline: 'Tu cine en la ciudad' },
 ]
 
 /** Dominios oficiales de cada cadena: un enlace de película o de sala solo vale si es https de uno de ellos. */

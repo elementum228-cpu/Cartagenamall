@@ -20,8 +20,8 @@ export function ChainCard({ id, name, color, tagline, logo, children, href, hint
   return (
     <article className="overflow-hidden rounded-[22px] ring-1 ring-white/12" style={{ background: `linear-gradient(135deg, ${dark} 0%, color-mix(in srgb, ${color} 18%, ${C.night}) 55%, ${C.night} 100%)` }} aria-label={name}>
       <header className="flex items-center gap-3.5 p-4 pb-3.5">
-        <span className="grid size-[52px] shrink-0 place-items-center overflow-hidden rounded-2xl text-[19px] font-black text-white shadow-[0_6px_16px_-4px_rgba(0,0,0,.6)] ring-1 ring-white/25" style={{ background: `linear-gradient(145deg, ${color}, ${dark})`, letterSpacing: MARK[id].tracking }} aria-hidden>
-          {logo ? <img src={logo} alt="" className="size-full object-contain p-1.5" /> : MARK[id].letters}
+        <span className="grid size-[52px] shrink-0 place-items-center overflow-hidden rounded-2xl text-[19px] font-black text-white shadow-[0_6px_16px_-4px_rgba(0,0,0,.6)] ring-1 ring-white/30" style={{ background: logo ? '#fff' : `linear-gradient(145deg, ${color}, ${dark})`, letterSpacing: MARK[id].tracking }} aria-hidden>
+          {logo ? <img src={logo} alt="" width={52} height={52} loading="lazy" decoding="async" className="size-full object-contain p-1" /> : MARK[id].letters}
         </span>
         <div className="min-w-0 flex-1">
           <h4 className="text-[18px] leading-tight font-black tracking-tight">{name}</h4>

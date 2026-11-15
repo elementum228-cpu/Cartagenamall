@@ -255,7 +255,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
 
               <div className="mt-4 space-y-3">
                 {rows.map(({ chain, info, list, link, venues }) => (
-                  <ChainCard key={chain.id} id={chain.id as ChainId} name={info.name} color={info.color} tagline={info.tagline} href={link.url} hint={link.direct ? undefined : `Abre la cartelera de ${info.name} en Cartagena.`} venues={venues} live={chain.mode === 'auto' && !demo && list.length > 0}>
+                  <ChainCard key={chain.id} id={chain.id as ChainId} name={info.name} color={info.color} tagline={info.tagline} logo={CINEMA_DIRECTORY.find((d) => d.id === chain.id)?.logo} href={link.url} hint={link.direct ? undefined : `Abre la cartelera de ${info.name} en Cartagena.`} venues={venues} live={chain.mode === 'auto' && !demo && list.length > 0}>
                     {list.length ? (
                       <div className="flex flex-wrap gap-2">
                         {list.map((x) => (

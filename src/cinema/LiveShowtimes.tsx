@@ -10,7 +10,7 @@ import { OFFICIAL_CINEMAS } from './official'
 // de la cadena en una pestaña nueva. Sin datos de una cadena, se dice y se deja el enlace a su cartelera oficial.
 
 const GOLD = '#f3c969'
-const COLORS: Record<ProviderId, string> = { cinecolombia: '#d7263d', procinal: '#0f9d8a', royalfilms: '#8a5cf6' }
+const COLORS: Record<ProviderId, string> = { cinecolombia: '#2a4a9c', procinal: '#e11d2e', royalfilms: '#0a52d4' }
 /** Cada cuánto se vuelve a pedir (el servidor tiene su propia caché; esto solo mantiene la pantalla al día). */
 const REFRESH_MS = 5 * 60_000
 
