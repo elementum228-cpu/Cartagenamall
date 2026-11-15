@@ -16,7 +16,7 @@ import {
   type WeekSummary,
   type Winner,
 } from './board'
-import { liveRewards, useArcadeRewards } from './rewards'
+import { useLiveRewards } from './rewards'
 import { useArcade, type ArcadeRedemption } from './store'
 
 // Las pestañas «Ranking» y «Premios» del Arcade (se cargan junto con el juego, pero viven aparte para no mezclar el juego con las listas).
@@ -24,8 +24,7 @@ import { useArcade, type ArcadeRedemption } from './store'
 export function Prizes() {
   const points = useArcade((s) => s.points)
   const redemptions = useArcade((s) => s.redemptions)
-  const all = useArcadeRewards((s) => s.rewards)
-  const rewards = liveRewards(all)
+  const rewards = useLiveRewards()
   const [shown, setShown] = useState<ArcadeRedemption | null>(null)
   const [copied, setCopied] = useState(false)
   const redeem = (id: string) => {
@@ -54,7 +53,7 @@ export function Prizes() {
       {rewards.length === 0 && (
         <div className="rounded-2xl bg-white/[0.07] p-4 text-center text-white">
           <p className="text-[15px] font-extrabold">Muy pronto: premios de las tiendas</p>
-          <p className="mt-1 text-[12.5px] leading-snug text-[#c8d3ff]">Las tiendas están preparando descuentos y regalos para canjear con tus tiquetes. Sigue jugando y junta los tuyos.</p>
+          <p className="mt-1 text-[12.5px] leading-snug text-[#c8d3ff]">Los negocios del mall están preparando descuentos y regalos para canjear con tus tiquetes. Sigue jugando y junta los tuyos.</p>
         </div>
       )}
       {rewards.map((r) => {

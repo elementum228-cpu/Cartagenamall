@@ -1,4 +1,4 @@
-import { Gem, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
+import { Gamepad2, Gem, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
 import { BOAT_OF_STORE } from '../tourism/config'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +14,7 @@ import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { useUI } from '../state/ui'
 import { MAX_LOYALTY_STAMPS, MIN_LOYALTY_STAMPS, loyaltyOf } from '../state/passport'
 import { Countdown, btn, input } from '../ui/bits'
+import { MAX_REWARDS_PER_STORE, cleanRewards, newStoreReward, type StoreRewardDoc } from '../arcade/rewards'
 import { describeHideSpot } from '../promotions/hideSpot'
 import { HideSpotPicker } from './HideSpotPicker'
 import { MerchantShipEditor } from '../ship/MerchantShipEditor'
@@ -40,7 +41,7 @@ const TYPE_HELP: Record<PromotionType, string> = {
 
 const TYPE_ICON = { flash: Zap, normal: Tag, secret: Gem } as const
 
-type Mode = PromotionType | 'ship' | 'loyalty'
+type Mode = PromotionType | 'ship' | 'loyalty' | 'arcade'
 type Goal = 'sell' | 'visits' | 'loyalty'
 
 const GOALS: { id: Goal; name: string; icon: typeof Zap }[] = [
@@ -75,6 +76,11 @@ const CATALOG: { mode: Mode; goal: Goal; name: string; tag: string; help: string
     help: 'Premia compras recurrentes con un beneficio final.', meta: '4 min · Clientes recurrentes',
     how: 'Cada compra da un sello al cliente; al juntar los sellos canjea tu premio con un código. Tú defines cuántos y cuál.',
   },
+  {
+    mode: 'arcade', goal: 'visits', name: 'Premio del Arcade', tag: 'Atraer visitas', icon: Gamepad2,
+    help: 'Regala un premio a quien juega en la Zona Arcade y junta tiquetes.', meta: '2 min · Tú fijas los tiquetes',
+    how: 'Eliges qué regalas (un descuento, un producto, un servicio) y cuántos tiquetes pides. Quien los junte jugando lo canjea en el cuarto de recompensas y viene a tu tienda con un código.',
+  },
 ]
 
 export function MerchantPromotions({ store }: { store: Store }) {
@@ -86,7 +92,8 @@ export function MerchantPromotions({ store }: { store: Store }) {
   const [how, setHow] = useState<Mode | null>(null)
   const now = useNow()
   const liveOf = (t: PromotionType) => mine.filter((p) => p.type === t && isPromotionLive(p, now)).length
-  const isOn = (m: Mode) => (m === 'ship' ? shipOn : m === 'loyalty' ? loyaltyOf(store).active : liveOf(m) > 0)
+  const arcadeOn = (store.arcadeRewards ?? []).some((r) => r.active)
+  const isOn = (m: Mode) => (m === 'ship' ? shipOn : m === 'loyalty' ? loyaltyOf(store).active : m === 'arcade' ? arcadeOn : liveOf(m) > 0)
   const activeCount = CATALOG.filter((c) => isOn(c.mode)).length
   const shownCards = CATALOG.filter((c) => goal === 'all' || c.goal === goal)
 
@@ -163,7 +170,8 @@ export function MerchantPromotions({ store }: { store: Store }) {
 
       {open === 'ship' && <MerchantShipEditor key={`b${store.id}`} store={store} />}
       {open === 'loyalty' && <LoyaltyEditor key={store.id} store={store} />}
-      {open && open !== 'ship' && open !== 'loyalty' && <PromotionForm key={open} store={store} initialType={open} onDone={() => setOpen(null)} />}
+      {open === 'arcade' && <ArcadeRewardsEditor key={`a${store.id}`} store={store} />}
+      {open && open !== 'ship' && open !== 'loyalty' && open !== 'arcade' && <PromotionForm key={open} store={store} initialType={open} onDone={() => setOpen(null)} />}
 
       {mine.length > 0 && (
         <div className="space-y-2">
@@ -180,6 +188,79 @@ export function MerchantPromotions({ store }: { store: Store }) {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Premios del Arcade del negocio: lo que regala a quien juega en la Zona Arcade del mall y junta tiquetes. El negocio decide qué regala y
+ * cuántos tiquetes pide; el jugador canjea y recibe un código que muestra en la tienda.
+ */
+function ArcadeRewardsEditor({ store }: { store: Store }) {
+  const upsertStore = useCatalog((s) => s.upsertStore)
+  const toast = useUI((s) => s.toast)
+  const saved = store.arcadeRewards ?? []
+  const [list, setList] = useState<StoreRewardDoc[]>(saved.length ? saved : [newStoreReward()])
+  const dirty = JSON.stringify(cleanRewards(list)) !== JSON.stringify(saved)
+  const patch = (id: string, p: Partial<StoreRewardDoc>) => setList((l) => l.map((r) => (r.id === id ? { ...r, ...p } : r)))
+  return (
+    <section className="space-y-3 rounded-3xl border border-line bg-card p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand" aria-hidden>
+          <Gamepad2 className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold">Premios del Arcade</p>
+          <p className="text-xs text-ink-soft">
+            Quien juega en la Zona Arcade del mall junta tiquetes y los canjea por premios. Tú decides qué regalas (un descuento, un producto, un servicio) y cuántos tiquetes pides. Al canjear, la persona recibe un código para mostrarte en tu tienda.
+          </p>
+        </div>
+      </div>
+      <ul className="space-y-3">
+        {list.map((r) => (
+          <li key={r.id} className="space-y-2.5 rounded-2xl border border-line bg-white p-3">
+            <div className="flex items-start gap-2">
+              <input className={input} maxLength={80} value={r.title} onChange={(e) => patch(r.id, { title: e.target.value })} placeholder="Premio: 20 % de descuento, una porción de costillas…" aria-label="Premio" />
+              <button className={btn.icon} onClick={() => setList((l) => l.filter((x) => x.id !== r.id))} aria-label="Quitar este premio">
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+            <textarea className={`${input} min-h-16`} maxLength={200} value={r.detail} onChange={(e) => patch(r.id, { detail: e.target.value })} placeholder="Condiciones (opcional): días, horarios, restricciones…" aria-label="Condiciones" />
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-ink-soft">Tiquetes que pides</span>
+                <input className={input} inputMode="numeric" value={r.cost || ''} onChange={(e) => patch(r.id, { cost: Number(e.target.value.replace(/\D/g, '').slice(0, 6)) || 0 })} placeholder="Ej.: 80" />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-ink-soft">Válido hasta (opcional)</span>
+                <input className={input} type="date" value={r.until} onChange={(e) => patch(r.id, { until: e.target.value })} />
+              </label>
+            </div>
+            <label className="flex min-h-10 items-center gap-2 text-sm font-semibold">
+              <input type="checkbox" className="size-5 accent-brand" checked={r.active} onChange={(e) => patch(r.id, { active: e.target.checked })} />
+              Visible en el Arcade
+            </label>
+            {(!r.title.trim() || r.cost < 1) && <p className="text-xs text-amber-700">Escribe qué regalas y cuántos tiquetes pides para que se publique.</p>}
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap items-center gap-2">
+        <button className={btn.secondary} disabled={list.length >= MAX_REWARDS_PER_STORE} onClick={() => setList((l) => [...l, newStoreReward()])}>
+          + Otro premio
+        </button>
+        <button
+          className={btn.primary}
+          disabled={!dirty}
+          onClick={() => {
+            const clean = cleanRewards(list)
+            upsertStore({ ...store, arcadeRewards: clean })
+            setList(clean.length ? clean : [newStoreReward()])
+            toast(clean.length ? 'Premios del Arcade guardados.' : 'Quitaste todos los premios del Arcade.', 'success')
+          }}
+        >
+          Guardar premios
+        </button>
+      </div>
+    </section>
   )
 }
 

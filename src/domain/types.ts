@@ -146,6 +146,8 @@ export interface Store {
   interior?: boolean
   /** Tarjeta de sellos: cada compra da un sello; al llenarla se canjea este premio. */
   loyalty?: { stamps: number; reward: string; active: boolean }
+  /** Premios del Arcade: lo que el negocio regala a quien junta tiquetes jugando (él fija cuántos tiquetes pide). */
+  arcadeRewards?: { id: string; title: string; detail: string; cost: number; active: boolean; until: string }[]
 }
 
 export interface Variant {

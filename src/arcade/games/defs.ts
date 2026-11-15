@@ -81,6 +81,9 @@ export interface CrabsState {
   combo: number
   best: number
   pops: Pop[]
+  /** Mazos que golpean donde se tocó, y destellos de los aciertos. */
+  mallets: { x: number; y: number; age: number }[]
+  bursts: { x: number; y: number; age: number; color: string }[]
   shake: number
   seed: number
 }
@@ -91,77 +94,133 @@ function rnd(s: { seed: number }) {
 }
 
 function drawCrab(ctx: CanvasRenderingContext2D, x: number, y: number, kind: CrabKind, k: number, t: number) {
-  const body = kind === 'gold' ? '#ffcf3d' : kind === 'octo' ? '#7a4fd1' : '#e0525f'
-  const light = kind === 'gold' ? '#fff0a8' : kind === 'octo' ? '#b99cff' : '#ff9aa6'
+  const body = kind === 'gold' ? '#ffc72e' : kind === 'octo' ? '#7a4fd1' : '#e0414f'
+  const dark = kind === 'gold' ? '#b8860b' : kind === 'octo' ? '#4a2a8f' : '#8f1f2b'
+  const light = kind === 'gold' ? '#fff3a8' : kind === 'octo' ? '#c3a8ff' : '#ff9aa6'
   ctx.save()
-  ctx.translate(x, y - 34 * k)
+  ctx.translate(x, y - 38 * k)
   ctx.beginPath()
-  ctx.rect(-60, -80, 120, 80 + 34 * k - 6)
+  ctx.rect(-70, -96, 140, 96 + 38 * k - 5)
   ctx.clip()
-  const sway = Math.sin(t * 9) * 0.05
-  ctx.rotate(sway)
+  ctx.rotate(Math.sin(t * 9) * 0.05)
+  const grad = (cx: number, cy: number, r: number) => {
+    const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.1, cx, cy, r)
+    g.addColorStop(0, light)
+    g.addColorStop(0.45, body)
+    g.addColorStop(1, dark)
+    return g
+  }
+  ctx.lineWidth = 3
+  ctx.strokeStyle = '#07031a'
   if (kind === 'octo') {
-    ctx.fillStyle = body
-    ctx.beginPath()
-    ctx.ellipse(0, -6, 30, 28, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = light
-    ctx.beginPath()
-    ctx.ellipse(-9, -14, 8, 6, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.strokeStyle = body
-    ctx.lineWidth = 7
+    // pulpo malo: cabeza grande con cejas enojadas y tentáculos que se mueven
     ctx.lineCap = 'round'
-    for (const sx of [-1, 1]) {
+    for (const sx of [-1, 0, 1]) {
+      ctx.strokeStyle = dark
+      ctx.lineWidth = 8
       ctx.beginPath()
-      ctx.moveTo(sx * 22, 12)
-      ctx.quadraticCurveTo(sx * 40, 22 + Math.sin(t * 8) * 4, sx * 34, 38)
+      ctx.moveTo(sx * 16, 8)
+      ctx.quadraticCurveTo(sx * 34, 20 + Math.sin(t * 8 + sx) * 5, sx * 28, 40)
       ctx.stroke()
     }
-    // cara enojada: cejas
+    ctx.lineWidth = 3
     ctx.strokeStyle = '#07031a'
-    ctx.lineWidth = 4
+    ctx.fillStyle = grad(0, -8, 34)
     ctx.beginPath()
-    ctx.moveTo(-18, -14)
-    ctx.lineTo(-6, -8)
-    ctx.moveTo(18, -14)
-    ctx.lineTo(6, -8)
+    ctx.ellipse(0, -8, 32, 30, 0, 0, Math.PI * 2)
+    ctx.fill()
     ctx.stroke()
-  } else {
-    // pinzas
-    ctx.fillStyle = body
-    for (const sx of [-1, 1]) {
-      ctx.beginPath()
-      ctx.ellipse(sx * 36, -22 + Math.sin(t * 10 + sx) * 3, 15, 12, sx * 0.5, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#07031a'
-      ctx.beginPath()
-      ctx.moveTo(sx * 36, -22)
-      ctx.lineTo(sx * 46, -30)
-      ctx.lineTo(sx * 44, -18)
-      ctx.closePath()
-      ctx.fill()
-      ctx.fillStyle = body
-    }
-    ctx.fillStyle = body
-    ctx.beginPath()
-    ctx.ellipse(0, -6, 30, 24, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = light
-    ctx.beginPath()
-    ctx.ellipse(-8, -14, 9, 6, 0, 0, Math.PI * 2)
-    ctx.fill()
-    // ojos
     for (const sx of [-1, 1]) {
       ctx.fillStyle = '#fff'
       ctx.beginPath()
-      ctx.arc(sx * 11, -26, 7, 0, Math.PI * 2)
+      ctx.arc(sx * 12, -8, 8, 0, Math.PI * 2)
       ctx.fill()
+      ctx.stroke()
       ctx.fillStyle = '#07031a'
       ctx.beginPath()
-      ctx.arc(sx * 11, -25, 3.2, 0, Math.PI * 2)
+      ctx.arc(sx * 12, -6, 3.4, 0, Math.PI * 2)
       ctx.fill()
     }
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.moveTo(-24, -26)
+    ctx.lineTo(-6, -16)
+    ctx.moveTo(24, -26)
+    ctx.lineTo(6, -16)
+    ctx.stroke()
+  } else {
+    // pinzas que abren y cierran
+    for (const sx of [-1, 1]) {
+      const open = Math.sin(t * 10 + sx) * 0.25
+      ctx.save()
+      ctx.translate(sx * 38, -20)
+      ctx.rotate(sx * (0.5 + open))
+      ctx.fillStyle = grad(0, 0, 18)
+      ctx.beginPath()
+      ctx.ellipse(0, 0, 17, 13, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#07031a'
+      ctx.beginPath()
+      ctx.moveTo(sx * 4, -4)
+      ctx.lineTo(sx * 18, -12 - open * 12)
+      ctx.lineTo(sx * 16, 0)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
+    // patas
+    ctx.strokeStyle = dark
+    ctx.lineWidth = 4
+    ctx.lineCap = 'round'
+    for (const sx of [-1, 1])
+      for (const j of [0, 1, 2]) {
+        ctx.beginPath()
+        ctx.moveTo(sx * 20, 6 + j * 4)
+        ctx.lineTo(sx * (34 + j * 4), 16 + j * 5 + Math.sin(t * 12 + j) * 2)
+        ctx.stroke()
+      }
+    // caparazón
+    ctx.lineWidth = 3
+    ctx.strokeStyle = '#07031a'
+    ctx.fillStyle = grad(0, -4, 34)
+    ctx.beginPath()
+    ctx.ellipse(0, -2, 33, 25, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+    // manchitas
+    ctx.fillStyle = dark
+    for (const [dx, dy] of [[-14, 6], [10, 8], [0, 12]]) {
+      ctx.beginPath()
+      ctx.arc(dx, dy, 2.6, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // ojos en tallos
+    for (const sx of [-1, 1]) {
+      ctx.strokeStyle = dark
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.moveTo(sx * 11, -20)
+      ctx.lineTo(sx * 12, -30)
+      ctx.stroke()
+      ctx.strokeStyle = '#07031a'
+      ctx.lineWidth = 2.5
+      ctx.fillStyle = '#fff'
+      ctx.beginPath()
+      ctx.arc(sx * 12, -34, 8, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#07031a'
+      ctx.beginPath()
+      ctx.arc(sx * 12 + 1, -33, 3.4, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // sonrisa
+    ctx.strokeStyle = '#07031a'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(0, -6, 9, 0.15 * Math.PI, 0.85 * Math.PI)
+    ctx.stroke()
   }
   ctx.restore()
 }
@@ -181,6 +240,8 @@ export const CRABS: GameDef<CrabsState> = {
     combo: 0,
     best: 0,
     pops: [],
+    mallets: [],
+    bursts: [],
     shake: 0,
     seed: (Date.now() & 0xffffffff) >>> 0,
   }),
@@ -200,6 +261,10 @@ export const CRABS: GameDef<CrabsState> = {
     }
     for (const p of s.pops) p.age += dt
     s.pops = s.pops.filter((p) => p.age < 0.8)
+    for (const m of s.mallets) m.age += dt
+    s.mallets = s.mallets.filter((m) => m.age < 0.3)
+    for (const b of s.bursts) b.age += dt
+    s.bursts = s.bursts.filter((b) => b.age < 0.5)
     s.nextSpawn -= dt
     if (s.nextSpawn <= 0) {
       const level = Math.min(1, s.elapsed / TIME)
@@ -217,12 +282,14 @@ export const CRABS: GameDef<CrabsState> = {
   },
   pointer(s, kind, x, y) {
     if (kind !== 'down' || s.left <= 0) return
+    s.mallets.push({ x, y, age: 0 })
     for (const h of s.holes) {
       if (!h.kind || h.hit) continue
       if (Math.abs(x - h.x) < 52 && y < h.y + 14 && y > h.y - 84) {
         h.hit = true
         const kindHit = h.kind
         h.age = Math.max(h.age, h.dur - 0.12) // se hunde enseguida
+        s.bursts.push({ x: h.x, y: h.y - 30, age: 0, color: kindHit === 'octo' ? '#ff5c8a' : kindHit === 'gold' ? '#ffe36b' : '#7dffa6' })
         if (kindHit === 'octo') {
           s.score = Math.max(0, s.score - 20)
           s.combo = 0
@@ -244,63 +311,160 @@ export const CRABS: GameDef<CrabsState> = {
   },
   draw(s, ctx, t) {
     const sx = s.shake > 0 ? (Math.random() - 0.5) * 8 : 0
+    const txt = (v: string, x: number, y: number, size: number, fill: string, align: CanvasTextAlign = 'left') => text(ctx, v, x, y, size, fill, align)
     ctx.save()
     ctx.translate(sx, 0)
-    // cielo y mar
-    const sky = ctx.createLinearGradient(0, 0, 0, 150)
-    sky.addColorStop(0, '#1b2a6b')
-    sky.addColorStop(1, '#ff8a5c')
+    // ── atardecer caribeño: cielo, sol con reflejo, palmeras de silueta y mar ──
+    const sky = ctx.createLinearGradient(0, 0, 0, 170)
+    sky.addColorStop(0, '#2a1a73')
+    sky.addColorStop(0.55, '#c8456f')
+    sky.addColorStop(1, '#ffa05c')
     ctx.fillStyle = sky
-    ctx.fillRect(-10, 0, CW + 20, 150)
-    ctx.fillStyle = '#ffd36b'
+    ctx.fillRect(-10, 0, CW + 20, 170)
+    ctx.fillStyle = '#ffe08a'
     ctx.beginPath()
-    ctx.arc(CW - 70, 112, 30, 0, Math.PI * 2)
+    ctx.arc(CW - 76, 128, 32, 0, Math.PI * 2)
     ctx.fill()
-    ctx.fillStyle = '#1f6f8f'
-    ctx.fillRect(-10, 120, CW + 20, 40)
-    // arena
-    ctx.fillStyle = '#e6c88c'
-    ctx.fillRect(-10, 150, CW + 20, CH)
-    ctx.fillStyle = '#d4b377'
-    for (let i = 0; i < 26; i++) ctx.fillRect(((i * 97) % CW), 165 + ((i * 53) % 390), 6, 2)
-    // agujeros
-    for (const h of s.holes) {
-      ctx.fillStyle = '#7a5b30'
+    ctx.fillStyle = 'rgba(255,224,138,.35)'
+    ctx.beginPath()
+    ctx.arc(CW - 76, 128, 44, 0, Math.PI * 2)
+    ctx.fill()
+    const sea = ctx.createLinearGradient(0, 136, 0, 180)
+    sea.addColorStop(0, '#1d7ea0')
+    sea.addColorStop(1, '#0f4d73')
+    ctx.fillStyle = sea
+    ctx.fillRect(-10, 136, CW + 20, 44)
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = 'rgba(255,255,255,.28)'
+      ctx.fillRect(40 + i * 56 + Math.sin(t * 1.5 + i) * 6, 148 + (i % 3) * 9, 22, 2)
+    }
+    ctx.fillStyle = '#1a0f45'
+    for (const px of [34, CW - 34]) {
+      ctx.fillRect(px - 2, 84, 5, 56)
+      for (let k = 0; k < 5; k++) {
+        const a = -0.9 + k * 0.45
+        ctx.beginPath()
+        ctx.ellipse(px + Math.sin(a) * 15, 84 - Math.cos(a) * 7, 15, 4.5, a, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+    // ── arena ──
+    const sand = ctx.createLinearGradient(0, 176, 0, CH)
+    sand.addColorStop(0, '#f1d49b')
+    sand.addColorStop(1, '#d4a965')
+    ctx.fillStyle = sand
+    ctx.fillRect(-10, 176, CW + 20, CH)
+    ctx.fillStyle = 'rgba(160,110,50,.35)'
+    for (let i = 0; i < 28; i++) ctx.fillRect((i * 97) % CW, 190 + ((i * 53) % 360), 7, 2)
+    // conchitas
+    for (const [cx, cy] of [[22, 262], [CW - 24, 390], [30, 520], [CW - 30, 250]]) {
+      ctx.fillStyle = '#fff3e0'
       ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 6, 50, 20, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#2c1b0a'
-      ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 4, 42, 15, 0, 0, Math.PI * 2)
+      ctx.arc(cx, cy, 6, Math.PI, 0)
       ctx.fill()
     }
-    // cangrejos (de atrás hacia adelante para que se tapen bien)
+    // ── agujeros (montículos de arena) ──
+    for (const h of s.holes) {
+      ctx.fillStyle = '#9b6e32'
+      ctx.beginPath()
+      ctx.ellipse(h.x, h.y + 8, 56, 23, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#c99a55'
+      ctx.beginPath()
+      ctx.ellipse(h.x, h.y + 5, 52, 20, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#2a1a08'
+      ctx.beginPath()
+      ctx.ellipse(h.x, h.y + 4, 43, 15, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // ── cangrejos, con el borde del agujero por delante ──
     for (const h of s.holes) {
       if (!h.kind) continue
       const u = h.age / h.dur
       const k = u < 0.18 ? u / 0.18 : u > 0.82 ? Math.max(0, (1 - u) / 0.18) : 1
       drawCrab(ctx, h.x, h.y, h.kind, k, t)
-      // borde frontal del agujero encima del cangrejo
-      ctx.fillStyle = '#7a5b30'
+      ctx.fillStyle = '#c99a55'
       ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 12, 50, 12, 0, 0, Math.PI)
+      ctx.ellipse(h.x, h.y + 12, 52, 11, 0, 0, Math.PI)
       ctx.fill()
+      ctx.strokeStyle = '#9b6e32'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.ellipse(h.x, h.y + 12, 52, 11, 0, 0, Math.PI)
+      ctx.stroke()
     }
+    // ── destellos de acierto y mazos ──
+    for (const b of s.bursts) {
+      const u = b.age / 0.5
+      ctx.globalAlpha = 1 - u
+      ctx.strokeStyle = b.color
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.arc(b.x, b.y, 12 + u * 38, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.fillStyle = b.color
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2
+        ctx.fillRect(b.x + Math.cos(a) * (10 + u * 46) - 2.5, b.y + Math.sin(a) * (10 + u * 46) - 2.5, 5, 5)
+      }
+    }
+    ctx.globalAlpha = 1
+    for (const m of s.mallets) {
+      const u = m.age / 0.3
+      const ang = -1.0 + Math.min(1, u * 3) * 1.15
+      ctx.save()
+      ctx.globalAlpha = 1 - Math.max(0, u - 0.5) * 2
+      ctx.translate(m.x + 8, m.y - 6)
+      ctx.rotate(ang)
+      ctx.fillStyle = '#8a5a2b'
+      ctx.fillRect(-4, -4, 8, 62)
+      ctx.strokeStyle = '#07031a'
+      ctx.lineWidth = 2
+      ctx.strokeRect(-4, -4, 8, 62)
+      ctx.fillStyle = '#ffd34e'
+      ctx.fillRect(-22, -24, 44, 26)
+      ctx.strokeRect(-22, -24, 44, 26)
+      ctx.fillStyle = '#ffeb99'
+      ctx.fillRect(-18, -21, 36, 6)
+      ctx.restore()
+    }
+    ctx.globalAlpha = 1
     for (const p of s.pops) {
       ctx.globalAlpha = 1 - p.age / 0.8
-      text(ctx, p.text, p.x, p.y - p.age * 40, 14, p.color, 'center')
+      txt(p.text, p.x, p.y - p.age * 44, 15, p.color, 'center')
     }
     ctx.globalAlpha = 1
     ctx.restore()
-    // marcador
-    ctx.fillStyle = 'rgba(7,3,26,.72)'
-    ctx.fillRect(0, 0, CW, 54)
-    text(ctx, `TIQUETES ${liveTickets(s.score)}`, 12, 20, 11, '#ffd400')
-    text(ctx, `${Math.ceil(s.left)}s`, CW - 12, 20, 12, s.left < 10 ? '#ff5c8a' : '#00f0ff', 'right')
+    // ── luces de feria a los lados del campo ──
+    for (let i = 0; i < 16; i++) {
+      const y = 62 + i * 31
+      const on = (i + Math.floor(t * 7)) % 3 === 0
+      ctx.fillStyle = on ? ['#ffd400', '#ff2bd6', '#00f0ff'][i % 3] : '#3a2a70'
+      ctx.beginPath()
+      ctx.arc(7, y, 3, 0, Math.PI * 2)
+      ctx.arc(CW - 7, y, 3, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // ── marcador arriba: tiquetes, racha y tiempo ──
+    ctx.fillStyle = '#07031a'
+    ctx.fillRect(0, 0, CW, 50)
+    ctx.fillStyle = '#ff2bd6'
+    ctx.fillRect(0, 50, CW, 3)
+    txt('TIQUETES', 12, 15, 8, '#00f0ff')
+    txt(String(liveTickets(s.score)), 12, 34, 14, '#ffd400')
     const mult = Math.min(5, 1 + Math.floor(s.combo / 4))
-    text(ctx, s.combo > 1 ? `RACHA ${s.combo}  x${mult}` : 'RACHA 0', 12, 40, 9, '#7dffa6')
-    ctx.fillStyle = '#00f0ff'
-    ctx.fillRect(0, 51, (CW * s.left) / TIME, 3)
+    txt(s.combo > 1 ? `RACHA ${s.combo}` : 'RACHA', CW / 2, 15, 8, '#7dffa6', 'center')
+    // medidor de racha: cuatro aciertos suben el multiplicador
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = i < s.combo % 4 || mult === 5 ? '#7dffa6' : '#2a2160'
+      ctx.fillRect(CW / 2 - 38 + i * 20, 24, 17, 9)
+    }
+    txt(`x${mult}`, CW / 2, 41, 8, mult > 1 ? '#ffd400' : '#9fb3ff', 'center')
+    txt('TIEMPO', CW - 12, 15, 8, s.left < 10 ? '#ff5c8a' : '#00f0ff', 'right')
+    txt(`${Math.ceil(s.left)}s`, CW - 12, 34, 14, s.left < 10 ? '#ff5c8a' : '#ffffff', 'right')
+    ctx.fillStyle = s.left < 10 ? '#ff5c8a' : '#00f0ff'
+    ctx.fillRect(0, 47, (CW * s.left) / TIME, 3)
   },
   score: (s) => s.score,
   done: (s) => s.left <= 0,

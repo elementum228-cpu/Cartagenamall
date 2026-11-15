@@ -5,7 +5,7 @@ import { rewardCode } from '../state/passport'
 import { safeStorage } from '../state/storage'
 import { cleanNick, defaultNick, newPlayerId } from './board'
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from './engine'
-import { liveRewards, useArcadeRewards } from './rewards'
+import { currentLiveRewards } from './rewards'
 
 // Puntos del Arcade: cada partida de «Nave Caribe» suma puntos que la persona canjea por premios. Todo vive en este
 // dispositivo (igual que el pasaporte). Hay un tope por partida y por día para que nadie se lleve premios solo jugando
@@ -133,7 +133,7 @@ export const useArcade = create<ArcadeState>()(
       },
       redeem: (rewardId) => {
         // los premios son las promociones que las tiendas cargaron desde la administración (activas y sin vencer)
-        const reward = liveRewards(useArcadeRewards.getState().rewards).find((r) => r.id === rewardId)
+        const reward = currentLiveRewards().find((r) => r.id === rewardId)
         const s = get()
         if (!reward || s.points < reward.cost) return null
         const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.title, storeName: reward.storeName || undefined, cost: reward.cost, at: new Date().toISOString() }

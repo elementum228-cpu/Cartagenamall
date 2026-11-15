@@ -1,15 +1,14 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { safeStorage } from '../state/storage'
+import { useMemo } from 'react'
+import type { Store } from '../domain/types'
+import { useCatalog } from '../state/catalog'
 
-// Premios del Arcade que ofrecen las tiendas: la administración crea cada promoción («20 % de descuento», «una porción de costillas»…) con
-// su precio en tiquetes y quién la ofrece. Se guardan en el servidor (mall_settings «arcade_rewards») para que todos vean lo mismo y,
-// sin conexión, se recuerdan en este dispositivo.
+// Premios del Arcade: cada negocio crea los suyos en «Promociones» (Mi negocio → Premio del Arcade): qué regala y cuántos tiquetes pide.
+// Viven dentro de la tienda (store.arcadeRewards), así que se guardan y se sincronizan igual que el resto de sus datos y solo el
+// dueño (o la administración) puede cambiarlos. El Arcade los junta de todas las tiendas para el cuarto de recompensas.
 
 export interface StoreReward {
   id: string
   storeId: string
-  /** Nombre de la tienda al crearla (así el Arcade no necesita cargar el catálogo). */
   storeName: string
   title: string
   detail: string
@@ -20,24 +19,34 @@ export interface StoreReward {
   until: string
 }
 
+export type StoreRewardDoc = NonNullable<Store['arcadeRewards']>[number]
+
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
-export const newStoreReward = (): StoreReward => ({ id: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, storeId: '', storeName: '', title: '', detail: '', cost: 100, active: true, until: '' })
+export const MAX_REWARDS_PER_STORE = 8
+export const MAX_REWARD_COST = 100000
 
-/** Limpia lo que llega del servidor o del almacenamiento: solo promociones completas y con valores razonables. */
-export function cleanRewards(raw: unknown): StoreReward[] {
+export const newStoreReward = (): StoreRewardDoc => ({ id: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, title: '', detail: '', cost: 100, active: true, until: '' })
+
+/** Limpia los premios de una tienda: solo los completos y con valores razonables. */
+export function cleanRewards(raw: unknown): StoreRewardDoc[] {
   if (!Array.isArray(raw)) return []
-  const out: StoreReward[] = []
-  for (const r of raw.slice(0, 60)) {
+  const out: StoreRewardDoc[] = []
+  for (const r of raw.slice(0, MAX_REWARDS_PER_STORE)) {
     if (!r || typeof r !== 'object') continue
     const o = r as Record<string, unknown>
     const title = str(o.title, 80)
     const cost = Math.round(Number(o.cost))
-    if (!title || !Number.isFinite(cost) || cost < 1 || cost > 100000) continue
+    if (!title || !Number.isFinite(cost) || cost < 1 || cost > MAX_REWARD_COST) continue
     const until = typeof o.until === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.until) ? o.until : ''
-    out.push({ id: str(o.id, 40) || `r${out.length}`, storeId: str(o.storeId, 60), storeName: str(o.storeName, 60), title, detail: str(o.detail, 200), cost, active: o.active !== false, until })
+    out.push({ id: str(o.id, 40) || `r${out.length}`, title, detail: str(o.detail, 200), cost, active: o.active !== false, until })
   }
   return out
+}
+
+/** Todos los premios de las tiendas, con el nombre de quien los ofrece. */
+export function rewardsFromStores(stores: Pick<Store, 'id' | 'name' | 'arcadeRewards'>[]): StoreReward[] {
+  return stores.flatMap((s) => cleanRewards(s.arcadeRewards).map((r) => ({ ...r, id: `${s.id}:${r.id}`, storeId: s.id, storeName: s.name })))
 }
 
 /** Promociones que se pueden canjear hoy: activas y sin vencer. */
@@ -46,11 +55,11 @@ export function liveRewards(list: StoreReward[], today = new Date()): StoreRewar
   return list.filter((r) => r.active && (!r.until || r.until >= day))
 }
 
-interface RewardsState {
-  rewards: StoreReward[]
-  set: (rewards: StoreReward[]) => void
+/** Los premios que hoy se pueden canjear en el Arcade (de todas las tiendas). */
+export function useLiveRewards(): StoreReward[] {
+  const stores = useCatalog((s) => s.stores)
+  return useMemo(() => liveRewards(rewardsFromStores(stores)), [stores])
 }
 
-export const useArcadeRewards = create<RewardsState>()(
-  persist((set) => ({ rewards: [], set: (rewards) => set({ rewards: cleanRewards(rewards) }) }), { name: 'cm:arcade-rewards:v1', storage: safeStorage, partialize: (s) => ({ rewards: s.rewards }) as never }),
-)
+/** Lo mismo, sin React (para canjear). */
+export const currentLiveRewards = () => liveRewards(rewardsFromStores(useCatalog.getState().stores))

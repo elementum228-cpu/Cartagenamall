@@ -10,7 +10,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
-import { liveRewards, useArcadeRewards } from '../arcade/rewards'
+import { useLiveRewards } from '../arcade/rewards'
 import { useArcadeUi, type ArcadeGameId } from '../arcade/store'
 import { useUI } from '../state/ui'
 import { Person } from './Person'
@@ -527,7 +527,7 @@ const BEAM_GEO = (() => {
  */
 function RewardsGlow({ at, rot, reduceMotion }: { at: [number, number]; rot: number; reduceMotion: boolean }) {
   const night = useIsNight()
-  const live = liveRewards(useArcadeRewards((s) => s.rewards)).length
+  const live = useLiveRewards().length
   const label = useMemo(() => getGlassPill('Recompensas', { dot: '#f4cd79', sub: live > 0 ? `${live} ${live === 1 ? 'premio' : 'premios'} · toca para canjear` : 'Canjea tus tiquetes', dark: night }), [live, night])
   const beams = useRef<(THREE.Group | null)[]>([])
   const star = useRef<THREE.Group>(null)

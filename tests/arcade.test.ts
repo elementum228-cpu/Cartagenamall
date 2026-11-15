@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DIFFICULTIES, KIND_HP, MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, MAX_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
-import { cleanRewards, liveRewards, useArcadeRewards } from '../src/arcade/rewards'
+import { cleanRewards, liveRewards, rewardsFromStores } from '../src/arcade/rewards'
+import { useCatalog } from '../src/state/catalog'
 import { DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, awardFor, useArcade } from '../src/arcade/store'
 
 const still = { targetX: null, dir: 0 }
@@ -307,13 +308,13 @@ describe('puntos y premios del Arcade', () => {
   })
 
   it('registra partidas, récord y canjea con código sin dejar saldo negativo', () => {
-    useArcadeRewards.getState().set([{ id: 'p1', storeId: 's1', storeName: 'Tienda', title: '20 % de descuento', detail: '', cost: 100, active: true, until: '' }])
+    seedRewards([{ id: 'p1', title: '20 % de descuento', detail: '', cost: 100, active: true, until: '' }])
     useArcade.setState({ points: 0, lifetime: 0, best: 0, plays: 0, earnedToday: 0, redemptions: [] })
     const r1 = useArcade.getState().finishRun(300)
     expect(r1).toMatchObject({ awarded: 30, record: true, capped: false })
-    expect(useArcade.getState().redeem('p1')).toBeNull() // 30 < 100
+    expect(useArcade.getState().redeem('s1:p1')).toBeNull() // 30 < 100
     useArcade.setState({ points: 120 })
-    const red = useArcade.getState().redeem('p1')!
+    const red = useArcade.getState().redeem('s1:p1')!
     expect(red.storeName).toBe('Tienda')
     expect(red.code).toMatch(/^CM-/)
     expect(useArcade.getState().points).toBe(20)
@@ -341,10 +342,15 @@ describe('monedas diarias', () => {
   })
 })
 
-describe('premios de las tiendas', () => {
-  it('limpia lo que llega y solo deja canjeables las activas y sin vencer', () => {
+/** Pone una tienda de prueba con estos premios del Arcade (cada negocio crea los suyos en sus promociones). */
+function seedRewards(rewards: { id: string; title: string; detail: string; cost: number; active: boolean; until: string }[]) {
+  useCatalog.setState({ stores: [{ id: 's1', name: 'Tienda', arcadeRewards: rewards } as never] })
+}
+
+describe('premios del Arcade de cada negocio', () => {
+  it('limpia lo que cada negocio carga y solo deja canjeables los activos y sin vencer', () => {
     const list = cleanRewards([
-      { id: 'a', title: '  Costillas ', cost: 60, storeName: 'Asados' },
+      { id: 'a', title: '  Costillas ', cost: 60 },
       { id: 'b', title: 'Sin precio', cost: 0 },
       { id: 'c', title: '', cost: 10 },
       { id: 'd', title: 'Apagado', cost: 5, active: false },
@@ -354,12 +360,20 @@ describe('premios de las tiendas', () => {
     ])
     expect(list.map((r) => r.id)).toEqual(['a', 'd', 'e', 'f'])
     expect(list[0].title).toBe('Costillas')
-    expect(liveRewards(list, new Date('2026-11-15T12:00:00')).map((r) => r.id)).toEqual(['a', 'f'])
+    const all = rewardsFromStores([{ id: 's9', name: 'Asados', arcadeRewards: list }])
+    expect(all[0]).toMatchObject({ id: 's9:a', storeId: 's9', storeName: 'Asados' })
+    expect(liveRewards(all, new Date('2026-11-15T12:00:00')).map((r) => r.id)).toEqual(['s9:a', 's9:f'])
   })
-  it('un premio apagado no se puede canjear', () => {
-    useArcadeRewards.getState().set([{ id: 'x', storeId: '', storeName: '', title: 'Apagado', detail: '', cost: 10, active: false, until: '' }])
+  it('un premio apagado no se puede canjear y el tiquete lo fija el negocio', () => {
+    seedRewards([
+      { id: 'x', title: 'Apagado', detail: '', cost: 10, active: false, until: '' },
+      { id: 'y', title: 'Un café', detail: '', cost: 45, active: true, until: '' },
+    ])
     useArcade.setState({ points: 500, redemptions: [] })
-    expect(useArcade.getState().redeem('x')).toBeNull()
+    expect(useArcade.getState().redeem('s1:x')).toBeNull()
+    const r = useArcade.getState().redeem('s1:y')!
+    expect(r.cost).toBe(45)
+    expect(useArcade.getState().points).toBe(455)
   })
 })
 

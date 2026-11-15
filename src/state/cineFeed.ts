@@ -99,6 +99,18 @@ export function mergePosterArt(movies: CineMovie[], posters: CineState['posters'
   })
 }
 
+/**
+ * Catálogo + carteles de la cartelera. Los carteles que la administración cargó en «Cartelera (carteles)» son las películas EN cartelera;
+ * el catálogo aporta las demás (las marcadas «Próximamente» van a esa pestaña) y completa a los carteles que se llaman igual con su
+ * sinopsis y tráiler. Una película del catálogo con el mismo título que un cartel manda (así se puede pasar a «Próximamente»).
+ */
+export function withPosters(base: { movies: CineMovie[]; shows: CineShow[] }, posters: CineState['posters']): { movies: CineMovie[]; shows: CineShow[] } {
+  const merged = mergePosterArt(base.movies, posters)
+  const have = new Set(merged.map((m) => normalizeTitle(m.title)))
+  const fromPosters = postersAsMovies(posters).movies.filter((m) => !have.has(normalizeTitle(m.title)))
+  return { ...base, movies: [...fromPosters, ...merged] }
+}
+
 /** Catálogo y funciones tal como se ven en la app (manual + automático, los carteles cargados, o el ejemplo si no hay nada). */
 export function useEffectiveCine() {
   const chains = useCine((s) => s.chains)
@@ -109,7 +121,7 @@ export function useEffectiveCine() {
   const posters = useCine((s) => s.posters)
   return useMemo(() => {
     const base = effectiveCine({ chains, movies, shows }, feed)
-    return withDemo(demo, base.movies.length ? { ...base, movies: mergePosterArt(base.movies, posters) } : postersAsMovies(posters))
+    return withDemo(demo, withPosters(base, posters))
   }, [chains, movies, shows, feed, posters, demo])
 }
 
