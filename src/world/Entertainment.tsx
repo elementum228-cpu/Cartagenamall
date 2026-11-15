@@ -9,6 +9,7 @@ import { getGlassPill } from './labelTexture'
 import { LABEL_PRIORITY } from './labels'
 import { GEO, PALETTE, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
+import { NeonRun, type NeonSeg } from './Neon'
 import { Person } from './Person'
 import { TRACK_SPACE } from '../config/mall'
 import { useCatalog } from '../state/catalog'
@@ -742,6 +743,13 @@ function ArcadeCabinet({ night }: { night: boolean }) {
   )
 }
 
+/** Neón sobre las murallas de la isla (norte, oeste y sur), con colores que recorren el arcoíris: más vida de noche. */
+const ENT_NEON: NeonSeg[] = [
+  { at: [0, 2.0, -HZ * 0.99 + 0.45], len: 20, axis: 'x', hue: 0 },
+  { at: [-HX * 0.99 + 0.45, 2.0, 0], len: 14, axis: 'z', hue: 0.33 },
+  { at: [0, 2.0, HZ * 0.99 - 0.45], len: 20, axis: 'x', hue: 0.66 },
+]
+
 export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
   const night = useIsNight()
   const label = useMemo(() => getGlassPill('Entretenimiento', { dot: '#e0558a', sub: 'Pista de karts y videojuegos', dark: night }), [night])
@@ -769,6 +777,7 @@ export function Entertainment({ reduceMotion }: { reduceMotion: boolean }) {
       <BridgeCrossers reduceMotion={reduceMotion} />
       <group position={[C.x, 0, C.z]}>
         <TrackSpace night={night} />
+        <NeonRun segs={ENT_NEON} reduceMotion={reduceMotion} />
         <ArcadeCabinet night={night} />
         <Karts reduceMotion={reduceMotion} />
         {VISITORS.map(([x, z, color, rot], i) => (

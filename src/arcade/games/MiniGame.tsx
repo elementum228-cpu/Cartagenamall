@@ -1,6 +1,6 @@
-import { Play as PlayIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { sfx, unlockArcadeAudio } from '../audio'
+import { sfx, startMusic, stopMusic, unlockArcadeAudio } from '../audio'
+import { CoinSlot } from '../CoinSlot'
 import { useArcade } from '../store'
 import { TicketReceipt } from '../TicketReceipt'
 import type { GameDef, MiniGameId } from './defs'
@@ -19,7 +19,9 @@ interface Result {
   total: number
 }
 
-export function MiniGame({ id, onPrizes }: { id: MiniGameId; onPrizes: () => void }) {
+export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPrizes: () => void; active?: boolean }) {
+  const activeRef = useRef(active)
+  activeRef.current = active
   const def = DEFS[id]
   const holder = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -57,7 +59,7 @@ export function MiniGame({ id, onPrizes }: { id: MiniGameId; onPrizes: () => voi
     let last = 0
     const tick = (now: number) => {
       raf.current = requestAnimationFrame(tick)
-      if (document.hidden || !state.current) {
+      if (document.hidden || !state.current || !activeRef.current) {
         last = 0
         return
       }
@@ -67,6 +69,7 @@ export function MiniGame({ id, onPrizes }: { id: MiniGameId; onPrizes: () => voi
       paint(now / 1000)
       if (def.done(state.current)) {
         cancelAnimationFrame(raf.current)
+        stopMusic()
         const score = def.score(state.current)
         const r = useArcade.getState().finishRun(score, false)
         sfx(r.record ? 'record' : 'over')
@@ -81,12 +84,23 @@ export function MiniGame({ id, onPrizes }: { id: MiniGameId; onPrizes: () => voi
     }
   }, [phase, def, fit, paint])
 
+  // al mirar los premios la partida queda en pausa y la música se calla
+  useEffect(() => {
+    if (phase !== 'play') return
+    if (!active) stopMusic()
+    else if (useArcade.getState().sound) startMusic()
+  }, [active, phase])
+
+  // la música se corta al salir del juego (cerrar, cambiar de pestaña o de juego)
+  useEffect(() => () => stopMusic(), [])
+
+  /** Empieza la partida (la moneda ya se insertó). */
   const start = () => {
     unlockArcadeAudio()
-    sfx('coin')
     state.current = def.create() as never
     setResult(null)
     setPhase('play')
+    if (useArcade.getState().sound) startMusic()
   }
 
   /** Posición del toque en coordenadas del campo. */
@@ -103,7 +117,7 @@ export function MiniGame({ id, onPrizes }: { id: MiniGameId; onPrizes: () => voi
   }
 
   return (
-    <div className="arcade-frame flex min-h-0 flex-col items-center gap-3 overflow-hidden px-3 py-3 text-center text-white">
+    <div className="arcade-frame flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden px-3 py-3 text-center text-white">
       <div ref={holder} className="relative w-full overflow-hidden border-[3px] border-[#07031a] bg-[#0a0d1f]" style={{ aspectRatio: `${def.W} / ${def.H}`, maxWidth: `calc((100dvh - 230px) * ${def.W / def.H})` }}>
         <canvas ref={canvas} className="block size-full touch-none select-none" onPointerDown={send('down')} onPointerMove={send('move')} onPointerUp={send('up')} onPointerCancel={send('up')} aria-label={`Juego: ${def.name}`} />
         {phase === 'menu' && (
@@ -111,15 +125,13 @@ export function MiniGame({ id, onPrizes }: { id: MiniGameId; onPrizes: () => voi
             <h3 className="font-arcade arcade-cyan text-[14px] leading-snug">{def.name.toUpperCase()}</h3>
             <p className="max-w-[28ch] text-[13.5px] leading-snug text-[#e8ffff]">{def.how}</p>
             {best > 0 && <p className="font-arcade text-[8px] text-[#ffd400]">TU RÉCORD EN EL ARCADE: {best}</p>}
-            <button autoFocus onClick={start} className="arcade-btn font-arcade mt-1 flex min-h-12 items-center gap-2 px-7 text-[12px]">
-              <PlayIcon className="size-4" /> JUGAR
-            </button>
+            <CoinSlot onStart={start} />
           </div>
         )}
         {phase === 'over' && result && (
           <div className="absolute inset-0 flex flex-col items-center justify-start gap-2 overflow-y-auto bg-[#07031a]/95 px-4 py-4">
             <p className="font-arcade text-[11px] text-[#ff2bd6]">{result.record ? '¡NUEVO RÉCORD!' : 'FIN DEL JUEGO'}</p>
-            <TicketReceipt game={def.name} score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} onPrizes={onPrizes} onAgain={start} />
+            <TicketReceipt game={def.name} score={result.score} awarded={result.awarded} total={result.total} capped={result.capped} onPrizes={onPrizes} onAgain={() => setPhase('menu')} />
           </div>
         )}
       </div>

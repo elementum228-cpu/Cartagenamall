@@ -153,6 +153,23 @@ export function suspendArcadeAudio() {
  * Sonido de «recibir tiquetes»: una tirita de papel saliendo de la máquina, como en las ferias (clics rápidos de la impresora y un
  * golpecito mecánico por cada paso), y un timbre al final al arrancarla. Devuelve cuánto dura (segundos) para sincronizar la animación.
  */
+/**
+ * Sonido de insertar una moneda: el «ting» al caer en la ranura, el rodar metálico por dentro, el golpe mecánico y el arpegio de
+ * «listo». Devuelve cuánto dura (segundos) para sincronizar la animación.
+ */
+export const COIN_SOUND_S = 1.05
+export function coinInsert(): number {
+  const c = context()
+  if (!c || !on || !sfxBus || c.state === 'suspended') return COIN_SOUND_S
+  const t = c.currentTime + 0.02
+  tone('sine', 3136, t + 0.28, 0.14, 0.22, sfxBus) // ting al entrar en la ranura
+  tone('sine', 4186, t + 0.3, 0.1, 0.1, sfxBus)
+  for (let i = 0; i < 7; i++) tone('square', 1500 - i * 110, t + 0.38 + i * 0.035, 0.03, 0.05, sfxBus) // rueda por dentro
+  tone('sawtooth', 120, t + 0.66, 0.16, 0.3, sfxBus, 48) // golpe del mecanismo
+  ;[784, 988, 1319].forEach((f, i) => tone('square', f, t + 0.78 + i * 0.07, 0.18, 0.1, sfxBus!))
+  return COIN_SOUND_S
+}
+
 /** Cuánto dura la tirita al salir (segundos): más tiquetes, un poco más larga. */
 export const ticketDuration = (count: number) => Math.min(40, 18 + Math.floor(count / 2)) * 0.05
 

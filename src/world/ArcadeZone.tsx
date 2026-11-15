@@ -13,6 +13,7 @@ import { glowMat, lightPoolMat } from './night'
 import { useArcadeUi, type ArcadeGameId } from '../arcade/store'
 import { useUI } from '../state/ui'
 import { Person } from './Person'
+import { NeonRun, type NeonSeg } from './Neon'
 import { Wanderers } from './Wanderers'
 
 // Zona Arcade (aprobada; se ve con la Isla de Entretenimiento activada): una isla cuadrada al oeste de la Isla de Entretenimiento, unida
@@ -146,13 +147,37 @@ function SkeeLane({ x, color, dark }: { x: number; color: string; dark: string }
 }
 
 /** Banco de máquinas contra un lado de la isla: n máquinas, un cartel arriba y una alfombrilla del color del juego. */
-function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright', onOpen }: { at: [number, number]; rot: number; n: number; color: string; dark: string; screen: string; label: string; sub: string; kind?: 'upright' | 'mole' | 'lane'; onOpen?: () => void }) {
+const BULB_ON = new THREE.MeshBasicMaterial({ color: '#fff3a0', toneMapped: false })
+const BULB_OFF = new THREE.MeshBasicMaterial({ color: '#4a3d1a', toneMapped: false })
+
+function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright', onOpen, reduceMotion }: { at: [number, number]; rot: number; n: number; color: string; dark: string; screen: string; label: string; sub: string; kind?: 'upright' | 'mole' | 'lane'; onOpen?: () => void; reduceMotion: boolean }) {
   const night = useIsNight()
+  const group = useRef<THREE.Group>(null)
+  const pool = useRef<THREE.Mesh>(null)
+  const bulbs = useRef<(THREE.Mesh | null)[]>([])
+  const phase = at[0] * 1.7
   const pill = useMemo(() => getGlassPill(label, { dot: color, sub, dark: night }), [label, sub, color, night])
   const pitch = kind === 'mole' ? 3.1 : kind === 'lane' ? 1.9 : 1.45
   const W = n * pitch + 0.4
+  const nb = Math.max(6, Math.round(W / 0.55))
+  // las máquinas vibran un poquito, las luces del frente corren y el charco de luz del piso late: el banco se ve «prendido»
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    if (group.current && !reduceMotion) {
+      group.current.position.y = Y + Math.abs(Math.sin(t * 31 + phase)) * 0.016
+      group.current.rotation.z = Math.sin(t * 27 + phase) * 0.005
+    }
+    if (pool.current) {
+      const k = 1 + (reduceMotion ? 0 : 0.1 * Math.sin(t * 3 + phase))
+      pool.current.scale.set((W + 2.4) * k, 5.4 * k, 1)
+    }
+    const step = reduceMotion ? 0 : Math.floor(t * 7)
+    bulbs.current.forEach((m, i) => {
+      if (m) m.material = (i + step) % 3 === 0 ? BULB_ON : BULB_OFF
+    })
+  })
   return (
-    <group position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
+    <group ref={group} position={[at[0], Y, at[1]]} rotation={[0, rot, 0]}>
       {Array.from({ length: n }, (_, i) => (
         kind === 'mole' ? <MoleTable key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} /> : kind === 'lane' ? <SkeeLane key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} /> : <Cabinet key={i} x={(i - (n - 1) / 2) * pitch} color={color} dark={dark} screen={screen} />
       ))}
@@ -164,7 +189,21 @@ function Bank({ at, rot, n, color, dark, screen, label, sub, kind = 'upright', o
         </group>
       ))}
       {/* las máquinas iluminan el piso con el color de su juego */}
-      <mesh geometry={GEO.plane} material={lightPoolMat(color, 1.3)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 1.6]} scale={[W + 2.4, 5.4, 1]} />
+      <mesh ref={pool} geometry={GEO.plane} material={lightPoolMat(color, 2.1)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 1.6]} scale={[W + 2.4, 5.4, 1]} />
+      {/* luces corredoras al frente del banco, como las de un escenario */}
+      {Array.from({ length: nb }, (_, i) => (
+        <mesh
+          key={i}
+          ref={(el) => {
+            bulbs.current[i] = el
+          }}
+          geometry={GEO.sphere}
+          material={BULB_OFF}
+          position={[(i - (nb - 1) / 2) * (W / nb), 0.16, kind === 'lane' ? 2.35 : 2.2]}
+          scale={0.13}
+          raycast={() => null}
+        />
+      ))}
       <ScreenLabel label={pill} position={[0, 3.7, 0]} pixelHeight={30} maxZoomRatio={2.2} priority={LABEL_PRIORITY.store} onClick={onOpen} />
     </group>
   )
@@ -474,11 +513,28 @@ const PLAYERS: [number, number, string, number][] = [
 
 /** Los tres bancos de juego: dónde están, de qué tipo son y qué juego abren al tocarlos. */
 const BANKS: { at: [number, number]; rot: number; n: number; kind: 'upright' | 'mole' | 'lane'; game: ArcadeGameId; color: string; dark: string; screen: string; label: string }[] = [
-  { at: [-1.2, -S + 1.2], rot: 0, n: 4, kind: 'upright', game: 'nave', color: BLUE, dark: '#1b2c55', screen: '#7cc4ff', label: 'Nave Caribe' },
-  { at: [-1.2, S - 1.6], rot: Math.PI, n: 2, kind: 'mole', game: 'cangrejos', color: RED, dark: '#4a1a24', screen: '#ff9aa6', label: 'Cangrejos Locos' },
-  { at: [S - 1.4, -6.0], rot: -Math.PI / 2, n: 3, kind: 'lane', game: 'bolos', color: YELLOW, dark: '#4a3a10', screen: '#ffe08a', label: 'Bolos de coco' },
+  { at: [-6.9, -S + 1.3], rot: 0, n: 3, kind: 'upright', game: 'nave', color: BLUE, dark: '#1b2c55', screen: '#7cc4ff', label: 'Nave Caribe' },
+  { at: [-0.5, -S + 1.6], rot: 0, n: 2, kind: 'mole', game: 'cangrejos', color: RED, dark: '#4a1a24', screen: '#ff9aa6', label: 'Cangrejos Locos' },
+  { at: [5.9, -S + 2.5], rot: 0, n: 2, kind: 'lane', game: 'bolos', color: YELLOW, dark: '#4a3a10', screen: '#ffe08a', label: 'Bolos de coco' },
 ]
 const PITCH = { upright: 1.45, mole: 3.1, lane: 1.9 } as const
+
+/** Neón del salón: tiras a ras de las paredes y el arco de entrada, con colores que recorren el arcoíris. */
+const NEON: NeonSeg[] = [
+  { at: [0, 0.6, -S + 0.85], len: S * 2 - 2.4, axis: 'x', hue: 0 },
+  { at: [-S + 0.85, 0.6, 0], len: S * 2 - 2.4, axis: 'z', hue: 0.28 },
+  { at: [0, 0.4, S - 0.85], len: S * 2 - 2.4, axis: 'x', hue: 0.58 },
+  { at: [S - 0.85, 0.4, -5.9], len: 7.2, axis: 'z', hue: 0.8 },
+  { at: [S - 0.85, 0.4, 5.9], len: 7.2, axis: 'z', hue: 0.12 },
+  { at: [S - 0.9, 1.75, -2.1], len: 3.4, axis: 'y', hue: 0.45 },
+  { at: [S - 0.9, 1.75, 2.1], len: 3.4, axis: 'y', hue: 0.45 },
+  { at: [S - 0.9, 3.5, 0], len: 4.6, axis: 'z', hue: 0.7 },
+  // anillo de neón alrededor del monumento (un octágono)
+  ...Array.from({ length: 8 }, (_, k): NeonSeg => {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8
+    return { at: [Math.cos(a) * 2.7, 0.3, Math.sin(a) * 2.7], len: 2.15, axis: 'x', hue: k / 8, rot: -(a + Math.PI / 2) }
+  }),
+]
 
 function openGame(game: ArcadeGameId) {
   const ui = useUI.getState()
@@ -522,10 +578,6 @@ export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
         <group position={[AC.x, 0, AC.z]}>
           <IslandBody />
           <EntryArch />
-          {/* tres bancos de máquinas, uno por juego */}
-          {BANKS.map((b) => (
-            <Bank key={b.game} at={b.at} rot={b.rot} n={b.n} kind={b.kind} color={b.color} dark={b.dark} screen={b.screen} label={b.label} sub="Toca para jugar" onOpen={() => openGame(b.game)} />
-          ))}
           <RewardsRoom at={[-S + 2.3, 0]} rot={Math.PI / 2} />
           <Palm x={S - 1.4} z={5.6} seed={0.4} />
           <Palm x={S - 1.4} z={7.4} h={2.8} seed={1.1} />
@@ -537,9 +589,14 @@ export function ArcadeZone({ reduceMotion }: { reduceMotion: boolean }) {
       </Batch>
       <group position={[AC.x, 0, AC.z]}>
         <TicketMonument reduceMotion={reduceMotion} />
+        {/* tres bancos de máquinas, uno por juego: fuera del lote de piedra porque vibran y tienen luces que corren */}
+        {BANKS.map((b) => (
+          <Bank key={b.game} at={b.at} rot={b.rot} n={b.n} kind={b.kind} color={b.color} dark={b.dark} screen={b.screen} label={b.label} sub="Toca para jugar" onOpen={() => openGame(b.game)} reduceMotion={reduceMotion} />
+        ))}
         {BANKS.map((b) => (
           <BankHit key={b.game} b={b} />
         ))}
+        <NeonRun reduceMotion={reduceMotion} segs={NEON} thick={0.17} />
         {PLAYERS.map(([x, z, color, rot], i) => (
           <group key={i} position={[x, Y, z]} rotation={[0, rot, 0]}>
             <Person color={color} skin={i % 2 ? '#c58c64' : '#e5b48f'} />

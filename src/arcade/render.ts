@@ -1,3 +1,4 @@
+import { liveTickets } from './store'
 import { BOSS_EVERY, BOSS_R, H, KIND_HP, KIND_R, LIVES, MAX_WEAPON, RAPID_SECONDS, SHIP_Y, W, WAVE_SECONDS, type EnemyKind, type Game } from './engine'
 
 // Dibujo de «Nave Caribe». Los elementos con degradados y brillos (nave, enemigos, disparos, premios y el fondo) se pintan UNA vez en
@@ -746,6 +747,9 @@ export function draw(g: Game, ctx: CanvasRenderingContext2D, reduceMotion = fals
   ctx.fillStyle = boss ? '#ff2bd6' : '#00f0ff'
   ctx.fillRect(0, 0, Math.round(W * (boss ? Math.max(0, g.boss.hp / g.boss.maxHp) : Math.min(1, g.waveT / WAVE_SECONDS)) / 3) * 3, 3)
 
+  // tiquetes que lleva esta partida (se ven mientras se juega)
+  txt('TIQUETES', W - 14, 10, '#ffd400', 8, 'right')
+  txt(String(liveTickets(g.score)), W - 14, 24, '#ffd400', 14, 'right')
   txt('1UP', 14, 10, '#00f0ff', 8)
   txt(pad(g.score), 14, 24, '#ffffff', 14)
   if (opts.hi !== undefined) txt(`HI ${pad(Math.max(opts.hi, g.score))}`, 14, 46, '#ffd400', 8)

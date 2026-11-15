@@ -9,6 +9,7 @@ import { createGame, createRecorder, DIFFICULTIES, H, makeRand, MAX_WEAPON, STEP
 import { draw } from './render'
 import { DAILY_POINTS_CAP, useArcade, useArcadeUi } from './store'
 import { MiniGame } from './games/MiniGame'
+import { CoinSlot } from './CoinSlot'
 import { TicketReceipt } from './TicketReceipt'
 import { Prizes, Ranking } from './ArcadeTabs'
 import '@fontsource/press-start-2p/latin-400.css'
@@ -71,13 +72,18 @@ function SoundButton({ className = '' }: { className?: string }) {
 
 const GAME_NAME = { nave: 'Nave Caribe', cangrejos: 'Cangrejos Locos', bolos: 'Bolos de coco' } as const
 
+/** Marco de las listas (ranking y premios): misma caja que el juego, para que al cambiar de pestaña no se mueva nada. */
+function ListFrame({ children }: { children: React.ReactNode }) {
+  return <div className="arcade-frame flex min-h-0 flex-1 flex-col overflow-y-auto p-3">{children}</div>
+}
+
 function Cabinet({ onClose }: { onClose: () => void }) {
   const game = useArcadeUi((s) => s.game)
   const [tab, setTab] = useState<'play' | 'rank' | 'prizes'>('play')
   const points = useArcade((s) => s.points)
   const playing = useArcadeUi((s) => s.playing)
   return (
-    <div className="flex max-h-full w-full max-w-[440px] flex-col gap-2.5">
+    <div className="flex h-full max-h-[760px] w-full max-w-[440px] flex-col gap-2.5">
       {/* mientras se juega, la partida cubre la pantalla: el encabezado y las pestañas quedan ocultos para lectores de pantalla */}
       <div className="flex flex-col gap-2.5" aria-hidden={playing}>
         <div className="flex items-center gap-2">
@@ -120,7 +126,13 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </div>
-      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onPrizes={() => setTab('prizes')} onExit={onClose} /> : <MiniGame key={game} id={game} onPrizes={() => setTab('prizes')} /> : tab === 'rank' ? <Ranking /> : <Prizes />}
+      {/* el juego corto sigue montado (en pausa) al mirar los premios, para no perder la partida ni la moneda */}
+      {game !== 'nave' && (
+        <div className={tab === 'play' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+          <MiniGame key={game} id={game} active={tab === 'play'} onPrizes={() => setTab('prizes')} />
+        </div>
+      )}
+      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onPrizes={() => setTab('prizes')} onExit={onClose} /> : null : tab === 'rank' ? <ListFrame><Ranking /></ListFrame> : <ListFrame><Prizes /></ListFrame>}
     </div>
   )
 }
@@ -333,7 +345,6 @@ function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes
 
   const start = () => {
     unlockArcadeAudio()
-    sfx('coin')
     // con partida del servidor (cuenta para el ranking) o, sin conexión, con semilla local (solo para jugar)
     const t = ticket.current
     ticket.current = null
@@ -441,9 +452,6 @@ function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes
               </button>
               <div className="mt-1 flex items-center gap-2">
                 <SoundButton className="bg-white/10 active:bg-white/20" />
-                <button onClick={start} className="min-h-11 px-3 text-[13px] font-bold text-[#9fb3ff] underline">
-                  Empezar de nuevo
-                </button>
                 <button onClick={quit} className="min-h-11 px-3 text-[13px] font-bold text-[#9fb3ff] underline">
                   Salir
                 </button>
@@ -456,7 +464,7 @@ function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes
 
   // ── Menú y fin de partida ────────────────────────────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="arcade-frame flex min-h-0 flex-col overflow-y-auto px-5 py-6 text-center text-white">
+    <div className="arcade-frame flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-6 text-center text-white">
       {phase === 'over' && result ? (
         <>
           <h3 className="font-arcade mt-1 text-[26px] text-[#ff2b2b]" style={{ textShadow: '3px 3px 0 #07031a, 6px 6px 0 #7a0a3a' }}>
@@ -539,10 +547,9 @@ function Play({ onRanking, onPrizes, onExit }: { onRanking: () => void; onPrizes
         </p>
       )}
       <DifficultyPicker />
-      <button autoFocus onClick={start} className="arcade-btn font-arcade mx-auto mt-6 flex min-h-14 items-center gap-3 px-8 text-[13px]">
-        <PlayIcon className="size-4 fill-current" />
-        {phase === 'over' ? 'OTRA VEZ' : 'JUGAR'}
-      </button>
+      <div className="mt-6">
+        <CoinSlot onStart={start} />
+      </div>
       <button onClick={onExit} className="font-arcade mx-auto mt-2 min-h-11 px-4 text-[9px] text-[#9fb3ff] underline underline-offset-4">
         SALIR DEL ARCADE
       </button>

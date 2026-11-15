@@ -14,6 +14,8 @@ export const SCORE_PER_POINT = 10
 /** Máximo de puntos por partida y por día. */
 export const MAX_POINTS_PER_RUN = 60
 export const DAILY_POINTS_CAP = 240
+/** Monedas gratis cada día: cada una abre una partida en cualquiera de los juegos. */
+export const DAILY_COINS = 5
 
 export interface ArcadeReward {
   id: string
@@ -68,6 +70,11 @@ interface ArcadeState {
   redemptions: ArcadeRedemption[]
   /** Historial de partidas de este dispositivo (la más reciente primero). */
   runs: ArcadeRun[]
+  /** Monedas del día (se renuevan solas cada día). */
+  coinDay: string
+  coins: number
+  /** Gasta una moneda; devuelve `false` si ya no quedan hoy. */
+  spendCoin: () => boolean
   /** Música y efectos del juego (se puede apagar). */
   sound: boolean
   setSound: (on: boolean) => void
@@ -96,6 +103,16 @@ export const useArcade = create<ArcadeState>()(
       earnedToday: 0,
       redemptions: [],
       runs: [],
+      coinDay: dayKey(),
+      coins: DAILY_COINS,
+      spendCoin: () => {
+        const s = get()
+        const today = dayKey()
+        const left = s.coinDay === today ? s.coins : DAILY_COINS
+        if (left <= 0) return false
+        set({ coinDay: today, coins: left - 1 })
+        return true
+      },
       sound: true,
       setSound: (sound) => set({ sound }),
       difficulty: DEFAULT_DIFFICULTY,
@@ -146,3 +163,9 @@ export const useArcadeUi = create<{ open: boolean; setOpen: (v: boolean) => void
 }))
 
 if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __cmArcadeUi?: unknown }).__cmArcadeUi = useArcadeUi
+
+/** Monedas que le quedan hoy a la persona (5 al empezar el día). */
+export const useCoinsLeft = () => useArcade((s) => (s.coinDay === dayKey() ? s.coins : DAILY_COINS))
+
+/** Tiquetes que lleva una partida con este puntaje (sin el tope del día): para mostrarlos mientras se juega. */
+export const liveTickets = (score: number) => Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))
