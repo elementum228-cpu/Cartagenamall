@@ -49,7 +49,7 @@ function EventCard({ e }: { e: CineEvent }) {
         </ul>
         {e.status === 'open' && e.url ? (
           <a href={e.url} target="_blank" rel="noopener noreferrer" className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-teal text-[14.5px] font-extrabold text-white transition active:scale-[0.98]">
-            Participar <ExternalLink className="size-4 opacity-80" aria-hidden />
+            Participar en Planly <ExternalLink className="size-4 opacity-80" aria-hidden />
           </a>
         ) : (
           <p className="mt-4 rounded-xl bg-white/[0.06] px-3 py-2.5 text-center text-[13px] font-bold text-white/70">
@@ -65,7 +65,7 @@ function EventCard({ e }: { e: CineEvent }) {
 function NoEvents() {
   return (
     <div className="space-y-3">
-      <Notice icon={<Sparkles className="size-4" />} title="Pronto anunciaremos eventos" text="Aquí aparecerán las noches de estreno, trivias, maratones y más que organice MallPlay Cinema." />
+      <Notice icon={<Sparkles className="size-4" />} title="Pronto anunciaremos eventos con Planly" text="Aquí aparecerán las salidas a cine en grupo, noches de estreno, trivias y maratones que organicemos con Planly." />
       <ul className="flex flex-wrap gap-2" aria-label="Tipos de eventos que tendrá MallPlay Cinema">
         {EVENT_KINDS.map((k) => (
           <li key={k.id} className="rounded-full bg-white/8 px-3 py-1.5 text-[12.5px] font-bold text-white/75" title={k.hint}>
@@ -83,8 +83,8 @@ export function EventsPreview({ events }: { events: CineEvent[] }) {
   return (
     <section aria-label="Eventos en MallPlay Cinema" className="space-y-3">
       <SectionHead
-        title="Eventos en MallPlay Cinema"
-        sub="Noches de estreno, trivias y más."
+        title="Eventos con Planly"
+        sub="Ve películas con más personas."
         action={
           list.length > 0 ? (
             <button onClick={() => useCineUi.getState().setTab('events')} className="shrink-0 rounded-full bg-white/10 px-3.5 py-2 text-[13px] font-bold transition active:scale-95">
@@ -103,7 +103,8 @@ export function EventsTab({ events }: { events: CineEvent[] }) {
   const list = publicEvents(events)
   return (
     <section aria-label="Eventos" className="space-y-4">
-      <SectionHead title="Eventos" sub="Lo que viene en MallPlay Cinema." />
+      <SectionHead title="Eventos con Planly" sub="Salidas a cine en grupo: elige un evento y apúntate." />
+      <p className="rounded-2xl bg-white/[0.06] p-3.5 text-[13.5px] leading-snug text-white/75 ring-1 ring-white/10">Los eventos de MallPlay Cinema se organizan con Planly, para ir a ver películas con más personas. Al tocar «Participar» te llevamos a Planly a confirmar tu cupo.</p>
       {list.length === 0 ? <NoEvents /> : <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{list.map((e) => <EventCard key={e.id} e={e} />)}</div>}
     </section>
   )

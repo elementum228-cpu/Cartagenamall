@@ -115,7 +115,7 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
 
   return (
     <div>
-      <section className="relative h-[46dvh] max-h-[460px] min-h-[300px] lg:h-[54dvh] lg:max-h-[560px]">
+      <section className="relative h-[46dvh] max-h-[460px] min-h-[300px] lg:h-[40dvh] lg:max-h-[400px]">
         <div className="absolute inset-0" aria-hidden>
           <Picture src={movie.backdrop || movie.image} title={movie.title} hue={movie.title.length} priority />
           <div
@@ -125,16 +125,9 @@ export function MovieDetail({ movie, shows, chains, demo, upcoming, days, now }:
             }}
           />
         </div>
-        <button
-          onClick={() => useCineUi.getState().openMovie(null)}
-          aria-label="Volver al lobby del cine"
-          className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 flex h-11 items-center gap-1 rounded-full bg-black/55 pr-4 pl-2.5 text-[14px] font-bold backdrop-blur transition active:scale-95"
-        >
-          <ChevronLeft className="size-5" /> Lobby
-        </button>
       </section>
 
-      <section className="relative -mt-24 px-5 pb-14 lg:-mt-36 lg:px-12">
+      <section className="relative -mt-24 px-5 pb-14 lg:-mt-28 lg:px-12">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end gap-4 lg:gap-8">
             <div
