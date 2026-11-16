@@ -763,7 +763,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
         </div>
       )}
       <button
-        className={`glass grid size-11 place-items-center rounded-full shadow-none transition active:scale-[0.96] ${open ? '!bg-teal !text-white' : 'text-ink'}`}
+        className={`nav-pill grid size-11 place-items-center rounded-full transition active:scale-[0.96] ${open ? '!bg-[#00716c] !text-white' : 'nav-tab'}`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label="Opciones de vista: plano 2D, día o noche, calidad"
@@ -789,12 +789,12 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
     const next = floors[idx + d]
     if (next) setFloor(next.id)
   }
-  const btn = 'touch-hit relative grid h-8 w-full place-items-center text-ink-soft transition hover:text-ink disabled:opacity-25 max-md:hidden'
+  const btn = 'touch-hit nav-tab relative grid h-8 w-full place-items-center transition disabled:opacity-30 max-md:hidden'
   return (
     <nav
       data-tour="pisos"
       aria-label="Pisos"
-      className={`glass absolute top-1/2 left-3 z-10 flex w-[50px] -translate-y-1/2 flex-col items-stretch gap-0.5 overflow-hidden rounded-[24px] p-1 transition-opacity duration-200 md:left-5 md:w-[64px] ${
+      className={`nav-pill absolute top-1/2 left-3 z-10 flex w-[50px] -translate-y-1/2 flex-col items-stretch gap-0.5 overflow-hidden rounded-[24px] p-1 transition-opacity duration-200 md:left-5 md:w-[64px] ${
         dimmed ? 'max-md:pointer-events-none max-md:opacity-0' : ''
       }`}
     >
@@ -809,7 +809,7 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
             onClick={() => setFloor(f.id)}
             aria-pressed={on}
             aria-label={f.name}
-            className={`touch-hit relative min-h-11 rounded-[18px] px-1 py-2 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:py-2.5 md:text-[12px] ${on ? 'glass-teal' : 'text-ink hover:bg-white/30'}`}
+            className={`touch-hit relative min-h-11 rounded-[18px] px-1 py-2 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:py-2.5 md:text-[12px] ${on ? 'nav-tab-on' : 'nav-tab hover:bg-black/5'}`}
           >
             <span className="md:hidden">P{f.level}</span>
             <span className="max-md:hidden">{f.name}</span>
@@ -825,7 +825,7 @@ function FloorSelector({ use3D, dimmed }: { use3D: boolean; dimmed: boolean }) {
           aria-pressed={overview}
           title="Vista general de la fortaleza (ambos pisos)"
           aria-label="Ver todo el mall"
-          className={`touch-hit relative grid min-h-11 place-items-center rounded-[18px] px-1 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:text-[12px] ${overview ? 'glass-teal' : 'text-ink hover:bg-white/30'}`}
+          className={`touch-hit relative grid min-h-11 place-items-center rounded-[18px] px-1 text-[11.5px] leading-tight font-semibold transition duration-200 active:scale-[0.97] md:text-[12px] ${overview ? 'nav-tab-on' : 'nav-tab hover:bg-black/5'}`}
         >
           Todo
         </button>
