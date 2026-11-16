@@ -38,7 +38,7 @@ body,
 /* Medidas de las barras flotantes: el mapa y las páginas se acomodan a ellas. */
 :root {
   --chrome-top: calc(max(10px, env(safe-area-inset-top)) + 46px + 8px);
-  --chrome-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 54px + 10px);
+  --chrome-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 56px + 10px);
 }
 @media (min-width: 768px) {
   :root {
@@ -204,6 +204,27 @@ body {
 .theme-night .glass .bg-ink\/10 {
   background: rgb(255 255 255 / 0.14);
 }
+
+/*
+ * Barra de navegación inferior: casi opaca (el mapa se ve detrás pero no compite con los íconos) y con contraste de texto/ícono
+ * de al menos 4,5:1 en día y en noche. La pestaña activa va rellena y en blanco: se distingue de un vistazo.
+ */
+.nav-pill {
+  background: rgb(252 251 248 / 0.95);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.85);
+  box-shadow: 0 10px 30px -10px rgb(6 44 66 / 0.5), 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 0 0 1px rgb(6 44 66 / 0.06);
+}
+.nav-tab { color: #3b4851; }
+.nav-tab-on { background: #00716c; color: #fff; box-shadow: 0 4px 12px -4px rgb(0 113 108 / 0.65); }
+.theme-night .nav-pill {
+  background: rgb(9 36 54 / 0.93);
+  border-color: rgb(255 255 255 / 0.16);
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.7), 0 1px 0 rgb(255 255 255 / 0.12) inset;
+}
+.theme-night .nav-tab { color: rgb(247 245 241 / 0.84); }
+.theme-night .nav-tab-on { background: #2ad1c4; color: #04262a; box-shadow: 0 4px 14px -4px rgb(42 209 196 / 0.6); }
 
 /* Navegador sin desenfoque: superficies más opacas para mantener la legibilidad. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {

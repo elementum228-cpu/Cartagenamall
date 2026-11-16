@@ -532,7 +532,7 @@ function BottomNav() {
   return (
     <nav
       data-tour="nav"
-      className="tour-hide chrome-in-bottom glass fixed bottom-[max(10px,env(safe-area-inset-bottom))] left-1/2 z-30 h-[54px] -translate-x-1/2 rounded-full px-1.5 md:hidden"
+      className="tour-hide chrome-in-bottom nav-pill fixed bottom-[max(10px,env(safe-area-inset-bottom))] left-1/2 z-30 h-[56px] -translate-x-1/2 rounded-full px-1.5 md:hidden"
       aria-label="Navegación principal"
     >
       {/* barra compacta, como la de Instagram: solo íconos, y la sección activa se despliega con su nombre */}
@@ -546,14 +546,14 @@ function BottomNav() {
               title={t.label}
               className={({ isActive }) =>
                 `relative flex h-[42px] min-w-[46px] items-center justify-center rounded-full px-3 text-[13px] font-bold transition-[background-color,color] duration-200 active:scale-[0.96] ${
-                  isActive ? "bg-teal/15 text-teal" : "text-[#66737C]"
+                  isActive ? "nav-tab-on" : "nav-tab"
                 }`
               }
             >
               {({ isActive }) => (
                 <>
                   <span className="relative">
-                    <t.icon className="size-[22px]" strokeWidth={isActive ? 2.2 : 1.8} />
+                    <t.icon className="size-[23px]" strokeWidth={isActive ? 2.3 : 2} />
                     {t.badge ? <Badge n={t.badge} icon /> : null}
                   </span>
                   <span
