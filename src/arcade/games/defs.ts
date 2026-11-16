@@ -485,9 +485,15 @@ const RINGS: { r: number; v: number; c: string; hi: string }[] = [
   { r: 15, v: 50, c: '#f7f2e6', hi: '#ffffff' },
 ]
 const HOLES: { x: number; y: number; r: number; v: number }[] = [
-  { x: 40, y: 100, r: 19, v: 100 },
-  { x: BW - 40, y: 100, r: 19, v: 100 },
+  { x: 40, y: 100, r: 22, v: 100 },
+  { x: BW - 40, y: 100, r: 22, v: 100 },
 ]
+/** Imán de las esquinas: si el coco iba a caer a menos de esto de un hueco de 100, se «pega» y entra (ayuda a quien casi acierta). */
+const HOLE_PULL = 24
+/** Cuánto se abre el lanzamiento a los lados: el centro del carril llega al centro del tablero y los bordes, a las esquinas. */
+const LATERAL = 1.4
+/** Cuánto empuja el efecto (la velocidad lateral del dedo al soltar) sobre dónde cae el coco. */
+const SPIN = 0.3
 const START = { x: BW / 2, y: 500 }
 const RAMP_Y = 246
 const LANE = { l: 92, r: BW - 92 }
@@ -511,6 +517,8 @@ interface Aim {
   power: number
   tx: number
   ty: number
+  /** Efecto del lanzamiento (velocidad lateral): curva el trayecto. */
+  bend: number
 }
 export interface BowlsState {
   left: number
@@ -521,7 +529,7 @@ export interface BowlsState {
   vx: number
   vy: number
   power: number
-  fly: { t: number; sx: number; sy: number; ex: number; ey: number } | null
+  fly: { t: number; sx: number; sy: number; ex: number; ey: number; bend: number } | null
   landed: Landed[]
   rest: number
   msg: { text: string; age: number; color: string } | null
@@ -531,6 +539,8 @@ export interface BowlsState {
   drag: { x: number; y: number; t: number }[]
   /** Mientras se arrastra: fuerza estimada y dónde caería el coco. */
   aim: Aim | null
+  /** Dónde caerá el coco lanzado: lo que mostraba la mira al soltar (así lo que ves es lo que pasa, aunque ruede pegado a la pared). */
+  target: Aim | null
   /** Sonidos pendientes (caída del coco). */
   sounds: Snd[]
 }
@@ -553,7 +563,11 @@ function predict(x: number, y: number, power: number, vxl: number): Aim {
   const t = Math.max(0, (y - RAMP_Y) / rollSpeed(power))
   const xe = clamp(x + vxl * t, LANE.l + 12, LANE.r - 12)
   const k = clamp((power - MIN_POWER) / (MAX_POWER - MIN_POWER), 0, 1)
-  return { power, tx: BOARD.x + (xe - BW / 2) * 1.1 + vxl * 0.15, ty: RAMP_Y - 6 - k * 190 }
+  const raw = BOARD.x + (xe - BW / 2) * LATERAL + vxl * SPIN
+  const ty = RAMP_Y - 6 - k * 190
+  // el imán se mide sobre el punto sin recortar: pasarse de largo hacia el costado también es fallar
+  const hole = HOLES.find((h) => Math.hypot(raw - h.x, ty - h.y) < HOLE_PULL)
+  return hole ? { power, tx: hole.x, ty: hole.y, bend: vxl } : { power, tx: clamp(raw, 12, BW - 12), ty, bend: vxl }
 }
 
 /** Velocidad del deslizamiento en los últimos ~120 ms (px/s del campo). */
@@ -618,8 +632,8 @@ export const BOWLS: GameDef<BowlsState> = {
   name: 'Bolos de coco',
   W: BW,
   H: BH,
-  how: 'Arrastra el coco hacia arriba y suéltalo: la mira te muestra dónde caerá. Más rápido llega más lejos. Al centro: 50 puntos; en las esquinas, 100.',
-  create: () => ({ left: BALLS, score: 0, phase: 'aim', x: START.x, y: START.y, vx: 0, vy: 0, power: 0, fly: null, landed: [], rest: 0, msg: null, trail: [], bursts: [], drag: [], aim: null, sounds: [] }),
+  how: 'Arrastra el coco hacia arriba y suéltalo: la mira te muestra dónde caerá. Más rápido llega más lejos. Para las esquinas (100) arrástralo hacia un lado y suéltalo con un movimiento en curva.',
+  create: () => ({ left: BALLS, score: 0, phase: 'aim', x: START.x, y: START.y, vx: 0, vy: 0, power: 0, fly: null, landed: [], rest: 0, msg: null, trail: [], bursts: [], drag: [], aim: null, target: null, sounds: [] }),
   takeSounds(s) {
     const q = s.sounds
     s.sounds = []
@@ -649,8 +663,8 @@ export const BOWLS: GameDef<BowlsState> = {
         s.sounds.push('hurt')
         s.msg = { text: '¡MUY SUAVE!', age: 0, color: '#ff9aa6' }
       } else if (s.y <= RAMP_Y) {
-        const a = predict(s.x, RAMP_Y, s.power, s.vx)
-        s.fly = { t: 0, sx: s.x, sy: s.y, ex: a.tx, ey: a.ty }
+        const a = s.target ?? predict(s.x, RAMP_Y, s.power, s.vx)
+        s.fly = { t: 0, sx: s.x, sy: s.y, ex: a.tx, ey: a.ty, bend: clamp(a.bend * 0.3, -36, 36) }
         s.phase = 'fly'
       }
     } else if (s.phase === 'fly' && s.fly) {
@@ -711,6 +725,7 @@ export const BOWLS: GameDef<BowlsState> = {
       s.power = Math.min(MAX_POWER, -v.vy)
       s.vx = sideSpeed(v.vx)
       s.vy = -rollSpeed(s.power)
+      s.target = predict(s.x, s.y, s.power, s.vx)
       s.phase = 'roll'
       s.drag = []
       s.aim = null
@@ -878,6 +893,16 @@ export const BOWLS: GameDef<BowlsState> = {
         ctx.globalAlpha = 1
       }
       numText(ctx, '100', h.x, h.y + 0.5, 12, '#3a2100')
+      if (s.phase === 'aim') {
+        // aro que late: las esquinas son el objetivo grande
+        ctx.strokeStyle = '#ffe36b'
+        ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * 4 + h.x)
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(h.x, h.y, h.r + 7 + Math.sin(t * 4 + h.x) * 2, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
     }
     // ondas y chispas de los aciertos
     for (const b of s.bursts) {
@@ -919,7 +944,7 @@ export const BOWLS: GameDef<BowlsState> = {
         ctx.lineWidth = 2
         ctx.beginPath()
         ctx.moveTo(s.x, s.y - 20)
-        ctx.lineTo(a.tx, a.ty + 14)
+        ctx.quadraticCurveTo((s.x + a.tx) / 2 + clamp(a.bend * 0.3, -36, 36) * 1.6, (s.y + a.ty) / 2, a.tx, a.ty + 14)
         ctx.stroke()
         ctx.setLineDash([])
         ctx.globalAlpha = 1
@@ -959,7 +984,7 @@ export const BOWLS: GameDef<BowlsState> = {
     if (s.phase === 'fly' && s.fly) {
       const f = s.fly
       const u = f.t
-      const x = f.sx + (f.ex - f.sx) * u
+      const x = f.sx + (f.ex - f.sx) * u + f.bend * Math.sin(u * Math.PI) * (1 - u)
       const gy = f.sy + (f.ey - f.sy) * u
       const h = Math.sin(u * Math.PI) * 54
       const r = 15 - u * 5
@@ -994,6 +1019,15 @@ export const BOWLS: GameDef<BowlsState> = {
     ctx.fillRect(mx - 6, fy(SWEET + 450), 12, fy(SWEET - 450) - fy(SWEET + 450))
     ctx.fillStyle = 'rgba(255,212,0,.5)'
     ctx.fillRect(mx - 6, fy(SWEET - 450), 12, fy(MIN_POWER) - fy(SWEET - 450))
+    // franja de las esquinas (100): la fuerza con que el coco llega a la altura de los huecos
+    {
+      const k = (RAMP_Y - 6 - HOLES[0].y) / 190
+      const p = MIN_POWER + k * (MAX_POWER - MIN_POWER)
+      const half = (HOLE_PULL / 190) * (MAX_POWER - MIN_POWER)
+      ctx.fillStyle = '#ffe36b'
+      ctx.fillRect(mx - 10, fy(p + half), 3, fy(p - half) - fy(p + half))
+      numText(ctx, '100', mx - 22, (fy(p + half) + fy(p - half)) / 2, 9, '#ffe36b', '#07031a')
+    }
     if (s.aim) {
       const y = fy(s.aim.power)
       ctx.fillStyle = '#ffffff'
