@@ -1066,11 +1066,15 @@ function StadiumListenButton() {
       <button
         tabIndex={show ? 0 : -1}
         onClick={() => useUI.getState().openStadium(true)}
-        aria-label="Eventos y boletas del estadio"
-        title="Eventos y boletas"
-        className={`glass pointer-events-auto mt-2 grid size-11 place-items-center rounded-full bg-ink text-white shadow-soft transition active:scale-95 ${show ? '' : 'pointer-events-none'}`}
+        aria-label={open ? 'Comprar boletas del evento del estadio' : 'Eventos y boletas del estadio'}
+        title={open ? 'Comprar boletas' : 'Eventos y boletas'}
+        // con evento activo la píldora es viva (ámbar, con aviso pulsante) e invita a comprar; sin evento queda discreta
+        className={`pointer-events-auto relative mt-2 flex items-center justify-center gap-1.5 rounded-full text-white shadow-soft transition active:scale-95 ${open ? 'h-11 px-4 text-[13px] font-extrabold' : 'glass size-11 bg-ink'} ${show ? '' : 'pointer-events-none'}`}
+        style={open ? { background: 'linear-gradient(135deg,#ffb938,#f08a1c)', color: '#2a1500', boxShadow: '0 6px 18px rgba(240,138,28,.55)' } : undefined}
       >
-        <Ticket className="size-5" strokeWidth={2.2} />
+        {open && <span className="absolute inset-0 rounded-full ring-2 ring-[#ffb938]/80 motion-safe:animate-ping" aria-hidden />}
+        <Ticket className="relative size-5" strokeWidth={2.4} />
+        {open && <span className="relative">Boletas</span>}
       </button>
       {/* solo para la administración: ver y oír un gol de prueba (solo en este dispositivo, no toca el marcador de todos) */}
       {canTest && open && !concert && (
