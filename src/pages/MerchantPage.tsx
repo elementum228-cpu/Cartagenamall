@@ -45,6 +45,7 @@ import { MARGIN_GOOD, MARGIN_LOW, marginOf, priceForMargin } from '../lib/margin
 import { remoteEnabled } from '../remote/client'
 import { cleanHours, withinHours } from '../lib/hours'
 import { HoursEditor, hoursSummary } from './MerchantHours'
+import { HelpLink, SetupChecklist } from './MerchantSetup'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
@@ -163,6 +164,7 @@ function MerchantContent() {
   }, [requested, stores, setStoreId, setParams])
   const store = stores.find((s) => s.id === (requested ?? storeId))
   const operatorId = useStadiumConfig((s) => s.operatorStoreId)
+  const activeProducts = useCatalog((s) => (store ? s.products.filter((p) => p.storeId === store.id && p.active).length : 0))
 
   if (!store && waiting)
     return (
@@ -182,7 +184,7 @@ function MerchantContent() {
   return (
     <div className="mx-auto max-w-4xl px-4 pt-4 pb-28 md:pb-10">
       <DemoNotice />
-      <Header store={store} onSwitch={() => setStoreId(null)} />
+      <Header store={store} onSwitch={() => setStoreId(null)} canSwitch={stores.length > 1} />
       <nav className="scrollbar-none mt-4 hidden gap-1 overflow-x-auto md:flex" aria-label="Secciones de mi negocio">
         {(
           [
@@ -206,16 +208,22 @@ function MerchantContent() {
         ))}
       </nav>
       <div className="mt-4">
-        {tab === 'resumen' && <MerchantDashboard key={store.id} store={store} goTab={setTab} />}
+        {tab === 'resumen' && (
+          <div className="space-y-4">
+            <SetupChecklist store={store} activeProducts={activeProducts} goTab={setTab} />
+            <MerchantDashboard key={store.id} store={store} goTab={setTab} />
+          </div>
+        )}
         {tab === 'perfil' && <ProfileEditor key={store.id} store={store} />}
         {tab === 'articulos' && <ProductsManager store={store} startNew={startNew} onStarted={() => setStartNew(false)} />}
         {tab === 'promociones' && <MerchantPromotions store={store} />}
         {tab === 'pedidos' && <MerchantOrders store={store} />}
         {tab === 'estadio' && store.id === operatorId && <EventsManager />}
+        <HelpLink store={store} />
       </div>
 
       {/* móvil: barra propia del negocio (reemplaza a la del mall) */}
-      <nav className="glass fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 rounded-[26px] px-1.5 md:hidden" aria-label="Secciones de mi negocio">
+      <nav className="nav-pill fixed inset-x-3 bottom-[max(10px,env(safe-area-inset-bottom))] z-30 rounded-[26px] px-1.5 md:hidden" aria-label="Secciones de mi negocio">
         <ul className="grid h-16 auto-cols-fr grid-flow-col items-center">
           {(
             [
@@ -231,9 +239,9 @@ function MerchantContent() {
               <button
                 onClick={() => setTab(id)}
                 aria-current={tab === id}
-                className={`relative flex min-h-[48px] min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[10px] font-semibold transition active:scale-[0.97] ${tab === id ? 'bg-teal/12 text-teal' : 'text-[#66737C]'}`}
+                className={`relative flex min-h-[48px] min-w-[50px] flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 text-[10px] font-semibold transition active:scale-[0.97] ${tab === id ? 'nav-tab-on' : 'nav-tab'}`}
               >
-                <Icon className="size-[21px]" strokeWidth={1.8} />
+                <Icon className="size-[21px]" strokeWidth={2} />
                 {label}
                 {id === 'pedidos' && pending > 0 && (
                   <span className="absolute top-0 right-1 grid min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[10px] leading-[18px] font-bold text-white">
@@ -334,31 +342,26 @@ function OpenToggle({ store }: { store: Store }) {
   )
 }
 
-function Header({ store, onSwitch }: { store: Store; onSwitch: () => void }) {
+function Header({ store, onSwitch, canSwitch }: { store: Store; onSwitch: () => void; canSwitch: boolean }) {
   const navigate = useNavigate()
   const { spaceByStore } = useCatalogMaps()
   const sp = spaceByStore[store.id]
   const space = SPACE_BY_ID[sp]
+  // en el celular el encabezado es una sola fila (logo, nombre y el interruptor): el contenido útil queda en la primera pantalla
   return (
-    <div
-      className="mt-4 flex flex-wrap items-center gap-3 rounded-3xl border border-line bg-card p-4"
-      style={{
-        background: `linear-gradient(160deg, ${store.accentColor}, #fffdf9 80%)`,
-      }}
-    >
-      <StoreLogo store={store} size={60} />
+    <div className="mt-3 flex items-center gap-3 rounded-3xl border border-line p-3 md:p-4" style={{ background: `linear-gradient(160deg, ${store.accentColor}, #fffdf9 80%)` }}>
+      <StoreLogo store={store} size={46} />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold text-ink-soft">Mi negocio</p>
-        <h1 className="truncate text-xl font-extrabold tracking-tight">{store.name}</h1>
+        <h1 className="truncate text-[17px] leading-tight font-extrabold tracking-tight md:text-xl">{store.name}</h1>
         <p className="truncate text-xs text-ink-soft">
           {ZONE_BY_ID[store.zoneId].name} · {space ? `${FLOOR_BY_ID[space.floorId].name}, local ${space.label}` : 'Sin local asignado todavía'}
         </p>
       </div>
-      <div className="flex basis-full flex-wrap gap-2 sm:basis-auto">
+      <div className="flex shrink-0 items-center gap-1.5">
         <OpenToggle store={store} />
         {space && (
           <button
-            className={btn.secondary}
+            className={`${btn.secondary} max-md:hidden`}
             onClick={() => {
               navigate('/')
               useUI.getState().setFloor(space.floorId)
@@ -369,10 +372,12 @@ function Header({ store, onSwitch }: { store: Store; onSwitch: () => void }) {
             <MapPin className="size-4 text-brand" /> Ver en el mall
           </button>
         )}
-        <button className={btn.ghost} onClick={onSwitch} aria-label="Cambiar de negocio">
-          <ArrowLeftRight className="size-4" />
-          <span className="hidden sm:inline">Cambiar</span>
-        </button>
+        {canSwitch && (
+          <button className={btn.ghost} onClick={onSwitch} aria-label="Cambiar de negocio">
+            <ArrowLeftRight className="size-4" />
+            <span className="hidden sm:inline">Cambiar</span>
+          </button>
+        )}
       </div>
     </div>
   )
@@ -657,12 +662,12 @@ function ProfileEditor({ store }: { store: Store }) {
 
       {dirty && (
         <div className="sticky bottom-[calc(var(--chrome-bottom)+8px)] z-10 flex items-center justify-end gap-2 rounded-2xl border border-line bg-white/95 p-2 shadow-[0_10px_30px_-12px_rgba(6,44,66,0.45)] backdrop-blur md:bottom-4">
-          <span className="mr-auto pl-2 text-xs font-bold text-ink-soft">{valid ? 'Tienes cambios sin guardar' : 'Falta el nombre o el letrero'}</span>
-          <button className={btn.secondary} onClick={() => setF(store)}>
+          <span className="mr-auto min-w-0 truncate pl-2 text-xs font-bold text-ink-soft">{valid ? 'Sin guardar' : 'Falta nombre o letrero'}</span>
+          <button className={`${btn.secondary} whitespace-nowrap`} onClick={() => setF(store)}>
             Descartar
           </button>
           <button
-            className={btn.primary}
+            className={`${btn.primary} whitespace-nowrap`}
             disabled={!valid}
             onClick={() => {
               const next = {
