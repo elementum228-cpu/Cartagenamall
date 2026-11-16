@@ -11,7 +11,8 @@ export const rawRewardId = (r: Pick<ArcadeRedemption, 'rewardId' | 'storeId'>) =
 export async function syncVoucher(r: ArcadeRedemption): Promise<void> {
   if (!remoteEnabled() || !supabase || r.synced || !r.storeId) return
   const { error } = await supabase.rpc('voucher_issue', { p_code: r.code, p_store: r.storeId, p_reward: rawRewardId(r) })
-  if (!error) useArcade.getState().markSynced(r.code)
+  if (error) console.warn('voucher_issue', error.message)
+  else useArcade.getState().markSynced(r.code)
 }
 
 /** ¿El negocio ya lo marcó como usado? `null` si no se pudo saber. */
@@ -57,4 +58,9 @@ export async function recentVouchers(storeId: string): Promise<VoucherRow[]> {
 export function normalizeCode(raw: string): string {
   const t = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
   return t.startsWith('CM') ? `CM-${t.slice(2)}` : `CM-${t}`
+}
+
+/** Registra en el servidor los bonos que quedaron pendientes (canjeados sin red o antes de que existiera la validación). */
+export function syncPending(): void {
+  for (const r of useArcade.getState().redemptions) if (!r.synced && !r.used) void syncVoucher(r)
 }

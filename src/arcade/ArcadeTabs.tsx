@@ -19,6 +19,7 @@ import {
 import { useLiveRewards } from './rewards'
 import { Celebration, VoucherView } from './Voucher'
 import { useArcade } from './store'
+import { syncPending } from './vouchers'
 
 // Las pestañas «Ranking» y «Premios» del Arcade (se cargan junto con el juego, pero viven aparte para no mezclar el juego con las listas).
 
@@ -26,6 +27,7 @@ export function Prizes() {
   const points = useArcade((s) => s.points)
   const redemptions = useArcade((s) => s.redemptions)
   const rewards = useLiveRewards()
+  useEffect(syncPending, [])
   /** Qué se ve: la lista, la felicitación de un canje nuevo o un bono. */
   const [view, setView] = useState<{ kind: 'list' } | { kind: 'won'; code: string } | { kind: 'voucher'; code: string }>({ kind: 'list' })
   const redeem = (id: string) => {

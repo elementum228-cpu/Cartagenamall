@@ -365,17 +365,28 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
       on = false
     }
   }, [])
-  // al abrir: registra el bono en el servidor si quedó pendiente y revisa si el negocio ya lo usó
+  // al abrir: registra el bono en el servidor si quedó pendiente; mientras está abierto, avisa en cuanto el negocio lo valide
   const markUsed = useArcade((s) => s.markUsed)
+  const wasUsed = !!r?.used
   useEffect(() => {
-    if (!r) return
+    if (!r || wasUsed) return
     void syncVoucher(r)
-    void voucherUsed(r.code).then((u) => {
-      if (u && !r.used) markUsed(r.code, true)
-    })
+    let on = true
+    const check = () =>
+      void voucherUsed(r.code).then((u) => {
+        if (!on || !u) return
+        markUsed(r.code, true)
+        toast('El negocio validó tu bono: ya fue usado.', 'success')
+      })
+    check()
+    const t = window.setInterval(check, 8000)
+    return () => {
+      on = false
+      window.clearInterval(t)
+    }
     // solo al abrir cada bono
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [r?.code])
+  }, [r?.code, wasUsed])
   if (!r) return null
   const toWallet = async (kind: WalletKind) => {
     setBusy(true)

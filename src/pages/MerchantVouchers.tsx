@@ -88,7 +88,7 @@ export function VoucherValidator({ store }: { store: Store }) {
       </form>
       {found === null && (
         <p className="flex items-center gap-2 rounded-2xl bg-red-50 p-3 text-sm font-semibold text-red-800">
-          <XCircle className="size-5 shrink-0" /> No hay un bono con ese código en tu tienda. Revisa que esté bien escrito.
+          <XCircle className="size-5 shrink-0" /> No hay un bono con ese código en tu tienda. Revisa que esté bien escrito. Si el cliente lo canjeó hace rato, pídele que abra su bono en la app una vez para registrarlo y vuelve a buscar.
         </p>
       )}
       {found && state && (
