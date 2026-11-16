@@ -14,6 +14,9 @@ import {
   BarChart3,
   ChevronDown,
   Clock,
+  Download,
+  Printer,
+  QrCode,
   Copy,
   Music2,
   Palette,
@@ -46,6 +49,8 @@ import { remoteEnabled } from '../remote/client'
 import { cleanHours, withinHours } from '../lib/hours'
 import { HoursEditor, hoursSummary } from './MerchantHours'
 import { HelpLink, SetupChecklist } from './MerchantSetup'
+import { storeQrPoster } from '../lib/storeQr'
+import { VoucherStats } from './MerchantVouchers'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
@@ -211,6 +216,7 @@ function MerchantContent() {
         {tab === 'resumen' && (
           <div className="space-y-4">
             <SetupChecklist store={store} activeProducts={activeProducts} goTab={setTab} />
+            <VoucherStats store={store} goTab={setTab} />
             <MerchantDashboard key={store.id} store={store} goTab={setTab} />
           </div>
         )}
@@ -509,6 +515,44 @@ function StoreLinkCard({ store }: { store: Store }) {
   const { spaceByStore } = useCatalogMaps()
   const toast = useUI((s) => s.toast)
   const url = absoluteUrl(localPath(store, SPACE_BY_ID[spaceByStore[store.id]]))
+  const [poster, setPoster] = useState<{ blob: Blob; src: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => () => void (poster && URL.revokeObjectURL(poster.src)), [poster])
+  const makeQr = async () => {
+    setBusy(true)
+    try {
+      const blob = await storeQrPoster(store, url)
+      setPoster({ blob, src: URL.createObjectURL(blob) })
+    } catch {
+      toast('No se pudo crear el QR. Inténtalo de nuevo.', 'error')
+    }
+    setBusy(false)
+  }
+  const file = () => new File([poster!.blob], `qr-${store.name.replace(/\W+/g, '-').toLowerCase()}.png`, { type: 'image/png' })
+  const save = async () => {
+    if (!poster) return
+    const f = file()
+    try {
+      // en el celular el menú de compartir trae «Guardar imagen» y WhatsApp
+      if (navigator.canShare?.({ files: [f] })) return void (await navigator.share({ files: [f], title: `QR de ${store.name}` }))
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return
+    }
+    const a = document.createElement('a')
+    a.href = poster.src
+    a.download = f.name
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    toast('QR guardado. Imprímelo y pégalo en tu local.', 'success')
+  }
+  const print = () => {
+    if (!poster) return
+    const w = window.open('', '_blank')
+    if (!w) return toast('Tu navegador bloqueó la ventana. Guarda la imagen e imprímela.', 'error')
+    w.document.write(`<title>QR ${store.name}</title><style>body{margin:0;display:grid;place-items:center;min-height:100vh}img{max-width:100%;max-height:100vh}@page{margin:8mm}</style><img src="${poster.src}" onload="setTimeout(()=>print(),200)">`)
+    w.document.close()
+  }
   return (
     <Card className="space-y-2">
       <div>
@@ -525,6 +569,24 @@ function StoreLinkCard({ store }: { store: Store }) {
           <Copy className="size-4" /> Copiar
         </button>
       </div>
+      {!poster ? (
+        <button type="button" className={`${btn.secondary} w-full`} disabled={busy} onClick={() => void makeQr()}>
+          <QrCode className="size-4" /> {busy ? 'Creando…' : 'Crear QR para imprimir'}
+        </button>
+      ) : (
+        <div className="space-y-2 pt-1">
+          <img src={poster.src} alt={`Afiche con el QR de ${store.name}`} className="mx-auto max-h-[380px] rounded-2xl border border-line shadow-soft" />
+          <p className="text-center text-[12px] text-ink-soft">Pégalo en tu vitrina o mostrador: quien lo escanee entra a tu local en MallPlay.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className={btn.primary} onClick={() => void save()}>
+              <Download className="size-4" /> Guardar
+            </button>
+            <button type="button" className={btn.secondary} onClick={print}>
+              <Printer className="size-4" /> Imprimir
+            </button>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }

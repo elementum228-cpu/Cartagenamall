@@ -131,3 +131,52 @@ export function VoucherValidator({ store }: { store: Store }) {
     </section>
   )
 }
+
+const WEEK = 7 * 86_400_000
+
+/** Resumen de la semana para el negocio: cuántos bonos del Arcade se canjearon y cuántos ya llegaron a la caja (lo que el Arcade le trae al local). */
+export function VoucherStats({ store, goTab }: { store: Store; goTab: (t: 'promociones') => void }) {
+  const [rows, setRows] = useState<VoucherRow[] | null>(null)
+  useEffect(() => {
+    if (!remoteEnabled()) return
+    void recentVouchers(store.id).then(setRows).catch(() => setRows([]))
+  }, [store.id])
+  if (!remoteEnabled()) return null
+  const hasRewards = (store.arcadeRewards?.length ?? 0) > 0
+  const week = (rows ?? []).filter((v) => Date.now() - Date.parse(v.issued_at) < WEEK)
+  const used = week.filter((v) => v.used_at).length
+  return (
+    <section className="rounded-3xl border border-line bg-card p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand" aria-hidden>
+          <Ticket className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold">Lo que el Arcade te trae</p>
+          {!hasRewards ? (
+            <p className="mt-0.5 text-xs text-ink-soft">Aún no regalas un premio en el Arcade. Quien juega en el mall junta tiquetes y los cambia por tus premios: es gente que llega a tu local.</p>
+          ) : rows === null ? (
+            <p className="mt-0.5 text-xs text-ink-soft">Cargando…</p>
+          ) : (
+            <p className="mt-0.5 text-xs text-ink-soft">Esta semana, de tus últimos bonos.</p>
+          )}
+        </div>
+      </div>
+      {hasRewards && rows !== null && (
+        <div className="mt-3 grid grid-cols-2 gap-2.5 text-center">
+          <div className="rounded-2xl bg-sand p-3">
+            <p className="text-[26px] leading-none font-extrabold">{week.length}</p>
+            <p className="mt-1 text-xs font-semibold text-ink-soft">canjeados</p>
+          </div>
+          <div className="rounded-2xl bg-emerald-50 p-3">
+            <p className="text-[26px] leading-none font-extrabold text-emerald-800">{used}</p>
+            <p className="mt-1 text-xs font-semibold text-emerald-800">usados en tu caja</p>
+          </div>
+        </div>
+      )}
+      <button className={`${btn.secondary} mt-3 w-full`} onClick={() => goTab('promociones')}>
+        {hasRewards ? 'Validar un bono' : 'Crear un premio del Arcade'}
+      </button>
+    </section>
+  )
+}
