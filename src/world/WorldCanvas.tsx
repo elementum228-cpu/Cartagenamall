@@ -70,11 +70,18 @@ function useFontsReady() {
   return ready
 }
 
+/** Resoluciones (devicePixelRatio máximo) que recorre la calidad baja cuando el rendimiento sigue siendo insuficiente. */
+const LOW_DPR_STEPS = [DPR_CAP.low, 1.25, 1]
+
 export default function WorldCanvas({ active, fallback, night }: { active: boolean; fallback: ReactNode; night: boolean }) {
   const quality = usePrefs((s) => s.quality)
   // La resolución sigue a la calidad: es lo que más cuesta en pantallas densas. Nunca baja de 1,5× hasta el modo bajo.
   const native = window.devicePixelRatio || 1
-  const dpr = Math.min(native, DPR_CAP[quality])
+  // En calidad baja la resolución todavía puede bajar más («ultra bajo»): si el celular sigue sin sostener ~20 cuadros por segundo se
+  // pasa de 1,5× a 1,25× y a 1×, que es 2,25 veces menos píxeles que dibujar. Solo baja (estabilidad antes que resolución) y se
+  // reinicia al volver a abrir; nunca cambia si la persona fijó la calidad a mano.
+  const [lowStep, setLowStep] = useState(0)
+  const dpr = Math.min(native, quality === 'low' ? LOW_DPR_STEPS[lowStep] : DPR_CAP[quality])
   // Tope de cuadros: 60 (en pantallas de 90/120 Hz se dibujaría el doble sin que se note); 30 en calidad baja.
   const maxFps = quality === 'low' ? 30 : 60
   const fontsReady = useFontsReady()
@@ -116,8 +123,13 @@ export default function WorldCanvas({ active, fallback, night }: { active: boole
       >
         <FrameDriver run={active} maxFps={maxFps} />
         <PerformanceMonitor
+          // con tope de 30 cuadros (baja) el monitor estándar [50-60] siempre diría «lento»: se mide contra lo que ese tope permite
+          {...(quality === 'low' ? { bounds: () => [20, 28] as [number, number] } : {})}
           onDecline={() => {
-            usePrefs.getState().stepDownQuality()
+            const ui = usePrefs.getState()
+            if (ui.qualityLocked) return
+            if (quality === 'low') setLowStep((n) => Math.min(n + 1, LOW_DPR_STEPS.length - 1))
+            else ui.stepDownQuality()
           }}
           flipflops={2}
         >
