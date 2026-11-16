@@ -1,15 +1,18 @@
-import { AlertCircle, Info, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react'
+import { AlertCircle, ArrowRight, Info, Minus, Plus, Receipt, ShoppingBag, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { formatCOP } from '../lib/format'
-import { stockFor } from '../lib/inventory'
+import { stockFor, totalStock } from '../lib/inventory'
 import { groupByStore, validateCart } from '../services/orders'
 import { useBuyer } from '../remote/profile'
 import { useCart } from '../state/cart'
 import { useCatalog, useCatalogMaps } from '../state/catalog'
 import { usePricing } from '../state/pricing'
-import { EmptyState, PromoBadge, StoreLogo, btn } from '../ui/bits'
+import { PromoBadge, StoreLogo, btn } from '../ui/bits'
+import { ProductCard } from '../ui/ProductCard'
+import { usePersonal } from '../state/personal'
+import type { Product } from '../domain/types'
 import { ProductImage } from '../ui/ProductImage'
 
 /** Hook compartido por carrito y checkout: agrupa, valida y totaliza. */
@@ -34,33 +37,58 @@ export function useCartSummary() {
   }, [items, promotions, productById, storeById, priceOf])
 }
 
+/** Carrito vacío: una acción principal clara, las secundarias discretas y productos para empezar (guardados primero, luego en oferta). */
+function EmptyCart() {
+  const products = useCatalog((s) => s.products)
+  const { storeById } = useCatalogMaps()
+  const { priceOf } = usePricing()
+  const favs = usePersonal((s) => s.favoriteProducts)
+  const picks = useMemo(() => {
+    const ok = (p: Product) => storeById[p.storeId]?.status === 'open' && totalStock(p) > 0
+    const mine = products.filter((p) => favs.includes(p.id) && ok(p))
+    const promo = products.filter((p) => !favs.includes(p.id) && ok(p) && priceOf(p).promotion)
+    const rest = products.filter((p) => !favs.includes(p.id) && ok(p) && !priceOf(p).promotion)
+    return { items: [...mine, ...promo, ...rest].slice(0, 8), hasFavs: mine.length > 0, hasPromo: promo.length > 0 }
+  }, [products, storeById, priceOf, favs])
+  const title = picks.hasFavs ? 'Tus guardados' : picks.hasPromo ? 'Para empezar, con promoción' : 'Para empezar'
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center px-5 pt-6 pb-32 text-center">
+      <div className="grid size-24 place-items-center rounded-[32px] bg-gradient-to-br from-teal/15 to-coral/15 text-teal ring-1 ring-teal/10">
+        <ShoppingBag className="size-11" strokeWidth={1.6} />
+      </div>
+      <h1 className="mt-5 text-[22px] leading-tight font-extrabold tracking-tight">Tu carrito está vacío</h1>
+      <p className="mt-1.5 max-w-[30ch] text-[15px] leading-snug text-ink-soft">Agrega productos de distintas tiendas: todo llega a un solo carrito.</p>
+      <div className="mt-6 flex w-full flex-col gap-2.5">
+        <Link to="/comprar" className={`${btn.primary} flex min-h-[52px] w-full items-center justify-center gap-2 text-[16px]`}>
+          Ir a comprar <ArrowRight className="size-5" />
+        </Link>
+        <Link to="/" className={`${btn.secondary} flex min-h-12 w-full items-center justify-center`}>
+          Explorar el mall
+        </Link>
+        <Link to="/pedidos" className="mx-auto mt-1 inline-flex min-h-11 items-center gap-1.5 px-3 text-[14px] font-bold text-teal">
+          <Receipt className="size-4" /> Ver mis pedidos
+        </Link>
+      </div>
+      {picks.items.length > 0 && (
+        <section className="mt-6 w-full text-left" aria-label={title}>
+          <h2 className="mb-2.5 text-[15px] font-extrabold tracking-tight">{title}</h2>
+          <div className="scrollbar-none -mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
+            {picks.items.map((p) => (
+              <ProductCard key={p.id} product={p} store={storeById[p.storeId]} compact />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
 export function CartPage() {
   const { groups, issues, total, savings, items } = useCartSummary()
   const navigate = useNavigate()
   const { needLogin } = useBuyer()
 
-  if (!items.length)
-    return (
-      <EmptyState
-        icon={<ShoppingBag className="size-7" />}
-        title="Tu carrito está vacío"
-        action={
-          <div className="flex gap-2">
-            <Link to="/pedidos" className={btn.secondary}>
-              Mis pedidos
-            </Link>
-            <Link to="/" className={btn.secondary}>
-              Explorar el mall
-            </Link>
-            <Link to="/comprar" className={btn.primary}>
-              Ir a comprar
-            </Link>
-          </div>
-        }
-      >
-        Agrega productos de distintas tiendas: todo llega a un solo carrito.
-      </EmptyState>
-    )
+  if (!items.length) return <EmptyCart />
 
   return (
     <div className="mx-auto grid max-w-5xl gap-6 px-4 pt-5 pb-32 md:grid-cols-[1fr_340px] md:pb-10">
