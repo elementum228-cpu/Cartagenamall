@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sfx, startMusic, stopMusic, unlockArcadeAudio } from '../audio'
 import { CoinSlot } from '../CoinSlot'
-import { useArcade } from '../store'
+import { TICKET_SCALE, useArcade } from '../store'
 import { GameEnd } from '../TicketReceipt'
 import type { GameDef, MiniGameId } from './defs'
 import { BOWLS, CRABS } from './defs'
@@ -72,7 +72,7 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
         cancelAnimationFrame(raf.current)
         stopMusic()
         const score = def.score(state.current)
-        const r = useArcade.getState().finishRun(score, false)
+        const r = useArcade.getState().finishRun(score, false, undefined, TICKET_SCALE[id])
         sfx(r.record ? 'record' : 'over')
         setResult({ score, awarded: r.awarded, capped: r.capped, record: r.record, total: useArcade.getState().points })
         setPhase('over')

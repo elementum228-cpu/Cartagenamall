@@ -11,10 +11,15 @@ import { currentLiveRewards } from './rewards'
 // dispositivo (igual que el pasaporte). Hay un tope por partida y por día para que nadie se lleve premios solo jugando
 // horas: el juego es un pasatiempo y el premio, un incentivo para volver.
 
-/** Puntaje del juego necesario para ganar 1 punto de premio. */
-export const SCORE_PER_POINT = 10
-/** Máximo de puntos por partida y por día. */
-export const MAX_POINTS_PER_RUN = 300
+/** Máximo de tiquetes por partida: solo se alcanza con un puntaje altísimo. */
+export const MAX_POINTS_PER_RUN = 100
+/**
+ * Escala de cada juego para convertir puntaje en tiquetes. La curva es suave: al principio cada 10 puntos dan ~1 tiquete (con escala 1000)
+ * y, a medida que el puntaje crece, cada punto extra rinde menos, así que la mayoría de partidas da entre 30 y 70 tiquetes y los 100 quedan
+ * para puntajes enormes. Es más chica donde el puntaje máximo posible es menor (los bolos tienen 9 lanzamientos de 100 puntos como mucho).
+ */
+export const TICKET_SCALE = { nave: 1000, cangrejos: 1000, bolos: 300 } as const
+export type TicketGame = keyof typeof TICKET_SCALE
 /** Sin tope diario de tiquetes: el límite del día son las 5 monedas (cada moneda = una partida). */
 export const DAILY_POINTS_CAP = Infinity
 /** Monedas gratis cada día: cada una abre una partida en cualquiera de los juegos. */
@@ -51,9 +56,13 @@ export interface ArcadeRedemption {
 }
 
 /** Puntos que da una partida con este puntaje, respetando el tope por partida y lo que queda del tope del día. */
-export function awardFor(score: number, earnedToday: number): number {
-  const raw = Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))
-  return Math.max(0, Math.min(raw, DAILY_POINTS_CAP - earnedToday))
+export function awardFor(score: number, earnedToday: number, scale: number = TICKET_SCALE.nave): number {
+  return Math.max(0, Math.min(ticketsFor(score, scale), DAILY_POINTS_CAP - earnedToday))
+}
+
+/** Tiquetes de una partida con este puntaje: curva que se aplana hacia el tope (MAX_POINTS_PER_RUN). */
+export function ticketsFor(score: number, scale: number = TICKET_SCALE.nave): number {
+  return Math.round(MAX_POINTS_PER_RUN * (1 - Math.exp(-Math.max(0, score) / scale)))
 }
 
 export const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -87,7 +96,7 @@ interface ArcadeState {
   localBest: { score: number; at: string }[]
   setNickname: (raw: string) => string
   /** Registra una partida terminada; devuelve cuántos puntos dio y si el tope del día lo recortó. */
-  finishRun: (score: number, ranked?: boolean, difficulty?: Difficulty) => { awarded: number; capped: boolean; record: boolean }
+  finishRun: (score: number, ranked?: boolean, difficulty?: Difficulty, scale?: number) => { awarded: number; capped: boolean; record: boolean }
   redeem: (rewardId: string) => ArcadeRedemption | null
   markSynced: (code: string) => void
   /** Marca un bono como usado (o lo devuelve a disponible). */
@@ -130,12 +139,12 @@ export const useArcade = create<ArcadeState>()(
         set({ nickname: ok })
         return ok
       },
-      finishRun: (score, ranked = false, difficulty = get().difficulty) => {
+      finishRun: (score, ranked = false, difficulty = get().difficulty, scale = TICKET_SCALE.nave) => {
         const s = get()
         const today = dayKey()
         const earnedToday = s.day === today ? s.earnedToday : 0
-        const awarded = awardFor(score, earnedToday)
-        const wanted = Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))
+        const awarded = awardFor(score, earnedToday, scale)
+        const wanted = ticketsFor(score, scale)
         const record = score > s.best
         const localBest = score > 0 ? [...s.localBest, { score, at: new Date().toISOString() }].sort((a, b) => b.score - a.score).slice(0, 5) : s.localBest
         const runs = score > 0 ? [{ score, at: new Date().toISOString(), ranked, awarded, difficulty }, ...s.runs].slice(0, MAX_SAVED_RUNS) : s.runs
@@ -185,4 +194,4 @@ export const useCoinsLeft = () => {
 }
 
 /** Tiquetes que lleva una partida con este puntaje (sin el tope del día): para mostrarlos mientras se juega. */
-export const liveTickets = (score: number) => Math.min(MAX_POINTS_PER_RUN, Math.floor(Math.max(0, score) / SCORE_PER_POINT))
+export const liveTickets = (score: number, scale: number = TICKET_SCALE.nave) => ticketsFor(score, scale)

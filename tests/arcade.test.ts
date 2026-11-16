@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DIFFICULTIES, KIND_HP, MAX_STEPS, MAX_WEAPON, RAPID_SECONDS, MAX_SECONDS, SHIP_Y, STEP, createGame, createRecorder, fallSpeed, fsin, makeRand, replay, spawnGap, update, H, W, type Input } from '../src/arcade/engine'
 import { cleanRewards, liveRewards, rewardsFromStores } from '../src/arcade/rewards'
 import { useCatalog } from '../src/state/catalog'
-import { DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, awardFor, useArcade } from '../src/arcade/store'
+import { DAILY_POINTS_CAP, MAX_POINTS_PER_RUN, TICKET_SCALE, awardFor, ticketsFor, useArcade } from '../src/arcade/store'
 
 const still = { targetX: null, dir: 0 }
 
@@ -302,9 +302,8 @@ describe('puntos y premios del Arcade', () => {
   it('1 punto por cada 10, con tope por partida y sin tope diario (el límite son las monedas)', () => {
     expect(awardFor(0, 0)).toBe(0)
     expect(awardFor(95, 0)).toBe(9)
-    expect(awardFor(2620, 0)).toBe(262) // un puntaje alto ya no se corta en 60
     expect(awardFor(100_000, 0)).toBe(MAX_POINTS_PER_RUN)
-    expect(MAX_POINTS_PER_RUN).toBe(300)
+    expect(MAX_POINTS_PER_RUN).toBe(100)
     expect(awardFor(100_000, 5_000)).toBe(MAX_POINTS_PER_RUN)
     expect(DAILY_POINTS_CAP).toBe(Infinity)
   })
@@ -313,8 +312,8 @@ describe('puntos y premios del Arcade', () => {
     seedRewards([{ id: 'p1', title: '20 % de descuento', detail: '', cost: 100, active: true, until: '' }])
     useArcade.setState({ points: 0, lifetime: 0, best: 0, plays: 0, earnedToday: 0, redemptions: [] })
     const r1 = useArcade.getState().finishRun(300)
-    expect(r1).toMatchObject({ awarded: 30, record: true, capped: false })
-    expect(useArcade.getState().redeem('s1:p1')).toBeNull() // 30 < 100
+    expect(r1).toMatchObject({ awarded: ticketsFor(300), record: true, capped: false })
+    expect(useArcade.getState().redeem('s1:p1')).toBeNull() // pocos tiquetes para un premio de 100
     useArcade.setState({ points: 120 })
     const red = useArcade.getState().redeem('s1:p1')!
     expect(red.storeName).toBe('Tienda')
@@ -595,5 +594,24 @@ describe('tanda de tiquetes grande', () => {
     expect(ticketDuration(30)).toBeLessThanOrEqual(3.7)
     expect(ticketDuration(300)).toBeLessThanOrEqual(6.1)
     expect(ticketDuration(60)).toBeCloseTo(3.6, 1)
+  })
+})
+
+describe('curva de tiquetes', () => {
+  it('crece sin parar pero se aplana: la mayoría de partidas da 30-70 y los 100 son para puntajes enormes', () => {
+    const k = TICKET_SCALE.cangrejos
+    const t = [100, 300, 500, 1000, 1500, 2620, 4000, 8000].map((s) => ticketsFor(s, k))
+    expect(t).toEqual([...t].sort((a, b) => a - b)) // nunca baja al subir el puntaje
+    expect(t[1]).toBeGreaterThanOrEqual(20) // un puntaje flojo igual da algo
+    expect(ticketsFor(500, k)).toBeGreaterThanOrEqual(30)
+    expect(ticketsFor(1000, k)).toBeLessThan(70)
+    expect(ticketsFor(2620, k)).toBeLessThan(MAX_POINTS_PER_RUN) // el puntaje de 2.620 ya no da el tope
+    expect(ticketsFor(8000, k)).toBe(MAX_POINTS_PER_RUN)
+    expect(ticketsFor(0, k)).toBe(0)
+  })
+  it('cada juego tiene su escala: 9 lanzamientos perfectos en los bolos casi llegan al tope', () => {
+    expect(ticketsFor(900, TICKET_SCALE.bolos)).toBeGreaterThanOrEqual(90)
+    expect(ticketsFor(250, TICKET_SCALE.bolos)).toBeGreaterThanOrEqual(50)
+    expect(ticketsFor(250, TICKET_SCALE.bolos)).toBeLessThan(70)
   })
 })

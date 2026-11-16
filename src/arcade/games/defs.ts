@@ -2,7 +2,7 @@
 // una definición pura (estado, avance, dibujo y toques) que el marco `MiniGame` mueve en un lienzo 2D. No usan servidor: los puntos
 // se suman en este dispositivo, igual que en Nave Caribe sin conexión.
 
-import { liveTickets } from '../store'
+import { TICKET_SCALE, liveTickets } from '../store'
 
 export type MiniGameId = 'cangrejos' | 'bolos'
 export type PointerKind = 'down' | 'move' | 'up'
@@ -454,7 +454,7 @@ export const CRABS: GameDef<CrabsState> = {
     ctx.fillStyle = '#ff2bd6'
     ctx.fillRect(0, 50, CW, 3)
     txt('TIQUETES', 12, 15, 8, '#00f0ff')
-    txt(String(liveTickets(s.score)), 12, 34, 14, '#ffd400')
+    txt(String(liveTickets(s.score, TICKET_SCALE.cangrejos)), 12, 34, 14, '#ffd400')
     const mult = Math.min(5, 1 + Math.floor(s.combo / 4))
     txt(s.combo > 1 ? `RACHA ${s.combo}` : 'RACHA', CW / 2, 15, 8, '#7dffa6', 'center')
     // medidor de racha: cuatro aciertos suben el multiplicador
@@ -1033,7 +1033,7 @@ export const BOWLS: GameDef<BowlsState> = {
     ctx.fillStyle = '#ff2bd6'
     ctx.fillRect(0, 44, BW, 3)
     label('TIQUETES', 12, 15, 8, '#00f0ff', 'left')
-    numText(ctx, String(liveTickets(s.score)), 12 + String(liveTickets(s.score)).length * 8.5, 33, 20, '#ffd400', '#07031a')
+    numText(ctx, String(liveTickets(s.score, TICKET_SCALE.bolos)), 12 + String(liveTickets(s.score, TICKET_SCALE.bolos)).length * 8.5, 33, 20, '#ffd400', '#07031a')
     label('COCOS', BW - 12, 12, 8, '#ffd400', 'right')
     for (let i = 0; i < BALLS; i++) {
       ctx.globalAlpha = i >= s.left ? 0.25 : 1
