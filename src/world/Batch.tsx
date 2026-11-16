@@ -27,6 +27,17 @@ function bakedMaterial(roughness: number) {
   return m
 }
 
+/**
+ * Lado (en unidades del mundo) de las celdas en que se parte la fusión. Una sola malla por material cubriendo todo el mundo tiene un
+ * volumen enorme: el recorte por cámara nunca la descarta y la GPU dibuja todo el mall aunque solo se vea un local. Partida en celdas,
+ * cada trozo sí se descarta cuando queda fuera de la pantalla. 0 = sin celdas.
+ */
+export let BATCH_CELL = import.meta.env.DEV && typeof window !== 'undefined' && (window as unknown as { __cellInit?: number }).__cellInit !== undefined ? (window as unknown as { __cellInit: number }).__cellInit : 56
+/** Solo para medir (pruebas y herramientas de desarrollo). */
+export const setBatchCell = (n: number) => {
+  BATCH_CELL = n
+}
+
 interface Bucket {
   material: THREE.Material
   cast: boolean
@@ -46,10 +57,17 @@ function collect(src: THREE.Object3D, inv: THREE.Matrix4, buckets: Map<string, B
       const baked = !!material.userData.bake && !mesh.geometry.attributes.color
       const color = baked ? (material as THREE.MeshStandardMaterial).color : null
       if (baked) material = bakedMaterial((material as THREE.MeshStandardMaterial).roughness)
-      const key = `${material.uuid}|${mesh.castShadow}|${mesh.receiveShadow}|${mesh.renderOrder}`
+      const g = prepare(mesh.geometry, new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld))
+      // celda de la pieza (por el centro de su caja): las piezas de una misma zona se funden juntas y se recortan juntas
+      let cell = ''
+      if (BATCH_CELL > 0) {
+        g.computeBoundingBox()
+        const c = g.boundingBox!.getCenter(new THREE.Vector3())
+        cell = `|${Math.floor(c.x / BATCH_CELL)},${Math.floor(c.z / BATCH_CELL)}`
+      }
+      const key = `${material.uuid}|${mesh.castShadow}|${mesh.receiveShadow}|${mesh.renderOrder}${cell}`
       let b = buckets.get(key)
       if (!b) buckets.set(key, (b = { material, cast: mesh.castShadow, receive: mesh.receiveShadow, geos: [], order: mesh.renderOrder }))
-      const g = prepare(mesh.geometry, new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld))
       if (color) {
         const n = g.attributes.position.count
         const arr = new Float32Array(n * 3)
