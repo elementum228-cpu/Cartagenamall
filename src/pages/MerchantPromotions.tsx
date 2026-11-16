@@ -17,6 +17,7 @@ import { Countdown, btn, input } from '../ui/bits'
 import { MAX_REWARDS_PER_STORE, cleanRewards, newStoreReward, type StoreRewardDoc } from '../arcade/rewards'
 import { describeHideSpot } from '../promotions/hideSpot'
 import { HideSpotPicker } from './HideSpotPicker'
+import { VoucherValidator } from './MerchantVouchers'
 import { MerchantShipEditor } from '../ship/MerchantShipEditor'
 import { isShipPromotion, useDiscountShip } from '../ship/offers'
 
@@ -167,6 +168,8 @@ export function MerchantPromotions({ store }: { store: Store }) {
           )
         })}
       </ul>
+
+      <VoucherValidator key={`v${store.id}`} store={store} />
 
       {open === 'ship' && <MerchantShipEditor key={`b${store.id}`} store={store} />}
       {open === 'loyalty' && <LoyaltyEditor key={store.id} store={store} />}

@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 import markWhite from '../assets/mallplay-mark-white.png'
 import type { Store } from '../domain/types'
 import { copyText } from '../lib/clipboard'
+import { openWhatsApp, whatsappDigits, whatsappLink } from '../lib/restaurant'
 import { useCatalog } from '../state/catalog'
 import { MallLogoWhite } from '../ui/MallMark'
 import { StoreLogo } from '../ui/bits'
 import { useUI } from '../state/ui'
 import { celebrate } from './audio'
 import { useArcade, type ArcadeRedemption } from './store'
+import { syncVoucher, voucherUsed } from './vouchers'
 import { walletKinds, walletLink, walletSupport, type WalletKind } from './wallet'
 import './arcade.css'
 
@@ -79,7 +81,7 @@ export function Celebration({ r, onContinue }: { r: ArcadeRedemption; onContinue
 type StoreLook = Pick<Store, 'logoText' | 'brandColor' | 'logo'>
 
 /** La tienda del bono (para su logo y su color): por su identificador o, en bonos viejos, por su nombre. */
-function useStoreOf(r: ArcadeRedemption): StoreLook | null {
+function useStoreOf(r: ArcadeRedemption): Store | null {
   const stores = useCatalog((s) => s.stores)
   return useMemo(() => stores.find((s) => (r.storeId ? s.id === r.storeId : !!r.storeName && s.name === r.storeName)) ?? null, [stores, r.storeId, r.storeName])
 }
@@ -123,6 +125,20 @@ export function VoucherCard({ r }: { r: ArcadeRedemption }) {
       )}
     </article>
   )
+}
+
+/** Rectángulo con esquinas redondeadas (sin `roundRect`, que no existe en iPhones con iOS < 16). */
+function rrect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, tl: number, tr: number, br: number, bl: number) {
+  g.moveTo(x + tl, y)
+  g.lineTo(x + w - tr, y)
+  g.arcTo(x + w, y, x + w, y + tr, tr)
+  g.lineTo(x + w, y + h - br)
+  g.arcTo(x + w, y + h, x + w - br, y + h, br)
+  g.lineTo(x + bl, y + h)
+  g.arcTo(x, y + h, x, y + h - bl, bl)
+  g.lineTo(x, y + tl)
+  g.arcTo(x, y, x + tl, y, tl)
+  g.closePath()
 }
 
 const loadImg = (src: string) =>
@@ -192,11 +208,11 @@ export async function voucherImage(r: ArcadeRedemption, store: StoreLook | null)
   card.addColorStop(1, '#ffe39a')
   g.fillStyle = card
   g.beginPath()
-  g.roundRect(x0, y0, w, cardH, 56)
+  rrect(g, x0, y0, w, cardH, 56, 56, 56, 56)
   g.fill()
   g.fillStyle = '#171233'
   g.beginPath()
-  g.roundRect(x0, y0, w, headH, [56, 56, 0, 0])
+  rrect(g, x0, y0, w, headH, 56, 56, 0, 0)
   g.fill()
   // cabecera: logo de MallPlay y «BONO ARCADE»
   g.textBaseline = 'middle'
@@ -340,6 +356,7 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
   const toast = useUI((s) => s.toast)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
   const [wallets, setWallets] = useState<WalletKind[]>([])
   useEffect(() => {
     let on = true
@@ -348,6 +365,17 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
       on = false
     }
   }, [])
+  // al abrir: registra el bono en el servidor si quedó pendiente y revisa si el negocio ya lo usó
+  const markUsed = useArcade((s) => s.markUsed)
+  useEffect(() => {
+    if (!r) return
+    void syncVoucher(r)
+    void voucherUsed(r.code).then((u) => {
+      if (u && !r.used) markUsed(r.code, true)
+    })
+    // solo al abrir cada bono
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r?.code])
   if (!r) return null
   const toWallet = async (kind: WalletKind) => {
     setBusy(true)
@@ -361,34 +389,40 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
   const save = async () => {
     setBusy(true)
     try {
-      download(await voucherImage(r, store), `bono-${r.code}.png`)
-      toast('Imagen guardada. Puedes enviarla al negocio.', 'success')
-    } catch {
-      toast('No se pudo crear la imagen. Haz una captura de pantalla.', 'error')
+      const blob = await voucherImage(r, store)
+      const file = new File([blob], `bono-${r.code}.png`, { type: 'image/png' })
+      // en el celular el menú de compartir trae «Guardar imagen» (y WhatsApp); en computador se descarga
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'Mi bono de MallPlay' })
+      else if (/iPhone|iPad|iPod/.test(navigator.userAgent)) setPreview(URL.createObjectURL(blob))
+      else {
+        download(blob, `bono-${r.code}.png`)
+        toast('Imagen guardada.', 'success')
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') toast('No se pudo crear la imagen. Haz una captura de pantalla.', 'error')
     }
     setBusy(false)
   }
-  const send = async () => {
-    setBusy(true)
-    try {
-      const blob = await voucherImage(r, store)
-      const file = new File([blob], `bono-${r.code}.png`, { type: 'image/png' })
-      const text = `Mi bono de MallPlay: ${r.name}${r.storeName ? ` en ${r.storeName}` : ''}. Código ${r.code}.`
-      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'Mi bono de MallPlay', text })
-      else {
-        download(blob, `bono-${r.code}.png`)
-        toast('Imagen guardada: envíala por WhatsApp al negocio.', 'success')
-      }
-    } catch (e) {
-      if ((e as Error)?.name !== 'AbortError') toast('No se pudo compartir. Haz una captura de pantalla.', 'error')
-    }
-    setBusy(false)
+  /** Abre WhatsApp con el número del negocio y el mensaje listo (el código va en el texto; la imagen se adjunta desde WhatsApp si se quiere). */
+  const send = () => {
+    const text = `Hola${r.storeName ? ` ${r.storeName}` : ''}, gané este bono en el Arcade de MallPlay: ${r.name}.\nCódigo: ${r.code}${r.until ? `\nVálido hasta el ${untilEs(r.until)}` : ''}\n¿Me lo pueden validar?`
+    const number = store?.whatsapp && whatsappDigits(store.whatsapp).length >= 10 ? store.whatsapp : ''
+    const url = number ? whatsappLink(number, text) : `https://wa.me/?text=${encodeURIComponent(text)}`
+    if (!number) toast('Este negocio aún no tiene WhatsApp: elige el contacto.')
+    openWhatsApp(url)
   }
   return (
     <div className="flex min-h-0 flex-col gap-3 pb-2 text-white">
       <button onClick={onBack} className="font-arcade flex min-h-11 items-center gap-2 self-start px-1 text-[10px] text-[#9fb3ff]">
         <ArrowLeft className="size-4" /> MIS PREMIOS
       </button>
+      {preview && (
+        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-3 bg-black/90 p-4" onClick={() => setPreview(null)}>
+          <img src={preview} alt={`Bono ${r.code}`} className="max-h-[78dvh] max-w-full rounded-2xl" />
+          <p className="max-w-[30ch] text-center text-[13px] text-white">Mantén presionada la imagen y elige «Guardar en Fotos».</p>
+          <button className="rounded-full bg-white/15 px-5 py-2 text-[13px] font-bold text-white">Cerrar</button>
+        </div>
+      )}
       <VoucherCard r={r} />
       <div className="mx-auto flex w-full max-w-[340px] flex-col gap-2">
         {wallets.map((k) => (
@@ -397,7 +431,7 @@ export function VoucherView({ code, onBack }: { code: string; onBack: () => void
           </button>
         ))}
         <button disabled={busy} onClick={send} className={`${wallets.length ? 'bg-white/12 text-white' : 'arcade-btn'} font-arcade flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-[10.5px]`}>
-          <Send className="size-4" /> ENVIAR AL NEGOCIO
+          <Send className="size-4" /> ENVIAR POR WHATSAPP
         </button>
         <div className="grid grid-cols-2 gap-2">
           <button disabled={busy} onClick={save} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white/12 text-[13px] font-bold active:scale-[0.98]">
