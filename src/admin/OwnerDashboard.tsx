@@ -1,4 +1,5 @@
 import { Building2, Eye, Gamepad2, MapPin, RotateCcw, Search, Trophy, Utensils } from 'lucide-react'
+import { usePreviewMall } from '../state/previewMall'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { COURT_SPACE, TRACK_SPACE, FLOORS, FLOOR_BY_ID, SHOP_SPACE_TYPES, SPACES, SPACE_TYPES, ZONE_BY_ID } from '../config/mall'
@@ -44,6 +45,23 @@ function useRows(): Row[] {
   )
 }
 
+/** Prueba completa: llena todos los espacios libres con negocios inventados para ver el mall lleno. Solo en este dispositivo. */
+function FullMallCard() {
+  const full = usePreviewMall((s) => s.full)
+  const setFull = usePreviewMall((s) => s.setFull)
+  return (
+    <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${full ? 'border-teal bg-teal/10' : 'border-line bg-card'}`}>
+      <input type="checkbox" className="mt-0.5 size-5 accent-brand" checked={full} onChange={(e) => setFull(e.target.checked)} />
+      <span>
+        <span className="block text-sm font-extrabold">Modo prueba completa: mall lleno</span>
+        <span className="block text-xs text-ink-soft">
+          Llena con negocios inventados todos los espacios libres (comida, moda, tecnología, belleza, servicios y entretenimiento) para que veas el mall como se verá lleno. Solo se ve en este dispositivo: no cambia las tiendas reales ni lo que ve el público. Los locales de prueba no abren ficha.
+        </span>
+      </span>
+    </label>
+  )
+}
+
 export function OwnerDashboard() {
   const rows = useRows()
   const occupied = rows.filter((r) => r.store)
@@ -54,6 +72,7 @@ export function OwnerDashboard() {
 
   return (
     <div className="space-y-6">
+      <FullMallCard />
       <div>
         <h2 className="text-xl font-extrabold tracking-tight">Gestión del centro comercial</h2>
         <p className="text-sm text-ink-soft">Todos los espacios y amenidades del mall, su ocupación y el precio mensual de cada uno. Los precios que cambies se ven al instante en el mapa y en las fichas para reclamar.</p>

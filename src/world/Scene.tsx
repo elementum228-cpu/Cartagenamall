@@ -12,7 +12,8 @@ import type { FloorConfig, Product, SpaceSlot } from '../domain/types'
 import { isPromotionLive } from '../lib/pricing'
 import { useMinute } from '../lib/useMinute'
 import { useMediaQuery } from '../lib/useMedia'
-import { useCatalog, useCatalogMaps } from '../state/catalog'
+import { useCatalog } from '../state/catalog'
+import { canPreview, usePreviewMall, useWorldCatalog } from '../state/previewMall'
 import { useClaims } from '../state/claims'
 import { usePersonal } from '../state/personal'
 import { usePrefs, useUI, type Quality } from '../state/ui'
@@ -65,10 +66,9 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
   const entOn = useEntertainmentFeature((s) => s.enabled)
   const svcOn = useServicesFeature((s) => s.enabled)
   const cineOn = useCine((s) => s.enabled)
-  const assignments = useCatalog((s) => s.assignments)
-  const products = useCatalog((s) => s.products)
+  // el catálogo del mundo incluye, con el modo «mall lleno» de la administración, negocios inventados en los espacios libres
+  const { assignments, products, storeById, spaceByStore } = useWorldCatalog()
   const promotions = useCatalog((s) => s.promotions)
-  const { storeById, spaceByStore } = useCatalogMaps()
   const claims = useClaims((s) => s.claims)
   const selectedSpaceId = useUI((s) => s.selectedSpaceId)
   const activeFloor = useUI((s) => s.activeFloor)
@@ -132,6 +132,14 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
     () => (spaceId: string) => {
       const ui = useUI.getState()
       const space = SPACE_BY_ID[spaceId]
+      // un local inventado por el modo «mall lleno» no tiene ficha: se avisa y no se abre nada
+      if (usePreviewMall.getState().full && canPreview()) {
+        const real = useCatalog.getState()
+        if (!real.stores.some((st) => st.id === real.assignments[spaceId]) && space.label !== 'D-05') {
+          ui.toast('Local de prueba del modo «mall lleno»: no existe de verdad.')
+          return
+        }
+      }
       // Tocar un local de otro piso (vista general) lleva a ese piso.
       if (ui.overview || space.floorId !== ui.activeFloor) ui.setFloor(space.floorId)
       // celular: primero la ficha breve sobre el mapa; escritorio: la ficha completa al lado

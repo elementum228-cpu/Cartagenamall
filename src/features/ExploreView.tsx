@@ -1,4 +1,5 @@
 import { openCourtOrClaim } from '../football/open'
+import { usePreviewMall } from '../state/previewMall'
 import { HoyPill } from '../hoy/HoyPill'
 import { storeCategoryName } from '../lib/storeCategories'
 import { EVENT_KINDS, PHASES, STADIUM, phaseInfo } from '../config/stadium'
@@ -23,6 +24,7 @@ import {
   BookOpen,
   Sailboat,
   Ghost,
+  Store as StoreIcon,
   Scissors,
   ChevronDown,
   ChevronUp,
@@ -51,7 +53,6 @@ import {
   Route,
   ChevronRight,
   X,
-  Store as StoreIcon,
   LayoutGrid,
   Film,
   Newspaper,
@@ -741,6 +742,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           >
             <DoorOpen className="size-4" /> Ver la entrada
           </button>
+          {use3D && <FullMallToggle className={item} />}
           {use3D && <HalloweenToggle className={item} />}
           {use3D && <PirateToggle className={item} />}
           {use3D && <AirportToggle className={item} />}
@@ -955,6 +957,25 @@ function ServicesToggle({ className }: { className: string }) {
 }
 
 /** Administración: cambia el estado del estadio para todos (en obra → casi terminado → inaugurado). */
+/** Llena con negocios inventados todos los espacios libres para ver el mall completo (solo en este dispositivo). */
+function FullMallToggle({ className }: { className: string }) {
+  const full = usePreviewMall((s) => s.full)
+  const setFull = usePreviewMall((s) => s.setFull)
+  return (
+    <button
+      className={`${className} ${full ? '!bg-[#00716c] !text-white' : ''}`}
+      onClick={() => {
+        setFull(!full)
+        useUI.getState().toast(full ? 'Mall como está de verdad.' : 'Mall lleno: negocios de prueba en todos los espacios libres.', 'success')
+      }}
+      aria-pressed={full}
+      aria-label={full ? 'Quitar los negocios de prueba' : 'Llenar el mall con negocios de prueba'}
+    >
+      <StoreIcon className="size-4" /> {full ? 'Mall lleno: ON' : 'Mall lleno (prueba)'}
+    </button>
+  )
+}
+
 function StadiumToggle({ className }: { className: string }) {
   const phase = useStadiumPhase((s) => s.phase)
   const setPhase = useStadiumPhase((s) => s.setPhase)
