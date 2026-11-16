@@ -64,3 +64,13 @@ export function normalizeCode(raw: string): string {
 export function syncPending(): void {
   for (const r of useArcade.getState().redemptions) if (!r.synced && !r.used) void syncVoucher(r)
 }
+
+/** Revisa en el servidor cuáles de mis bonos disponibles ya fueron validados por el negocio y los marca como usados (salen de «Mis bonos»). */
+export async function syncUsed(): Promise<void> {
+  if (!remoteEnabled()) return
+  const st = useArcade.getState()
+  for (const r of st.redemptions.filter((x) => !x.used).slice(0, 10)) {
+    const used = await voucherUsed(r.code)
+    if (used) st.markUsed(r.code, true)
+  }
+}

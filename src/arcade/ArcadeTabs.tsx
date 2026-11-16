@@ -19,7 +19,7 @@ import {
 import { useLiveRewards } from './rewards'
 import { Celebration, VoucherView } from './Voucher'
 import { useArcade } from './store'
-import { syncPending } from './vouchers'
+import { syncPending, syncUsed } from './vouchers'
 import { useCatalog } from '../state/catalog'
 import { StoreLogo } from '../ui/bits'
 
@@ -40,7 +40,14 @@ export function Prizes() {
   const points = useArcade((s) => s.points)
   const redemptions = useArcade((s) => s.redemptions)
   const rewards = useLiveRewards()
-  useEffect(syncPending, [])
+  useEffect(() => {
+    syncPending()
+    // los bonos que el negocio valida salen solos de «Mis bonos»: se revisa al abrir y cada 10 s mientras se mira esta pantalla
+    void syncUsed()
+    const t = window.setInterval(() => void syncUsed(), 10_000)
+    return () => window.clearInterval(t)
+  }, [])
+  const myVouchers = redemptions.filter((r) => !r.used)
   /** Qué se ve: la lista, la felicitación de un canje nuevo o un bono. */
   const [view, setView] = useState<{ kind: 'list' } | { kind: 'won'; code: string } | { kind: 'voucher'; code: string }>({ kind: 'list' })
   const redeem = (id: string) => {
@@ -84,11 +91,11 @@ export function Prizes() {
           </div>
         )
       })}
-      {redemptions.length > 0 && (
+      {myVouchers.length > 0 && (
         <div className="mt-1 text-white">
           <p className="mb-1 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Mis bonos</p>
           <ul className="flex flex-col gap-1.5">
-            {redemptions.slice(0, 20).map((r) => (
+            {myVouchers.slice(0, 20).map((r) => (
               <li key={r.code}>
                 <button onClick={() => setView({ kind: 'voucher', code: r.code })} className="flex w-full items-center gap-3 rounded-xl bg-white/[0.08] px-3 py-2.5 text-left active:scale-[0.99]">
                   <StoreBadge storeId={r.storeId} storeName={r.storeName} size={40} />
