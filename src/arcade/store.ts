@@ -14,7 +14,7 @@ import { currentLiveRewards } from './rewards'
 /** Puntaje del juego necesario para ganar 1 punto de premio. */
 export const SCORE_PER_POINT = 10
 /** Máximo de puntos por partida y por día. */
-export const MAX_POINTS_PER_RUN = 60
+export const MAX_POINTS_PER_RUN = 300
 /** Sin tope diario de tiquetes: el límite del día son las 5 monedas (cada moneda = una partida). */
 export const DAILY_POINTS_CAP = Infinity
 /** Monedas gratis cada día: cada una abre una partida en cualquiera de los juegos. */

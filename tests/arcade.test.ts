@@ -302,7 +302,9 @@ describe('puntos y premios del Arcade', () => {
   it('1 punto por cada 10, con tope por partida y sin tope diario (el límite son las monedas)', () => {
     expect(awardFor(0, 0)).toBe(0)
     expect(awardFor(95, 0)).toBe(9)
+    expect(awardFor(2620, 0)).toBe(262) // un puntaje alto ya no se corta en 60
     expect(awardFor(100_000, 0)).toBe(MAX_POINTS_PER_RUN)
+    expect(MAX_POINTS_PER_RUN).toBe(300)
     expect(awardFor(100_000, 5_000)).toBe(MAX_POINTS_PER_RUN)
     expect(DAILY_POINTS_CAP).toBe(Infinity)
   })
@@ -584,5 +586,14 @@ describe('historial y sonido del Arcade', () => {
     useArcade.getState().setSound(false)
     expect(useArcade.getState().sound).toBe(false)
     useArcade.getState().setSound(true)
+  })
+})
+
+describe('tanda de tiquetes grande', () => {
+  it('la impresión de hasta 300 tiquetes dura unos 6 s como máximo', async () => {
+    const { ticketDuration } = await import('../src/arcade/audio')
+    expect(ticketDuration(30)).toBeLessThanOrEqual(3.7)
+    expect(ticketDuration(300)).toBeLessThanOrEqual(6.1)
+    expect(ticketDuration(60)).toBeCloseTo(3.6, 1)
   })
 })

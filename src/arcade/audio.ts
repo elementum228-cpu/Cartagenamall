@@ -248,7 +248,8 @@ export function celebrate() {
 }
 
 /** Cada cuántos segundos sale un tiquete: más tiquetes, más rápido (pero todos se ven y se oyen). */
-export const ticketInterval = (count: number) => Math.min(0.2, Math.max(0.06, 2.4 / Math.max(1, count)))
+// Hasta 60 tiquetes sale uno cada 60 ms o más; con tandas grandes (hasta 300) se acelera para que todo dure unos 6 s como máximo.
+export const ticketInterval = (count: number) => Math.min(0.2, Math.max(count > 60 ? 0.02 : 0.06, 2.4 / Math.max(1, count)))
 /** Cuánto tarda en salir toda la tanda (segundos). */
 export const ticketDuration = (count: number) => count * ticketInterval(count)
 
