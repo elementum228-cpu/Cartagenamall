@@ -73,11 +73,12 @@ export function Prizes() {
               <StoreBadge storeId={r.storeId} storeName={r.storeName} size={46} />
               <div className="min-w-0 flex-1">
                 {r.storeName && <p className="text-[11px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</p>}
-                <p className="text-[15px] font-extrabold">{r.title}</p>
-                <p className="text-[12.5px] leading-snug text-[#c8d3ff]">{r.detail}</p>
+                <p className="text-[15px] leading-snug font-extrabold">{r.title}</p>
               </div>
               <span className="shrink-0 rounded-full bg-[#ffc83d] px-2.5 py-1 text-[12px] font-extrabold text-[#2a1a00]">{r.cost} tiquetes</span>
             </div>
+            {/* las condiciones ocupan todo el ancho de la tarjeta (no la columna estrecha junto al logo y los tiquetes) */}
+            {r.detail && <p className="mt-2 text-[13px] leading-snug text-[#c8d3ff]">{r.detail}</p>}
             <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
               <div className="h-full rounded-full bg-[#4de1ff]" style={{ width: `${Math.min(100, (points / r.cost) * 100)}%` }} />
             </div>
