@@ -751,6 +751,21 @@ function stayOnArcade() {
   cameraState.groundY = 0
 }
 
+/**
+ * Al cerrar el arcade (venga de donde venga: la isla, el menú «Arcade», un aviso) la persona se queda en la zona del arcade: se pasa al
+ * piso 1 sin mover la cámara y, si estaba lejos (vista general «Todo», otra zona), se la lleva hasta aquí.
+ */
+function returnToArcade() {
+  stayOnArcade()
+  const t = cameraState.target
+  if (Math.hypot(t.x - AC.x, t.z - AC.z) > 28) useUI.getState().requestFocus({ kind: 'point', x: AC.x, z: AC.z + 8, y: 0, zoom: 1.6 })
+}
+
+// al cerrarse el arcade, sea por el botón, al terminar la partida o por cualquier otra salida
+useArcadeUi.subscribe((s, prev) => {
+  if (prev.open && !s.open) returnToArcade()
+})
+
 function openPrizes() {
   stayOnArcade()
   useArcadeUi.getState().openPrizes()
