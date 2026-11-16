@@ -1,4 +1,4 @@
-import { Ticket, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import { copyText } from '../lib/clipboard'
 import { useEffect, useState } from 'react'
 import {
@@ -20,6 +20,19 @@ import { useLiveRewards } from './rewards'
 import { Celebration, VoucherView } from './Voucher'
 import { useArcade } from './store'
 import { syncPending } from './vouchers'
+import { useCatalog } from '../state/catalog'
+import { StoreLogo } from '../ui/bits'
+
+/** Logo del negocio (el que cargó en su perfil; si no tiene, su sigla con su color). */
+function StoreBadge({ storeId, storeName, size }: { storeId?: string; storeName?: string; size: number }) {
+  const store = useCatalog((s) => s.stores.find((x) => (storeId ? x.id === storeId : !!storeName && x.name === storeName)))
+  if (!store) return <span className="grid shrink-0 place-items-center rounded-full bg-white/15 text-[15px] font-black text-[#ffd45c]" style={{ width: size, height: size }}>{(storeName || 'M').charAt(0)}</span>
+  return (
+    <span className="shrink-0 rounded-full ring-2 ring-white/25">
+      <StoreLogo store={store} size={size} round />
+    </span>
+  )
+}
 
 // Las pestañas «Ranking» y «Premios» del Arcade (se cargan junto con el juego, pero viven aparte para no mezclar el juego con las listas).
 
@@ -49,8 +62,9 @@ export function Prizes() {
         const ok = points >= r.cost
         return (
           <div key={r.id} className="rounded-2xl bg-white/[0.07] p-3.5 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div className="flex items-start gap-3">
+              <StoreBadge storeId={r.storeId} storeName={r.storeName} size={46} />
+              <div className="min-w-0 flex-1">
                 {r.storeName && <p className="text-[11px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</p>}
                 <p className="text-[15px] font-extrabold">{r.title}</p>
                 <p className="text-[12.5px] leading-snug text-[#c8d3ff]">{r.detail}</p>
@@ -77,9 +91,7 @@ export function Prizes() {
             {redemptions.slice(0, 20).map((r) => (
               <li key={r.code}>
                 <button onClick={() => setView({ kind: 'voucher', code: r.code })} className="flex w-full items-center gap-3 rounded-xl bg-white/[0.08] px-3 py-2.5 text-left active:scale-[0.99]">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[#ffd45c] text-[#1a1530]">
-                    <Ticket className="size-5" />
-                  </span>
+                  <StoreBadge storeId={r.storeId} storeName={r.storeName} size={40} />
                   <span className="min-w-0 flex-1">
                     {r.storeName && <span className="block truncate text-[10.5px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</span>}
                     <span className="block truncate text-[13.5px] font-extrabold">{r.name}</span>
