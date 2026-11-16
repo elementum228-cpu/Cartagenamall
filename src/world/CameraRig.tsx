@@ -14,6 +14,7 @@ import { useFlight } from '../airport/flight'
 import { ISLAND, ISLAND_RUNWAY } from '../config/mall'
 import { SHOWROOMS } from '../district/showrooms'
 import { cameraState } from './cameraState'
+import { CAPTURE, CAPTURE_ZOOM } from '../lib/captureMode'
 import { CAMERA_DISTANCE, ELEVATION_SIN, ISO_DIR } from './cameraIso'
 
 interface Goal {
@@ -29,7 +30,7 @@ const DESKTOP_PANEL = 420
 /** Zoom de la vista general (ambos pisos) y su límite de desplazamiento. */
 const OVERVIEW_ZOOM = 0.54
 /** En pantallas verticales la fortaleza se encuadra más cerca (se recortan apenas las puntas de los baluartes). */
-const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM)
+const overviewZoomFor = (w: number, h: number) => (w < h ? 0.74 : OVERVIEW_ZOOM) * (CAPTURE ? CAPTURE_ZOOM : 1)
 /** Vista general y piso 1: se puede recorrer todo, incluidos el muelle, los barcos y el mar alrededor. */
 /** En el recorrido guiado, cuánto (fracción del alto) se sube el punto enfocado respecto al centro de la pantalla. */
 const TOUR_LIFT = 0.27
@@ -123,7 +124,8 @@ export function CameraRig() {
   }, [hasSelection])
   const fit = fitZoomFor(size.width, size.height)
   const overviewOn = useUI((s) => s.overview)
-  const minZoom = fit * (overviewOn ? 0.4 : 0.6)
+  // en el modo de captura se puede alejar mucho más, para encuadrar la isla completa con mar alrededor
+  const minZoom = fit * (CAPTURE ? 0.15 : overviewOn ? 0.4 : 0.6)
   const maxZoom = Math.max(fit * 7, 40)
 
   // Encuadre inicial y al cambiar el tamaño de la ventana.

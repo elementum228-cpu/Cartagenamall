@@ -1,4 +1,5 @@
 import { useFrame, useThree } from '@react-three/fiber'
+import { CAPTURE, CAPTURE_NIGHT } from '../lib/captureMode'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { applyNight, nightState } from './night'
@@ -22,7 +23,8 @@ const mixN = (a: number, b: number, c: number, warm: number, night: number) => T
 export function Lighting({ shadows, quality }: { night?: boolean; shadows: boolean; quality: Quality }) {
   const mode = usePrefs((s) => s.timeMode)
   const minute = useMinute()
-  const sky = mode === 'day' ? SKY_DAY : mode === 'night' ? SKY_NIGHT : mode === 'dusk' ? SKY_DUSK : skyAt(new Date(minute))
+  // el modo de captura limpia (?captura) fija la hora: noche por defecto, o día con ?captura=dia
+  const sky = CAPTURE ? (CAPTURE_NIGHT ? SKY_NIGHT : SKY_DAY) : mode === 'day' ? SKY_DAY : mode === 'night' ? SKY_NIGHT : mode === 'dusk' ? SKY_DUSK : skyAt(new Date(minute))
   // Luces locales reales (sin sombras): ninguna en calidad baja, pocas en media, algunas más en alta.
   // Existen siempre (intensidad 0 de día) para no recompilar sombreadores al cambiar de hora.
   const local = useMemo(() => LOCAL_LIGHTS.filter((l) => quality === 'high' || (quality === 'medium' && l.minQuality === 'medium')), [quality])

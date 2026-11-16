@@ -515,3 +515,15 @@ html[data-quality='low'].theme-night .glass-clear { background: rgb(6 44 66 / 0.
     transform: translate(-50%, -50%);
   }
 }
+
+/* Modo de captura limpia (?captura, ver lib/captureMode.ts): solo queda a la vista el mundo 3D, sin botones ni paneles. */
+html.captura body * {
+  visibility: hidden !important;
+}
+html.captura .world-sky,
+html.captura .world-night,
+html.captura .world-vignette,
+html.captura [aria-label='Mapa 3D de MallPlay'],
+html.captura [aria-label='Mapa 3D de MallPlay'] canvas {
+  visibility: visible !important;
+}

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { detectProfile, type Tier } from '../lib/deviceProfile'
+import { CAPTURE } from '../lib/captureMode'
 
 const SEEN_KEY = 'cm:door-seen'
 
@@ -39,7 +40,7 @@ export const isPhone = () => typeof window !== 'undefined' && !!window.matchMedi
 export const useEntry = create<{ doorDone: boolean; setDoorDone: (v: boolean) => void; worldGo: boolean; setWorldGo: (v: boolean) => void; worldReady: boolean; setWorldReady: (v: boolean) => void }>()((set) => ({
   doorDone: false,
   setDoorDone: (doorDone) => set({ doorDone }),
-  worldGo: !shouldDeferWorld(detectProfile().tier, doorWillShow(), isPhone()),
+  worldGo: CAPTURE || !shouldDeferWorld(detectProfile().tier, doorWillShow(), isPhone()),
   setWorldGo: (worldGo) => set({ worldGo }),
   worldReady: false,
   setWorldReady: (worldReady) => set({ worldReady }),

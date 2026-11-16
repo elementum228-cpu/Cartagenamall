@@ -8,6 +8,7 @@ import { nightState } from './night'
 import { LABEL_PRIORITY, registerLabel, visibleInTree, type LabelEntry } from './labels'
 import { GEO } from './materials'
 import type { Label } from './labelTexture'
+import { CAPTURE } from '../lib/captureMode'
 
 /**
  * Rótulo que siempre mira a la cámara y mantiene un tamaño en pantalla casi constante
@@ -69,7 +70,8 @@ export function ScreenLabel({
     }
     g.scale.set(h * label.aspect, h, 1)
     const ratio = cameraState.zoom / cameraState.fitZoom
-    const eligible = ratio >= minZoomRatio && ratio <= maxZoomRatio && visibleInTree(g)
+    // en el modo de captura limpia (?captura) no se muestra ningún rótulo flotante
+    const eligible = !CAPTURE && ratio >= minZoomRatio && ratio <= maxZoomRatio && visibleInTree(g)
     const e = entry.current
     if (e) e.eligible = eligible
     g.visible = eligible && (e?.accepted ?? true)
