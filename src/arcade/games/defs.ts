@@ -95,16 +95,36 @@ function rnd(s: { seed: number }) {
   return s.seed / 4294967296
 }
 
-function drawCrab(ctx: CanvasRenderingContext2D, x: number, y: number, kind: CrabKind, k: number, t: number) {
+function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath()
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2 - Math.PI / 2
+    const rad = i % 2 ? r * 0.45 : r
+    ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad)
+  }
+  ctx.closePath()
+  ctx.fill()
+}
+
+function drawCrab(ctx: CanvasRenderingContext2D, x: number, y: number, kind: CrabKind, k: number, t: number, hit = false) {
   const body = kind === 'gold' ? '#ffc72e' : kind === 'octo' ? '#7a4fd1' : '#e0414f'
   const dark = kind === 'gold' ? '#b8860b' : kind === 'octo' ? '#4a2a8f' : '#8f1f2b'
   const light = kind === 'gold' ? '#fff3a8' : kind === 'octo' ? '#c3a8ff' : '#ff9aa6'
+  // sombra suave sobre la arena mientras asoma
+  ctx.fillStyle = `rgba(30,12,0,${0.28 * k})`
+  ctx.beginPath()
+  ctx.ellipse(x, y + 6, 40 * k + 6, 11 * k + 2, 0, 0, Math.PI * 2)
+  ctx.fill()
   ctx.save()
   ctx.translate(x, y - 38 * k)
   ctx.beginPath()
   ctx.rect(-70, -96, 140, 96 + 38 * k - 5)
   ctx.clip()
-  ctx.rotate(Math.sin(t * 9) * 0.05)
+  ctx.rotate(hit ? 0 : Math.sin(t * 9) * 0.05)
+  // se estira al salir y se aplasta al recibir el golpe
+  const bulge = Math.sin(Math.min(1, k) * Math.PI)
+  if (hit) ctx.scale(1.16, 0.7)
+  else ctx.scale(1 - 0.07 * bulge, 1 + 0.12 * bulge)
   const grad = (cx: number, cy: number, r: number) => {
     const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.1, cx, cy, r)
     g.addColorStop(0, light)
@@ -132,6 +152,10 @@ function drawCrab(ctx: CanvasRenderingContext2D, x: number, y: number, kind: Cra
     ctx.ellipse(0, -8, 32, 30, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.stroke()
+    ctx.fillStyle = 'rgba(255,255,255,.32)'
+    ctx.beginPath()
+    ctx.ellipse(-13, -24, 11, 6, -0.6, 0, Math.PI * 2)
+    ctx.fill()
     for (const sx of [-1, 1]) {
       ctx.fillStyle = '#fff'
       ctx.beginPath()
@@ -190,6 +214,20 @@ function drawCrab(ctx: CanvasRenderingContext2D, x: number, y: number, kind: Cra
     ctx.ellipse(0, -2, 33, 25, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.stroke()
+    // brillo y reborde del caparazón
+    ctx.fillStyle = 'rgba(255,255,255,.34)'
+    ctx.beginPath()
+    ctx.ellipse(-12, -14, 12, 5.5, -0.5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = light
+    ctx.globalAlpha = 0.45
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.ellipse(0, -2, 28, 20, 0, Math.PI * 0.15, Math.PI * 0.85)
+    ctx.stroke()
+    ctx.globalAlpha = 1
+    ctx.strokeStyle = '#07031a'
+    ctx.lineWidth = 3
     // manchitas
     ctx.fillStyle = dark
     for (const [dx, dy] of [[-14, 6], [10, 8], [0, 12]]) {
@@ -223,6 +261,21 @@ function drawCrab(ctx: CanvasRenderingContext2D, x: number, y: number, kind: Cra
     ctx.beginPath()
     ctx.arc(0, -6, 9, 0.15 * Math.PI, 0.85 * Math.PI)
     ctx.stroke()
+  }
+  if (hit) {
+    ctx.fillStyle = '#ffe36b'
+    for (let i = 0; i < 3; i++) {
+      const a = t * 9 + (i * Math.PI * 2) / 3
+      star(ctx, Math.cos(a) * 24, -50 + Math.sin(a) * 6, 6)
+    }
+  } else if (kind === 'gold') {
+    ctx.fillStyle = '#ffffff'
+    for (let i = 0; i < 4; i++) {
+      const ph = (t * 1.6 + i * 0.25) % 1
+      ctx.globalAlpha = Math.sin(ph * Math.PI)
+      star(ctx, Math.cos(i * 2.1 + 0.6) * 38, -14 + Math.sin(i * 2.1) * 26, 3.5 + ph * 3)
+    }
+    ctx.globalAlpha = 1
   }
   ctx.restore()
 }
@@ -323,6 +376,37 @@ export const CRABS: GameDef<CrabsState> = {
     sky.addColorStop(1, '#ffa05c')
     ctx.fillStyle = sky
     ctx.fillRect(-10, 0, CW + 20, 170)
+    // estrellas que titilan arriba, nubes que pasan y una gaviota que cruza de vez en cuando
+    for (let i = 0; i < 14; i++) {
+      ctx.globalAlpha = 0.25 + 0.55 * Math.abs(Math.sin(t * 1.3 + i * 1.7))
+      ctx.fillStyle = '#fff6d8'
+      ctx.fillRect((i * 71 + 13) % CW, 8 + ((i * 29) % 46), 2, 2)
+    }
+    ctx.globalAlpha = 0.5
+    for (let i = 0; i < 3; i++) {
+      const cx = ((t * (5 + i * 3) + i * 140) % (CW + 120)) - 60
+      const cy = 52 + i * 26
+      ctx.fillStyle = i % 2 ? '#ff9ab0' : '#ffc3a0'
+      ctx.beginPath()
+      ctx.ellipse(cx, cy, 34, 7, 0, 0, Math.PI * 2)
+      ctx.ellipse(cx + 16, cy - 5, 20, 7, 0, 0, Math.PI * 2)
+      ctx.ellipse(cx - 18, cy - 3, 16, 6, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+    {
+      const bx = ((t * 34) % (CW + 160)) - 80
+      const by = 96 + Math.sin(t * 1.2) * 8
+      const flap = Math.sin(t * 9) * 5
+      ctx.strokeStyle = '#1a0f45'
+      ctx.lineWidth = 2.2
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(bx - 10, by - flap)
+      ctx.quadraticCurveTo(bx - 4, by - flap - 5, bx, by)
+      ctx.quadraticCurveTo(bx + 4, by - flap - 5, bx + 10, by - flap)
+      ctx.stroke()
+    }
     ctx.fillStyle = '#ffe08a'
     ctx.beginPath()
     ctx.arc(CW - 76, 128, 32, 0, Math.PI * 2)
@@ -336,10 +420,23 @@ export const CRABS: GameDef<CrabsState> = {
     sea.addColorStop(1, '#0f4d73')
     ctx.fillStyle = sea
     ctx.fillRect(-10, 136, CW + 20, 44)
-    for (let i = 0; i < 6; i++) {
-      ctx.fillStyle = 'rgba(255,255,255,.28)'
-      ctx.fillRect(40 + i * 56 + Math.sin(t * 1.5 + i) * 6, 148 + (i % 3) * 9, 22, 2)
+    // reflejo del sol en el agua y olitas que van y vienen
+    ctx.fillStyle = 'rgba(255,224,138,.35)'
+    for (let i = 0; i < 5; i++) ctx.fillRect(CW - 76 - 18 + Math.sin(t * 2 + i) * 5 + i * 1.5, 140 + i * 7, 36 - i * 5, 2)
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = 'rgba(255,255,255,.3)'
+      ctx.fillRect(24 + i * 44 + Math.sin(t * 1.5 + i) * 7, 146 + (i % 3) * 9, 20, 2)
     }
+    // espuma en la orilla
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    for (let x = -10; x <= CW + 10; x += 8) {
+      const y = 176 + Math.sin(x * 0.06 + t * 2.2) * 2.4
+      if (x === -10) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.stroke()
     ctx.fillStyle = '#1a0f45'
     for (const px of [34, CW - 34]) {
       ctx.fillRect(px - 2, 84, 5, 56)
@@ -365,38 +462,59 @@ export const CRABS: GameDef<CrabsState> = {
       ctx.arc(cx, cy, 6, Math.PI, 0)
       ctx.fill()
     }
-    // ── agujeros (montículos de arena) ──
+    // ── agujeros: montículo con luz arriba a la izquierda, sombra y fondo oscuro con profundidad ──
     for (const h of s.holes) {
-      ctx.fillStyle = '#9b6e32'
+      ctx.fillStyle = 'rgba(70,40,10,.32)'
       ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 8, 56, 23, 0, 0, Math.PI * 2)
+      ctx.ellipse(h.x + 4, h.y + 18, 60, 22, 0, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = '#c99a55'
+      const mound = ctx.createLinearGradient(0, h.y - 16, 0, h.y + 30)
+      mound.addColorStop(0, '#e9c887')
+      mound.addColorStop(1, '#a8772f')
+      ctx.fillStyle = mound
       ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 5, 52, 20, 0, 0, Math.PI * 2)
+      ctx.ellipse(h.x, h.y + 6, 55, 23, 0, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = '#2a1a08'
+      ctx.strokeStyle = 'rgba(255,244,214,.55)'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.ellipse(h.x, h.y + 5, 52, 20, 0, Math.PI * 1.05, Math.PI * 1.75)
+      ctx.stroke()
+      const pit = ctx.createRadialGradient(h.x, h.y - 2, 4, h.x, h.y + 4, 44)
+      pit.addColorStop(0, '#120a03')
+      pit.addColorStop(0.7, '#2a1a08')
+      pit.addColorStop(1, '#4a2f12')
+      ctx.fillStyle = pit
       ctx.beginPath()
       ctx.ellipse(h.x, h.y + 4, 43, 15, 0, 0, Math.PI * 2)
       ctx.fill()
+      // granitos de arena en el borde
+      ctx.fillStyle = 'rgba(255,236,190,.7)'
+      for (let i = 0; i < 7; i++) {
+        const an = (i / 7) * Math.PI * 2 + h.x
+        ctx.fillRect(h.x + Math.cos(an) * 49 - 1, h.y + 6 + Math.sin(an) * 19 - 1, 2.2, 2.2)
+      }
     }
     // ── cangrejos, con el borde del agujero por delante ──
     for (const h of s.holes) {
       if (!h.kind) continue
       const u = h.age / h.dur
       const k = u < 0.18 ? u / 0.18 : u > 0.82 ? Math.max(0, (1 - u) / 0.18) : 1
-      drawCrab(ctx, h.x, h.y, h.kind, k, t)
-      ctx.fillStyle = '#c99a55'
+      drawCrab(ctx, h.x, h.y, h.kind, k, t, h.hit)
+      const lip = ctx.createLinearGradient(0, h.y + 10, 0, h.y + 24)
+      lip.addColorStop(0, '#dcb06a')
+      lip.addColorStop(1, '#b58443')
+      ctx.fillStyle = lip
       ctx.beginPath()
       ctx.ellipse(h.x, h.y + 12, 52, 11, 0, 0, Math.PI)
       ctx.fill()
-      ctx.strokeStyle = '#9b6e32'
-      ctx.lineWidth = 3
+      ctx.strokeStyle = '#8f6228'
+      ctx.lineWidth = 2.5
       ctx.beginPath()
       ctx.ellipse(h.x, h.y + 12, 52, 11, 0, 0, Math.PI)
       ctx.stroke()
     }
-    // ── destellos de acierto y mazos ──
+    // ── destellos de acierto: onda, chispas y arena que salta y cae ──
     for (const b of s.bursts) {
       const u = b.age / 0.5
       ctx.globalAlpha = 1 - u
@@ -405,10 +523,14 @@ export const CRABS: GameDef<CrabsState> = {
       ctx.beginPath()
       ctx.arc(b.x, b.y, 12 + u * 38, 0, Math.PI * 2)
       ctx.stroke()
-      ctx.fillStyle = b.color
-      for (let k = 0; k < 8; k++) {
-        const a = (k / 8) * Math.PI * 2
-        ctx.fillRect(b.x + Math.cos(a) * (10 + u * 46) - 2.5, b.y + Math.sin(a) * (10 + u * 46) - 2.5, 5, 5)
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2 + 0.2
+        const sp = 70 + (k % 3) * 26
+        const px = b.x + Math.cos(a) * sp * b.age
+        const py = b.y + Math.sin(a) * sp * b.age * 0.7 + 320 * b.age * b.age - 22 * b.age
+        ctx.fillStyle = k % 2 ? b.color : k % 4 === 0 ? '#e8c27c' : '#b78945'
+        const sz = k % 2 ? 4 : 5
+        ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz)
       }
     }
     ctx.globalAlpha = 1
@@ -419,17 +541,37 @@ export const CRABS: GameDef<CrabsState> = {
       ctx.globalAlpha = 1 - Math.max(0, u - 0.5) * 2
       ctx.translate(m.x + 8, m.y - 6)
       ctx.rotate(ang)
-      ctx.fillStyle = '#8a5a2b'
+      // mango de madera con vetas
+      const wood = ctx.createLinearGradient(-4, 0, 4, 0)
+      wood.addColorStop(0, '#6e4520')
+      wood.addColorStop(0.5, '#b57c3d')
+      wood.addColorStop(1, '#6e4520')
+      ctx.fillStyle = wood
       ctx.fillRect(-4, -4, 8, 62)
       ctx.strokeStyle = '#07031a'
       ctx.lineWidth = 2
       ctx.strokeRect(-4, -4, 8, 62)
-      ctx.fillStyle = '#ffd34e'
-      ctx.fillRect(-22, -24, 44, 26)
-      ctx.strokeRect(-22, -24, 44, 26)
-      ctx.fillStyle = '#ffeb99'
-      ctx.fillRect(-18, -21, 36, 6)
+      // cabeza de goma, con brillo y aros
+      const head = ctx.createLinearGradient(0, -26, 0, 2)
+      head.addColorStop(0, '#ffe27a')
+      head.addColorStop(1, '#e0a020')
+      ctx.fillStyle = head
+      rr(ctx, -23, -26, 46, 28, 8)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = 'rgba(255,255,255,.55)'
+      ctx.fillRect(-18, -22, 30, 5)
+      ctx.fillStyle = '#c0451f'
+      ctx.fillRect(-23, -16, 46, 4)
       ctx.restore()
+      // «¡pum!»: estrella en el punto del golpe
+      if (u > 0.2 && u < 0.7) {
+        ctx.save()
+        ctx.globalAlpha = 1 - (u - 0.2) / 0.5
+        ctx.fillStyle = '#fff6b8'
+        star(ctx, m.x, m.y, 14 + (u - 0.2) * 30)
+        ctx.restore()
+      }
     }
     ctx.globalAlpha = 1
     for (const p of s.pops) {
@@ -448,6 +590,12 @@ export const CRABS: GameDef<CrabsState> = {
       ctx.arc(CW - 7, y, 3, 0, Math.PI * 2)
       ctx.fill()
     }
+    // luz cálida al centro y bordes más oscuros: da volumen al campo
+    const vg = ctx.createRadialGradient(CW / 2, 330, 120, CW / 2, 330, 400)
+    vg.addColorStop(0, 'rgba(255,230,170,0)')
+    vg.addColorStop(1, 'rgba(26,10,60,.42)')
+    ctx.fillStyle = vg
+    ctx.fillRect(0, 53, CW, CH - 53)
     // ── marcador arriba: tiquetes, racha y tiempo ──
     ctx.fillStyle = '#07031a'
     ctx.fillRect(0, 0, CW, 50)
