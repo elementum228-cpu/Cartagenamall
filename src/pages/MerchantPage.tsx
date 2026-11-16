@@ -13,6 +13,7 @@ import {
   Trophy,
   BarChart3,
   ChevronDown,
+  Clock,
   Copy,
   Music2,
   Palette,
@@ -42,6 +43,8 @@ import { uploadStorePhoto } from '../remote/photos'
 import { stockKey, totalStock } from '../lib/inventory'
 import { MARGIN_GOOD, MARGIN_LOW, marginOf, priceForMargin } from '../lib/margin'
 import { remoteEnabled } from '../remote/client'
+import { cleanHours, withinHours } from '../lib/hours'
+import { HoursEditor, hoursSummary } from './MerchantHours'
 import { useSession } from '../remote/session'
 import { AccountGate } from '../remote/AccountGate'
 import { uniqueId } from '../lib/ids'
@@ -326,7 +329,7 @@ function OpenToggle({ store }: { store: Store }) {
       <span className={`relative h-5 w-9 rounded-full transition ${open ? 'bg-emerald-500' : 'bg-ink/25'}`}>
         <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${open ? 'left-[18px]' : 'left-0.5'}`} />
       </span>
-      {open ? 'Abierto' : 'Cerrado'}
+      {open ? (withinHours(store.hours) ? 'Abierto' : 'Abierto · fuera de horario') : 'Cerrado'}
     </button>
   )
 }
@@ -614,6 +617,10 @@ function ProfileEditor({ store }: { store: Store }) {
           <PhotoBackgroundEditor storeId={f.id} value={f.photoBg} onChange={(photoBg) => setF((x) => ({ ...x, photoBg }))} />
         </Section>
 
+        <Section icon={<Clock className="size-5" />} title="Horario de atención" summary={hoursSummary(f.hours)}>
+          <HoursEditor value={f.hours} onChange={(hours) => setF((x) => ({ ...x, hours }))} />
+        </Section>
+
         <Section
           icon={<Truck className="size-5" />}
           title="Ubicación y entrega"
@@ -648,30 +655,32 @@ function ProfileEditor({ store }: { store: Store }) {
         </Section>
       </div>
 
-      <div className="sticky bottom-[calc(var(--chrome-bottom)+8px)] z-10 flex justify-end gap-2 md:bottom-4">
-        {dirty && (
+      {dirty && (
+        <div className="sticky bottom-[calc(var(--chrome-bottom)+8px)] z-10 flex items-center justify-end gap-2 rounded-2xl border border-line bg-white/95 p-2 shadow-[0_10px_30px_-12px_rgba(6,44,66,0.45)] backdrop-blur md:bottom-4">
+          <span className="mr-auto pl-2 text-xs font-bold text-ink-soft">{valid ? 'Tienes cambios sin guardar' : 'Falta el nombre o el letrero'}</span>
           <button className={btn.secondary} onClick={() => setF(store)}>
             Descartar
           </button>
-        )}
-        <button
-          className={btn.primary}
-          disabled={!dirty || !valid}
-          onClick={() => {
-            const next = {
-              ...f,
-              name: f.name.trim(),
-              logoText: f.logoText.trim(),
-              address: cleanAddress(f.address),
-            }
-            upsert(next)
-            setF(next)
-            saved('Perfil guardado. Ya se ve en el mall.')
-          }}
-        >
-          Guardar cambios
-        </button>
-      </div>
+          <button
+            className={btn.primary}
+            disabled={!valid}
+            onClick={() => {
+              const next = {
+                ...f,
+                name: f.name.trim(),
+                logoText: f.logoText.trim(),
+                address: cleanAddress(f.address),
+                hours: cleanHours(f.hours),
+              }
+              upsert(next)
+              setF(next)
+              saved('Perfil guardado. Ya se ve en el mall.')
+            }}
+          >
+            Guardar cambios
+          </button>
+        </div>
+      )}
     </div>
   )
 }

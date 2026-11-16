@@ -1,4 +1,5 @@
 import { messageFor } from '../lib/messages'
+import { isOpenNow, openLabel } from '../lib/hours'
 import { productDesc } from '../lib/desc'
 import { absoluteUrl, localPath } from '../lib/links'
 import { ArrowLeft, ArrowRight, ArrowUpDown, Check, ChevronDown, DoorOpen, Heart, Share2, MapPin, MessageCircle, Search, Sparkles, Stamp, X, Zap } from 'lucide-react'
@@ -63,7 +64,8 @@ function RestaurantCover({ store }: { store: Store }) {
   const hasMenu = useCatalog((s) => s.products.some((p) => p.storeId === store.id && p.active))
   const enter = canEnter(betaOn, store) && hasMenu
   const bg = store.photoBg?.url
-  const open = store.status === 'open'
+  const open = isOpenNow(store)
+  const when = openLabel(store)
   return (
     <div className={`relative overflow-hidden ${enter ? 'h-[236px]' : 'h-[176px]'}`} style={{ background: `radial-gradient(ellipse at 72% 24%, color-mix(in srgb, ${store.brandColor} 52%, #2a1a10) 0%, #2a1a10 62%, #170e09 100%)` }}>
       {bg && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bg})` }} />}
@@ -78,7 +80,7 @@ function RestaurantCover({ store }: { store: Store }) {
           <p className="mt-1 flex items-center gap-2 text-[12.5px] font-semibold text-white/90">
             <span className={`size-2 shrink-0 rounded-full ${open ? 'bg-emerald-400' : 'bg-amber-400'}`} />
             <span className="truncate">
-              {open ? 'Abierto' : 'Cerrado'} · {store.tagline || 'Restaurante'}
+              {when} · {store.tagline || 'Restaurante'}
             </span>
           </p>
         </div>
@@ -107,7 +109,8 @@ function PlainHeader({ store }: { store: Store }) {
   const { spaceByStore } = useCatalogMaps()
   const space = SPACE_BY_ID[spaceByStore[store.id]]
   const zone = ZONE_BY_ID[store.zoneId]
-  const open = store.status === 'open'
+  const open = isOpenNow(store)
+  const when = openLabel(store)
   return (
     <div className="px-5 pt-3 pb-3" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${store.brandColor} 9%, transparent), transparent)` }}>
       <div className="flex items-center gap-3.5 pr-12">
@@ -119,7 +122,7 @@ function PlainHeader({ store }: { store: Store }) {
           <p className="mt-1 flex items-center gap-2 text-[12.5px] font-semibold text-ink-soft">
             <span className={`flex shrink-0 items-center gap-1.5 ${open ? 'text-emerald-700' : 'text-amber-700'}`}>
               <span className={`size-2 rounded-full ${open ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              {open ? 'Abierto' : 'Cerrado'}
+              {when}
             </span>
             <span className="text-ink-soft/50">·</span>
             <span className="truncate">

@@ -124,6 +124,8 @@ export interface Store {
   /** Número de demostración, nunca un número real. */
   whatsapp: string
   status: StoreStatus
+  /** Horario semanal (índice 0 = domingo; `null` = no abre). Sin horario, el local solo depende de su interruptor «Abierto» (ver lib/hours.ts). */
+  hours?: ({ open: number; close: number } | null)[]
   /** Tipo de negocio que eligió el dueño al configurar su local. */
   businessType?: 'restaurant' | 'shop' | 'service'
   /** «pending»: local recién aprobado cuyo dueño aún no hizo la configuración inicial. */

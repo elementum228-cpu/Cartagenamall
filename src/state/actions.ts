@@ -1,4 +1,5 @@
 import type { Product } from '../domain/types'
+import { isOpenNow, openLabel } from '../lib/hours'
 import { stockFor } from '../lib/inventory'
 import { useCart } from './cart'
 import { useCatalog } from './catalog'
@@ -9,8 +10,8 @@ import { useUI } from './ui'
 export function addToCart(product: Product, variantId: string | null, size: string | null, qty = 1): boolean {
   const { toast } = useUI.getState()
   const store = useCatalog.getState().stores.find((s) => s.id === product.storeId)
-  if (!store || store.status !== 'open') {
-    toast('Esta tienda no está recibiendo pedidos por ahora.', 'error')
+  if (!store || !isOpenNow(store)) {
+    toast(store && store.status === 'open' ? `${store.name} está cerrada: ${openLabel(store).replace('Cerrado · ', '').toLowerCase()}.` : 'Esta tienda no está recibiendo pedidos por ahora.', 'error')
     return false
   }
   if (store.businessType === 'service') {

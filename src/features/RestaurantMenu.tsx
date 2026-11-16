@@ -1,4 +1,5 @@
 import { Plus, ShoppingBag } from 'lucide-react'
+import { isOpenNow } from '../lib/hours'
 import { productDesc } from '../lib/desc'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -16,7 +17,7 @@ import { ProductImage } from '../ui/ProductImage'
 
 /** Menú del restaurante para el cliente: platos agrupados por tipo, con precio y botón para agregar al pedido. */
 export function RestaurantMenu({ store, products, hideTitle = false }: { store: Store; products: Product[]; hideTitle?: boolean }) {
-  const open = store.status === 'open'
+  const open = isOpenNow(store)
   // categorías propias del restaurante (Entradas, Platos fuertes...) o, sin ellas, su rubro
   const groups = useMemo(() => groupProducts(store, products), [store, products])
   const cartItems = useCart((s) => s.items)

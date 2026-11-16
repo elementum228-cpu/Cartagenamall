@@ -1,4 +1,5 @@
 import { messageFor, type WithMessages } from '../lib/messages'
+import { isOpenNow, openLabel } from '../lib/hours'
 import type { CartItem, Customer, DeliveryMode, Order, OrderLine, OrderStatus, Product, Promotion, Store, SubOrder } from '../domain/types'
 import { stockFor } from '../lib/inventory'
 import { priceFor } from '../lib/pricing'
@@ -62,8 +63,8 @@ export function validateCart(items: CartItem[], catalog: CatalogSnapshot): CartI
       issues.push({ key: it.key, message: 'Este producto ya no está disponible.', available: 0 })
       continue
     }
-    if (!store || store.status !== 'open') {
-      issues.push({ key: it.key, message: 'La tienda no está recibiendo pedidos por ahora.', available: 0 })
+    if (!store || !isOpenNow(store)) {
+      issues.push({ key: it.key, message: store && store.status === 'open' ? `La tienda está cerrada: ${openLabel(store).replace('Cerrado · ', '').toLowerCase()}.` : 'La tienda no está recibiendo pedidos por ahora.', available: 0 })
       continue
     }
     const available = stockFor(product, it.variantId, it.size)
