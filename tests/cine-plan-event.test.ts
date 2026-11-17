@@ -9,9 +9,12 @@ describe('planes en grupo (Planly) como eventos', () => {
     expect(e.url).toBe('https://planly.app/p/abc')
     expect(e.movieId).toBe('m1')
   })
-  it('un enlace que no es https se descarta y un plan nuevo no se ve hasta salir de borrador', () => {
+  it('un enlace que no es https se descarta; un evento nuevo ya se ve como «Próximamente» y el borrador queda oculto', () => {
     expect(cleanEvent({ ...newEvent(), kind: 'plan', url: 'http://x.com' }, 0).url).toBe('')
-    const draft = cleanEvent({ ...newEvent(), kind: 'plan', title: 'Plan' }, 0)
-    expect(publicEvents([draft])).toEqual([])
+    const fresh = cleanEvent({ ...newEvent(), kind: 'plan', title: 'Plan' }, 0)
+    expect(fresh.status).toBe('soon')
+    expect(publicEvents([fresh]).map((e) => e.id)).toEqual([fresh.id])
+    expect(publicEvents([{ ...fresh, status: 'draft' }])).toEqual([])
+    expect(publicEvents([{ ...fresh, title: '' }])).toEqual([]) // sin nombre no se muestra
   })
 })

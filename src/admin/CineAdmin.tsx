@@ -1,5 +1,8 @@
-import { Clapperboard, Copy, Download, ImagePlus, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Clapperboard, Copy, Download, Eye, EyeOff, ImagePlus, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react'
+import { useRef, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { EventCard } from '../cinema/Events'
+import { useCineUi } from '../state/cineUi'
 import { readImageFile } from '../lib/image'
 import { remoteEnabled } from '../remote/client'
 import { runCineSync } from '../remote/sync'
@@ -116,74 +119,191 @@ function TrailerInput({ value, onChange }: { value: string; onChange: (v: string
   )
 }
 
-/** Un evento de MallPlay Cinema: nada se ve hasta salir de «Borrador». */
+const FIELD_LABEL = 'mb-1 block text-[12px] font-bold text-ink-soft'
+
+/** Campo con su nombre siempre visible (en el celular los placeholders desaparecen al escribir y no se sabe qué es cada casilla). */
+function Field({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {
+  return (
+    <label className={`block min-w-0 ${className}`}>
+      <span className={FIELD_LABEL}>{label}</span>
+      {children}
+    </label>
+  )
+}
+
+/** Imagen de portada del evento en proporción 16:9: es la que ven los clientes arriba de la tarjeta. */
+function EventCover({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const toast = useUI((s) => s.toast)
+  const [busy, setBusy] = useState(false)
+  const pick = async (f: File) => {
+    setBusy(true)
+    try {
+      const data = await readImageFile(f, 'poster')
+      onChange(remoteEnabled() ? await uploadStadiumImage(data) : data)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'No se pudo cargar la imagen.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div>
+      <span className={FIELD_LABEL}>Imagen del evento (16:9)</span>
+      <div className="relative aspect-[16/9] overflow-hidden rounded-xl border border-line bg-sand md:max-w-sm">
+        {value ? <img src={value} alt="" className="size-full object-cover" /> : <div className="grid size-full place-items-center text-ink-soft"><span className="flex flex-col items-center gap-1 text-xs font-semibold"><ImagePlus className="size-6" /> Sin imagen</span></div>}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" className={btn.secondary} disabled={busy} onClick={() => ref.current?.click()}>
+          {busy ? 'Subiendo…' : value ? 'Cambiar imagen' : 'Subir imagen'}
+        </button>
+        {value && (
+          <button type="button" className={btn.ghost} onClick={() => onChange(null)}>
+            <X className="size-4" /> Quitar
+          </button>
+        )}
+      </div>
+      <input ref={ref} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void pick(f) }} />
+    </div>
+  )
+}
+
+/**
+ * Un evento de MallPlay Cinema. Arriba dice si los clientes lo ven; abajo, la vista previa EXACTA de la tarjeta que verán (la misma
+ * pieza del cine). Un evento solo se oculta si está en «Borrador» o no tiene nombre.
+ */
 function EventEditor({ event, movies, onChange, onRemove }: { event: CineEvent; movies: CineMovie[]; onChange: (e: CineEvent) => void; onRemove: () => void }) {
   const [url, setUrl] = useState(event.url)
+  const [open, setOpen] = useState(true)
   const badUrl = url.trim() !== '' && !/^https:\/\/[^\s]+$/.test(url.trim())
+  const hidden = event.status === 'draft' || !event.title.trim()
+  const kind = EVENT_KINDS.find((k) => k.id === event.kind)
   return (
-    <div className="space-y-2.5 rounded-2xl border border-line bg-sand/50 p-3">
-      <div className="flex items-start justify-between gap-2">
-        <Photo label="Imagen del evento (16:9)" value={event.image} onChange={(image) => onChange({ ...event, image })} />
-        <button type="button" className={btn.ghost} onClick={onRemove} aria-label="Quitar evento">
-          <Trash2 className="size-4" />
-        </button>
+    <div className="overflow-hidden rounded-2xl border border-line bg-sand/50">
+      <div className="p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-extrabold ${hidden ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'}`}>
+            {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            {hidden ? (event.title.trim() ? 'Oculto · borrador' : 'Oculto · falta el nombre') : 'Visible para clientes'}
+          </span>
+          <span className="flex shrink-0 items-center gap-1">
+            <button type="button" className={btn.ghost} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+              {open ? 'Cerrar' : 'Editar'}
+            </button>
+            <button type="button" className={btn.ghost} onClick={onRemove} aria-label="Quitar evento">
+              <Trash2 className="size-4" />
+            </button>
+          </span>
+        </div>
+        <p className="mt-1.5 truncate text-[15px] font-extrabold">{event.title.trim() || 'Evento sin nombre'}</p>
       </div>
-      <input className={input} placeholder="Nombre del evento" maxLength={80} value={event.title} onChange={(e) => onChange({ ...event, title: e.target.value })} />
-      <textarea className={`${input} min-h-16`} placeholder="Descripción breve" maxLength={300} value={event.description} onChange={(e) => onChange({ ...event, description: e.target.value })} />
-      <div className="grid grid-cols-2 gap-2">
-        <select className={input} value={event.kind} onChange={(e) => onChange({ ...event, kind: e.target.value as CineEventKind })} aria-label="Tipo de evento">
-          {EVENT_KINDS.map((k) => (
-            <option key={k.id} value={k.id}>
-              {k.name}
-            </option>
-          ))}
-        </select>
-        <select className={input} value={event.status} onChange={(e) => onChange({ ...event, status: e.target.value as CineEventStatus })} aria-label="Estado del evento">
-          {EVENT_STATUS.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <input type="date" className={input} value={event.date} onChange={(e) => onChange({ ...event, date: e.target.value })} aria-label="Fecha" />
-        <input type="time" className={input} value={event.time} onChange={(e) => onChange({ ...event, time: e.target.value })} aria-label="Hora" />
-        <select className={input} value={event.mode} onChange={(e) => onChange({ ...event, mode: e.target.value as CineEvent['mode'] })} aria-label="Modalidad">
-          <option value="presencial">Presencial</option>
-          <option value="virtual">Virtual</option>
-          <option value="mixto">Presencial y virtual</option>
-        </select>
-        <input className={input} placeholder="Lugar o plataforma" maxLength={80} value={event.place} onChange={(e) => onChange({ ...event, place: e.target.value })} />
-        <input className={input} placeholder="Cupos totales" inputMode="numeric" value={event.capacity ?? ''} onChange={(e) => onChange({ ...event, capacity: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
-        <input className={input} placeholder="Cupos tomados" inputMode="numeric" value={event.taken ?? ''} onChange={(e) => onChange({ ...event, taken: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
-      </div>
-      <select className={input} value={event.movieId} onChange={(e) => onChange({ ...event, movieId: e.target.value })} aria-label="Película del plan (opcional)">
-        <option value="">Sin película asociada</option>
-        {movies.filter((m) => m.title.trim()).map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.title}
-          </option>
-        ))}
-      </select>
-      <label className="block">
-        {event.kind === 'plan' && <span className="mb-1 block text-xs font-bold">Enlace del plan en Planly</span>}
-        <input
-          className={`${input} ${badUrl ? 'border-red-400' : ''}`}
-          inputMode="url"
-          placeholder={event.kind === 'plan' ? 'https://… (pega aquí el enlace de Planly)' : 'Enlace para participar (https, opcional)'}
-          value={url}
-          aria-invalid={badUrl}
-          onChange={(e) => {
-            setUrl(e.target.value)
-            if (!e.target.value.trim() || /^https:\/\/[^\s]+$/.test(e.target.value.trim())) onChange({ ...event, url: e.target.value.trim() })
-          }}
-        />
-        {badUrl && <span className="text-[11px] text-red-600">Debe empezar por https://</span>}
-      </label>
+
+      {hidden && event.status === 'draft' && event.title.trim() && (
+        <div className="mx-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-amber-50 p-3 text-[12.5px] text-amber-900">
+          <span>Está en borrador: los clientes no lo ven.</span>
+          <button type="button" className={btn.primary} onClick={() => onChange({ ...event, status: 'soon' })}>
+            Publicar como «Próximamente»
+          </button>
+        </div>
+      )}
+
+      {open && (
+        <div className="space-y-3 border-t border-line p-3">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
+            <div className="space-y-3 max-md:order-2">
+              <EventCover value={event.image} onChange={(image) => onChange({ ...event, image })} />
+              <Field label="Nombre del evento">
+                <input className={input} placeholder="Ej.: Noche de estreno en grupo" maxLength={80} value={event.title} onChange={(e) => onChange({ ...event, title: e.target.value })} />
+              </Field>
+              <Field label="Descripción breve">
+                <textarea className={`${input} min-h-20`} placeholder="Qué se hace, para quién y qué incluye" maxLength={300} value={event.description} onChange={(e) => onChange({ ...event, description: e.target.value })} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Tipo de evento" className="col-span-2 sm:col-span-1">
+                  <select className={input} value={event.kind} onChange={(e) => onChange({ ...event, kind: e.target.value as CineEventKind })}>
+                    {EVENT_KINDS.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Estado" className="col-span-2 sm:col-span-1">
+                  <select className={input} value={event.status} onChange={(e) => onChange({ ...event, status: e.target.value as CineEventStatus })}>
+                    {EVENT_STATUS.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Fecha">
+                  <input type="date" className={input} value={event.date} onChange={(e) => onChange({ ...event, date: e.target.value })} />
+                </Field>
+                <Field label="Hora">
+                  <input type="time" className={input} value={event.time} onChange={(e) => onChange({ ...event, time: e.target.value })} />
+                </Field>
+                <Field label="Modalidad" className="col-span-2 sm:col-span-1">
+                  <select className={input} value={event.mode} onChange={(e) => onChange({ ...event, mode: e.target.value as CineEvent['mode'] })}>
+                    <option value="presencial">Presencial</option>
+                    <option value="virtual">Virtual</option>
+                    <option value="mixto">Presencial y virtual</option>
+                  </select>
+                </Field>
+                <Field label="Lugar o plataforma" className="col-span-2 sm:col-span-1">
+                  <input className={input} placeholder="Ej.: Cine Colombia, sala 3" maxLength={80} value={event.place} onChange={(e) => onChange({ ...event, place: e.target.value })} />
+                </Field>
+                <Field label="Cupos totales">
+                  <input className={input} placeholder="Sin límite" inputMode="numeric" value={event.capacity ?? ''} onChange={(e) => onChange({ ...event, capacity: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
+                </Field>
+                <Field label="Cupos tomados">
+                  <input className={input} placeholder="0" inputMode="numeric" value={event.taken ?? ''} onChange={(e) => onChange({ ...event, taken: e.target.value.trim() ? Number(e.target.value.replace(/\D/g, '')) : null })} />
+                </Field>
+              </div>
+              <Field label="Película del plan (opcional)">
+                <select className={input} value={event.movieId} onChange={(e) => onChange({ ...event, movieId: e.target.value })}>
+                  <option value="">Sin película asociada</option>
+                  {movies.filter((m) => m.title.trim()).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={event.kind === 'plan' ? 'Enlace del plan en Planly' : 'Enlace para participar (opcional)'}>
+                <input
+                  className={`${input} ${badUrl ? 'border-red-400' : ''}`}
+                  inputMode="url"
+                  placeholder="https://…"
+                  value={url}
+                  aria-invalid={badUrl}
+                  onChange={(e) => {
+                    setUrl(e.target.value)
+                    if (!e.target.value.trim() || /^https:\/\/[^\s]+$/.test(e.target.value.trim())) onChange({ ...event, url: e.target.value.trim() })
+                  }}
+                />
+                {badUrl && <span className="text-[11px] text-red-600">Debe empezar por https://</span>}
+                <span className="mt-1 block text-[11px] text-ink-soft">El botón para unirse solo aparece cuando el estado es «Abierto» y hay enlace.</span>
+              </Field>
+            </div>
+
+            {/* vista previa: la tarjeta real del cine, sobre su mismo fondo oscuro */}
+            <div className="max-md:order-1 md:sticky md:top-24">
+              <span className={FIELD_LABEL}>Así lo ven los clientes{hidden ? ' (cuando lo publiques)' : ''}</span>
+              <div className="rounded-2xl bg-[#081827] p-3 text-white">
+                <EventCard e={{ ...event, title: event.title.trim() || 'Evento sin nombre' }} />
+              </div>
+              <p className="mt-1.5 text-[11px] text-ink-soft">{kind?.hint}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function EventsAdmin() {
+  const navigate = useNavigate()
   const events = useCine((s) => s.events)
   const movies = useCine((s) => s.movies)
   const set = useCine((s) => s.set)
@@ -192,7 +312,7 @@ function EventsAdmin() {
       <div>
         <p className="font-bold">3 · Eventos de MallPlay Cinema</p>
         <p className="text-xs text-ink-soft">
-          Planes en grupo con Planly, noches de estreno, trivias, cine en pareja, maratones, encuentros y noches de tráileres. Para un <b>plan</b>, elige la película y pega el enlace de Planly: el botón «Unirme al plan en Planly» lleva ahí. Un evento nuevo empieza en «Borrador» y no se ve: cámbialo a «Próximamente» o «Abierto» cuando sea real. No hay eventos de ejemplo ({events.length}/{MAX_EVENTS}).
+          Planes en grupo con Planly, noches de estreno, trivias, cine en pareja, maratones, encuentros y noches de tráileres. Para un <b>plan</b>, elige la película y pega el enlace de Planly: el botón «Unirme al plan en Planly» lleva ahí. Cada evento muestra abajo cómo lo ven los clientes. Un evento nuevo ya aparece como «Próximamente»; ponlo en «Borrador» para ocultarlo y en «Abierto» (con enlace) para recibir inscripciones. Los cambios se publican solos ({events.length}/{MAX_EVENTS}).
         </p>
       </div>
       {events.map((ev, i) => (
@@ -204,6 +324,20 @@ function EventsAdmin() {
         </button>
         <button type="button" className={btn.secondary} disabled={events.length >= MAX_EVENTS} onClick={() => set({ events: [...events, newEvent()] })}>
           <Plus className="size-4" /> Otro evento
+        </button>
+        <button
+          type="button"
+          className={btn.secondary}
+          onClick={() => {
+            // abre el cine en la pestaña «Eventos»: exactamente lo que verá un cliente
+            navigate('/')
+            window.setTimeout(() => {
+              useCineUi.getState().setTab('events')
+              useCineUi.getState().open('lobby')
+            }, 500)
+          }}
+        >
+          <Eye className="size-4" /> Ver en el cine
         </button>
       </div>
     </div>

@@ -14,7 +14,8 @@ const STATUS_CLS: Record<CineEventStatus, string> = {
 }
 const MODE_TEXT = { presencial: 'Presencial', virtual: 'Virtual', mixto: 'Presencial y virtual' } as const
 
-function EventCard({ e }: { e: CineEvent }) {
+/** Tarjeta de un evento tal como la ve el cliente (la administración la usa también para la vista previa). */
+export function EventCard({ e }: { e: CineEvent }) {
   const kind = EVENT_KINDS.find((k) => k.id === e.kind)
   const movie = useCine((s) => (e.movieId ? s.movies.find((m) => m.id === e.movieId) : undefined))
   const left = seatsLeft(e)

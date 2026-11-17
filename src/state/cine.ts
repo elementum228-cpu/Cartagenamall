@@ -128,7 +128,7 @@ export interface CineEvent {
 }
 
 export const MAX_EVENTS = 24
-export const newEvent = (): CineEvent => ({ id: `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind: 'premiere', title: '', description: '', image: null, status: 'draft', date: '', time: '', mode: 'presencial', place: '', capacity: null, taken: null, url: '', movieId: '' })
+export const newEvent = (): CineEvent => ({ id: `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind: 'premiere', title: 'Nuevo evento', description: '', image: null, status: 'soon', date: '', time: '', mode: 'presencial', place: '', capacity: null, taken: null, url: '', movieId: '' })
 
 export type ShowFormat = '' | '2D' | '3D' | 'VIP'
 export type ShowLang = '' | 'DOB' | 'SUB'
