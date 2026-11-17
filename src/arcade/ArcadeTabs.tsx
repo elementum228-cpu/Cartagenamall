@@ -20,7 +20,7 @@ import { useLiveRewards } from './rewards'
 import { Celebration, VoucherView } from './Voucher'
 import { useArcade } from './store'
 import { syncPending, syncUsed } from './vouchers'
-import { GoalCard, PrizeCard, PrizeDetail, StoreBadge } from './PrizeViews'
+import { BalanceBar, GoalCard, NextPrizeHero, PrizeCard, PrizeDetail, PrizeLane, PrizeTile, StoreBadge } from './PrizeViews'
 
 // Las pestañas «Ranking» y «Premios» del Arcade (se cargan junto con el juego, pero viven aparte para no mezclar el juego con las listas).
 
@@ -38,6 +38,21 @@ export function Prizes() {
   const myVouchers = redemptions.filter((r) => !r.used)
   const goal = useArcade((s) => s.goal)
   const goalReward = goal ? rewards.find((r) => r.id === goal) : undefined
+  // Propuesta de diseño: «a» = mosaico de dos columnas (por defecto), «b» = carriles por precio. Se prueba con ?premios=b
+  const layout = (() => {
+    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('premios') : null
+    return q === 'b' ? 'b' : q === 'old' ? 'old' : 'a'
+  })()
+  const [filter, setFilter] = useState<'all' | 'can' | 'cheap'>('all')
+  const byCost = [...rewards].sort((x, y) => x.cost - y.cost)
+  const closest = byCost.find((r) => r.cost > points) ?? byCost[byCost.length - 1]
+  const shown = filter === 'can' ? byCost.filter((r) => r.cost <= points) : filter === 'cheap' ? byCost : rewards
+  const hero = goalReward ?? closest
+  const tiers = [
+    { name: 'Para empezar', hint: 'hasta 100', items: byCost.filter((r) => r.cost <= 100) },
+    { name: 'Premios medianos', hint: '101 a 500', items: byCost.filter((r) => r.cost > 100 && r.cost <= 500) },
+    { name: 'Premios grandes', hint: 'más de 500', items: byCost.filter((r) => r.cost > 500) },
+  ].filter((t) => t.items.length)
   /** Premio abierto en el detalle. */
   const [detail, setDetail] = useState<string | null>(null)
   const detailReward = detail ? rewards.find((r) => r.id === detail) : undefined
@@ -62,10 +77,46 @@ export function Prizes() {
           <p className="mt-1 text-[12.5px] leading-snug text-[#c8d3ff]">Los negocios del mall están preparando descuentos y regalos para canjear con tus tiquetes. Sigue jugando y junta los tuyos.</p>
         </div>
       )}
-      {goalReward && <GoalCard r={goalReward} points={points} onOpen={() => setDetail(goalReward.id)} />}
-      {rewards.filter((r) => r.id !== goalReward?.id).map((r) => (
-        <PrizeCard key={r.id} r={r} points={points} onOpen={() => setDetail(r.id)} onRedeem={() => redeem(r.id)} />
-      ))}
+      {rewards.length > 0 && layout === 'a' && (
+        <>
+          <BalanceBar points={points} next={goalReward ?? closest} />
+          <div className="scrollbar-none flex shrink-0 gap-2 overflow-x-auto" role="tablist" aria-label="Filtrar premios">
+            {([['all', 'Todos'], ['can', 'Los que alcanzo'], ['cheap', 'Más baratos']] as const).map(([id, label]) => (
+              <button key={id} role="tab" aria-selected={filter === id} onClick={() => setFilter(id)} className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-extrabold ${filter === id ? 'bg-white text-[#1c1747]' : 'bg-white/10 text-white'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {shown.length === 0 ? <p className="rounded-2xl bg-white/[0.07] p-4 text-center text-[13px] text-[#c8d3ff]">Todavía no te alcanza ninguno. ¡Sigue jugando!</p> : (
+            <div className="grid shrink-0 grid-cols-2 gap-2.5">
+              {shown.map((r) => (
+                <PrizeTile key={r.id} r={r} points={points} onOpen={() => setDetail(r.id)} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {rewards.length > 0 && layout === 'b' && (
+        <>
+          <BalanceBar points={points} />
+          {hero && <NextPrizeHero r={hero} points={points} isGoal={hero.id === goalReward?.id} onOpen={() => setDetail(hero.id)} />}
+          {tiers.map((t) => (
+            <section key={t.name} className="shrink-0" aria-label={t.name}>
+              <p className="mb-1.5 flex items-baseline justify-between px-0.5 text-white">
+                <span className="text-[15px] font-black">{t.name}</span>
+                <span className="text-[11.5px] font-bold text-[#9fb3ff]">{t.hint}</span>
+              </p>
+              <div className="scrollbar-none -mx-1 flex snap-x gap-2.5 overflow-x-auto px-1 pb-1">
+                {t.items.map((r) => (
+                  <PrizeLane key={r.id} r={r} points={points} onOpen={() => setDetail(r.id)} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </>
+      )}
+      {layout === 'old' && goalReward && <GoalCard r={goalReward} points={points} onOpen={() => setDetail(goalReward.id)} />}
+      {layout === 'old' && rewards.filter((r) => r.id !== goalReward?.id).map((r) => <PrizeCard key={r.id} r={r} points={points} onOpen={() => setDetail(r.id)} onRedeem={() => redeem(r.id)} />)}
       {myVouchers.length > 0 && (
         <div className="mt-1 text-white">
           <p className="mb-1 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Mis bonos</p>

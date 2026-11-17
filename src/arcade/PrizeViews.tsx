@@ -168,3 +168,110 @@ export function PrizeDetail({ r, points, onClose, onRedeem }: { r: StoreReward; 
     </div>
   )
 }
+
+// ── Propuestas de la pantalla de premios ───────────────────────────────────────────────────────────────────────────────────────────
+
+/** Saldo de tiquetes y, si hay, lo que falta para el premio más cercano: lo primero que se ve arriba de los premios. */
+export function BalanceBar({ points, next }: { points: number; next?: StoreReward }) {
+  const m = next ? progressTo(points, next.cost) : null
+  return (
+    <div className="shrink-0 rounded-2xl bg-gradient-to-r from-[#3b1d8f]/80 to-[#1a0f55]/80 p-3 text-white ring-1 ring-white/10">
+      <div className="flex items-center gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffe36b] to-[#f5a912] text-[#7a4b00]" aria-hidden>
+          <Star className="size-5" fill="currentColor" />
+        </span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="text-[11px] font-bold tracking-wide text-[#c8d3ff] uppercase">Tus tiquetes</p>
+          <p className="text-[24px] font-black tabular-nums">{points}</p>
+        </div>
+        {next && m && (
+          <p className="max-w-[48%] text-right text-[12px] leading-snug font-bold text-[#ffe9a8]">{m.missing > 0 ? `${m.missing} para «${next.title}»` : `¡Ya alcanza «${next.title}»!`}</p>
+        )}
+      </div>
+      {next && m && (
+        <div className="mt-2.5">
+          <Bar pct={m.pct} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Propuesta A: mosaico de dos columnas. Foto cuadrada, etiqueta de tiquetes, nombre y una barra fina; el toque abre el detalle. */
+export function PrizeTile({ r, points, onOpen }: { r: StoreReward; points: number; onOpen: () => void }) {
+  const goal = useArcade((s) => s.goal === r.id)
+  const ok = points >= r.cost
+  const { pct, missing } = progressTo(points, r.cost)
+  return (
+    <button onClick={onOpen} className={`group relative flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white/[0.07] text-left text-white ring-1 active:scale-[0.98] ${goal ? 'ring-[#ffd45c]/80' : ok ? 'ring-[#4de1ff]/60' : 'ring-white/10'}`} aria-label={`Ver el premio: ${r.title}`}>
+      <span className="relative block aspect-square w-full overflow-hidden bg-white/5">
+        {r.image ? <img src={r.image} alt="" className="size-full object-cover" /> : <span className="grid size-full place-items-center"><StoreBadge storeId={r.storeId} storeName={r.storeName} size={64} /></span>}
+        <span className="absolute top-2 left-2 rounded-full bg-[#ffc83d] px-2 py-0.5 text-[11.5px] font-extrabold text-[#2a1a00] shadow">{r.cost}</span>
+        {goal && (
+          <span className="absolute top-2 right-2 grid size-6 place-items-center rounded-full bg-[#07031a]/80 text-[#ffd45c]" aria-label="Es tu meta">
+            <Star className="size-3.5" fill="currentColor" />
+          </span>
+        )}
+        {ok && <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#4de1ff] to-[#4de1ff]/0 px-2 pt-5 pb-1.5 text-center text-[11px] font-black text-[#04202b]">¡Te alcanza!</span>}
+      </span>
+      <span className="flex flex-1 flex-col gap-1 p-2.5">
+        <span className="flex items-center gap-1.5">
+          <span className="shrink-0 scale-[0.58] origin-left" style={{ width: 22, height: 22 }}>
+            <StoreBadge storeId={r.storeId} storeName={r.storeName} size={38} />
+          </span>
+          <span className="min-w-0 truncate text-[10.5px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</span>
+        </span>
+        <span className="line-clamp-2 text-[13.5px] leading-snug font-extrabold">{r.title}</span>
+        <span className="mt-auto pt-1">
+          <Bar pct={pct} />
+          <span className="mt-1 block text-[11px] font-bold text-white/70">{ok ? 'Toca para canjear' : `Faltan ${missing}`}</span>
+        </span>
+      </span>
+    </button>
+  )
+}
+
+/** Propuesta B: tarjeta ancha y compacta para los carriles por precio. */
+export function PrizeLane({ r, points, onOpen }: { r: StoreReward; points: number; onOpen: () => void }) {
+  const goal = useArcade((s) => s.goal === r.id)
+  const ok = points >= r.cost
+  const { pct } = progressTo(points, r.cost)
+  return (
+    <button onClick={onOpen} className={`relative flex w-[150px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl bg-white/[0.07] text-left text-white ring-1 active:scale-[0.97] ${goal ? 'ring-[#ffd45c]/80' : ok ? 'ring-[#4de1ff]/60' : 'ring-white/10'}`} aria-label={`Ver el premio: ${r.title}`}>
+      <span className="relative block aspect-[4/3] w-full overflow-hidden bg-white/5">
+        {r.image ? <img src={r.image} alt="" className="size-full object-cover" /> : <span className="grid size-full place-items-center"><StoreBadge storeId={r.storeId} storeName={r.storeName} size={52} /></span>}
+        <span className={`absolute bottom-1.5 left-1.5 rounded-full px-2 py-0.5 text-[11px] font-extrabold shadow ${ok ? 'bg-[#4de1ff] text-[#04202b]' : 'bg-[#ffc83d] text-[#2a1a00]'}`}>{ok ? '¡Canjéalo!' : `${r.cost}`}</span>
+      </span>
+      <span className="flex flex-col gap-1 p-2.5">
+        <span className="truncate text-[10px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</span>
+        <span className="line-clamp-2 min-h-[2.4em] text-[12.5px] leading-snug font-extrabold">{r.title}</span>
+        <Bar pct={pct} />
+      </span>
+    </button>
+  )
+}
+
+/** Propuesta B: «Tu próximo premio», grande, con foto de fondo y barra. Es la meta elegida o, si no hay, el más cercano. */
+export function NextPrizeHero({ r, points, isGoal, onOpen }: { r: StoreReward; points: number; isGoal: boolean; onOpen: () => void }) {
+  const { pct, missing } = progressTo(points, r.cost)
+  return (
+    <button onClick={onOpen} className="relative block w-full shrink-0 overflow-hidden rounded-3xl bg-[#1a0f55] text-left text-white ring-1 ring-[#ffd45c]/50 active:scale-[0.99]" aria-label={`${isGoal ? 'Tu meta' : 'Tu próximo premio'}: ${r.title}`}>
+      <span className="relative block aspect-[16/10] w-full">
+        {r.image ? <img src={r.image} alt="" className="size-full object-cover" /> : <span className="grid size-full place-items-center bg-white/5"><StoreBadge storeId={r.storeId} storeName={r.storeName} size={84} /></span>}
+        <span className="absolute inset-0 bg-gradient-to-t from-[#120a40] via-[#120a40]/30 to-transparent" />
+        <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-[#07031a]/80 px-2.5 py-1 text-[10.5px] font-extrabold tracking-[0.14em] text-[#ffd45c]">
+          <Star className="size-3" fill="currentColor" /> {isGoal ? 'TU META' : 'TU PRÓXIMO PREMIO'}
+        </span>
+        <span className="absolute top-3 right-3 rounded-full bg-[#ffc83d] px-2.5 py-1 text-[12px] font-extrabold text-[#2a1a00]">{r.cost}</span>
+      </span>
+      <span className="block px-4 pt-0 pb-4">
+        <span className="block text-[11px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</span>
+        <span className="block text-[19px] leading-tight font-black">{r.title}</span>
+        <span className="mt-2.5 block">
+          <Bar pct={pct} />
+        </span>
+        <span className="mt-1.5 block text-[12.5px] font-bold text-[#ffe9a8]">{missing > 0 ? `Te faltan ${missing} tiquetes` : '¡Ya lo puedes canjear!'}</span>
+      </span>
+    </button>
+  )
+}
