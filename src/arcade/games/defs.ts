@@ -3,6 +3,11 @@
 // se suman en este dispositivo, igual que en Nave Caribe sin conexión.
 
 import { TICKET_SCALE, liveTickets } from '../store'
+import fondoUrl from '../../assets/cangrejos/fondo.webp'
+import agujeroUrl from '../../assets/cangrejos/agujero.webp'
+import cangrejoUrl from '../../assets/cangrejos/cangrejo.webp'
+import doradoUrl from '../../assets/cangrejos/dorado.webp'
+import golpeadoUrl from '../../assets/cangrejos/golpeado.webp'
 
 export type MiniGameId = 'cangrejos' | 'bolos'
 export type PointerKind = 'down' | 'move' | 'up'
@@ -23,19 +28,6 @@ export interface GameDef<S> {
   takeSounds?(s: S): ('pop' | 'power' | 'hurt' | 'coin')[]
   score(s: S): number
   done(s: S): boolean
-}
-
-const FONT = '"Press Start 2P", monospace'
-
-function text(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = 'left') {
-  ctx.font = `${size}px ${FONT}`
-  ctx.textAlign = align
-  ctx.textBaseline = 'middle'
-  ctx.lineWidth = 3
-  ctx.strokeStyle = '#07031a'
-  ctx.strokeText(s, x, y)
-  ctx.fillStyle = color
-  ctx.fillText(s, x, y)
 }
 
 const rr = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
@@ -106,176 +98,145 @@ function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
   ctx.fill()
 }
 
-function drawCrab(ctx: CanvasRenderingContext2D, x: number, y: number, kind: CrabKind, k: number, t: number, hit = false) {
-  const body = kind === 'gold' ? '#ffc72e' : kind === 'octo' ? '#7a4fd1' : '#e0414f'
-  const dark = kind === 'gold' ? '#b8860b' : kind === 'octo' ? '#4a2a8f' : '#8f1f2b'
-  const light = kind === 'gold' ? '#fff3a8' : kind === 'octo' ? '#c3a8ff' : '#ff9aa6'
-  // sombra suave sobre la arena mientras asoma
-  ctx.fillStyle = `rgba(30,12,0,${0.28 * k})`
-  ctx.beginPath()
-  ctx.ellipse(x, y + 6, 40 * k + 6, 11 * k + 2, 0, 0, Math.PI * 2)
-  ctx.fill()
+// ── arte de Cangrejos Locos (ilustraciones 3D suaves, WebP con transparencia) ───────────────────────────────────────────────────────
+
+const ART: Partial<Record<'fondo' | 'agujero' | 'cangrejo' | 'dorado' | 'golpeado', HTMLImageElement>> = {}
+if (typeof Image !== 'undefined')
+  for (const [k, url] of Object.entries({ fondo: fondoUrl, agujero: agujeroUrl, cangrejo: cangrejoUrl, dorado: doradoUrl, golpeado: golpeadoUrl })) {
+    const im = new Image()
+    im.decoding = 'async'
+    im.src = url
+    ART[k as keyof typeof ART] = im
+  }
+const ready = (im?: HTMLImageElement): im is HTMLImageElement => !!im && im.complete && im.naturalWidth > 0
+
+/** Letra limpia de la app para el marcador (con una sombra suave que la despega del fondo). */
+function ui(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, fill: string, align: CanvasTextAlign = 'left', weight = 800) {
+  ctx.font = `${weight} ${size}px Manrope, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`
+  ctx.textAlign = align
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = 'rgba(40,20,70,.35)'
+  ctx.fillText(s, x + 0.8, y + 1.4)
+  ctx.fillStyle = fill
+  ctx.fillText(s, x, y)
+}
+
+/** Hueco de arena: la mitad de atrás va detrás de la criatura y la de adelante (el labio) por encima, así sale de adentro. */
+const HOLE_W = 126
+function holeSprite(ctx: CanvasRenderingContext2D, x: number, y: number, front: boolean) {
+  const im = ART.agujero
+  if (!ready(im)) return
+  const h = (HOLE_W * im.naturalHeight) / im.naturalWidth
+  const top = y - h / 2
+  if (!front) ctx.drawImage(im, x - HOLE_W / 2, top, HOLE_W, h)
+  else {
+    // solo la mitad de abajo (el labio delantero)
+    const sy = im.naturalHeight * 0.5
+    ctx.drawImage(im, 0, sy, im.naturalWidth, im.naturalHeight - sy, x - HOLE_W / 2, y, HOLE_W, h / 2)
+  }
+}
+
+/** Pulpo malo, dibujado con degradados suaves y sin contornos para que combine con las ilustraciones. */
+function drawOcto(ctx: CanvasRenderingContext2D, x: number, y: number, t: number, hit: boolean) {
   ctx.save()
-  ctx.translate(x, y - 38 * k)
+  ctx.translate(x, y)
+  if (hit) ctx.scale(1.18, 0.7)
+  // tentáculos
+  ctx.lineCap = 'round'
+  for (const sx of [-1, -0.34, 0.34, 1]) {
+    const wob = Math.sin(t * 7 + sx * 3) * 4
+    ctx.strokeStyle = '#6a3fd0'
+    ctx.lineWidth = 11
+    ctx.beginPath()
+    ctx.moveTo(sx * 18, 6)
+    ctx.quadraticCurveTo(sx * 36 + wob, 16, sx * 32 + wob * 1.4, 34)
+    ctx.stroke()
+    ctx.strokeStyle = 'rgba(255,255,255,.25)'
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(sx * 16 - 2, 4)
+    ctx.quadraticCurveTo(sx * 34 + wob - 2, 14, sx * 30 + wob * 1.4 - 2, 30)
+    ctx.stroke()
+  }
+  const g = ctx.createRadialGradient(-12, -30, 4, 0, -14, 46)
+  g.addColorStop(0, '#c7a6ff')
+  g.addColorStop(0.45, '#8657e6')
+  g.addColorStop(1, '#5a33b8')
+  ctx.fillStyle = g
   ctx.beginPath()
-  ctx.rect(-70, -96, 140, 96 + 38 * k - 5)
-  ctx.clip()
-  ctx.rotate(hit ? 0 : Math.sin(t * 9) * 0.05)
-  // se estira al salir y se aplasta al recibir el golpe
-  const bulge = Math.sin(Math.min(1, k) * Math.PI)
-  if (hit) ctx.scale(1.16, 0.7)
-  else ctx.scale(1 - 0.07 * bulge, 1 + 0.12 * bulge)
-  const grad = (cx: number, cy: number, r: number) => {
-    const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.1, cx, cy, r)
-    g.addColorStop(0, light)
-    g.addColorStop(0.45, body)
-    g.addColorStop(1, dark)
-    return g
+  ctx.ellipse(0, -14, 34, 32, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = 'rgba(255,255,255,.4)'
+  ctx.beginPath()
+  ctx.ellipse(-14, -34, 12, 6, -0.6, 0, Math.PI * 2)
+  ctx.fill()
+  // ojos grandes con luz y cejas enojadas
+  for (const sx of [-1, 1]) {
+    ctx.fillStyle = '#fff'
+    ctx.beginPath()
+    ctx.arc(sx * 13, -14, 10, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#2a1608'
+    ctx.beginPath()
+    ctx.arc(sx * 13 - sx, -12, 5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#fff'
+    ctx.beginPath()
+    ctx.arc(sx * 13 - sx * 2.5, -14.5, 1.8, 0, Math.PI * 2)
+    ctx.fill()
   }
-  ctx.lineWidth = 3
-  ctx.strokeStyle = '#07031a'
-  if (kind === 'octo') {
-    // pulpo malo: cabeza grande con cejas enojadas y tentáculos que se mueven
-    ctx.lineCap = 'round'
-    for (const sx of [-1, 0, 1]) {
-      ctx.strokeStyle = dark
-      ctx.lineWidth = 8
-      ctx.beginPath()
-      ctx.moveTo(sx * 16, 8)
-      ctx.quadraticCurveTo(sx * 34, 20 + Math.sin(t * 8 + sx) * 5, sx * 28, 40)
-      ctx.stroke()
-    }
-    ctx.lineWidth = 3
-    ctx.strokeStyle = '#07031a'
-    ctx.fillStyle = grad(0, -8, 34)
-    ctx.beginPath()
-    ctx.ellipse(0, -8, 32, 30, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    ctx.fillStyle = 'rgba(255,255,255,.32)'
-    ctx.beginPath()
-    ctx.ellipse(-13, -24, 11, 6, -0.6, 0, Math.PI * 2)
-    ctx.fill()
-    for (const sx of [-1, 1]) {
-      ctx.fillStyle = '#fff'
-      ctx.beginPath()
-      ctx.arc(sx * 12, -8, 8, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-      ctx.fillStyle = '#07031a'
-      ctx.beginPath()
-      ctx.arc(sx * 12, -6, 3.4, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    ctx.lineWidth = 5
-    ctx.beginPath()
-    ctx.moveTo(-24, -26)
-    ctx.lineTo(-6, -16)
-    ctx.moveTo(24, -26)
-    ctx.lineTo(6, -16)
-    ctx.stroke()
-  } else {
-    // pinzas que abren y cierran
-    for (const sx of [-1, 1]) {
-      const open = Math.sin(t * 10 + sx) * 0.25
-      ctx.save()
-      ctx.translate(sx * 38, -20)
-      ctx.rotate(sx * (0.5 + open))
-      ctx.fillStyle = grad(0, 0, 18)
-      ctx.beginPath()
-      ctx.ellipse(0, 0, 17, 13, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-      ctx.fillStyle = '#07031a'
-      ctx.beginPath()
-      ctx.moveTo(sx * 4, -4)
-      ctx.lineTo(sx * 18, -12 - open * 12)
-      ctx.lineTo(sx * 16, 0)
-      ctx.closePath()
-      ctx.fill()
-      ctx.restore()
-    }
-    // patas
-    ctx.strokeStyle = dark
-    ctx.lineWidth = 4
-    ctx.lineCap = 'round'
-    for (const sx of [-1, 1])
-      for (const j of [0, 1, 2]) {
-        ctx.beginPath()
-        ctx.moveTo(sx * 20, 6 + j * 4)
-        ctx.lineTo(sx * (34 + j * 4), 16 + j * 5 + Math.sin(t * 12 + j) * 2)
-        ctx.stroke()
-      }
-    // caparazón
-    ctx.lineWidth = 3
-    ctx.strokeStyle = '#07031a'
-    ctx.fillStyle = grad(0, -4, 34)
-    ctx.beginPath()
-    ctx.ellipse(0, -2, 33, 25, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.stroke()
-    // brillo y reborde del caparazón
-    ctx.fillStyle = 'rgba(255,255,255,.34)'
-    ctx.beginPath()
-    ctx.ellipse(-12, -14, 12, 5.5, -0.5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.strokeStyle = light
-    ctx.globalAlpha = 0.45
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.ellipse(0, -2, 28, 20, 0, Math.PI * 0.15, Math.PI * 0.85)
-    ctx.stroke()
-    ctx.globalAlpha = 1
-    ctx.strokeStyle = '#07031a'
-    ctx.lineWidth = 3
-    // manchitas
-    ctx.fillStyle = dark
-    for (const [dx, dy] of [[-14, 6], [10, 8], [0, 12]]) {
-      ctx.beginPath()
-      ctx.arc(dx, dy, 2.6, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    // ojos en tallos
-    for (const sx of [-1, 1]) {
-      ctx.strokeStyle = dark
-      ctx.lineWidth = 4
-      ctx.beginPath()
-      ctx.moveTo(sx * 11, -20)
-      ctx.lineTo(sx * 12, -30)
-      ctx.stroke()
-      ctx.strokeStyle = '#07031a'
-      ctx.lineWidth = 2.5
-      ctx.fillStyle = '#fff'
-      ctx.beginPath()
-      ctx.arc(sx * 12, -34, 8, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-      ctx.fillStyle = '#07031a'
-      ctx.beginPath()
-      ctx.arc(sx * 12 + 1, -33, 3.4, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    // sonrisa
-    ctx.strokeStyle = '#07031a'
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.arc(0, -6, 9, 0.15 * Math.PI, 0.85 * Math.PI)
-    ctx.stroke()
-  }
+  ctx.strokeStyle = '#3a1d86'
+  ctx.lineWidth = 4.5
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(-25, -31)
+  ctx.lineTo(-6, -22)
+  ctx.moveTo(25, -31)
+  ctx.lineTo(6, -22)
+  ctx.stroke()
   if (hit) {
     ctx.fillStyle = '#ffe36b'
     for (let i = 0; i < 3; i++) {
       const a = t * 9 + (i * Math.PI * 2) / 3
-      star(ctx, Math.cos(a) * 24, -50 + Math.sin(a) * 6, 6)
+      star(ctx, Math.cos(a) * 26, -52 + Math.sin(a) * 6, 6)
     }
-  } else if (kind === 'gold') {
-    ctx.fillStyle = '#ffffff'
-    for (let i = 0; i < 4; i++) {
-      const ph = (t * 1.6 + i * 0.25) % 1
-      ctx.globalAlpha = Math.sin(ph * Math.PI)
-      star(ctx, Math.cos(i * 2.1 + 0.6) * 38, -14 + Math.sin(i * 2.1) * 26, 3.5 + ph * 3)
+  }
+  ctx.restore()
+}
+
+/**
+ * La criatura asomando de su hueco: el sprite sube desde la línea del centro del hueco (por debajo queda recortado), con un pequeño
+ * estirón al salir; golpeada, cambia a la imagen mareada (o se aplasta, según el tipo).
+ */
+function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, kind: CrabKind, k: number, t: number, hit: boolean) {
+  if (k <= 0.001) return
+  const line = y + 4 // centro del hueco
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x - 90, line - 130, 180, 130)
+  ctx.clip()
+  if (kind === 'octo') {
+    ctx.translate(x, line + 34 - 74 * k)
+    drawOcto(ctx, 0, 0, t, hit)
+  } else {
+    const im = hit && kind === 'crab' ? ART.golpeado : kind === 'gold' ? ART.dorado : ART.cangrejo
+    if (ready(im)) {
+      const w = hit && kind === 'crab' ? 128 : 112
+      const h = (w * im.naturalHeight) / im.naturalWidth
+      const bulge = Math.sin(Math.min(1, k) * Math.PI)
+      const sw = w * (1 - 0.05 * bulge)
+      const sh = h * (1 + 0.09 * bulge)
+      const squash = hit && kind === 'gold' ? 0.72 : 1
+      const top = line - h * 0.8 * k + (h - sh * squash) * 0.2
+      ctx.drawImage(im, x - (hit && kind === 'gold' ? sw * 1.14 : sw) / 2, top, hit && kind === 'gold' ? sw * 1.14 : sw, sh * squash)
+      if (hit && kind === 'gold') {
+        ctx.fillStyle = '#ffe36b'
+        for (let i = 0; i < 3; i++) {
+          const a = t * 9 + (i * Math.PI * 2) / 3
+          star(ctx, x + Math.cos(a) * 28, top - 6 + Math.sin(a) * 6, 6)
+        }
+      }
     }
-    ctx.globalAlpha = 1
   }
   ctx.restore()
 }
@@ -365,161 +326,36 @@ export const CRABS: GameDef<CrabsState> = {
     s.combo = 0
   },
   draw(s, ctx, t) {
-    const sx = s.shake > 0 ? (Math.random() - 0.5) * 8 : 0
-    const txt = (v: string, x: number, y: number, size: number, fill: string, align: CanvasTextAlign = 'left') => text(ctx, v, x, y, size, fill, align)
+    const sx = s.shake > 0 ? (Math.random() - 0.5) * 7 : 0
     ctx.save()
     ctx.translate(sx, 0)
-    // ── atardecer caribeño: cielo, sol con reflejo, palmeras de silueta y mar ──
-    const sky = ctx.createLinearGradient(0, 0, 0, 170)
-    sky.addColorStop(0, '#2a1a73')
-    sky.addColorStop(0.55, '#c8456f')
-    sky.addColorStop(1, '#ffa05c')
-    ctx.fillStyle = sky
-    ctx.fillRect(-10, 0, CW + 20, 170)
-    // estrellas que titilan arriba, nubes que pasan y una gaviota que cruza de vez en cuando
-    for (let i = 0; i < 14; i++) {
-      ctx.globalAlpha = 0.25 + 0.55 * Math.abs(Math.sin(t * 1.3 + i * 1.7))
-      ctx.fillStyle = '#fff6d8'
-      ctx.fillRect((i * 71 + 13) % CW, 8 + ((i * 29) % 46), 2, 2)
+    // ── fondo: playa al atardecer (ilustración); sin ella, un degradado suave mientras carga ──
+    if (ready(ART.fondo)) ctx.drawImage(ART.fondo, -6, 0, CW + 12, CH)
+    else {
+      const sky = ctx.createLinearGradient(0, 0, 0, CH)
+      sky.addColorStop(0, '#8a7be6')
+      sky.addColorStop(0.3, '#ff9a8a')
+      sky.addColorStop(0.32, '#e8b878')
+      sky.addColorStop(1, '#e9b983')
+      ctx.fillStyle = sky
+      ctx.fillRect(-6, 0, CW + 12, CH)
     }
-    ctx.globalAlpha = 0.5
-    for (let i = 0; i < 3; i++) {
-      const cx = ((t * (5 + i * 3) + i * 140) % (CW + 120)) - 60
-      const cy = 52 + i * 26
-      ctx.fillStyle = i % 2 ? '#ff9ab0' : '#ffc3a0'
-      ctx.beginPath()
-      ctx.ellipse(cx, cy, 34, 7, 0, 0, Math.PI * 2)
-      ctx.ellipse(cx + 16, cy - 5, 20, 7, 0, 0, Math.PI * 2)
-      ctx.ellipse(cx - 18, cy - 3, 16, 6, 0, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    ctx.globalAlpha = 1
-    {
-      const bx = ((t * 34) % (CW + 160)) - 80
-      const by = 96 + Math.sin(t * 1.2) * 8
-      const flap = Math.sin(t * 9) * 5
-      ctx.strokeStyle = '#1a0f45'
-      ctx.lineWidth = 2.2
-      ctx.lineCap = 'round'
-      ctx.beginPath()
-      ctx.moveTo(bx - 10, by - flap)
-      ctx.quadraticCurveTo(bx - 4, by - flap - 5, bx, by)
-      ctx.quadraticCurveTo(bx + 4, by - flap - 5, bx + 10, by - flap)
-      ctx.stroke()
-    }
-    ctx.fillStyle = '#ffe08a'
-    ctx.beginPath()
-    ctx.arc(CW - 76, 128, 32, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = 'rgba(255,224,138,.35)'
-    ctx.beginPath()
-    ctx.arc(CW - 76, 128, 44, 0, Math.PI * 2)
-    ctx.fill()
-    const sea = ctx.createLinearGradient(0, 136, 0, 180)
-    sea.addColorStop(0, '#1d7ea0')
-    sea.addColorStop(1, '#0f4d73')
-    ctx.fillStyle = sea
-    ctx.fillRect(-10, 136, CW + 20, 44)
-    // reflejo del sol en el agua y olitas que van y vienen
-    ctx.fillStyle = 'rgba(255,224,138,.35)'
-    for (let i = 0; i < 5; i++) ctx.fillRect(CW - 76 - 18 + Math.sin(t * 2 + i) * 5 + i * 1.5, 140 + i * 7, 36 - i * 5, 2)
-    for (let i = 0; i < 8; i++) {
-      ctx.fillStyle = 'rgba(255,255,255,.3)'
-      ctx.fillRect(24 + i * 44 + Math.sin(t * 1.5 + i) * 7, 146 + (i % 3) * 9, 20, 2)
-    }
-    // espuma en la orilla
-    ctx.strokeStyle = 'rgba(255,255,255,.75)'
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    for (let x = -10; x <= CW + 10; x += 8) {
-      const y = 176 + Math.sin(x * 0.06 + t * 2.2) * 2.4
-      if (x === -10) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    }
-    ctx.stroke()
-    ctx.fillStyle = '#1a0f45'
-    for (const px of [34, CW - 34]) {
-      ctx.fillRect(px - 2, 84, 5, 56)
-      for (let k = 0; k < 5; k++) {
-        const a = -0.9 + k * 0.45
-        ctx.beginPath()
-        ctx.ellipse(px + Math.sin(a) * 15, 84 - Math.cos(a) * 7, 15, 4.5, a, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
-    // ── arena ──
-    const sand = ctx.createLinearGradient(0, 176, 0, CH)
-    sand.addColorStop(0, '#f1d49b')
-    sand.addColorStop(1, '#d4a965')
-    ctx.fillStyle = sand
-    ctx.fillRect(-10, 176, CW + 20, CH)
-    ctx.fillStyle = 'rgba(160,110,50,.35)'
-    for (let i = 0; i < 28; i++) ctx.fillRect((i * 97) % CW, 190 + ((i * 53) % 360), 7, 2)
-    // conchitas
-    for (const [cx, cy] of [[22, 262], [CW - 24, 390], [30, 520], [CW - 30, 250]]) {
-      ctx.fillStyle = '#fff3e0'
-      ctx.beginPath()
-      ctx.arc(cx, cy, 6, Math.PI, 0)
-      ctx.fill()
-    }
-    // ── agujeros: montículo con luz arriba a la izquierda, sombra y fondo oscuro con profundidad ──
+    // ── huecos: la parte de atrás, luego las criaturas y encima el labio delantero ──
+    for (const h of s.holes) holeSprite(ctx, h.x, h.y + 6, false)
     for (const h of s.holes) {
-      ctx.fillStyle = 'rgba(70,40,10,.32)'
-      ctx.beginPath()
-      ctx.ellipse(h.x + 4, h.y + 18, 60, 22, 0, 0, Math.PI * 2)
-      ctx.fill()
-      const mound = ctx.createLinearGradient(0, h.y - 16, 0, h.y + 30)
-      mound.addColorStop(0, '#e9c887')
-      mound.addColorStop(1, '#a8772f')
-      ctx.fillStyle = mound
-      ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 6, 55, 23, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.strokeStyle = 'rgba(255,244,214,.55)'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 5, 52, 20, 0, Math.PI * 1.05, Math.PI * 1.75)
-      ctx.stroke()
-      const pit = ctx.createRadialGradient(h.x, h.y - 2, 4, h.x, h.y + 4, 44)
-      pit.addColorStop(0, '#120a03')
-      pit.addColorStop(0.7, '#2a1a08')
-      pit.addColorStop(1, '#4a2f12')
-      ctx.fillStyle = pit
-      ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 4, 43, 15, 0, 0, Math.PI * 2)
-      ctx.fill()
-      // granitos de arena en el borde
-      ctx.fillStyle = 'rgba(255,236,190,.7)'
-      for (let i = 0; i < 7; i++) {
-        const an = (i / 7) * Math.PI * 2 + h.x
-        ctx.fillRect(h.x + Math.cos(an) * 49 - 1, h.y + 6 + Math.sin(an) * 19 - 1, 2.2, 2.2)
+      if (h.kind) {
+        const u = h.age / h.dur
+        const k = u < 0.18 ? u / 0.18 : u > 0.82 ? Math.max(0, (1 - u) / 0.18) : 1
+        drawCreature(ctx, h.x, h.y, h.kind, k, t, h.hit)
       }
+      holeSprite(ctx, h.x, h.y + 6, true)
     }
-    // ── cangrejos, con el borde del agujero por delante ──
-    for (const h of s.holes) {
-      if (!h.kind) continue
-      const u = h.age / h.dur
-      const k = u < 0.18 ? u / 0.18 : u > 0.82 ? Math.max(0, (1 - u) / 0.18) : 1
-      drawCrab(ctx, h.x, h.y, h.kind, k, t, h.hit)
-      const lip = ctx.createLinearGradient(0, h.y + 10, 0, h.y + 24)
-      lip.addColorStop(0, '#dcb06a')
-      lip.addColorStop(1, '#b58443')
-      ctx.fillStyle = lip
-      ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 12, 52, 11, 0, 0, Math.PI)
-      ctx.fill()
-      ctx.strokeStyle = '#8f6228'
-      ctx.lineWidth = 2.5
-      ctx.beginPath()
-      ctx.ellipse(h.x, h.y + 12, 52, 11, 0, 0, Math.PI)
-      ctx.stroke()
-    }
-    // ── destellos de acierto: onda, chispas y arena que salta y cae ──
+    // ── destellos de acierto: onda suave, chispas y arena que salta y cae ──
     for (const b of s.bursts) {
       const u = b.age / 0.5
-      ctx.globalAlpha = 1 - u
+      ctx.globalAlpha = (1 - u) * 0.9
       ctx.strokeStyle = b.color
-      ctx.lineWidth = 4
+      ctx.lineWidth = 3
       ctx.beginPath()
       ctx.arc(b.x, b.y, 12 + u * 38, 0, Math.PI * 2)
       ctx.stroke()
@@ -528,12 +364,14 @@ export const CRABS: GameDef<CrabsState> = {
         const sp = 70 + (k % 3) * 26
         const px = b.x + Math.cos(a) * sp * b.age
         const py = b.y + Math.sin(a) * sp * b.age * 0.7 + 320 * b.age * b.age - 22 * b.age
-        ctx.fillStyle = k % 2 ? b.color : k % 4 === 0 ? '#e8c27c' : '#b78945'
-        const sz = k % 2 ? 4 : 5
-        ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz)
+        ctx.fillStyle = k % 2 ? b.color : k % 4 === 0 ? '#f3d29c' : '#d6a766'
+        ctx.beginPath()
+        ctx.arc(px, py, k % 2 ? 2.4 : 3, 0, Math.PI * 2)
+        ctx.fill()
       }
     }
     ctx.globalAlpha = 1
+    // ── mazo: madera con cabeza amarilla, sin contornos duros ──
     for (const m of s.mallets) {
       const u = m.age / 0.3
       const ang = -1.0 + Math.min(1, u * 3) * 1.15
@@ -541,30 +379,25 @@ export const CRABS: GameDef<CrabsState> = {
       ctx.globalAlpha = 1 - Math.max(0, u - 0.5) * 2
       ctx.translate(m.x + 8, m.y - 6)
       ctx.rotate(ang)
-      // mango de madera con vetas
       const wood = ctx.createLinearGradient(-4, 0, 4, 0)
-      wood.addColorStop(0, '#6e4520')
-      wood.addColorStop(0.5, '#b57c3d')
-      wood.addColorStop(1, '#6e4520')
+      wood.addColorStop(0, '#9a6532')
+      wood.addColorStop(0.5, '#c88c4a')
+      wood.addColorStop(1, '#8a5a2b')
       ctx.fillStyle = wood
-      ctx.fillRect(-4, -4, 8, 62)
-      ctx.strokeStyle = '#07031a'
-      ctx.lineWidth = 2
-      ctx.strokeRect(-4, -4, 8, 62)
-      // cabeza de goma, con brillo y aros
-      const head = ctx.createLinearGradient(0, -26, 0, 2)
-      head.addColorStop(0, '#ffe27a')
-      head.addColorStop(1, '#e0a020')
-      ctx.fillStyle = head
-      rr(ctx, -23, -26, 46, 28, 8)
+      rr(ctx, -4.5, -4, 9, 62, 4)
       ctx.fill()
-      ctx.stroke()
+      const head = ctx.createLinearGradient(0, -26, 0, 2)
+      head.addColorStop(0, '#ffe58a')
+      head.addColorStop(1, '#f0b429')
+      ctx.fillStyle = head
+      rr(ctx, -23, -26, 46, 28, 10)
+      ctx.fill()
       ctx.fillStyle = 'rgba(255,255,255,.55)'
-      ctx.fillRect(-18, -22, 30, 5)
-      ctx.fillStyle = '#c0451f'
-      ctx.fillRect(-23, -16, 46, 4)
+      rr(ctx, -17, -22, 28, 5, 2.5)
+      ctx.fill()
+      ctx.fillStyle = '#e8651f'
+      ctx.fillRect(-23, -15, 46, 4)
       ctx.restore()
-      // «¡pum!»: estrella en el punto del golpe
       if (u > 0.2 && u < 0.7) {
         ctx.save()
         ctx.globalAlpha = 1 - (u - 0.2) / 0.5
@@ -576,45 +409,47 @@ export const CRABS: GameDef<CrabsState> = {
     ctx.globalAlpha = 1
     for (const p of s.pops) {
       ctx.globalAlpha = 1 - p.age / 0.8
-      txt(p.text, p.x, p.y - p.age * 44, 15, p.color, 'center')
+      ui(ctx, p.text, p.x, p.y - p.age * 44, 20, p.color, 'center', 900)
     }
     ctx.globalAlpha = 1
     ctx.restore()
-    // ── luces de feria a los lados del campo ──
-    for (let i = 0; i < 16; i++) {
-      const y = 62 + i * 31
-      const on = (i + Math.floor(t * 7)) % 3 === 0
-      ctx.fillStyle = on ? ['#ffd400', '#ff2bd6', '#00f0ff'][i % 3] : '#3a2a70'
-      ctx.beginPath()
-      ctx.arc(7, y, 3, 0, Math.PI * 2)
-      ctx.arc(CW - 7, y, 3, 0, Math.PI * 2)
+    // ── marcador minimalista: tiquetes, racha y tiempo sobre un degradado suave ──
+    const hud = ctx.createLinearGradient(0, 0, 0, 96)
+    hud.addColorStop(0, 'rgba(46,30,110,.62)')
+    hud.addColorStop(1, 'rgba(46,30,110,0)')
+    ctx.fillStyle = hud
+    ctx.fillRect(0, 0, CW, 96)
+    ui(ctx, 'Tiquetes', 16, 17, 12, 'rgba(255,255,255,.82)', 'left', 700)
+    // icono de tiquete dorado
+    ctx.save()
+    ctx.translate(26, 42)
+    ctx.rotate(-0.25)
+    const tg = ctx.createLinearGradient(0, -9, 0, 9)
+    tg.addColorStop(0, '#ffe36b')
+    tg.addColorStop(1, '#f5a912')
+    ctx.fillStyle = tg
+    rr(ctx, -12, -8, 24, 16, 4)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,.55)'
+    star(ctx, 0, 0, 4)
+    ctx.restore()
+    ui(ctx, String(liveTickets(s.score, TICKET_SCALE.cangrejos)), 46, 42, 24, '#fff', 'left', 900)
+    const mult = Math.min(5, 1 + Math.floor(s.combo / 4))
+    ui(ctx, s.combo > 1 ? `Racha ${s.combo}` : 'Racha', CW / 2, 17, 12, 'rgba(255,255,255,.82)', 'center', 700)
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = i < s.combo % 4 || mult === 5 ? '#b78cff' : 'rgba(255,255,255,.28)'
+      rr(ctx, CW / 2 - 52 + i * 27, 28, 24, 9, 4.5)
       ctx.fill()
     }
-    // luz cálida al centro y bordes más oscuros: da volumen al campo
-    const vg = ctx.createRadialGradient(CW / 2, 330, 120, CW / 2, 330, 400)
-    vg.addColorStop(0, 'rgba(255,230,170,0)')
-    vg.addColorStop(1, 'rgba(26,10,60,.42)')
-    ctx.fillStyle = vg
-    ctx.fillRect(0, 53, CW, CH - 53)
-    // ── marcador arriba: tiquetes, racha y tiempo ──
-    ctx.fillStyle = '#07031a'
-    ctx.fillRect(0, 0, CW, 50)
-    ctx.fillStyle = '#ff2bd6'
-    ctx.fillRect(0, 50, CW, 3)
-    txt('TIQUETES', 12, 15, 8, '#00f0ff')
-    txt(String(liveTickets(s.score, TICKET_SCALE.cangrejos)), 12, 34, 14, '#ffd400')
-    const mult = Math.min(5, 1 + Math.floor(s.combo / 4))
-    txt(s.combo > 1 ? `RACHA ${s.combo}` : 'RACHA', CW / 2, 15, 8, '#7dffa6', 'center')
-    // medidor de racha: cuatro aciertos suben el multiplicador
-    for (let i = 0; i < 4; i++) {
-      ctx.fillStyle = i < s.combo % 4 || mult === 5 ? '#7dffa6' : '#2a2160'
-      ctx.fillRect(CW / 2 - 38 + i * 20, 24, 17, 9)
-    }
-    txt(`x${mult}`, CW / 2, 41, 8, mult > 1 ? '#ffd400' : '#9fb3ff', 'center')
-    txt('TIEMPO', CW - 12, 15, 8, s.left < 10 ? '#ff5c8a' : '#00f0ff', 'right')
-    txt(`${Math.ceil(s.left)}s`, CW - 12, 34, 14, s.left < 10 ? '#ff5c8a' : '#ffffff', 'right')
-    ctx.fillStyle = s.left < 10 ? '#ff5c8a' : '#00f0ff'
-    ctx.fillRect(0, 47, (CW * s.left) / TIME, 3)
+    ui(ctx, `x${mult}`, CW / 2, 52, 13, mult > 1 ? '#ffe36b' : 'rgba(255,255,255,.8)', 'center', 800)
+    ui(ctx, 'Tiempo', CW - 16, 17, 12, s.left < 10 ? '#ffb4c4' : 'rgba(255,255,255,.82)', 'right', 700)
+    ui(ctx, `${Math.ceil(s.left)}`, CW - 30, 42, 28, s.left < 10 ? '#ffb4c4' : '#fff', 'right', 900)
+    ui(ctx, 's', CW - 16, 46, 15, s.left < 10 ? '#ffb4c4' : 'rgba(255,255,255,.85)', 'right', 800)
+    // barra de tiempo finita
+    ctx.fillStyle = 'rgba(255,255,255,.22)'
+    ctx.fillRect(0, 0, CW, 3)
+    ctx.fillStyle = s.left < 10 ? '#ff8aa6' : '#ffe36b'
+    ctx.fillRect(0, 0, (CW * s.left) / TIME, 3)
   },
   score: (s) => s.score,
   done: (s) => s.left <= 0,

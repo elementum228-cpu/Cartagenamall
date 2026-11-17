@@ -23,6 +23,8 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
   const activeRef = useRef(active)
   activeRef.current = active
   const def = DEFS[id]
+  /** Cangrejos Locos usa el estilo suave (ilustraciones y marco claro); los demás juegos siguen en el estilo arcade. */
+  const soft = id === 'cangrejos'
   const holder = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const state = useRef<never | null>(null)
@@ -118,14 +120,14 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
   }
 
   return (
-    <div className="arcade-frame flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden px-3 py-3 text-center text-white">
-      <div ref={holder} className="relative w-full overflow-hidden border-[3px] border-[#07031a] bg-[#0a0d1f]" style={{ aspectRatio: `${def.W} / ${def.H}`, maxWidth: `calc((100dvh - 230px) * ${def.W / def.H})` }}>
+    <div className={`${soft ? 'arcade-soft rounded-[28px]' : 'arcade-frame'} flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden px-3 py-3 text-center text-white`}>
+      <div ref={holder} className={`relative w-full overflow-hidden ${soft ? 'rounded-[24px] border-2 border-white/70 bg-[#e9b983] shadow-[0_14px_30px_-16px_rgba(60,30,100,0.7)]' : 'border-[3px] border-[#07031a] bg-[#0a0d1f]'}`} style={{ aspectRatio: `${def.W} / ${def.H}`, maxWidth: `calc((100dvh - 230px) * ${def.W / def.H})` }}>
         <canvas ref={canvas} className="block size-full touch-none select-none" onPointerDown={send('down')} onPointerMove={send('move')} onPointerUp={send('up')} onPointerCancel={send('up')} aria-label={`Juego: ${def.name}`} />
         {phase === 'menu' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#07031a]/92 px-6">
-            <h3 className="font-arcade arcade-cyan text-[14px] leading-snug">{def.name.toUpperCase()}</h3>
-            <p className="max-w-[28ch] text-[13.5px] leading-snug text-[#e8ffff]">{def.how}</p>
-            {best > 0 && <p className="font-arcade text-[8px] text-[#ffd400]">TU RÉCORD EN EL ARCADE: {best}</p>}
+          <div className={`absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 ${soft ? 'bg-[#2a1a5e]/55 backdrop-blur-[3px]' : 'bg-[#07031a]/92'}`}>
+            {soft ? <h3 className="text-[26px] leading-tight font-extrabold tracking-tight text-white drop-shadow">{def.name}</h3> : <h3 className="font-arcade arcade-cyan text-[14px] leading-snug">{def.name.toUpperCase()}</h3>}
+            <p className={`max-w-[28ch] text-[13.5px] leading-snug ${soft ? 'font-semibold text-white/90' : 'text-[#e8ffff]'}`}>{def.how}</p>
+            {best > 0 && (soft ? <p className="text-[12px] font-bold text-[#ffe36b]">Tu récord en el Arcade: {best}</p> : <p className="font-arcade text-[8px] text-[#ffd400]">TU RÉCORD EN EL ARCADE: {best}</p>)}
             <CoinSlot onStart={start} />
           </div>
         )}
