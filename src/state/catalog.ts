@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { OrderLine, Product, Promotion, Store } from '../domain/types'
 import { SEED_ASSIGNMENTS, SEED_PRODUCTS, SEED_STORES, createSeedPromotions } from '../data/seed'
-import { BUSINESS_PRODUCTS, BUSINESS_STORES } from '../data/businesses'
+import { BUSINESS_PRODUCTS, BUSINESS_STORES, GEORGES_PRODUCTS, GEORGES_STORE_ID } from '../data/businesses'
 import { stockKey } from '../lib/inventory'
 import { safeStorage } from './storage'
 
@@ -30,9 +30,10 @@ interface CatalogState {
 
 const seed = () => ({
   stores: [...SEED_STORES, ...BUSINESS_STORES],
-  products: [...SEED_PRODUCTS, ...BUSINESS_PRODUCTS],
+  products: [...SEED_PRODUCTS, ...BUSINESS_PRODUCTS, ...GEORGES_PRODUCTS],
   promotions: createSeedPromotions(Date.now()),
-  assignments: SEED_ASSIGNMENTS,
+  // George's (demostración local) ocupa E-03; en la base de datos ocupa E-02 (ver supabase/migrations/0031_georges.sql)
+  assignments: { ...SEED_ASSIGNMENTS, 'P2-E3': GEORGES_STORE_ID },
 })
 
 type SeedShape = Pick<CatalogState, 'stores' | 'products' | 'promotions' | 'assignments'>
@@ -114,10 +115,11 @@ export const useCatalog = create<CatalogState>()(
     {
       name: 'cm:catalog:v1',
       storage: safeStorage,
-      version: 2,
+      version: 3,
+      // v2 → v3 (George's): igual, se agrega lo nuevo del seed sin tocar lo de la persona.
       // v1 → v2 (Piso 2): se agregan los negocios, productos, promociones y espacios nuevos sin
       // tocar nada de lo que la persona ya tenía (ediciones del admin, tiendas aprobadas, inventario).
-      migrate: (persisted, version) => (version < 2 ? mergeSeed(persisted as SeedShape) : persisted) as CatalogState,
+      migrate: (persisted, version) => (version < 3 ? mergeSeed(persisted as SeedShape) : persisted) as CatalogState,
     },
   ),
 )

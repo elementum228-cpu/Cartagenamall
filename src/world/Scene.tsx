@@ -15,6 +15,11 @@ import { useMediaQuery } from '../lib/useMedia'
 import { useCatalog } from '../state/catalog'
 import { canPreview, usePreviewMall, useWorldCatalog } from '../state/previewMall'
 import { GeorgesCafe } from './GeorgesCafe'
+import { GEORGES_STORE_ID } from '../data/businesses'
+import { getGlassPill } from './labelTexture'
+import { ScreenLabel } from './Billboard'
+import { LABEL_PRIORITY } from './labels'
+import { storeCategoryName } from '../lib/storeCategories'
 import { useClaims } from '../state/claims'
 import { usePersonal } from '../state/personal'
 import { usePrefs, useUI, type Quality } from '../state/ui'
@@ -210,7 +215,24 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                   )}
                   {spaces.map((space) => {
                     const store = storeById[assignments[space.id]] ?? null
-                    // E-02 (zona de comida, Piso 2): George's, mientras el espacio no tenga una tienda real asignada
+                    // George's es una tienda real: edificio propio, ficha arriba y su menú al tocarlo
+                    if (store?.id === GEORGES_STORE_ID)
+                      return (
+                        <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>
+                          <GeorgesCafe interactive={interactive} onOpen={() => onSelect(space.id)} />
+                          <ScreenLabel
+                            label={getGlassPill(store.name, { dot: store.brandColor, sub: storeCategoryName(store), logo: store.logo, dark: night })}
+                            position={[0, 6.1, 0]}
+                            pixelHeight={selectedSpaceId === space.id ? 44 : 40}
+                            minZoomRatio={0}
+                            maxZoomRatio={2.4}
+                            lit
+                            priority={selectedSpaceId === space.id ? LABEL_PRIORITY.selected : LABEL_PRIORITY.store}
+                            onClick={interactive ? () => onSelect(space.id) : undefined}
+                          />
+                        </group>
+                      )
+                    // respaldo: mientras George's no esté cargado en la base de datos, E-02 muestra el edificio con un aviso
                     if (space.label === GEORGES_SPACE && !store)
                       return (
                         <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>

@@ -106,17 +106,18 @@ function latticeTexture() {
 
 // De noche el local tiene que ser el más vivo de la zona de comida: letrero y pilar encendidos, ventanales que brillan, interior lleno de
 // luz cálida y un halo que baña la terraza y el costado calado. De día casi no cambian (dayGlow bajo).
-const WARM_PANE = () => glowMat('#ffd48a', 3.4, { opacity: 0.6 })
-const WARM_LIGHT = () => glowMat('#fff0c8', 3.4, { dayGlow: 0.4 })
-const SIGN_BAND = () => glowMat('#ffd34f', 2.6, { dayGlow: 0.35 })
-const PYLON = () => glowMat('#f4b820', 1.7, { dayGlow: 0.15 })
-const LED = () => glowMat('#ffe08a', 3.0, { dayGlow: 0.3 })
-const MEDALLION = () => glowMat('#ffd34f', 2.4, { dayGlow: 0.3 })
-const POOL = () => lightPoolMat('#ffc97a', 1.5)
-const HALO = () => lightPoolMat('#ffd27a', 1.1)
-const INTERIOR = () => nightVolumeMat('#ffcf8f', 0.5)
-const LATTICE_GLOW = () => nightVolumeMat('#ffb429', 0.5)
-const LATTICE_WASH = () => uplightMat('plane', '#ffc27a', 0.9)
+const WARM_PANE = () => glowMat('#ffd48a', 2.3, { opacity: 0.5 })
+const WARM_LIGHT = () => glowMat('#fff0c8', 2.6, { dayGlow: 0.4 })
+// Colores un poco más profundos que el amarillo de la marca y emisión moderada: de noche el local se ve iluminado y cálido, sin quemarse.
+const SIGN_BAND = () => glowMat('#e0a21b', 0.95, { dayGlow: 0.3 })
+const PYLON = () => glowMat('#d99a14', 0.7, { dayGlow: 0.12 })
+const LED = () => glowMat('#ffd679', 1.7, { dayGlow: 0.3 })
+const MEDALLION = () => glowMat('#f2c23a', 1.0, { dayGlow: 0.3 })
+const POOL = () => lightPoolMat('#ffc97a', 1.1)
+const HALO = () => lightPoolMat('#ffd27a', 0.55)
+const INTERIOR = () => nightVolumeMat('#ffcf8f', 0.32)
+const LATTICE_GLOW = () => nightVolumeMat('#e8a526', 0.16)
+const LATTICE_WASH = () => uplightMat('plane', '#ffc27a', 0.5)
 
 const CHAIRS = ['#e8651f', '#e8651f', '#d9501a']
 
