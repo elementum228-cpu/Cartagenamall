@@ -1,8 +1,9 @@
-import { AlertCircle, Eye, EyeOff, KeyRound, Lock, Mail, ShoppingBag, UserPlus, UserRound, type LucideIcon } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Gamepad2, Heart, KeyRound, Lock, Mail, ShoppingBag, Store, UserPlus, UserRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { remoteEnabled } from '../remote/client'
 import { useSession } from '../remote/session'
+import { MallLogoWhite } from '../ui/MallMark'
 
 /** Solo rutas internas: evita redirecciones a sitios externos. */
 function safeRedirect(r: string | null): string | null {
@@ -29,14 +30,16 @@ const OUTLINE =
 
 function Shell({ title, subtitle, icon: Icon, children, fromCheckout }: { title: string; subtitle?: string; icon: LucideIcon; children: React.ReactNode; fromCheckout: boolean }) {
   return (
-    <div className="relative mx-auto max-w-md px-6 pt-16 pb-36 md:pt-24">
+    <div className="lg:grid lg:min-h-[calc(100dvh-var(--chrome-top))] lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <BrandPanel />
+      <div className="relative mx-auto w-full max-w-md px-6 pt-16 pb-36 md:pt-24 lg:flex lg:max-w-lg lg:items-center lg:px-10 lg:py-16">
       {/* resplandor de marca: turquesa a la izquierda, ámbar a la derecha (solo color, sin sombras) */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-[360px]"
         style={{ background: 'radial-gradient(110% 80% at 15% 0%, rgb(19 185 173 / 0.2), transparent 62%), radial-gradient(80% 70% at 100% 8%, rgb(247 179 75 / 0.16), transparent 58%)' }}
       />
-      <div className="relative">
+      <div className="relative w-full">
         <span className="grid size-12 place-items-center rounded-[18px] bg-gradient-to-br from-teal-bright to-teal text-white">
           <Icon className="size-6" strokeWidth={1.8} />
         </span>
@@ -50,7 +53,42 @@ function Shell({ title, subtitle, icon: Icon, children, fromCheckout }: { title:
         )}
         {!remoteEnabled() ? <p className="mt-6 rounded-2xl bg-sand-2/70 p-4 text-sm text-ink-soft">Las cuentas no están disponibles en el modo demostración.</p> : children}
       </div>
+      </div>
     </div>
+  )
+}
+
+/** Panel de marca de las pantallas de cuenta en escritorio: dice para qué sirve la cuenta. En celular no se muestra. */
+function BrandPanel() {
+  const perks: { icon: LucideIcon; title: string; text: string }[] = [
+    { icon: ShoppingBag, title: 'Un solo carrito', text: 'Compra en varias tiendas del mall y sigue cada pedido.' },
+    { icon: Gamepad2, title: 'Arcade con premios', text: 'Juega, junta tiquetes y cámbialos por premios de las tiendas.' },
+    { icon: Heart, title: 'Tus favoritos', text: 'Guarda tiendas y productos para volver cuando quieras.' },
+    { icon: Store, title: 'Abre tu negocio', text: 'Pide tu local, carga tu catálogo y recibe pedidos en tu WhatsApp.' },
+  ]
+  return (
+    <aside className="relative hidden overflow-hidden bg-gradient-to-br from-[#06504c] via-teal to-[#13b9ad] p-12 text-white lg:flex lg:flex-col lg:justify-center">
+      <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 size-[420px] rounded-full bg-white/10" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-20 size-[380px] rounded-full bg-[#f7b34b]/20" />
+      <div className="relative max-w-md">
+        <MallLogoWhite height={40} />
+        <h2 className="mt-8 text-[36px] leading-[1.05] font-extrabold tracking-[-0.03em]">Tu mall de Cartagena, donde estés.</h2>
+        <p className="mt-3 text-[16px] leading-snug text-white/85">Una cuenta para comprar, jugar y vender en MallPlay.</p>
+        <ul className="mt-9 space-y-5">
+          {perks.map(({ icon: Icon, title, text }) => (
+            <li key={title} className="flex items-start gap-3.5">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/25">
+                <Icon className="size-5" strokeWidth={1.9} />
+              </span>
+              <span>
+                <span className="block text-[15px] font-extrabold">{title}</span>
+                <span className="block text-[14px] leading-snug text-white/80">{text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </aside>
   )
 }
 

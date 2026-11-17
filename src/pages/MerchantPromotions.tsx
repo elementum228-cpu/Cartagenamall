@@ -219,7 +219,7 @@ function ArcadeRewardsEditor({ store }: { store: Store }) {
           </p>
         </div>
       </div>
-      <ul className="space-y-3">
+      <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
         {list.map((r) => (
           <li key={r.id} className="space-y-2.5 rounded-2xl border border-line bg-white p-3">
             {/* foto del premio: lo que el jugador ve como meta (un producto, un plato, un cupón…) */}

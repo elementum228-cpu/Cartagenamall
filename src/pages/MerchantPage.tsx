@@ -187,7 +187,7 @@ function MerchantContent() {
   if (!store) return <StorePicker stores={stores} preselect={requested} onPick={setStoreId} />
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-4 pb-28 md:pb-10">
+    <div className="mx-auto max-w-4xl px-4 pt-4 pb-28 md:pb-10 lg:max-w-6xl lg:px-8">
       <DemoNotice />
       <Header store={store} onSwitch={() => setStoreId(null)} canSwitch={stores.length > 1} />
       <nav className="scrollbar-none mt-4 hidden gap-1 overflow-x-auto md:flex" aria-label="Secciones de mi negocio">
@@ -214,10 +214,18 @@ function MerchantContent() {
       </nav>
       <div className="mt-4">
         {tab === 'resumen' && (
-          <div className="space-y-4">
-            <SetupChecklist store={store} activeProducts={activeProducts} goTab={setTab} />
-            <VoucherStats store={store} goTab={setTab} />
-            <MerchantDashboard key={store.id} store={store} goTab={setTab} />
+          <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6 lg:space-y-0">
+            {/* escritorio: lo que pide acción (progreso, bonos, ayuda) queda a la derecha y fijo mientras se recorren las ventas */}
+            <div className="space-y-4 lg:sticky lg:top-[calc(var(--chrome-top)+8px)] lg:order-2">
+              <SetupChecklist store={store} activeProducts={activeProducts} goTab={setTab} />
+              <VoucherStats store={store} goTab={setTab} />
+              <div className="max-lg:hidden">
+                <HelpLink store={store} />
+              </div>
+            </div>
+            <div className="lg:order-1">
+              <MerchantDashboard key={store.id} store={store} goTab={setTab} />
+            </div>
           </div>
         )}
         {tab === 'perfil' && <ProfileEditor key={store.id} store={store} />}
@@ -225,7 +233,12 @@ function MerchantContent() {
         {tab === 'promociones' && <MerchantPromotions store={store} />}
         {tab === 'pedidos' && <MerchantOrders store={store} />}
         {tab === 'estadio' && store.id === operatorId && <EventsManager />}
-        <HelpLink store={store} />
+        {tab !== 'resumen' && <HelpLink store={store} />}
+        {tab === 'resumen' && (
+          <div className="lg:hidden">
+            <HelpLink store={store} />
+          </div>
+        )}
       </div>
 
       {/* móvil: barra propia del negocio (reemplaza a la del mall) */}
@@ -557,7 +570,9 @@ function ProfileEditor({ store }: { store: Store }) {
   const valid = f.name.trim().length > 1 && f.logoText.trim().length > 0
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0">
+      {/* escritorio: identidad y enlace a la izquierda; las secciones de personalización, a la derecha */}
+      <div className="space-y-4">
       {/* identidad: lo primero que ve el dueño y lo que más cambia */}
       <Card className="space-y-5 !p-5">
         <div className="flex items-center gap-4">
@@ -602,6 +617,7 @@ function ProfileEditor({ store }: { store: Store }) {
       </Card>
 
       <StoreLinkCard store={store} />
+      </div>
 
       {/* el resto, plegado: cada sección dice en una línea lo que ya tiene */}
       <div className="space-y-3">
@@ -679,7 +695,7 @@ function ProfileEditor({ store }: { store: Store }) {
       </div>
 
       {dirty && (
-        <div className="sticky bottom-[calc(var(--chrome-bottom)+8px)] z-10 flex items-center justify-end gap-2 rounded-2xl border border-line bg-white/95 p-2 shadow-[0_10px_30px_-12px_rgba(6,44,66,0.45)] backdrop-blur md:bottom-4">
+        <div className="sticky bottom-[calc(var(--chrome-bottom)+8px)] z-10 flex items-center justify-end gap-2 rounded-2xl lg:col-span-2 border border-line bg-white/95 p-2 shadow-[0_10px_30px_-12px_rgba(6,44,66,0.45)] backdrop-blur md:bottom-4">
           <span className="mr-auto min-w-0 truncate pl-2 text-xs font-bold text-ink-soft">{valid ? 'Sin guardar' : 'Falta nombre o letrero'}</span>
           <button className={`${btn.secondary} whitespace-nowrap`} onClick={() => setF(store)}>
             Descartar
@@ -846,7 +862,7 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
               : 'Agrega tu primer producto con foto, precio e inventario. Aparecerá en el catálogo de tu ficha y en Comprar.'}
         </EmptyState>
       )}
-      <ul className="space-y-2">
+      <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
         {shownList.map((p) => (
           <li key={p.id} className={`rounded-2xl border border-line bg-card p-2.5 ${p.active ? '' : 'opacity-75'}`}>
             <div className="flex items-center gap-3">
@@ -1255,7 +1271,7 @@ function MerchantOrders({ store }: { store: Store }) {
       {!shown.length && (
         <p className="rounded-2xl bg-sand p-4 text-sm text-ink-soft">{view === 'active' ? 'No tienes pedidos por atender. ¡Buen trabajo!' : 'Aún no hay pedidos entregados.'}</p>
       )}
-      <ul className="space-y-3">
+      <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
         {shown.map(({ order, sub }) => {
           const next = nextStep(order.delivery.mode, sub.status)
           return (

@@ -38,8 +38,8 @@ export function MyAccountPage() {
   const current = reqs?.[0]
   const active = current && current.status !== 'rechazada'
   return (
-    <div className="mx-auto max-w-lg px-4 pt-8 pb-28">
-      <div className="glass-strong rounded-[28px] p-5">
+    <div className="mx-auto max-w-lg px-4 pt-8 pb-28 lg:max-w-5xl lg:px-8 lg:pt-10">
+      <div className="glass-strong rounded-[28px] p-5 lg:p-8">
         <ProfileCard
           email={s.email}
           top={
@@ -236,7 +236,9 @@ function ProfileCard({ email, top }: { email: string | null; top?: ReactNode }) 
   }
 
   return (
-    <div>
+    // escritorio: perfil y formulario a la izquierda; negocios y accesos a la derecha
+    <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-x-12">
+      <div className="lg:col-start-1 lg:row-start-1">
       <p className="text-xs font-bold tracking-wider text-brand uppercase">MallPlay</p>
       <div className="mt-3 flex items-center gap-4">
         <button type="button" onClick={() => fileRef.current?.click()} className="group relative shrink-0" aria-label="Cambiar foto de perfil">
@@ -267,9 +269,11 @@ function ProfileCard({ email, top }: { email: string | null; top?: ReactNode }) 
         </div>
       </div>
 
-      {top && <div className="mt-4 flex flex-col gap-2.5">{top}</div>}
+      </div>
 
-      <form className="mt-5 flex flex-col gap-3" onSubmit={save} noValidate>
+      {top && <div className="mt-4 flex flex-col gap-2.5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:self-start">{top}</div>}
+
+      <form className="mt-5 flex flex-col gap-3 lg:col-start-1 lg:row-start-2" onSubmit={save} noValidate>
         <label className="block text-xs font-bold">
           Nombre <span className="font-medium text-ink-soft">(opcional)</span>
           <input className={`${input} mt-1`} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="name" placeholder="Cómo te llamas" />
