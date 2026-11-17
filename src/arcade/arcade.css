@@ -12,6 +12,9 @@
   border: 4px solid #ff2bd6;
   box-shadow: 0 0 0 3px #07031a, 0 0 26px 2px rgb(255 43 214 / 0.5), inset 0 0 0 3px rgb(0 240 255 / 0.18);
 }
+.arcade-soft-bg {
+  background: linear-gradient(180deg, #c9cbf4 0%, #e3d2f0 55%, #f6dcd6 100%);
+}
 .arcade-soft {
   background: linear-gradient(180deg, #cfd0f4 0%, #e9d3ee 55%, #f5dcd6 100%);
   border: 1px solid rgb(255 255 255 / 0.7);

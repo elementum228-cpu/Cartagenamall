@@ -1,4 +1,6 @@
 import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Ticket, Volume2, VolumeX, X } from 'lucide-react'
+
+const Play2 = PlayIcon
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFrameGate } from '../world/frameGate'
 import { usePrefs } from '../state/ui'
@@ -40,7 +42,7 @@ export function ArcadePanel() {
   }, [open, close])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#04061a]/95 p-3" role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
+    <div className={`fixed inset-0 z-[70] flex items-center justify-center ${game === 'cangrejos' ? 'arcade-soft-bg p-2' : 'bg-[#04061a]/95 p-3'}`} role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
       <Cabinet onClose={close} />
     </div>
   )
@@ -85,10 +87,55 @@ function Cabinet({ onClose }: { onClose: () => void }) {
   const setTab = useArcadeUi((s) => s.setTab)
   const points = useArcade((s) => s.points)
   const playing = useArcadeUi((s) => s.playing)
+  // Cangrejos Locos usa el estilo suave (lavanda, vidrio y letra de la app) y ocupa casi toda la pantalla
+  const soft = game === 'cangrejos'
   return (
-    <div className="flex h-full max-h-[760px] w-full max-w-[440px] flex-col gap-2.5">
+    <div className={`flex h-full w-full flex-col gap-2.5 ${soft ? 'max-w-[480px] pt-[max(4px,env(safe-area-inset-top))] pb-[max(4px,env(safe-area-inset-bottom))]' : 'max-h-[760px] max-w-[440px]'}`}>
       {/* mientras se juega, la partida cubre la pantalla: el encabezado y las pestañas quedan ocultos para lectores de pantalla */}
       <div className="flex flex-col gap-2.5" aria-hidden={playing}>
+        {soft ? (
+          <>
+            <div className="flex items-center gap-2 px-1">
+              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#ff7ad1] to-[#ff5aa5] text-white shadow-[0_10px_20px_-10px_rgba(255,90,165,0.9)]">
+                <Gamepad2 className="size-6" />
+              </div>
+              <div className="min-w-0 flex-1 leading-tight">
+                <h2 className="truncate text-[20px] font-extrabold tracking-tight text-[#1c1747]">Arcade</h2>
+                <p className="truncate text-[13px] font-semibold text-[#4b4a7a]">{tab === 'prizes' ? 'Recompensas' : GAME_NAME[game]}</p>
+              </div>
+              <span className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-[16px] font-extrabold text-[#1c1747] shadow-[0_6px_16px_-8px_rgba(60,40,120,0.5)] ring-1 ring-white/80 backdrop-blur" aria-label={`${points} tiquetes`}>
+                <span className="grid size-6 place-items-center rounded-full bg-gradient-to-br from-[#ffe36b] to-[#f5a912] text-[#7a4b00]" aria-hidden>
+                  <Ticket className="size-3.5" />
+                </span>
+                {points}
+              </span>
+              <SoundButton className="bg-white/70 !text-[#1c1747] shadow-[0_6px_16px_-8px_rgba(60,40,120,0.5)] ring-1 ring-white/80 backdrop-blur active:bg-white" />
+              <button onClick={onClose} aria-label="Cerrar el arcade" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/70 text-[#1c1747] shadow-[0_6px_16px_-8px_rgba(60,40,120,0.5)] ring-1 ring-white/80 backdrop-blur active:bg-white">
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="flex rounded-[20px] bg-white/45 p-1.5 shadow-[inset_0_1px_3px_rgba(60,40,120,0.12)] ring-1 ring-white/70 backdrop-blur" role="tablist">
+              {(
+                [
+                  ['play', 'Jugar', Play2],
+                  ['prizes', 'Premios', Gift],
+                ] as const
+              ).map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={tab === id}
+                  onClick={() => setTab(id)}
+                  className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl text-[16px] font-extrabold transition active:scale-[0.98] ${tab === id ? 'bg-white text-[#1c1747] shadow-[0_6px_16px_-8px_rgba(60,40,120,0.55)]' : 'text-[#4b4a7a]'}`}
+                >
+                  <Icon className="size-[18px]" fill={id === 'play' && tab === id ? 'currentColor' : 'none'} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
         <div className="flex items-center gap-2">
           <div className="grid size-10 shrink-0 place-items-center border-[3px] border-[#07031a] bg-[#ff2bd6] text-white shadow-[3px_3px_0_#07031a]">
             <Gamepad2 className="size-5" />
@@ -128,6 +175,8 @@ function Cabinet({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
+          </>
+        )}
       </div>
       {/* el juego corto sigue montado (en pausa) al mirar los premios, para no perder la partida ni la moneda */}
       {game !== 'nave' && (

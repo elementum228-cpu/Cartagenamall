@@ -43,10 +43,10 @@ const rr = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
 // ── Cangrejos Locos ──────────────────────────────────────────────────────────────────────────────
 
 const CW = 360
-const CH = 560
+const CH = 624
 const TIME = 45
-const COLS = [70, 180, 290]
-const ROWS = [200, 325, 450]
+const COLS = [62, 180, 298]
+const ROWS = [222, 366, 510]
 
 type CrabKind = 'crab' | 'gold' | 'octo'
 interface Hole {
@@ -122,7 +122,7 @@ function ui(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size
 }
 
 /** Hueco de arena: la mitad de atrás va detrás de la criatura y la de adelante (el labio) por encima, así sale de adentro. */
-const HOLE_W = 126
+const HOLE_W = 98
 function holeSprite(ctx: CanvasRenderingContext2D, x: number, y: number, front: boolean) {
   const im = ART.agujero
   if (!ready(im)) return
@@ -221,7 +221,7 @@ function drawCreature(ctx: CanvasRenderingContext2D, x: number, y: number, kind:
   } else {
     const im = hit && kind === 'crab' ? ART.golpeado : kind === 'gold' ? ART.dorado : ART.cangrejo
     if (ready(im)) {
-      const w = hit && kind === 'crab' ? 128 : 112
+      const w = hit && kind === 'crab' ? 108 : 94
       const h = (w * im.naturalHeight) / im.naturalWidth
       const bulge = Math.sin(Math.min(1, k) * Math.PI)
       const sw = w * (1 - 0.05 * bulge)
@@ -301,7 +301,7 @@ export const CRABS: GameDef<CrabsState> = {
     s.mallets.push({ x, y, age: 0 })
     for (const h of s.holes) {
       if (!h.kind || h.hit) continue
-      if (Math.abs(x - h.x) < 52 && y < h.y + 14 && y > h.y - 84) {
+      if (Math.abs(x - h.x) < 54 && y < h.y + 14 && y > h.y - 84) {
         h.hit = true
         const kindHit = h.kind
         h.age = Math.max(h.age, h.dur - 0.12) // se hunde enseguida
