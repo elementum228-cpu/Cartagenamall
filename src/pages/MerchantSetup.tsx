@@ -97,7 +97,7 @@ export function HelpLink({ store }: { store: Store }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => toast('Abriendo WhatsApp con el equipo de MallPlay…')}
-      className="mt-6 flex min-h-[68px] items-center gap-3.5 rounded-[22px] bg-gradient-to-br from-[#2fe07a] to-[#12a150] p-3.5 text-white shadow-[0_16px_30px_-14px_rgba(18,161,80,0.85),inset_0_1px_0_rgba(255,255,255,0.35)] transition active:scale-[0.98]"
+      className="mt-6 flex min-h-[68px] items-center gap-3.5 rounded-[22px] bg-[#25D366] p-3.5 text-white shadow-[0_14px_26px_-14px_rgba(18,140,70,0.8)] transition active:scale-[0.98]"
     >
       <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/20 ring-1 ring-white/30">
         <WhatsAppLogo className="size-7" />
@@ -106,7 +106,7 @@ export function HelpLink({ store }: { store: Store }) {
         <span className="block text-[16px] font-extrabold tracking-[-0.01em]">Servicio al cliente</span>
         <span className="block text-[13px] font-medium text-white/90">Escríbenos por WhatsApp: te ayudamos con tu local</span>
       </span>
-      <span className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-extrabold text-[#12803f]">Chatear</span>
+      <span className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-extrabold text-[#128c4a]">Chatear</span>
     </a>
   )
 }
