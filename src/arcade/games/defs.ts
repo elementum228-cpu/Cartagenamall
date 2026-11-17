@@ -43,10 +43,10 @@ const rr = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
 // ── Cangrejos Locos ──────────────────────────────────────────────────────────────────────────────
 
 const CW = 360
-const CH = 624
+const CH = 668
 const TIME = 45
 const COLS = [62, 180, 298]
-const ROWS = [222, 366, 510]
+const ROWS = [236, 394, 552]
 
 type CrabKind = 'crab' | 'gold' | 'octo'
 interface Hole {
