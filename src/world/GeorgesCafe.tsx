@@ -288,7 +288,7 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
 
       {/* rótulo «George's» (la imagen real de la marca) sobre la franja amarilla, con un fondo cálido detrás */}
       {wordmark && (
-        <mesh geometry={GEO.plane} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF + 0.015]} scale={[2.3, 2.3 * (471 / 900), 1]}>
+        <mesh geometry={GEO.plane} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF + 0.015]} scale={[1.75, 1.75 * (471 / 900), 1]}>
           <meshBasicMaterial map={wordmark} transparent toneMapped={false} />
         </mesh>
       )}
