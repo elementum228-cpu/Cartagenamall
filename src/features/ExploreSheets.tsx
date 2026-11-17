@@ -26,7 +26,8 @@ export interface CategoryItem {
   onPick: () => void
 }
 
-const COLLAPSED = '64dvh'
+// lo bastante alta para que la primera fila de locales destacados se vea entera (a 64 % la fila quedaba cortada por la mitad)
+const COLLAPSED = '73dvh'
 const EXPANDED = '92dvh'
 
 /**
@@ -139,6 +140,8 @@ export function CategoriesSheet({ open, onClose, items, onStore }: { open: boole
                 </div>
               )}
             </div>
+            {/* si la hoja está recogida y aún hay más abajo, el borde se desvanece en vez de cortar las tarjetas */}
+            {!expanded && withStores.length > 0 && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-9 bg-gradient-to-t from-[#fffefc] to-transparent" aria-hidden />}
           </motion.section>
         </>
       )}
