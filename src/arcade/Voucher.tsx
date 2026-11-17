@@ -10,7 +10,7 @@ import { StoreLogo } from '../ui/bits'
 import { useUI } from '../state/ui'
 import { celebrate } from './audio'
 import { useArcade, type ArcadeRedemption } from './store'
-import { syncVoucher, voucherUsed } from './vouchers'
+import { rawRewardId, syncVoucher, voucherUsed } from './vouchers'
 import { walletKinds, walletLink, walletSupport, type WalletKind } from './wallet'
 import './arcade.css'
 
@@ -78,7 +78,10 @@ export function Celebration({ r, onContinue }: { r: ArcadeRedemption; onContinue
   )
 }
 
-type StoreLook = Pick<Store, 'logoText' | 'brandColor' | 'logo'>
+type StoreLook = Pick<Store, 'logoText' | 'brandColor' | 'logo' | 'arcadeRewards'>
+
+/** Foto del premio de este bono (la que el negocio tiene ahora en ese premio). */
+const rewardPhoto = (r: ArcadeRedemption, store: StoreLook | null) => store?.arcadeRewards?.find((x) => x.id === rawRewardId(r))?.image
 
 /** La tienda del bono (para su logo y su color): por su identificador o, en bonos viejos, por su nombre. */
 function useStoreOf(r: ArcadeRedemption): Store | null {
@@ -89,6 +92,7 @@ function useStoreOf(r: ArcadeRedemption): Store | null {
 /** El bono dibujado en pantalla: arriba el logo de MallPlay, al centro la tienda con su logo y el premio, abajo (más discreto) el código. */
 export function VoucherCard({ r }: { r: ArcadeRedemption }) {
   const store = useStoreOf(r)
+  const photo = rewardPhoto(r, store)
   return (
     <article className="relative mx-auto w-full max-w-[340px] shrink-0 overflow-hidden rounded-[24px] text-[#1a1530] shadow-[0_10px_0_rgba(0,0,0,.35)]" style={{ background: 'linear-gradient(165deg,#fffaf0,#fff0c4 55%,#ffe39a)' }} aria-label={`Bono: ${r.name}`}>
       <div className="flex items-center justify-between bg-[#171233] px-5 py-3.5">
@@ -96,6 +100,7 @@ export function VoucherCard({ r }: { r: ArcadeRedemption }) {
         <span className="text-[10.5px] font-bold tracking-[0.22em] text-[#ffd45c] uppercase">Bono Arcade</span>
       </div>
       <div className="flex flex-col items-center px-6 pt-6 pb-5 text-center">
+        {photo && <img src={photo} alt={r.name} className="mb-4 aspect-[16/9] w-full rounded-2xl object-cover shadow-md" />}
         {store ? <StoreLogo store={store} size={68} round /> : <span className="grid size-[68px] place-items-center rounded-full bg-[#171233] text-[26px] font-black text-[#ffd45c]">{(r.storeName || 'M').charAt(0)}</span>}
         {r.storeName && <p className="mt-3 text-[12.5px] font-bold tracking-[0.16em] text-[#1a1530]/60 uppercase">{r.storeName}</p>}
         <p className="mt-2 text-[27px] leading-[1.08] font-extrabold tracking-[-0.02em]">{r.name}</p>
@@ -144,6 +149,8 @@ function rrect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: 
 const loadImg = (src: string) =>
   new Promise<HTMLImageElement | null>((res) => {
     const im = new Image()
+    // fotos en la nube: con CORS para poder dibujarlas y exportar el PNG; si el servidor no lo permite, sale sin foto
+    if (/^https?:/.test(src)) im.crossOrigin = 'anonymous'
     im.onload = () => res(im)
     im.onerror = () => res(null)
     im.src = src
@@ -174,7 +181,9 @@ export async function voucherImage(r: ArcadeRedemption, store: StoreLook | null)
   } catch {
     /* sin la letra de la app se usa la del sistema */
   }
-  const [mark, logo] = await Promise.all([loadImg(markWhite), store?.logo ? loadImg(store.logo) : Promise.resolve(null)])
+  const photoSrc = rewardPhoto(r, store)
+  const [mark, logo, photo] = await Promise.all([loadImg(markWhite), store?.logo ? loadImg(store.logo) : Promise.resolve(null), photoSrc ? loadImg(photoSrc) : Promise.resolve(null)])
+  const photoH = photo ? Math.round(((W - 160 - 120) * 9) / 16) + 44 : 0
   const c = document.createElement('canvas')
   c.width = W
   c.height = 2200
@@ -189,7 +198,7 @@ export async function voucherImage(r: ArcadeRedemption, store: StoreLook | null)
   g.font = `500 37px ${F}`
   const detail = r.detail ? lines(g, r.detail, mid, 4) : []
   const headH = 150
-  const bodyH = 70 + 170 + (r.storeName ? 76 : 20) + prize.length * 92 + (detail.length ? 24 + detail.length * 52 : 0) + 60
+  const bodyH = photoH + 70 + 170 + (r.storeName ? 76 : 20) + prize.length * 92 + (detail.length ? 24 + detail.length * 52 : 0) + 60
   const stubH = 350
   const y0 = 110
   const cardH = headH + bodyH + stubH
@@ -235,6 +244,19 @@ export async function voucherImage(r: ArcadeRedemption, store: StoreLook | null)
   // cuerpo: logo de la tienda, su nombre y el premio
   let y = y0 + headH + 70
   const cx = W / 2
+  if (photo) {
+    const pw = w - 120
+    const ph = Math.round((pw * 9) / 16)
+    const px = x0 + 60
+    g.save()
+    g.beginPath()
+    rrect(g, px, y - 10, pw, ph, 36, 36, 36, 36)
+    g.clip()
+    const sc = Math.max(pw / photo.width, ph / photo.height)
+    g.drawImage(photo, px + pw / 2 - (photo.width * sc) / 2, y - 10 + ph / 2 - (photo.height * sc) / 2, photo.width * sc, photo.height * sc)
+    g.restore()
+    y += ph + 34
+  }
   const lr = 85
   g.save()
   g.beginPath()

@@ -1,4 +1,4 @@
-import { Gamepad2, Gem, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
+import { Gamepad2, Gem, ImagePlus, Heart, MapPin, Pause, Play, RotateCcw, Ship, Sparkles, Stamp, Star, Tag, Trash2, Users, X, Zap } from 'lucide-react'
 import { BOAT_OF_STORE } from '../tourism/config'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -17,6 +17,7 @@ import { Countdown, btn, input } from '../ui/bits'
 import { MAX_REWARDS_PER_STORE, cleanRewards, newStoreReward, type StoreRewardDoc } from '../arcade/rewards'
 import { describeHideSpot } from '../promotions/hideSpot'
 import { HideSpotPicker } from './HideSpotPicker'
+import { ImagePicker } from './ImagePicker'
 import { VoucherValidator } from './MerchantVouchers'
 import { MerchantShipEditor } from '../ship/MerchantShipEditor'
 import { isShipPromotion, useDiscountShip } from '../ship/offers'
@@ -221,6 +222,24 @@ function ArcadeRewardsEditor({ store }: { store: Store }) {
       <ul className="space-y-3">
         {list.map((r) => (
           <li key={r.id} className="space-y-2.5 rounded-2xl border border-line bg-white p-3">
+            {/* foto del premio: lo que el jugador ve como meta (un producto, un plato, un cupón…) */}
+            <div className="flex items-center gap-3">
+              <span className="grid size-[76px] shrink-0 place-items-center overflow-hidden rounded-2xl border border-line bg-sand text-ink-soft">
+                {r.image ? <img src={r.image} alt="" className="size-full object-cover" /> : <ImagePlus className="size-6" />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold">Foto del premio</p>
+                <p className="mb-1.5 text-xs text-ink-soft">Los jugadores la ven en el Arcade y pueden ponerla como su meta.</p>
+                <div className="flex flex-wrap gap-2">
+                  <ImagePicker kind="product" storeId={store.id} label={r.image ? 'Cambiar foto' : 'Subir foto'} onImage={(d) => patch(r.id, { image: d })} />
+                  {r.image && (
+                    <button type="button" className={btn.ghost} onClick={() => patch(r.id, { image: undefined })}>
+                      Quitar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             <div className="flex items-start gap-2">
               <input className={input} maxLength={80} value={r.title} onChange={(e) => patch(r.id, { title: e.target.value })} placeholder="Premio: 20 % de descuento, una porción de costillas…" aria-label="Premio" />
               <button className={btn.icon} onClick={() => setList((l) => l.filter((x) => x.id !== r.id))} aria-label="Quitar este premio">

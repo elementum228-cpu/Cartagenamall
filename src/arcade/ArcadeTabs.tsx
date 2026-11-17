@@ -20,19 +20,7 @@ import { useLiveRewards } from './rewards'
 import { Celebration, VoucherView } from './Voucher'
 import { useArcade } from './store'
 import { syncPending, syncUsed } from './vouchers'
-import { useCatalog } from '../state/catalog'
-import { StoreLogo } from '../ui/bits'
-
-/** Logo del negocio (el que cargó en su perfil; si no tiene, su sigla con su color). */
-function StoreBadge({ storeId, storeName, size }: { storeId?: string; storeName?: string; size: number }) {
-  const store = useCatalog((s) => s.stores.find((x) => (storeId ? x.id === storeId : !!storeName && x.name === storeName)))
-  if (!store) return <span className="grid shrink-0 place-items-center rounded-full bg-white/15 text-[15px] font-black text-[#ffd45c]" style={{ width: size, height: size }}>{(storeName || 'M').charAt(0)}</span>
-  return (
-    <span className="shrink-0 rounded-full ring-2 ring-white/25">
-      <StoreLogo store={store} size={size} round />
-    </span>
-  )
-}
+import { GoalCard, PrizeCard, PrizeDetail, StoreBadge } from './PrizeViews'
 
 // Las pestañas «Ranking» y «Premios» del Arcade (se cargan junto con el juego, pero viven aparte para no mezclar el juego con las listas).
 
@@ -48,50 +36,36 @@ export function Prizes() {
     return () => window.clearInterval(t)
   }, [])
   const myVouchers = redemptions.filter((r) => !r.used)
+  const goal = useArcade((s) => s.goal)
+  const goalReward = goal ? rewards.find((r) => r.id === goal) : undefined
+  /** Premio abierto en el detalle. */
+  const [detail, setDetail] = useState<string | null>(null)
+  const detailReward = detail ? rewards.find((r) => r.id === detail) : undefined
   /** Qué se ve: la lista, la felicitación de un canje nuevo o un bono. */
   const [view, setView] = useState<{ kind: 'list' } | { kind: 'won'; code: string } | { kind: 'voucher'; code: string }>({ kind: 'list' })
   const redeem = (id: string) => {
     const r = useArcade.getState().redeem(id)
-    if (r) setView({ kind: 'won', code: r.code })
+    if (r) {
+      setDetail(null)
+      setView({ kind: 'won', code: r.code })
+    }
   }
   const won = view.kind === 'won' ? redemptions.find((r) => r.code === view.code) : undefined
   if (won) return <Celebration r={won} onContinue={() => setView({ kind: 'voucher', code: won.code })} />
   if (view.kind === 'voucher') return <VoucherView code={view.code} onBack={() => setView({ kind: 'list' })} />
   return (
     <div className="flex min-h-0 flex-col gap-2 overflow-y-auto pb-2">
+      {detailReward && <PrizeDetail r={detailReward} points={points} onClose={() => setDetail(null)} onRedeem={() => redeem(detailReward.id)} />}
       {rewards.length === 0 && (
         <div className="rounded-2xl bg-white/[0.07] p-4 text-center text-white">
           <p className="text-[15px] font-extrabold">Muy pronto: premios de las tiendas</p>
           <p className="mt-1 text-[12.5px] leading-snug text-[#c8d3ff]">Los negocios del mall están preparando descuentos y regalos para canjear con tus tiquetes. Sigue jugando y junta los tuyos.</p>
         </div>
       )}
-      {rewards.map((r) => {
-        const ok = points >= r.cost
-        return (
-          <div key={r.id} className="rounded-2xl bg-white/[0.07] p-3.5 text-white">
-            <div className="flex items-start gap-3">
-              <StoreBadge storeId={r.storeId} storeName={r.storeName} size={46} />
-              <div className="min-w-0 flex-1">
-                {r.storeName && <p className="text-[11px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</p>}
-                <p className="text-[15px] leading-snug font-extrabold">{r.title}</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-[#ffc83d] px-2.5 py-1 text-[12px] font-extrabold text-[#2a1a00]">{r.cost} tiquetes</span>
-            </div>
-            {/* las condiciones ocupan todo el ancho de la tarjeta (no la columna estrecha junto al logo y los tiquetes) */}
-            {r.detail && <p className="mt-2 text-[13px] leading-snug text-[#c8d3ff]">{r.detail}</p>}
-            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden>
-              <div className="h-full rounded-full bg-[#4de1ff]" style={{ width: `${Math.min(100, (points / r.cost) * 100)}%` }} />
-            </div>
-            <button
-              disabled={!ok}
-              onClick={() => redeem(r.id)}
-              className={`mt-2.5 min-h-11 w-full rounded-xl text-[14px] font-extrabold ${ok ? 'bg-[#4de1ff] text-[#04202b] active:scale-[0.98]' : 'bg-white/10 text-white/50'}`}
-            >
-              {ok ? 'Canjear' : `Te faltan ${r.cost - points} tiquetes`}
-            </button>
-          </div>
-        )
-      })}
+      {goalReward && <GoalCard r={goalReward} points={points} onOpen={() => setDetail(goalReward.id)} />}
+      {rewards.filter((r) => r.id !== goalReward?.id).map((r) => (
+        <PrizeCard key={r.id} r={r} points={points} onOpen={() => setDetail(r.id)} onRedeem={() => redeem(r.id)} />
+      ))}
       {myVouchers.length > 0 && (
         <div className="mt-1 text-white">
           <p className="mb-1 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Mis bonos</p>

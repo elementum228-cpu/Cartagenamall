@@ -17,6 +17,8 @@ export interface StoreReward {
   active: boolean
   /** Última fecha (AAAA-MM-DD) en que se puede canjear; vacío = sin vencimiento. */
   until: string
+  /** Foto del premio (enlace o imagen reducida): se ve en la lista, en el detalle y en el bono. */
+  image?: string
 }
 
 export type StoreRewardDoc = NonNullable<Store['arcadeRewards']>[number]
@@ -25,6 +27,8 @@ const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice
 
 export const MAX_REWARDS_PER_STORE = 8
 export const MAX_REWARD_COST = 100000
+/** Tope del texto de una foto guardada dentro de la tienda (una imagen reducida cabe de sobra; evita documentos enormes). */
+const MAX_IMAGE_CHARS = 450_000
 
 export const newStoreReward = (): StoreRewardDoc => ({ id: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, title: '', detail: '', cost: 100, active: true, until: '' })
 
@@ -39,7 +43,8 @@ export function cleanRewards(raw: unknown): StoreRewardDoc[] {
     const cost = Math.round(Number(o.cost))
     if (!title || !Number.isFinite(cost) || cost < 1 || cost > MAX_REWARD_COST) continue
     const until = typeof o.until === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.until) ? o.until : ''
-    out.push({ id: str(o.id, 40) || `r${out.length}`, title, detail: str(o.detail, 200), cost, active: o.active !== false, until })
+    const image = typeof o.image === 'string' && /^(https:\/\/|data:image\/)/.test(o.image) && o.image.length <= MAX_IMAGE_CHARS ? o.image : undefined
+    out.push({ id: str(o.id, 40) || `r${out.length}`, title, detail: str(o.detail, 200), cost, active: o.active !== false, until, ...(image ? { image } : {}) })
   }
   return out
 }

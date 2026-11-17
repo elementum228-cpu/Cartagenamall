@@ -99,6 +99,9 @@ interface ArcadeState {
   finishRun: (score: number, ranked?: boolean, difficulty?: Difficulty, scale?: number) => { awarded: number; capped: boolean; record: boolean }
   redeem: (rewardId: string) => ArcadeRedemption | null
   markSynced: (code: string) => void
+  /** Premio que la persona se puso como meta (id completo `tienda:premio`); null si no hay. */
+  goal: string | null
+  setGoal: (id: string | null) => void
   /** Marca un bono como usado (o lo devuelve a disponible). */
   markUsed: (code: string, used: boolean) => void
 }
@@ -157,10 +160,12 @@ export const useArcade = create<ArcadeState>()(
         const s = get()
         if (!reward || s.points < reward.cost) return null
         const r: ArcadeRedemption = { code: rewardCode(), rewardId, name: reward.title, storeId: reward.storeId || undefined, storeName: reward.storeName || undefined, detail: reward.detail || undefined, until: reward.until || undefined, cost: reward.cost, at: new Date().toISOString() }
-        set({ points: s.points - reward.cost, redemptions: [r, ...s.redemptions].slice(0, 30) })
+        set({ points: s.points - reward.cost, redemptions: [r, ...s.redemptions].slice(0, 30), goal: s.goal === rewardId ? null : s.goal })
         void import('./vouchers').then((m) => m.syncVoucher(r))
         return r
       },
+      goal: null,
+      setGoal: (goal) => set({ goal }),
       markSynced: (code) => set((s) => ({ redemptions: s.redemptions.map((r) => (r.code === code ? { ...r, synced: true } : r)) })),
       markUsed: (code, used) => set((s) => ({ redemptions: s.redemptions.map((r) => (r.code === code ? { ...r, used } : r)) })),
     }),

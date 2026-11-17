@@ -24,7 +24,6 @@ import {
   Zap,
   ArrowLeftRight,
   ClipboardList,
-  ImagePlus,
   Info,
   MessageCircle,
   MapPin,
@@ -36,13 +35,14 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CATEGORIES, FLOOR_BY_ID, SPACE_BY_ID, ZONE_BY_ID } from '../config/mall'
 import type { DeliveryMode, FacadeStyle, OrderStatus, Product, ProductIcon, Store } from '../domain/types'
 import { formatCOP, formatDateTime } from '../lib/format'
-import { readImageFile, storedBytes } from '../lib/image'
+import { storedBytes } from '../lib/image'
 import { uploadStorePhoto } from '../remote/photos'
+import { ImagePicker } from './ImagePicker'
 import { stockKey, totalStock } from '../lib/inventory'
 import { MARGIN_GOOD, MARGIN_LOW, marginOf, priceForMargin } from '../lib/margin'
 import { remoteEnabled } from '../remote/client'
@@ -461,50 +461,6 @@ function Section({ icon, title, summary, badge, defaultOpen, children }: { icon:
       </summary>
       <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-2">{children}</div>
     </details>
-  )
-}
-
-/** Botón que abre el selector de archivos (cámara o galería en móvil) y entrega la imagen reducida. */
-function ImagePicker({ kind, storeId, label, onImage, children }: { kind: 'logo' | 'product'; storeId?: string; label: string; onImage: (dataUrl: string) => void; children?: ReactNode }) {
-  const ref = useRef<HTMLInputElement>(null)
-  const toast = useUI((s) => s.toast)
-  const [busy, setBusy] = useState(false)
-  return (
-    <>
-      <input
-        ref={ref}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        aria-label={label}
-        onChange={async (e) => {
-          const file = e.target.files?.[0]
-          e.target.value = ''
-          if (!file) return
-          setBusy(true)
-          try {
-            if (kind === 'product' && storeId && remoteEnabled()) {
-              // Con base de datos compartida la foto va a Storage (1280 px). Si falla, se guarda reducida como antes.
-              try {
-                onImage(await uploadStorePhoto(storeId, await readImageFile(file, 'product-hd')))
-                return
-              } catch {
-                toast('No se pudo subir a la nube; se guardó en este dispositivo.')
-              }
-            }
-            onImage(await readImageFile(file, kind))
-          } catch (err) {
-            toast(err instanceof Error ? err.message : 'No se pudo usar la imagen.', 'error')
-          } finally {
-            setBusy(false)
-          }
-        }}
-      />
-      <button type="button" className={btn.secondary} disabled={busy} onClick={() => ref.current?.click()}>
-        {children ?? <ImagePlus className="size-4" />}
-        {busy ? 'Procesando…' : label}
-      </button>
-    </>
   )
 }
 
