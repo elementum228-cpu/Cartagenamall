@@ -1,4 +1,4 @@
-import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Rocket, Ticket, Volume2, VolumeX, X } from 'lucide-react'
+import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Ticket, Volume2, VolumeX, X } from 'lucide-react'
 
 const Play2 = PlayIcon
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -28,7 +28,6 @@ type Phase = 'menu' | 'play' | 'pause' | 'over'
 export function ArcadePanel() {
   const open = useArcadeUi((s) => s.open)
   const game = useArcadeUi((s) => s.game)
-  const tab = useArcadeUi((s) => s.tab)
   const close = useCallback(() => useArcadeUi.getState().setOpen(false), [])
   useEffect(() => {
     if (!open) return
@@ -43,7 +42,7 @@ export function ArcadePanel() {
   }, [open, close])
   if (!open) return null
   return (
-    <div className={`fixed inset-0 z-[70] flex items-center justify-center ${game === 'cangrejos' || tab === 'prizes' ? 'arcade-soft-bg p-2' : 'bg-[#04061a]/95 p-3'}`} role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center arcade-soft-bg p-2" role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
       <Cabinet onClose={close} />
     </div>
   )
@@ -89,14 +88,11 @@ function Cabinet({ onClose }: { onClose: () => void }) {
   const points = useArcade((s) => s.points)
   const playing = useArcadeUi((s) => s.playing)
   // Cangrejos Locos usa el estilo suave (lavanda, vidrio y letra de la app) y ocupa casi toda la pantalla
-  // el estilo suave (lavanda, vidrio, letra de la app) lo usa Cangrejos Locos y la pantalla de Premios de todos los juegos
-  const soft = game === 'cangrejos' || tab === 'prizes'
+  // el estilo suave (lavanda, vidrio, letra de la app) es el de todo el Arcade: encabezado, pestañas, premios y juegos
   return (
-    <div className={`flex h-full w-full flex-col gap-2.5 ${soft ? 'max-w-[480px] pt-[max(4px,env(safe-area-inset-top))] pb-[max(4px,env(safe-area-inset-bottom))]' : 'max-h-[760px] max-w-[440px]'}`}>
+    <div className={`flex h-full w-full flex-col gap-2.5 max-w-[480px] pt-[max(4px,env(safe-area-inset-top))] pb-[max(4px,env(safe-area-inset-bottom))]`}>
       {/* mientras se juega, la partida cubre la pantalla: el encabezado y las pestañas quedan ocultos para lectores de pantalla */}
       <div className="flex flex-col gap-2.5" aria-hidden={playing}>
-        {soft ? (
-          <>
             <div className="flex items-center gap-2 px-1">
               <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#ff7ad1] to-[#ff5aa5] text-white shadow-[0_10px_20px_-10px_rgba(255,90,165,0.9)]">
                 <Gamepad2 className="size-6" />
@@ -138,50 +134,6 @@ function Cabinet({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
-          </>
-        ) : (
-          <>
-        <div className="flex items-center gap-2">
-          <div className="grid size-10 shrink-0 place-items-center border-[3px] border-[#07031a] bg-[#ff2bd6] text-white shadow-[3px_3px_0_#07031a]">
-            <Gamepad2 className="size-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-arcade arcade-cyan truncate text-[13px]">ARCADE</h2>
-            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">{GAME_NAME[game].toUpperCase()}</p>
-          </div>
-          <span className="font-arcade flex items-center gap-1.5 border-[3px] border-[#07031a] bg-[#ffd400] px-2.5 py-2 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]" aria-label={`${points} tiquetes`}>
-            <Ticket className="size-3.5" aria-hidden />
-            {points}
-          </span>
-          <SoundButton className="bg-white/10 active:bg-white/20" />
-          <button onClick={onClose} aria-label="Cerrar el arcade" className="grid size-11 shrink-0 place-items-center rounded-full bg-white/10 text-white active:bg-white/20">
-            <X className="size-5" />
-          </button>
-        </div>
-        <div className="flex gap-1.5" role="tablist">
-          {(
-            [
-              ['play', 'Jugar', Rocket],
-              ['rank', 'Ranking', Crown],
-              ['prizes', 'Premios', Gift],
-            ] as const
-          )
-            .filter(([id]) => game === 'nave' || id !== 'rank') /* el ranking en línea es solo de Nave Caribe, por ahora */
-            .map(([id, label, Icon]) => (
-            <button
-              key={id}
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`font-arcade flex min-h-11 flex-1 items-center justify-center gap-2 border-[3px] text-[9px] uppercase transition active:translate-y-px ${tab === id ? 'border-[#07031a] bg-[#00f0ff] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]' : 'border-[#1d0b52] bg-[#12063a] text-[#e8ffff]'}`}
-            >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          ))}
-        </div>
-          </>
-        )}
       </div>
       {/* el juego corto sigue montado (en pausa) al mirar los premios, para no perder la partida ni la moneda */}
       {game !== 'nave' && (

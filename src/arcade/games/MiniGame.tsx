@@ -23,8 +23,8 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
   const activeRef = useRef(active)
   activeRef.current = active
   const def = DEFS[id]
-  /** Cangrejos Locos usa el estilo suave (ilustraciones y marco claro); los demás juegos siguen en el estilo arcade. */
-  const soft = id === 'cangrejos'
+  /** Todos los juegos cortos usan el marco suave del Arcade. */
+  const soft = true
   const holder = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const state = useRef<never | null>(null)
@@ -121,7 +121,7 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
 
   return (
     <div className={`${soft ? 'px-0 py-0' : 'arcade-frame px-3 py-3'} flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden text-center text-white`}>
-      <div ref={holder} className={`relative w-full overflow-hidden ${soft ? 'rounded-[24px] border-2 border-white/70 bg-[#e9b983] shadow-[0_14px_30px_-16px_rgba(60,30,100,0.7)]' : 'border-[3px] border-[#07031a] bg-[#0a0d1f]'}`} style={{ aspectRatio: `${def.W} / ${def.H}`, maxWidth: `calc((100dvh - ${soft ? 146 : 230}px) * ${def.W / def.H})` }}>
+      <div ref={holder} className={`relative w-full overflow-hidden ${soft ? `rounded-[24px] border-2 border-white/70 shadow-[0_14px_30px_-16px_rgba(60,30,100,0.7)] ${id === 'cangrejos' ? 'bg-[#e9b983]' : 'bg-[#120a40]'}` : 'border-[3px] border-[#07031a] bg-[#0a0d1f]'}`} style={{ aspectRatio: `${def.W} / ${def.H}`, maxWidth: `calc((100dvh - ${soft ? 146 : 230}px) * ${def.W / def.H})` }}>
         <canvas ref={canvas} className="block size-full touch-none select-none" onPointerDown={send('down')} onPointerMove={send('move')} onPointerUp={send('up')} onPointerCancel={send('up')} aria-label={`Juego: ${def.name}`} />
         {phase === 'menu' && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 ${soft ? 'bg-[#2a1a5e]/55 backdrop-blur-[3px]' : 'bg-[#07031a]/92'}`}>

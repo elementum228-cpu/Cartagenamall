@@ -36,7 +36,7 @@ export function CoinSlot({ onStart }: { onStart: () => void }) {
       ) : (
       <div className="flex items-center gap-1.5" role="img" aria-label={`Te quedan ${left} de ${DAILY_COINS} monedas hoy`}>
         {Array.from({ length: DAILY_COINS }, (_, i) => (
-          <span key={i} className={`grid size-6 place-items-center rounded-full border-2 text-[10px] font-black ${i < left ? 'border-[#07031a] bg-[#ffd400] text-[#7a4a00]' : 'border-[#3a2a70] bg-[#1a0f45] text-transparent'}`}>
+          <span key={i} className={`grid size-6 place-items-center rounded-full border-2 text-[10px] font-black ${i < left ? 'border-white/60 bg-gradient-to-br from-[#ffe36b] to-[#f5a912] text-[#7a4b00] shadow-sm' : 'border-white/15 bg-white/10 text-transparent'}`}>
             ★
           </span>
         ))}
@@ -48,13 +48,13 @@ export function CoinSlot({ onStart }: { onStart: () => void }) {
         {state === 'drop' && <span className={`coin ${reduce ? 'coin-static' : ''}`} aria-hidden>★</span>}
       </div>
       {left > 0 ? (
-        <button onClick={insert} disabled={state !== 'idle'} autoFocus className="arcade-btn font-arcade flex min-h-14 items-center gap-3 px-7 text-[12px] disabled:opacity-80">
-          <Coins className="size-5" /> {state === 'drop' ? '¡MONEDA!' : 'INSERTAR MONEDA'}
+        <button onClick={insert} disabled={state !== 'idle'} autoFocus className="arcade-btn flex min-h-14 items-center gap-2.5 px-8 text-[16px] font-extrabold tracking-[-0.01em] disabled:opacity-80">
+          <Coins className="size-5" /> {state === 'drop' ? '¡Moneda!' : 'Insertar moneda'}
         </button>
       ) : (
-        <p className="font-arcade max-w-[250px] text-center text-[9px] leading-relaxed text-[#ff9aa6]">SIN MONEDAS POR HOY. MAÑANA TENDRÁS {DAILY_COINS} NUEVAS.</p>
+        <p className="max-w-[250px] text-center text-[13px] leading-snug font-semibold text-[#ffb4c4]">Sin monedas por hoy. Mañana tendrás {DAILY_COINS} nuevas.</p>
       )}
-      <p className="text-[11.5px] text-[#9fb3ff]">{Number.isFinite(left) ? `Cada moneda es una partida. Hoy: ${left} de ${DAILY_COINS}.` : 'Cuenta de administrador: partidas ilimitadas para probar.'}</p>
+      <p className="text-[12.5px] font-medium text-[#c8d3ff]">{Number.isFinite(left) ? `Cada moneda es una partida. Hoy: ${left} de ${DAILY_COINS}.` : 'Cuenta de administrador: partidas ilimitadas para probar.'}</p>
     </div>
   )
 }
