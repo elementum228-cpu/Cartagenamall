@@ -1,7 +1,7 @@
-import '@fontsource/pacifico/latin-400.css'
 import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import bearUrl from '../assets/georges-bear.png'
+import wordmarkUrl from '../assets/georges-wordmark.png'
 import { Batch } from './Batch'
 import { GEO, GLASS, mat } from './materials'
 import { glowMat, lightPoolMat, nightVolumeMat } from './night'
@@ -51,36 +51,13 @@ function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D
   return t
 }
 
-/** «George's» en cursiva, marrón oscuro con un brillo dorado debajo que lo despega del muro. */
-function scriptTexture() {
-  return canvasTexture(1400, 300, (g) => {
-    g.font = '400 210px Pacifico, "Brush Script MT", "Segoe Script", cursive'
-    g.textAlign = 'center'
-    g.textBaseline = 'middle'
-    g.lineJoin = 'round'
-    g.fillStyle = 'rgba(255,238,170,.85)'
-    g.fillText("George's", 706, 160)
-    g.fillStyle = GEORGES.brown
-    g.fillText("George's", 700, 150)
-    // subrayado en forma de ola, como el rasgo de la referencia
-    g.strokeStyle = GEORGES.brown
-    g.lineWidth = 9
-    g.lineCap = 'round'
-    g.beginPath()
-    g.moveTo(330, 262)
-    g.bezierCurveTo(520, 240, 620, 286, 820, 262)
-    g.bezierCurveTo(930, 250, 1000, 262, 1080, 256)
-    g.stroke()
-  })
-}
-
-/** El logo real de George's (el osito con gafas), con el fondo transparente: se ve directo sobre el pilar amarillo. */
-function useBearTexture() {
+/** Carga una imagen de marca (con fondo transparente) como textura. */
+function useImageTexture(url: string) {
   const [tex, setTex] = useState<THREE.Texture | null>(null)
   useEffect(() => {
     let on = true
     let made: THREE.Texture | null = null
-    new THREE.TextureLoader().load(bearUrl, (t) => {
+    new THREE.TextureLoader().load(url, (t) => {
       t.colorSpace = THREE.SRGBColorSpace
       t.anisotropy = 4
       made = t
@@ -90,7 +67,7 @@ function useBearTexture() {
       on = false
       made?.dispose()
     }
-  }, [])
+  }, [url])
   return tex
 }
 
@@ -129,7 +106,7 @@ function latticeTexture() {
 
 const WARM_PANE = () => glowMat('#ffd48a', 1.5, { opacity: 0.4 })
 const WARM_LIGHT = () => glowMat('#fff0c8', 2.2, { dayGlow: 0.4 })
-const SIGN_GLOW = () => glowMat('#ffe9a0', 0.9, { dayGlow: 0.12 })
+const SIGN_GLOW = () => glowMat('#ffd34f', 0.9, { dayGlow: 0.5 })
 const POOL = () => lightPoolMat('#ffc97a', 0.75)
 const INTERIOR = () => nightVolumeMat('#ffcf8f', 0.17)
 
@@ -145,18 +122,11 @@ export interface GeorgesCafeProps {
 }
 
 export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, interactive = true, onOpen }: GeorgesCafeProps) {
-  // los letreros se dibujan cuando la cursiva ya está cargada (si no, saldría con la letra de respaldo)
-  const [fontVer, setFontVer] = useState(0)
-  useEffect(() => {
-    let on = true
-    void document.fonts?.load('400 120px Pacifico').then(() => on && setFontVer(1)).catch(() => {})
-    return () => {
-      on = false
-    }
-  }, [])
-  const tex = useMemo(() => ({ script: scriptTexture(), lattice: latticeTexture() }), [fontVer])
-  const bear = useBearTexture()
-  useEffect(() => () => void Object.values(tex).forEach((t) => t.dispose()), [tex])
+  // el logo (osito) y el rótulo «George's» son las imágenes reales de la marca; el panel calado es un patrón dibujado
+  const bear = useImageTexture(bearUrl)
+  const wordmark = useImageTexture(wordmarkUrl)
+  const lattice = useMemo(() => latticeTexture(), [])
+  useEffect(() => () => lattice.dispose(), [lattice])
 
   const W = GEORGES_SIZE.width
   const D = GEORGES_SIZE.depth
@@ -166,7 +136,7 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
   const zF = 1.2 // fachada del edificio (por delante queda la terraza)
   const T = 0.2
   const G = 2.35 // alto de la planta de vidrio
-  const H = 3.3 // alto del muro (sin parapeto)
+  const H = 3.9 // alto del muro (sin parapeto): la franja alta es el letrero
   const wall = mat(GEORGES.gold)
   const wall2 = mat(GEORGES.gold2)
   const brown = mat(GEORGES.brown)
@@ -309,18 +279,21 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
       </Batch>
 
       {/* costado derecho: panel calado dorado (textura repetida, solo un plano) */}
-      <mesh position={[x1 + 0.03, 1.75, (z0 + zF) / 2 + 0.05]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[zF - z0 - 0.5, 3.0]} />
-        <meshStandardMaterial map={tex.lattice} roughness={0.7} />
+      <mesh position={[x1 + 0.03, 0.15 + (H - 0.3) / 2 + 0.1, (z0 + zF) / 2 + 0.05]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[zF - z0 - 0.5, H - 0.3]} />
+        <meshStandardMaterial map={lattice} roughness={0.7} />
       </mesh>
       <Box x0={x1 + 0.01} x1={x1 + 0.07} y0={0.2} y1={0.32} z0={z0 + 0.15} z1={zF - 0.1} m={brown} />
-      <Box x0={x1 + 0.01} x1={x1 + 0.07} y0={3.22} y1={3.34} z0={z0 + 0.15} z1={zF - 0.1} m={brown} />
+      <Box x0={x1 + 0.01} x1={x1 + 0.07} y0={H - 0.08} y1={H + 0.04} z0={z0 + 0.15} z1={zF - 0.1} m={brown} />
 
-      {/* letrero «George's» sobre la franja amarilla, con un fondo cálido detrás */}
-      <mesh geometry={GEO.plane} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF + 0.015]} scale={[3.8, 0.78, 1]}>
-        <meshBasicMaterial map={tex.script} transparent toneMapped={false} />
-      </mesh>
-      <mesh geometry={GEO.box} material={SIGN_GLOW()} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF - 0.02]} scale={[4.0, 0.84, 0.02]} />
+      {/* rótulo «George's» (la imagen real de la marca) sobre la franja amarilla, con un fondo cálido detrás */}
+      {wordmark && (
+        <mesh geometry={GEO.plane} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF + 0.015]} scale={[2.3, 2.3 * (471 / 900), 1]}>
+          <meshBasicMaterial map={wordmark} transparent toneMapped={false} />
+        </mesh>
+      )}
+      <mesh geometry={GEO.box} material={SIGN_GLOW()} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF - 0.02]} scale={[4.0, H - G - 0.3, 0.02]} />
+
       {/* el logo de George's: medallón amarillo que se asoma sobre el pilar, girado hacia la cámara isométrica para que se lea de lejos */}
       <group position={[x0 + 0.4, H + 1.07 + 0.78, zF + 0.05]} rotation={[0, Math.PI / 4, 0]}>
         <mesh geometry={GEO.box} material={brown} position={[0, -0.95, -0.02]} scale={[0.12, 1.0, 0.12]} />
