@@ -35,7 +35,7 @@ const ICONS: Record<string, { icon: ProductIcon; name: string; price: number }[]
 }
 
 /** Espacios que ya tienen una tienda propia en el diseño (no se tocan). */
-const SKIP_LABELS = new Set(['D-05'])
+const SKIP_LABELS = new Set(['D-05', 'E-02'])
 
 export interface PreviewFill {
   stores: Store[]

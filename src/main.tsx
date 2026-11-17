@@ -13,6 +13,7 @@ const deferWorld = shouldDeferWorld(detectProfile().tier, doorWillShow(), isPhon
 async function boot(): Promise<ComponentType> {
   // Solo en desarrollo: banco de pruebas del edificio de Veneplast (no existe en la versión publicada).
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('veneplast-preview')) return (await import('./dev/VeneplastPreview')).default
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('georges-preview')) return (await import('./dev/GeorgesPreview')).default
   if (import.meta.env.VITE_DEMO === '1') return (await import('./demo/DemoApp')).default
   // El mundo 3D es lo primero que se ve (en dispositivos que lo aguantan): su código empieza a bajar ya, en paralelo, en vez de
   // esperar a que la app lo pida. Sin WebGL (plano 2D) no se descarga.

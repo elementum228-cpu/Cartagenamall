@@ -14,6 +14,7 @@ import { useMinute } from '../lib/useMinute'
 import { useMediaQuery } from '../lib/useMedia'
 import { useCatalog } from '../state/catalog'
 import { canPreview, usePreviewMall, useWorldCatalog } from '../state/previewMall'
+import { GeorgesCafe } from './GeorgesCafe'
 import { useClaims } from '../state/claims'
 import { usePersonal } from '../state/personal'
 import { usePrefs, useUI, type Quality } from '../state/ui'
@@ -59,6 +60,9 @@ function modeFor(floor: FloorConfig, active: FloorConfig, overview: boolean): Fl
   return floor.level < active.level ? 'shell' : 'hidden'
 }
 
+/** Espacio de la zona de comida (Piso 2) donde está George's. */
+const GEORGES_SPACE = 'E-02'
+
 export function Scene({ quality, night }: { quality: Quality; night: boolean }) {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const season = useSeason()
@@ -88,7 +92,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
 
   const availableByZone = useMemo(() => {
     const m: Record<string, SpaceSlot[]> = {}
-    for (const sp of SPACES) if ((entOn || sp.zoneId !== 'G') && (svcOn || !isServicesSpace(sp)) && !storeById[assignments[sp.id]]) (m[sp.zoneId] ??= []).push(sp)
+    for (const sp of SPACES) if ((entOn || sp.zoneId !== 'G') && (svcOn || !isServicesSpace(sp)) && !storeById[assignments[sp.id]] && sp.label !== GEORGES_SPACE) (m[sp.zoneId] ??= []).push(sp)
     return m
   }, [assignments, storeById, entOn, svcOn])
 
@@ -206,6 +210,13 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                   )}
                   {spaces.map((space) => {
                     const store = storeById[assignments[space.id]] ?? null
+                    // E-02 (zona de comida, Piso 2): George's, mientras el espacio no tenga una tienda real asignada
+                    if (space.label === GEORGES_SPACE && !store)
+                      return (
+                        <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>
+                          <GeorgesCafe interactive={interactive} animated={!reduceMotion} onOpen={() => useUI.getState().toast("George's · cafetería de especialidad. ¡Muy pronto en MallPlay!")} />
+                        </group>
+                      )
                     // D-05 (local premium del Pasillo D): tienda ancla Veneplast
                     if (space.label === 'D-05')
                       return (
