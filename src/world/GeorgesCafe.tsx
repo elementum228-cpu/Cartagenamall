@@ -4,7 +4,7 @@ import bearUrl from '../assets/georges-bear.png'
 import wordmarkUrl from '../assets/georges-wordmark.png'
 import { Batch } from './Batch'
 import { GEO, GLASS, mat } from './materials'
-import { glowMat, lightPoolMat, nightVolumeMat } from './night'
+import { glowMat, lightPoolMat, nightVolumeMat, uplightMat } from './night'
 import { Person } from './Person'
 
 // George's: cafetería de especialidad que toma UN local de la zona de comida (6 × 5 m). Es un componente aislado, como Veneplast: el padre
@@ -104,11 +104,19 @@ function latticeTexture() {
 
 // ── materiales que se encienden de noche ───────────────────────────────────────────────────────────────────────────────────────────
 
-const WARM_PANE = () => glowMat('#ffd48a', 1.5, { opacity: 0.4 })
-const WARM_LIGHT = () => glowMat('#fff0c8', 2.2, { dayGlow: 0.4 })
-const SIGN_GLOW = () => glowMat('#ffd34f', 0.9, { dayGlow: 0.5 })
-const POOL = () => lightPoolMat('#ffc97a', 0.75)
-const INTERIOR = () => nightVolumeMat('#ffcf8f', 0.17)
+// De noche el local tiene que ser el más vivo de la zona de comida: letrero y pilar encendidos, ventanales que brillan, interior lleno de
+// luz cálida y un halo que baña la terraza y el costado calado. De día casi no cambian (dayGlow bajo).
+const WARM_PANE = () => glowMat('#ffd48a', 3.4, { opacity: 0.6 })
+const WARM_LIGHT = () => glowMat('#fff0c8', 3.4, { dayGlow: 0.4 })
+const SIGN_BAND = () => glowMat('#ffd34f', 2.6, { dayGlow: 0.35 })
+const PYLON = () => glowMat('#f4b820', 1.7, { dayGlow: 0.15 })
+const LED = () => glowMat('#ffe08a', 3.0, { dayGlow: 0.3 })
+const MEDALLION = () => glowMat('#ffd34f', 2.4, { dayGlow: 0.3 })
+const POOL = () => lightPoolMat('#ffc97a', 1.5)
+const HALO = () => lightPoolMat('#ffd27a', 1.1)
+const INTERIOR = () => nightVolumeMat('#ffcf8f', 0.5)
+const LATTICE_GLOW = () => nightVolumeMat('#ffb429', 0.5)
+const LATTICE_WASH = () => uplightMat('plane', '#ffc27a', 0.9)
 
 const CHAIRS = ['#e8651f', '#e8651f', '#d9501a']
 
@@ -138,7 +146,6 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
   const G = 2.35 // alto de la planta de vidrio
   const H = 3.9 // alto del muro (sin parapeto): la franja alta es el letrero
   const wall = mat(GEORGES.gold)
-  const wall2 = mat(GEORGES.gold2)
   const brown = mat(GEORGES.brown)
   const stone = mat('#3b322d')
   const cream = mat(GEORGES.cream)
@@ -210,9 +217,9 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
           <Box x0={x1 - 0.5} x1={x1} y0={0} y1={G} z0={zF - T} z1={zF} m={wall} />
           {/* labio de bronce entre el vidrio y el letrero */}
           <Box x0={x0 + 0.6} x1={x1 + 0.08} y0={G} y1={G + 0.14} z0={zF - 0.1} z1={zF + 0.42} m={brown} />
-          <Box x0={x0 + 0.6} x1={x1 + 0.08} y0={G + 0.14} y1={G + 0.2} z0={zF - 0.1} z1={zF + 0.36} m={mat('#d9a21a', { emissive: 0.15 })} />
+          <Box x0={x0 + 0.6} x1={x1 + 0.08} y0={G + 0.14} y1={G + 0.2} z0={zF - 0.1} z1={zF + 0.36} m={LED()} />
           {/* planta alta: franja amarilla del letrero */}
-          <Box x0={x0 + 0.6} x1={x1} y0={G + 0.2} y1={H} z0={zF - T} z1={zF} m={wall2} />
+          <Box x0={x0 + 0.6} x1={x1} y0={G + 0.2} y1={H} z0={zF - T} z1={zF} m={SIGN_BAND()} />
 
           {/* ── vidrio de los ventanales y puerta ── */}
           {[
@@ -240,10 +247,10 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
           </group>
 
           {/* ── pilar del oso: losa amarilla alta, saliente, con franjas verticales de bronce ── */}
-          <Box x0={x0 - 0.02} x1={x0 + 0.78} y0={0} y1={H + 0.95} z0={z0 + 0.6} z1={zF + 0.3} m={wall} />
+          <Box x0={x0 - 0.02} x1={x0 + 0.78} y0={0} y1={H + 0.95} z0={z0 + 0.6} z1={zF + 0.3} m={PYLON()} />
           <Box x0={x0 - 0.02} x1={x0 + 0.78} y0={H + 0.95} y1={H + 1.07} z0={z0 + 0.6} z1={zF + 0.34} m={brown} />
           {[0.1, 0.22, 0.34].map((o) => (
-            <mesh key={o} geometry={GEO.box} material={mat('#d9a21a', { emissive: 0.1 })} position={[x0 + 0.12 + o * 1.3, 0.85, zF + 0.31]} scale={[0.04, 1.3, 0.02]} />
+            <mesh key={o} geometry={GEO.box} material={LED()} position={[x0 + 0.12 + o * 1.3, 0.85, zF + 0.31]} scale={[0.04, 1.3, 0.02]} />
           ))}
 
           {/* ── terraza: tarima de madera con maceteros y luces de guirnalda ── */}
@@ -283,6 +290,8 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
         <planeGeometry args={[zF - z0 - 0.5, H - 0.3]} />
         <meshStandardMaterial map={lattice} roughness={0.7} />
       </mesh>
+      <mesh geometry={GEO.plane} material={LATTICE_GLOW()} position={[x1 + 0.045, 0.15 + (H - 0.3) / 2 + 0.1, (z0 + zF) / 2 + 0.05]} rotation={[0, Math.PI / 2, 0]} scale={[zF - z0 - 0.5, H - 0.3, 1]} />
+      <mesh geometry={GEO.plane} material={LATTICE_WASH()} position={[x1 + 0.06, (H - 0.3) / 2 + 0.25, (z0 + zF) / 2 + 0.05]} rotation={[0, Math.PI / 2, 0]} scale={[zF - z0 + 0.4, H - 0.2, 1]} />
       <Box x0={x1 + 0.01} x1={x1 + 0.07} y0={0.2} y1={0.32} z0={z0 + 0.15} z1={zF - 0.1} m={brown} />
       <Box x0={x1 + 0.01} x1={x1 + 0.07} y0={H - 0.08} y1={H + 0.04} z0={z0 + 0.15} z1={zF - 0.1} m={brown} />
 
@@ -292,13 +301,13 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
           <meshBasicMaterial map={wordmark} transparent toneMapped={false} />
         </mesh>
       )}
-      <mesh geometry={GEO.box} material={SIGN_GLOW()} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF - 0.02]} scale={[4.0, H - G - 0.3, 0.02]} />
 
       {/* el logo de George's: medallón amarillo que se asoma sobre el pilar, girado hacia la cámara isométrica para que se lea de lejos */}
       <group position={[x0 + 0.4, H + 1.07 + 0.78, zF + 0.05]} rotation={[0, Math.PI / 4, 0]}>
         <mesh geometry={GEO.box} material={brown} position={[0, -0.95, -0.02]} scale={[0.12, 1.0, 0.12]} />
         <mesh geometry={GEO.cylinder} material={brown} rotation={[Math.PI / 2, 0, 0]} scale={[1.62, 0.16, 1.62]} castShadow />
-        <mesh geometry={GEO.cylinder} material={mat(GEORGES.gold2, { emissive: 0.35 })} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.02]} scale={[1.46, 0.16, 1.46]} />
+        <mesh geometry={GEO.cylinder} material={MEDALLION()} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.02]} scale={[1.46, 0.16, 1.46]} />
+        <mesh geometry={GEO.plane} material={HALO()} position={[0, 0, -0.1]} scale={[4.2, 4.2, 1]} />
         {bear && (
           <mesh geometry={GEO.plane} position={[0, 0.02, 0.11]} scale={[1.28, 1.28 * (490 / 512), 1]}>
             <meshBasicMaterial map={bear} transparent toneMapped={false} />
@@ -315,7 +324,7 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
       </group>
 
       {/* halo cálido frente al local (solo de noche) */}
-      <mesh geometry={GEO.plane} material={POOL()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, D / 2 + 0.5]} scale={[W + 1.2, 2.6, 1]} />
+      <mesh geometry={GEO.plane} material={POOL()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, D / 2 + 0.4]} scale={[W + 3.2, 4.2, 1]} />
     </group>
   )
 }
