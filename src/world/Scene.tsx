@@ -214,7 +214,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                     if (space.label === GEORGES_SPACE && !store)
                       return (
                         <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>
-                          <GeorgesCafe interactive={interactive} animated={!reduceMotion} onOpen={() => useUI.getState().toast("George's · cafetería de especialidad. ¡Muy pronto en MallPlay!")} />
+                          <GeorgesCafe interactive={interactive} onOpen={() => useUI.getState().toast("George's · cafetería de especialidad. ¡Muy pronto en MallPlay!")} />
                         </group>
                       )
                     // D-05 (local premium del Pasillo D): tienda ancla Veneplast

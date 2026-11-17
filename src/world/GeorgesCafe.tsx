@@ -1,7 +1,7 @@
 import '@fontsource/pacifico/latin-400.css'
-import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
+import bearUrl from '../assets/georges-bear.png'
 import { Batch } from './Batch'
 import { GEO, GLASS, mat } from './materials'
 import { glowMat, lightPoolMat, nightVolumeMat } from './night'
@@ -74,70 +74,24 @@ function scriptTexture() {
   })
 }
 
-/** El oso con gafas de sol sobre fondo amarillo: la mascota de la casa. */
-function bearTexture() {
-  return canvasTexture(512, 512, (g) => {
-    const rr = (x: number, y: number, w: number, h: number, r: number) => rrect(g, x, y, w, h, r)
-    g.fillStyle = GEORGES.gold2
-    rr(0, 0, 512, 512, 60)
-    g.fill()
-    g.strokeStyle = GEORGES.brown
-    g.lineWidth = 12
-    g.lineJoin = 'round'
-    // orejas
-    for (const sx of [-1, 1]) {
-      g.fillStyle = '#d98f2b'
-      g.beginPath()
-      g.arc(256 + sx * 140, 118, 62, 0, 7)
-      g.fill()
-      g.stroke()
-      g.fillStyle = '#f2c27a'
-      g.beginPath()
-      g.arc(256 + sx * 140, 122, 30, 0, 7)
-      g.fill()
+/** El logo real de George's (el osito con gafas), con el fondo transparente: se ve directo sobre el pilar amarillo. */
+function useBearTexture() {
+  const [tex, setTex] = useState<THREE.Texture | null>(null)
+  useEffect(() => {
+    let on = true
+    let made: THREE.Texture | null = null
+    new THREE.TextureLoader().load(bearUrl, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace
+      t.anisotropy = 4
+      made = t
+      if (on) setTex(t)
+    })
+    return () => {
+      on = false
+      made?.dispose()
     }
-    // cara
-    g.fillStyle = '#e8a64a'
-    g.beginPath()
-    g.ellipse(256, 270, 190, 170, 0, 0, 7)
-    g.fill()
-    g.stroke()
-    // hocico
-    g.fillStyle = '#fbe0b0'
-    g.beginPath()
-    g.ellipse(256, 340, 104, 78, 0, 0, 7)
-    g.fill()
-    g.stroke()
-    g.fillStyle = GEORGES.brown
-    g.beginPath()
-    g.ellipse(256, 312, 34, 24, 0, 0, 7)
-    g.fill()
-    g.lineWidth = 9
-    g.beginPath()
-    g.moveTo(256, 336)
-    g.lineTo(256, 360)
-    g.moveTo(214, 368)
-    g.quadraticCurveTo(256, 404, 298, 368)
-    g.stroke()
-    // gafas de sol: dos lentes negros con brillo y puente dorado
-    g.fillStyle = '#16100c'
-    g.lineWidth = 10
-    for (const sx of [-1, 1]) {
-      rr(256 + sx * 82 - 62, 196, 124, 92, 30)
-      g.fill()
-      g.stroke()
-      g.fillStyle = 'rgba(255,255,255,.35)'
-      g.beginPath()
-      g.moveTo(256 + sx * 82 - 40, 214)
-      g.lineTo(256 + sx * 82 - 8, 214)
-      g.lineTo(256 + sx * 82 - 34, 250)
-      g.closePath()
-      g.fill()
-      g.fillStyle = '#16100c'
-    }
-    g.fillStyle = GEORGES.brown
-    g.fillRect(226, 224, 60, 12)
-  })
+  }, [])
+  return tex
 }
 
 /** Panel calado: fondo dorado con perforaciones cuadradas redondeadas, en rejilla (se repite). */
@@ -188,11 +142,9 @@ export interface GeorgesCafeProps {
   interactive?: boolean
   /** Se llama al tocar el local. */
   onOpen?: () => void
-  /** Taza giratoria con vapor en la azotea (se apaga con «reducir movimiento»). */
-  animated?: boolean
 }
 
-export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, interactive = true, onOpen, animated = true }: GeorgesCafeProps) {
+export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, interactive = true, onOpen }: GeorgesCafeProps) {
   // los letreros se dibujan cuando la cursiva ya está cargada (si no, saldría con la letra de respaldo)
   const [fontVer, setFontVer] = useState(0)
   useEffect(() => {
@@ -202,7 +154,8 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
       on = false
     }
   }, [])
-  const tex = useMemo(() => ({ script: scriptTexture(), bear: bearTexture(), lattice: latticeTexture() }), [fontVer])
+  const tex = useMemo(() => ({ script: scriptTexture(), lattice: latticeTexture() }), [fontVer])
+  const bear = useBearTexture()
   useEffect(() => () => void Object.values(tex).forEach((t) => t.dispose()), [tex])
 
   const W = GEORGES_SIZE.width
@@ -368,13 +321,17 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
         <meshBasicMaterial map={tex.script} transparent toneMapped={false} />
       </mesh>
       <mesh geometry={GEO.box} material={SIGN_GLOW()} position={[0.3, G + 0.2 + (H - G - 0.2) / 2, zF - 0.02]} scale={[4.0, 0.84, 0.02]} />
-      {/* el oso en el pilar */}
-      <mesh geometry={GEO.plane} position={[x0 + 0.38, 3.0, zF + 0.32]} scale={[0.7, 0.7, 1]}>
-        <meshBasicMaterial map={tex.bear} transparent toneMapped={false} />
-      </mesh>
-
-      {/* hito de la azotea: una taza gigante que gira despacio, con vapor */}
-      <CoffeeCup position={[0.35, H + 0.42, 0.25]} animated={animated} />
+      {/* el logo de George's: medallón amarillo que se asoma sobre el pilar, girado hacia la cámara isométrica para que se lea de lejos */}
+      <group position={[x0 + 0.4, H + 1.07 + 0.78, zF + 0.05]} rotation={[0, Math.PI / 4, 0]}>
+        <mesh geometry={GEO.box} material={brown} position={[0, -0.95, -0.02]} scale={[0.12, 1.0, 0.12]} />
+        <mesh geometry={GEO.cylinder} material={brown} rotation={[Math.PI / 2, 0, 0]} scale={[1.62, 0.16, 1.62]} castShadow />
+        <mesh geometry={GEO.cylinder} material={mat(GEORGES.gold2, { emissive: 0.35 })} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.02]} scale={[1.46, 0.16, 1.46]} />
+        {bear && (
+          <mesh geometry={GEO.plane} position={[0, 0.02, 0.11]} scale={[1.28, 1.28 * (490 / 512), 1]}>
+            <meshBasicMaterial map={bear} transparent toneMapped={false} />
+          </mesh>
+        )}
+      </group>
 
       {/* clientes sentados en la terraza */}
       <group position={[-0.9 - 0.42, 0.34, zF + 1.0]} rotation={[0, 0.6, 0]} scale={0.8}>
@@ -386,48 +343,6 @@ export function GeorgesCafe({ position = [0, 0, 0], rotation = [0, 0, 0], scale 
 
       {/* halo cálido frente al local (solo de noche) */}
       <mesh geometry={GEO.plane} material={POOL()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, D / 2 + 0.5]} scale={[W + 1.2, 2.6, 1]} />
-    </group>
-  )
-}
-
-/** Taza gigante de la azotea (hito visible desde lejos): gira despacio y suelta vapor que sube y se desvanece. */
-function CoffeeCup({ position, animated }: { position: [number, number, number]; animated: boolean }) {
-  const spin = useRef<THREE.Group>(null)
-  const steam = useRef<(THREE.Mesh | null)[]>([])
-  const t = useRef(0)
-  const place = (time: number) => {
-    if (spin.current) spin.current.rotation.y = 0.9 + time * 0.35
-    steam.current.forEach((m, i) => {
-      if (!m) return
-      const p = (((time * 0.28 + i / 3) % 1) + 1) % 1
-      m.position.set(Math.sin(time * 1.2 + i * 2.1) * 0.08, 0.95 + p * 1.1, Math.cos(time + i) * 0.05)
-      m.scale.setScalar(0.22 + p * 0.3)
-      ;(m.material as THREE.MeshBasicMaterial).opacity = 0.55 * Math.sin(p * Math.PI)
-    })
-  }
-  useEffect(() => place(animated ? 0 : 2.2), [animated]) // eslint-disable-line react-hooks/exhaustive-deps
-  useFrame((_, dt) => {
-    if (!animated) return
-    t.current += Math.min(dt, 0.1)
-    place(t.current)
-  })
-  const cream = mat('#f7f1e3')
-  return (
-    <group position={position}>
-      {/* plato */}
-      <mesh geometry={GEO.cylinder} material={mat('#e9dcc2')} position={[0, 0.04, 0]} scale={[1.55, 0.08, 1.55]} castShadow />
-      <group ref={spin}>
-        {/* taza con franja dorada y el café arriba */}
-        <mesh geometry={GEO.cylinder} material={cream} position={[0, 0.45, 0]} scale={[1.0, 0.8, 1.0]} castShadow />
-        <mesh geometry={GEO.cylinder} material={mat('#f4b820', { emissive: 0.2 })} position={[0, 0.42, 0]} scale={[1.02, 0.16, 1.02]} />
-        <mesh geometry={GEO.cylinder} material={mat('#4a2a14')} position={[0, 0.84, 0]} scale={[0.86, 0.04, 0.86]} />
-        <mesh geometry={GEO.torus} material={cream} position={[0.5, 0.48, 0]} rotation={[0, 0, 0]} scale={[0.26, 0.26, 0.9]} />
-      </group>
-      {[0, 1, 2].map((i) => (
-        <mesh key={i} ref={(m) => (steam.current[i] = m)} geometry={GEO.sphere}>
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.4} depthWrite={false} />
-        </mesh>
-      ))}
     </group>
   )
 }
