@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Circle, LifeBuoy } from 'lucide-react'
+import { Check, ChevronRight, Circle } from 'lucide-react'
 import type { Store } from '../domain/types'
 import { SUPPORT_WHATSAPP } from '../config/support'
 import { cleanHours } from '../lib/hours'
@@ -77,7 +77,16 @@ export function SetupChecklist({ store, activeProducts, goTab }: { store: Store;
   )
 }
 
-/** «¿Necesitas ayuda?»: abre WhatsApp con el equipo de MallPlay y el nombre del local ya escrito. Sin número configurado no se muestra. */
+/** Logo de WhatsApp (el globo con el teléfono), en blanco: se dibuja aquí porque la librería de iconos no lo trae. */
+export function WhatsAppLogo({ className = 'size-6' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} fill="currentColor" aria-hidden>
+      <path d="M16.03 3C8.84 3 3 8.83 3 16c0 2.3.6 4.54 1.74 6.52L3 29l6.65-1.7A13 13 0 0 0 16.03 29C23.2 29 29 23.17 29 16S23.2 3 16.03 3Zm0 23.7c-1.95 0-3.86-.53-5.53-1.52l-.4-.24-3.95 1.01 1.05-3.84-.26-.4A10.64 10.64 0 0 1 5.3 16c0-5.9 4.82-10.7 10.73-10.7S26.7 10.1 26.7 16s-4.8 10.7-10.67 10.7Zm5.9-8c-.32-.16-1.9-.94-2.2-1.05-.3-.1-.5-.16-.72.16-.22.32-.84 1.05-1.03 1.26-.19.22-.38.24-.7.08-.32-.16-1.36-.5-2.6-1.6a9.8 9.8 0 0 1-1.8-2.24c-.19-.32-.02-.5.14-.66.15-.14.32-.38.48-.57.16-.19.22-.32.32-.54.1-.22.05-.4-.03-.57-.08-.16-.72-1.74-.99-2.38-.26-.62-.52-.54-.72-.55h-.62c-.22 0-.57.08-.87.4-.3.32-1.14 1.1-1.14 2.7s1.17 3.13 1.33 3.35c.16.22 2.3 3.5 5.56 4.92.78.34 1.38.54 1.85.69.78.25 1.49.21 2.05.13.63-.09 1.9-.78 2.17-1.53.27-.75.27-1.4.19-1.53-.08-.14-.3-.22-.62-.38Z" />
+    </svg>
+  )
+}
+
+/** «¿Necesitas ayuda?»: botón verde de WhatsApp que abre el chat con el equipo de MallPlay con el nombre del local ya escrito. Sin número configurado no se muestra. */
 export function HelpLink({ store }: { store: Store }) {
   const toast = useUI((s) => s.toast)
   if (!SUPPORT_WHATSAPP) return null
@@ -88,9 +97,16 @@ export function HelpLink({ store }: { store: Store }) {
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => toast('Abriendo WhatsApp con el equipo de MallPlay…')}
-      className="mt-6 flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-line bg-white px-4 text-sm font-bold text-teal active:scale-[0.99]"
+      className="mt-6 flex min-h-[68px] items-center gap-3.5 rounded-[22px] bg-gradient-to-br from-[#2fe07a] to-[#12a150] p-3.5 text-white shadow-[0_16px_30px_-14px_rgba(18,161,80,0.85),inset_0_1px_0_rgba(255,255,255,0.35)] transition active:scale-[0.98]"
     >
-      <LifeBuoy className="size-5" /> ¿Necesitas ayuda con tu local? Escríbenos
+      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/20 ring-1 ring-white/30">
+        <WhatsAppLogo className="size-7" />
+      </span>
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="block text-[16px] font-extrabold tracking-[-0.01em]">Servicio al cliente</span>
+        <span className="block text-[13px] font-medium text-white/90">Escríbenos por WhatsApp: te ayudamos con tu local</span>
+      </span>
+      <span className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-extrabold text-[#12803f]">Chatear</span>
     </a>
   )
 }

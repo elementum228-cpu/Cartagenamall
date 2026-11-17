@@ -110,11 +110,12 @@ export function VoucherValidator({ store }: { store: Store }) {
           )}
         </div>
       )}
-      {recent.length > 0 && (
+      {/* solo los bonos por validar: los que ya se usaron salen de la lista para que la pantalla quede limpia (se siguen contando arriba, en el Resumen) */}
+      {recent.filter((v) => !v.used_at).length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-bold text-ink-soft">Últimos bonos</p>
+          <p className="mb-1.5 text-xs font-bold text-ink-soft">Bonos por validar</p>
           <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
-            {recent.slice(0, 8).map((v) => (
+            {recent.filter((v) => !v.used_at).slice(0, 8).map((v) => (
               <li key={v.code}>
                 <button className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left" onClick={() => void search(v.code)}>
                   <span className="min-w-0">
