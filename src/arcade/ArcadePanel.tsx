@@ -28,6 +28,7 @@ type Phase = 'menu' | 'play' | 'pause' | 'over'
 export function ArcadePanel() {
   const open = useArcadeUi((s) => s.open)
   const game = useArcadeUi((s) => s.game)
+  const tab = useArcadeUi((s) => s.tab)
   const close = useCallback(() => useArcadeUi.getState().setOpen(false), [])
   useEffect(() => {
     if (!open) return
@@ -42,7 +43,7 @@ export function ArcadePanel() {
   }, [open, close])
   if (!open) return null
   return (
-    <div className={`fixed inset-0 z-[70] flex items-center justify-center ${game === 'cangrejos' ? 'arcade-soft-bg p-2' : 'bg-[#04061a]/95 p-3'}`} role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
+    <div className={`fixed inset-0 z-[70] flex items-center justify-center ${game === 'cangrejos' || tab === 'prizes' ? 'arcade-soft-bg p-2' : 'bg-[#04061a]/95 p-3'}`} role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
       <Cabinet onClose={close} />
     </div>
   )
@@ -88,7 +89,8 @@ function Cabinet({ onClose }: { onClose: () => void }) {
   const points = useArcade((s) => s.points)
   const playing = useArcadeUi((s) => s.playing)
   // Cangrejos Locos usa el estilo suave (lavanda, vidrio y letra de la app) y ocupa casi toda la pantalla
-  const soft = game === 'cangrejos'
+  // el estilo suave (lavanda, vidrio, letra de la app) lo usa Cangrejos Locos y la pantalla de Premios de todos los juegos
+  const soft = game === 'cangrejos' || tab === 'prizes'
   return (
     <div className={`flex h-full w-full flex-col gap-2.5 ${soft ? 'max-w-[480px] pt-[max(4px,env(safe-area-inset-top))] pb-[max(4px,env(safe-area-inset-bottom))]' : 'max-h-[760px] max-w-[440px]'}`}>
       {/* mientras se juega, la partida cubre la pantalla: el encabezado y las pestañas quedan ocultos para lectores de pantalla */}
@@ -118,9 +120,12 @@ function Cabinet({ onClose }: { onClose: () => void }) {
               {(
                 [
                   ['play', 'Jugar', Play2],
+                  ['rank', 'Ranking', Crown],
                   ['prizes', 'Premios', Gift],
                 ] as const
-              ).map(([id, label, Icon]) => (
+              )
+                .filter(([id]) => game === 'nave' || id !== 'rank')
+                .map(([id, label, Icon]) => (
                 <button
                   key={id}
                   role="tab"
@@ -142,7 +147,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="font-arcade arcade-cyan truncate text-[13px]">ARCADE</h2>
-            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">{(tab === 'prizes' ? 'RECOMPENSAS' : GAME_NAME[game].toUpperCase())}</p>
+            <p className="font-arcade truncate text-[8px] text-[#ff2bd6]">{GAME_NAME[game].toUpperCase()}</p>
           </div>
           <span className="font-arcade flex items-center gap-1.5 border-[3px] border-[#07031a] bg-[#ffd400] px-2.5 py-2 text-[10px] text-[#07031a] shadow-[3px_3px_0_#ff2bd6]" aria-label={`${points} tiquetes`}>
             <Ticket className="size-3.5" aria-hidden />
@@ -184,7 +189,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           <MiniGame key={game} id={game} active={tab === 'play'} onPrizes={() => setTab('prizes')} />
         </div>
       )}
-      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onPrizes={() => setTab('prizes')} onExit={onClose} /> : null : tab === 'rank' ? <ListFrame><Ranking /></ListFrame> : <ListFrame><Prizes /></ListFrame>}
+      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onPrizes={() => setTab('prizes')} onExit={onClose} /> : null : tab === 'rank' ? <ListFrame><Ranking /></ListFrame> : <Prizes />}
     </div>
   )
 }

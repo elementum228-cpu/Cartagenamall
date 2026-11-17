@@ -1,4 +1,4 @@
-import { Check, Star, X } from 'lucide-react'
+import { Check, Star, Ticket, X } from 'lucide-react'
 import { useEffect } from 'react'
 import { useCatalog } from '../state/catalog'
 import { StoreLogo } from '../ui/bits'
@@ -13,7 +13,7 @@ export function StoreBadge({ storeId, storeName, size }: { storeId?: string; sto
   const store = useCatalog((s) => s.stores.find((x) => (storeId ? x.id === storeId : !!storeName && x.name === storeName)))
   if (!store) return <span className="grid shrink-0 place-items-center rounded-full bg-white/15 text-[15px] font-black text-[#ffd45c]" style={{ width: size, height: size }}>{(storeName || 'M').charAt(0)}</span>
   return (
-    <span className="shrink-0 rounded-full ring-2 ring-white/25">
+    <span className="shrink-0 rounded-full ring-2 ring-white shadow-sm">
       <StoreLogo store={store} size={size} round />
     </span>
   )
@@ -26,8 +26,8 @@ export const progressTo = (points: number, cost: number) => ({ pct: Math.min(100
 
 function Bar({ pct }: { pct: number }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-      <div className="h-full rounded-full bg-[#4de1ff] transition-all" style={{ width: `${pct}%` }} />
+    <div className="h-1.5 overflow-hidden rounded-full bg-[#1c1747]/[0.08]" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+      <div className="h-full rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#ff7ad1] transition-all" style={{ width: `${pct}%` }} />
     </div>
   )
 }
@@ -92,27 +92,35 @@ export function PrizeDetail({ r, points, onClose, onRedeem }: { r: StoreReward; 
   )
 }
 
-// ── Pantalla de premios: saldo arriba y mosaico de dos columnas ───────────────────────────────────────────────────────────────────────────────────────────
+// ── Pantalla de premios: saldo arriba y mosaico de dos columnas, con acabado claro tipo Apple ─────────────────────────────────────
 
-/** Saldo de tiquetes y, si hay, lo que falta para el premio más cercano: lo primero que se ve arriba de los premios. */
+/** Saldo de tiquetes: un número grande y limpio, y debajo cuánto falta para el siguiente premio. */
 export function BalanceBar({ points, next }: { points: number; next?: StoreReward }) {
   const m = next ? progressTo(points, next.cost) : null
   return (
-    <div className="shrink-0 rounded-2xl bg-gradient-to-r from-[#3b1d8f]/80 to-[#1a0f55]/80 p-3 text-white ring-1 ring-white/10">
-      <div className="flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffe36b] to-[#f5a912] text-[#7a4b00]" aria-hidden>
-          <Star className="size-5" fill="currentColor" />
-        </span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="text-[11px] font-bold tracking-wide text-[#c8d3ff] uppercase">Tus tiquetes</p>
-          <p className="text-[24px] font-black tabular-nums">{points}</p>
+    <div className="shrink-0 rounded-[26px] bg-white/70 p-4 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_14px_34px_-22px_rgba(60,40,120,0.55)] ring-1 ring-black/[0.04] backdrop-blur-xl">
+      <div className="flex items-end justify-between gap-3">
+        <div className="leading-none">
+          <p className="text-[13px] font-semibold text-[#6b6a8a]">Tus tiquetes</p>
+          <p className="mt-1 flex items-baseline gap-1.5 text-[40px] font-extrabold tracking-[-0.03em] text-[#1c1747] tabular-nums">
+            {points}
+            <Star className="size-5 -translate-y-[3px] text-[#f5a912]" fill="currentColor" aria-hidden />
+          </p>
         </div>
         {next && m && (
-          <p className="max-w-[48%] text-right text-[12px] leading-snug font-bold text-[#ffe9a8]">{m.missing > 0 ? `${m.missing} para «${next.title}»` : `¡Ya alcanza «${next.title}»!`}</p>
+          <p className="max-w-[52%] pb-1 text-right text-[13px] leading-snug font-semibold text-[#6b6a8a]">
+            {m.missing > 0 ? (
+              <>
+                Te faltan <b className="text-[#1c1747]">{m.missing}</b> para {next.title}
+              </>
+            ) : (
+              <>Ya alcanza {next.title}</>
+            )}
+          </p>
         )}
       </div>
       {next && m && (
-        <div className="mt-2.5">
+        <div className="mt-3.5">
           <Bar pct={m.pct} />
         </div>
       )}
@@ -120,37 +128,46 @@ export function BalanceBar({ points, next }: { points: number; next?: StoreRewar
   )
 }
 
-/** Mosaico de dos columnas. Foto cuadrada, etiqueta de tiquetes, nombre y una barra fina; el toque abre el detalle. */
+/** Mosaico de dos columnas, al estilo de una tienda de aplicaciones: foto grande y limpia, nombre, negocio y un botón en píldora. */
 export function PrizeTile({ r, points, onOpen }: { r: StoreReward; points: number; onOpen: () => void }) {
   const goal = useArcade((s) => s.goal === r.id)
   const ok = points >= r.cost
   const { pct, missing } = progressTo(points, r.cost)
   return (
-    <button onClick={onOpen} className={`group relative flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white/[0.07] text-left text-white ring-1 active:scale-[0.98] ${goal ? 'ring-[#ffd45c]/80' : ok ? 'ring-[#4de1ff]/60' : 'ring-white/10'}`} aria-label={`Ver el premio: ${r.title}`}>
-      <span className="relative block aspect-square w-full overflow-hidden bg-white/5">
-        {r.image ? <img src={r.image} alt="" className="size-full object-cover" /> : <span className="grid size-full place-items-center"><StoreBadge storeId={r.storeId} storeName={r.storeName} size={64} /></span>}
-        <span className="absolute top-2 left-2 rounded-full bg-[#ffc83d] px-2 py-0.5 text-[11.5px] font-extrabold text-[#2a1a00] shadow">{r.cost}</span>
-        {goal && (
-          <span className="absolute top-2 right-2 grid size-6 place-items-center rounded-full bg-[#07031a]/80 text-[#ffd45c]" aria-label="Es tu meta">
-            <Star className="size-3.5" fill="currentColor" />
+    <button onClick={onOpen} className="group flex min-w-0 flex-col text-left active:scale-[0.98]" aria-label={`Ver el premio: ${r.title}`}>
+      <span className="relative block aspect-square w-full overflow-hidden rounded-[22px] bg-white/70 shadow-[0_14px_30px_-18px_rgba(60,40,120,0.6)] ring-1 ring-black/[0.05]">
+        {r.image ? (
+          <img src={r.image} alt="" className="size-full object-cover" />
+        ) : (
+          <span className="grid size-full place-items-center">
+            <StoreBadge storeId={r.storeId} storeName={r.storeName} size={64} />
           </span>
         )}
-        {ok && <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#4de1ff] to-[#4de1ff]/0 px-2 pt-5 pb-1.5 text-center text-[11px] font-black text-[#04202b]">¡Te alcanza!</span>}
-      </span>
-      <span className="flex flex-1 flex-col gap-1 p-2.5">
-        <span className="flex items-center gap-1.5">
-          <span className="shrink-0 scale-[0.58] origin-left" style={{ width: 22, height: 22 }}>
-            <StoreBadge storeId={r.storeId} storeName={r.storeName} size={38} />
+        {goal && (
+          <span className="absolute top-2 right-2 grid size-7 place-items-center rounded-full bg-white/85 text-[#f5a912] shadow backdrop-blur" aria-label="Es tu meta">
+            <Star className="size-4" fill="currentColor" />
           </span>
-          <span className="min-w-0 truncate text-[10.5px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</span>
+        )}
+        <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-white/85 py-1 pr-2.5 pl-2 text-[12.5px] font-extrabold text-[#1c1747] shadow-sm backdrop-blur-md">
+          <Ticket className="size-3.5 text-[#f5a912]" aria-hidden /> {r.cost}
         </span>
-        <span className="line-clamp-2 text-[13.5px] leading-snug font-extrabold">{r.title}</span>
-        <span className="mt-auto pt-1">
-          <Bar pct={pct} />
-          <span className="mt-1 block text-[11px] font-bold text-white/70">{ok ? 'Toca para canjear' : `Faltan ${missing}`}</span>
+      </span>
+      <span className="mt-2 block px-1">
+        <span className="line-clamp-2 block text-[15px] leading-tight font-bold tracking-[-0.01em] text-[#1c1747]">{r.title}</span>
+        <span className="mt-0.5 block truncate text-[12.5px] font-medium text-[#6b6a8a]">{r.storeName}</span>
+        <span className="mt-2 flex items-center gap-2">
+          {ok ? (
+            <span className="rounded-full bg-[#5b5bf0] px-4 py-1.5 text-[13px] font-extrabold text-white shadow-[0_8px_16px_-10px_rgba(91,91,240,0.9)]">Canjear</span>
+          ) : (
+            <>
+              <span className="min-w-0 flex-1">
+                <Bar pct={pct} />
+              </span>
+              <span className="shrink-0 text-[11.5px] font-semibold text-[#6b6a8a]">Faltan {missing}</span>
+            </>
+          )}
         </span>
       </span>
     </button>
   )
 }
-

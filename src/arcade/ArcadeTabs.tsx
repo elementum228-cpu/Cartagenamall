@@ -55,29 +55,30 @@ export function Prizes() {
     }
   }
   const won = view.kind === 'won' ? redemptions.find((r) => r.code === view.code) : undefined
-  if (won) return <Celebration r={won} onContinue={() => setView({ kind: 'voucher', code: won.code })} />
-  if (view.kind === 'voucher') return <VoucherView code={view.code} onBack={() => setView({ kind: 'list' })} />
+  if (won) return <div className="arcade-frame flex min-h-0 flex-1 flex-col overflow-y-auto p-3"><Celebration r={won} onContinue={() => setView({ kind: 'voucher', code: won.code })} /></div>
+  if (view.kind === 'voucher') return <div className="arcade-frame flex min-h-0 flex-1 flex-col overflow-y-auto p-3"><VoucherView code={view.code} onBack={() => setView({ kind: 'list' })} /></div>
   return (
-    <div className="flex min-h-0 flex-col gap-2 overflow-y-auto pb-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-0.5 pb-3">
       {detailReward && <PrizeDetail r={detailReward} points={points} onClose={() => setDetail(null)} onRedeem={() => redeem(detailReward.id)} />}
       {rewards.length === 0 && (
-        <div className="rounded-2xl bg-white/[0.07] p-4 text-center text-white">
+        <div className="rounded-2xl bg-white/70 p-4 text-center text-[#1c1747] ring-1 ring-white/80">
           <p className="text-[15px] font-extrabold">Muy pronto: premios de las tiendas</p>
-          <p className="mt-1 text-[12.5px] leading-snug text-[#c8d3ff]">Los negocios del mall están preparando descuentos y regalos para canjear con tus tiquetes. Sigue jugando y junta los tuyos.</p>
+          <p className="mt-1 text-[12.5px] leading-snug text-[#4b4a7a]">Los negocios del mall están preparando descuentos y regalos para canjear con tus tiquetes. Sigue jugando y junta los tuyos.</p>
         </div>
       )}
       {rewards.length > 0 && (
         <>
           <BalanceBar points={points} next={goalReward ?? closest} />
-          <div className="scrollbar-none flex shrink-0 gap-2 overflow-x-auto" role="tablist" aria-label="Filtrar premios">
+          {/* control segmentado, como en iOS */}
+          <div className="flex shrink-0 rounded-[14px] bg-[#1c1747]/[0.07] p-1" role="tablist" aria-label="Filtrar premios">
             {([['all', 'Todos'], ['can', 'Los que alcanzo'], ['cheap', 'Más baratos']] as const).map(([id, label]) => (
-              <button key={id} role="tab" aria-selected={filter === id} onClick={() => setFilter(id)} className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-extrabold ${filter === id ? 'bg-white text-[#1c1747]' : 'bg-white/10 text-white'}`}>
+              <button key={id} role="tab" aria-selected={filter === id} onClick={() => setFilter(id)} className={`min-h-9 flex-1 rounded-[11px] px-2 text-[13px] font-semibold transition ${filter === id ? 'bg-white text-[#1c1747] shadow-[0_2px_6px_-2px_rgba(28,23,71,0.35)]' : 'text-[#4b4a7a]'}`}>
                 {label}
               </button>
             ))}
           </div>
-          {shown.length === 0 ? <p className="rounded-2xl bg-white/[0.07] p-4 text-center text-[13px] text-[#c8d3ff]">Todavía no te alcanza ninguno. ¡Sigue jugando!</p> : (
-            <div className="grid shrink-0 grid-cols-2 gap-2.5">
+          {shown.length === 0 ? <p className="rounded-2xl bg-white/70 p-4 text-center text-[13px] font-semibold text-[#4b4a7a] ring-1 ring-white/80">Todavía no te alcanza ninguno. ¡Sigue jugando!</p> : (
+            <div className="grid shrink-0 grid-cols-2 gap-x-3.5 gap-y-5">
               {shown.map((r) => (
                 <PrizeTile key={r.id} r={r} points={points} onOpen={() => setDetail(r.id)} />
               ))}
@@ -86,19 +87,19 @@ export function Prizes() {
         </>
       )}
       {myVouchers.length > 0 && (
-        <div className="mt-1 text-white">
-          <p className="mb-1 text-[12px] font-bold tracking-wide text-[#9fb3ff] uppercase">Mis bonos</p>
+        <div className="mt-1 text-[#1c1747]">
+          <p className="mb-1.5 px-0.5 text-[12px] font-extrabold tracking-wide text-[#4b4a7a] uppercase">Mis bonos</p>
           <ul className="flex flex-col gap-1.5">
             {myVouchers.slice(0, 20).map((r) => (
               <li key={r.code}>
-                <button onClick={() => setView({ kind: 'voucher', code: r.code })} className="flex w-full items-center gap-3 rounded-xl bg-white/[0.08] px-3 py-2.5 text-left active:scale-[0.99]">
+                <button onClick={() => setView({ kind: 'voucher', code: r.code })} className="flex w-full items-center gap-3 rounded-2xl bg-white/75 px-3 py-2.5 text-left shadow-[0_6px_16px_-10px_rgba(60,40,120,0.5)] ring-1 ring-white/80 active:scale-[0.99]">
                   <StoreBadge storeId={r.storeId} storeName={r.storeName} size={40} />
                   <span className="min-w-0 flex-1">
-                    {r.storeName && <span className="block truncate text-[10.5px] font-bold tracking-wide text-[#4de1ff] uppercase">{r.storeName}</span>}
+                    {r.storeName && <span className="block truncate text-[10.5px] font-bold tracking-wide text-[#6a4cc0] uppercase">{r.storeName}</span>}
                     <span className="block truncate text-[13.5px] font-extrabold">{r.name}</span>
-                    <span className="block font-mono text-[11.5px] tracking-wider text-[#ffc83d]">{r.code}</span>
+                    <span className="block font-mono text-[11.5px] tracking-wider text-[#b07a00]">{r.code}</span>
                   </span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${r.used ? 'bg-white/15 text-white/60' : 'bg-emerald-400/20 text-emerald-300'}`}>{r.used ? 'Usado' : 'Disponible'}</span>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${r.used ? 'bg-[#1c1747]/10 text-[#1c1747]/60' : 'bg-emerald-100 text-emerald-800'}`}>{r.used ? 'Usado' : 'Disponible'}</span>
                 </button>
               </li>
             ))}
