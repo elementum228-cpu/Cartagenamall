@@ -101,12 +101,9 @@ export function MerchantPromotions({ store }: { store: Store }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <div className="flex items-center gap-2.5">
-          <p className="text-2xl font-extrabold tracking-tight">Promociones</p>
-          <span className="rounded-full bg-ink/[0.07] px-3 py-1 text-xs font-bold text-ink-soft">{activeCount} {activeCount === 1 ? 'activa' : 'activas'}</span>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <p className="text-sm text-ink-soft">¿Qué quieres conseguir hoy? Elige una promoción según tu objetivo.</p>
+        <span className="rounded-full bg-ink/[0.07] px-2.5 py-0.5 text-[11.5px] font-bold text-ink-soft">{activeCount} {activeCount === 1 ? 'activa' : 'activas'}</span>
       </div>
 
       <div className="scrollbar-none -mx-1 flex gap-2 overflow-x-auto px-1" role="tablist" aria-label="Objetivo de la promoción">
@@ -119,14 +116,14 @@ export function MerchantPromotions({ store }: { store: Store }) {
               role="tab"
               aria-selected={sel}
               onClick={() => setGoal(g.id)}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-bold transition active:scale-[0.98] ${sel ? 'border-brand bg-brand text-white' : 'border-line bg-card text-ink hover:bg-sand'}`}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-bold transition active:scale-[0.98] ${sel ? 'border-teal/40 bg-teal/10 text-teal' : 'border-line bg-transparent text-ink-soft hover:bg-sand'}`}
             >
-              <Icon className="size-4" /> {g.name}
+              <Icon className="size-3.5" /> {g.name}
             </button>
           )
         })}
       </div>
-      <p className="text-xs text-ink-soft">Puedes configurarla ahora y activarla después de revisarla.</p>
+      <p className="text-xs text-ink-soft/80">Puedes configurarla ahora y activarla después de revisarla.</p>
 
       <ul className="grid gap-3 sm:grid-cols-2">
         {shownCards.map((c) => {
@@ -134,14 +131,14 @@ export function MerchantPromotions({ store }: { store: Store }) {
           const Icon = c.icon
           const selected = open === c.mode
           return (
-            <li key={c.mode} className={`flex flex-col gap-2 rounded-3xl border bg-card p-4 ${selected || (c.recommended && goal === 'sell' && !open) ? 'border-brand ring-2 ring-brand/15' : 'border-line'}`}>
+            <li key={c.mode} className={`flex flex-col gap-2 rounded-2xl border bg-card p-3.5 ${selected || (c.recommended && goal === 'sell' && !open) ? 'border-brand ring-2 ring-brand/15' : 'border-line'}`}>
               <div className="flex items-start gap-3">
-                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand/10 text-brand" aria-hidden>
-                  <Icon className="size-6" />
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand" aria-hidden>
+                  <Icon className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="text-[17px] leading-tight font-extrabold">{c.name}</p>
+                    <p className="text-[15px] leading-tight font-bold">{c.name}</p>
                     {on && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">Activa</span>}
                   </div>
                   {c.recommended && !on && (
@@ -149,7 +146,7 @@ export function MerchantPromotions({ store }: { store: Store }) {
                       <Star className="size-3" /> Recomendada para hoy
                     </span>
                   )}
-                  <p className="mt-1 text-sm leading-snug text-ink-soft">{c.help}</p>
+                  <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">{c.help}</p>
                 </div>
               </div>
               {how === c.mode && (
@@ -161,7 +158,7 @@ export function MerchantPromotions({ store }: { store: Store }) {
                 <button className="text-xs font-semibold text-ink-soft underline underline-offset-2" onClick={() => setHow(how === c.mode ? null : c.mode)}>
                   {how === c.mode ? 'Ocultar' : 'Cómo funciona'}
                 </button>
-                <button className={`${btn.primary} min-w-32`} onClick={() => setOpen(selected ? null : c.mode)}>
+                <button className={`${selected ? btn.secondary : btn.primary} !px-4 !py-2 min-w-28 !text-[13px]`} onClick={() => setOpen(selected ? null : c.mode)}>
                   {selected ? 'Cerrar' : 'Configurar'}
                 </button>
               </div>

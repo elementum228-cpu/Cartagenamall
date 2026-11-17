@@ -190,7 +190,7 @@ function MerchantContent() {
     <div className="mx-auto max-w-4xl px-4 pt-4 pb-28 md:pb-10 lg:max-w-6xl lg:px-8">
       <DemoNotice />
       <Header store={store} onSwitch={() => setStoreId(null)} canSwitch={stores.length > 1} />
-      <nav className="scrollbar-none mt-4 hidden gap-1 overflow-x-auto md:flex" aria-label="Secciones de mi negocio">
+      <nav className="scrollbar-none sticky top-[calc(var(--chrome-top)-4px)] z-20 mt-4 hidden gap-1 overflow-x-auto rounded-2xl border border-line bg-white/95 p-1.5 shadow-[0_8px_24px_-14px_rgba(6,44,66,0.4)] backdrop-blur md:flex" aria-label="Secciones de mi negocio">
         {(
           [
             ['resumen', 'Resumen', BarChart3],
@@ -205,14 +205,14 @@ function MerchantContent() {
             key={id}
             onClick={() => setTab(id)}
             aria-pressed={tab === id}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition ${tab === id ? 'bg-ink text-white' : 'text-ink-soft hover:bg-ink/5'}`}
+            className={`flex min-h-11 flex-1 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-bold whitespace-nowrap outline-none transition focus-visible:ring-2 focus-visible:ring-teal/60 ${tab === id ? 'bg-ink text-white shadow-[0_6px_16px_-8px_rgba(6,44,66,0.7)]' : 'text-ink/70 hover:bg-ink/[0.06] hover:text-ink'}`}
           >
-            <Icon className="size-4" />
+            <Icon className="size-[18px]" strokeWidth={tab === id ? 2.2 : 1.9} />
             {label}
           </button>
         ))}
       </nav>
-      <div className="mt-4">
+      <div className="mt-5">
         {tab === 'resumen' && (
           <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6 lg:space-y-0">
             {/* escritorio: lo que pide acción (progreso, bonos, ayuda) queda a la derecha y fijo mientras se recorren las ventas */}
