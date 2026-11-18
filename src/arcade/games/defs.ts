@@ -20,6 +20,10 @@ export interface GameDef<S> {
   H: number
   /** Cómo se juega, en una frase. */
   how: string
+  /** Si existe, el campo se adapta al alto disponible (entre `min` y `max` de alto lógico) en vez de tener proporción fija. */
+  fitHeight?: { min: number; max: number }
+  /** Avisa al juego del alto lógico actual del campo (con `fitHeight`) para que acomode lo que depende de él. */
+  resize?(s: S, h: number): void
   create(): S
   update(s: S, dt: number): void
   draw(s: S, ctx: CanvasRenderingContext2D, t: number): void
@@ -47,6 +51,8 @@ const CH = 668
 const TIME = 45
 const COLS = [62, 180, 298]
 const ROWS = [236, 394, 552]
+/** Posición de cada fila como fracción del alto del campo. */
+const ROW_FRAC = ROWS.map((y) => y / CH)
 
 type CrabKind = 'crab' | 'gold' | 'octo'
 interface Hole {
@@ -67,6 +73,8 @@ interface Pop {
   age: number
 }
 export interface CrabsState {
+  /** Alto lógico del campo: se ajusta al espacio de la pantalla (navegador o app). */
+  h: number
   holes: Hole[]
   left: number
   elapsed: number
@@ -247,7 +255,16 @@ export const CRABS: GameDef<CrabsState> = {
   W: CW,
   H: CH,
   how: 'Toca los cangrejos antes de que se escondan. El dorado vale triple. ¡Cuidado con el pulpo!',
+  fitHeight: { min: 480, max: 760 },
+  resize(s, h) {
+    s.h = h
+    // las tres filas se reparten en el alto disponible, con las mismas proporciones de siempre
+    s.holes.forEach((hole, i) => {
+      hole.y = ROW_FRAC[Math.floor(i / COLS.length)] * h
+    })
+  },
   create: () => ({
+    h: CH,
     holes: ROWS.flatMap((y) => COLS.map((x) => ({ x, y, kind: null, age: 0, dur: 1, hit: false }))),
     left: TIME,
     elapsed: 0,
@@ -330,15 +347,20 @@ export const CRABS: GameDef<CrabsState> = {
     ctx.save()
     ctx.translate(sx, 0)
     // ── fondo: playa al atardecer (ilustración); sin ella, un degradado suave mientras carga ──
-    if (ready(ART.fondo)) ctx.drawImage(ART.fondo, -6, 0, CW + 12, CH)
-    else {
-      const sky = ctx.createLinearGradient(0, 0, 0, CH)
+    if (ready(ART.fondo)) {
+      // la ilustración cubre todo el campo (sea alto o bajo), pegada arriba para conservar el horizonte
+      const im = ART.fondo
+      const k = Math.max((CW + 12) / im.naturalWidth, s.h / im.naturalHeight)
+      const dw = im.naturalWidth * k
+      ctx.drawImage(im, (CW - dw) / 2, 0, dw, im.naturalHeight * k)
+    } else {
+      const sky = ctx.createLinearGradient(0, 0, 0, s.h)
       sky.addColorStop(0, '#8a7be6')
       sky.addColorStop(0.3, '#ff9a8a')
       sky.addColorStop(0.32, '#e8b878')
       sky.addColorStop(1, '#e9b983')
       ctx.fillStyle = sky
-      ctx.fillRect(-6, 0, CW + 12, CH)
+      ctx.fillRect(-6, 0, CW + 12, s.h)
     }
     // ── huecos: la parte de atrás, luego las criaturas y encima el labio delantero ──
     for (const h of s.holes) holeSprite(ctx, h.x, h.y + 6, false)

@@ -33,13 +33,39 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
   const [result, setResult] = useState<Result | null>(null)
   const best = useArcade((s) => s.best)
 
+  /** Alto lógico actual del campo (cambia con la pantalla en los juegos que se adaptan). */
+  const logicalH = useRef(def.H)
+
+  /** Acomoda el lienzo al espacio disponible: los juegos con `fitHeight` llenan el ancho y estiran su alto; los demás se centran sin deformarse. */
   const fit = useCallback(() => {
     const cv = canvas.current
     const h = holder.current
-    if (!cv || !h) return
+    if (!cv || !h || !h.clientWidth || !h.clientHeight) return
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    cv.width = Math.max(1, Math.round(h.clientWidth * dpr))
-    cv.height = Math.max(1, Math.round((cv.width * def.H) / def.W))
+    const hw = h.clientWidth
+    const hh = h.clientHeight
+    let H = def.H
+    let lw: number
+    let lh: number
+    if (def.fitHeight) {
+      H = Math.max(def.fitHeight.min, Math.min(def.fitHeight.max, (def.W * hh) / hw))
+      lw = hw
+      lh = (hw * H) / def.W
+      if (lh > hh) {
+        lh = hh
+        lw = (hh * def.W) / H
+      }
+      if (state.current) def.resize?.(state.current, H)
+    } else {
+      const k = Math.min(hw / def.W, hh / def.H)
+      lw = def.W * k
+      lh = def.H * k
+    }
+    logicalH.current = H
+    cv.style.width = `${lw}px`
+    cv.style.height = `${lh}px`
+    cv.width = Math.max(1, Math.round(lw * dpr))
+    cv.height = Math.max(1, Math.round(lh * dpr))
   }, [def])
 
   const paint = useCallback(
@@ -109,7 +135,7 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
   /** Posición del toque en coordenadas del campo. */
   const at = (e: React.PointerEvent) => {
     const r = canvas.current!.getBoundingClientRect()
-    return { x: ((e.clientX - r.left) / r.width) * def.W, y: ((e.clientY - r.top) / r.height) * def.H }
+    return { x: ((e.clientX - r.left) / r.width) * def.W, y: ((e.clientY - r.top) / r.height) * logicalH.current }
   }
   const send = (kind: 'down' | 'move' | 'up') => (e: React.PointerEvent) => {
     if (phase !== 'play' || !state.current) return
@@ -121,8 +147,8 @@ export function MiniGame({ id, onPrizes, active = true }: { id: MiniGameId; onPr
 
   return (
     <div className={`${soft ? 'px-0 py-0' : 'arcade-frame px-3 py-3'} flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-hidden text-center text-white`}>
-      <div ref={holder} className={`relative w-full overflow-hidden ${soft ? `rounded-[24px] border-2 border-white/70 shadow-[0_14px_30px_-16px_rgba(60,30,100,0.7)] ${id === 'cangrejos' ? 'bg-[#e9b983]' : 'bg-[#120a40]'}` : 'border-[3px] border-[#07031a] bg-[#0a0d1f]'}`} style={{ aspectRatio: `${def.W} / ${def.H}`, maxWidth: `calc((100dvh - ${soft ? 146 : 230}px) * ${def.W / def.H})` }}>
-        <canvas ref={canvas} className="block size-full touch-none select-none" onPointerDown={send('down')} onPointerMove={send('move')} onPointerUp={send('up')} onPointerCancel={send('up')} aria-label={`Juego: ${def.name}`} />
+      <div ref={holder} className={`relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden ${soft ? `rounded-[24px] border-2 border-white/70 shadow-[0_14px_30px_-16px_rgba(60,30,100,0.7)] ${id === 'cangrejos' ? 'bg-[#e9b983]' : 'bg-[#120a40]'}` : 'border-[3px] border-[#07031a] bg-[#0a0d1f]'}`}>
+        <canvas ref={canvas} className="block shrink-0 touch-none select-none" onPointerDown={send('down')} onPointerMove={send('move')} onPointerUp={send('up')} onPointerCancel={send('up')} aria-label={`Juego: ${def.name}`} />
         {phase === 'menu' && (
           <div className={`absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 ${soft ? 'bg-[#2a1a5e]/55 backdrop-blur-[3px]' : 'bg-[#07031a]/92'}`}>
             {soft ? <h3 className="text-[26px] leading-tight font-extrabold tracking-tight text-white drop-shadow">{def.name}</h3> : <h3 className="font-arcade arcade-cyan text-[14px] leading-snug">{def.name.toUpperCase()}</h3>}
