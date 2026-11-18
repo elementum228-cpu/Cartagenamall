@@ -255,7 +255,7 @@ export const CRABS: GameDef<CrabsState> = {
   W: CW,
   H: CH,
   how: 'Toca los cangrejos antes de que se escondan. El dorado vale triple. ¡Cuidado con el pulpo!',
-  fitHeight: { min: 480, max: 760 },
+  fitHeight: { min: 420, max: 760 },
   resize(s, h) {
     s.h = h
     // las tres filas se reparten en el alto disponible, con las mismas proporciones de siempre
