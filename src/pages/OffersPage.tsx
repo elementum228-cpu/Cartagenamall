@@ -57,7 +57,7 @@ export function OffersPage() {
             <Gem className="size-4 text-brand" /> Ofertas secretas
           </span>
         </SectionTitle>
-        <p className="-mt-1 mb-3 text-sm text-ink-soft">Solo aparecen explorando el mall en 3D: acércate a las tiendas y busca la gema dorada.</p>
+        <p className="-mt-1 mb-3 text-sm text-ink-soft">Solo aparecen explorando el mall en 3D: acércate a las tiendas y busca el regalo rosado con moño dorado.</p>
         <div className="grid gap-3 sm:grid-cols-3">
           {secret.map((p) => (discovered.includes(p.id) ? <OfferCard key={p.id} promo={p} saved={saved.includes(p.id)} /> : <LockedSecret key={p.id} promo={p} />))}
         </div>

@@ -9,15 +9,15 @@ import { lightPoolMat } from './night'
 import { liveOrigins } from './floors'
 
 /** Distancia (en unidades del mundo) a la que hay que acercarse para que aparezca la señal. */
-const REVEAL_DISTANCE = 9
+const REVEAL_DISTANCE = 15
 /** Además, la cámara debe estar al menos así de cerca respecto al encuadre general. */
-const REVEAL_ZOOM_RATIO = 1.7
+const REVEAL_ZOOM_RATIO = 1.3
 
 const HINT_COUNT = 6
 /** Colores por tipo: gema dorada (oferta escondida) o turquesa (pista de la búsqueda del tesoro). */
 const TONES = {
-  gold: { gem: mat('#f5b544', { emissive: 0.55, rough: 0.35 }), sparkle: mat('#fff3c4', { emissive: 0.9 }), pool: lightPoolMat('#ffcc4d', 0.9, 0.35) },
-  treasure: { gem: mat('#13b9ad', { emissive: 0.6, rough: 0.3 }), sparkle: mat('#d9fffb', { emissive: 0.95 }), pool: lightPoolMat('#5ef2e4', 0.9, 0.35) },
+  gold: { gem: mat('#ff5a8a', { emissive: 0.35, rough: 0.4 }), ribbon: mat('#ffd45c', { emissive: 0.5, rough: 0.35 }), sparkle: mat('#fff3c4', { emissive: 0.9 }), pool: lightPoolMat('#ffcc4d', 0.9, 0.35) },
+  treasure: { gem: mat('#13b9ad', { emissive: 0.4, rough: 0.35 }), ribbon: mat('#fff3c4', { emissive: 0.6, rough: 0.35 }), sparkle: mat('#d9fffb', { emissive: 0.95 }), pool: lightPoolMat('#5ef2e4', 0.9, 0.35) },
 }
 export type MarkerTone = keyof typeof TONES
 
@@ -26,10 +26,10 @@ export type MarkerTone = keyof typeof TONES
  * que eligió el comerciante, o junto a su local). No interrumpe: no abre nada sola, hay que tocarla.
  */
 export function HiddenMarker({ id, spot, interactive, onOpen, tone = 'gold' }: { id: string; spot: ResolvedSpot; interactive: boolean; onOpen: (id: string) => void; tone?: MarkerTone }) {
-  const { gem: gold, sparkle, pool: SPOT } = TONES[tone]
+  const { gem: gold, ribbon, sparkle, pool: SPOT } = TONES[tone]
   const [px, pz] = spot.at
   const group = useRef<THREE.Group>(null)
-  const gem = useRef<THREE.Mesh>(null)
+  const gem = useRef<THREE.Group>(null)
   const reveal = useRef(0)
 
   useFrame(({ clock }, dt) => {
@@ -46,7 +46,7 @@ export function HiddenMarker({ id, spot, interactive, onOpen, tone = 'gold' }: {
     g.scale.setScalar(s)
     const t = clock.elapsedTime
     g.position.y = 1.4 + Math.sin(t * 2.4) * 0.15
-    if (gem.current) gem.current.rotation.y = t * 1.6
+    if (gem.current) gem.current.rotation.y = Math.sin(t * 1.4) * 0.5
   })
 
   // Pista: destellos dorados sobre el escondite, visibles desde lejos mientras la gema sigue oculta.
@@ -62,14 +62,14 @@ export function HiddenMarker({ id, spot, interactive, onOpen, tone = 'gold' }: {
     h.visible = show
     if (glow.current) {
       glow.current.visible = show
-      glow.current.scale.setScalar((1.6 + Math.sin(t * 2) * 0.25) * fade)
+      glow.current.scale.setScalar((2.8 + Math.sin(t * 2) * 0.4) * fade)
     }
     if (!show) return
     h.children.forEach((c, i) => {
       const a = t * 0.7 + (i / HINT_COUNT) * Math.PI * 2
       const tw = Math.max(0, Math.sin(t * 3 + i * 1.9))
       c.position.set(Math.sin(a) * 1.4, hintY + Math.sin(t * 1.3 + i) * 0.5, Math.cos(a) * 1.4)
-      c.scale.setScalar((0.12 + tw * 0.22) * fade)
+      c.scale.setScalar((0.2 + tw * 0.34) * fade)
       c.rotation.y = t * 2
     })
   })
@@ -83,22 +83,33 @@ export function HiddenMarker({ id, spot, interactive, onOpen, tone = 'gold' }: {
       </group>
       <mesh ref={glow} geometry={GEO.plane} material={SPOT} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.26, 0]} />
       <group ref={group} visible={false}>
-        <mesh
-          ref={gem}
-          userData={{ secretGem: true }}
-          geometry={GEO.octa}
-          material={gold}
-          scale={[0.7, 1, 0.7]}
-          castShadow
-          onClick={(e) => {
-            if (!interactive || cameraState.handMode || e.delta > 8 || reveal.current < 0.5) return
-            e.stopPropagation()
-            onOpen(id)
-          }}
-          onPointerOver={() => (document.body.style.cursor = 'pointer')}
-          onPointerOut={() => (document.body.style.cursor = '')}
-        />
-        <mesh geometry={GEO.torus} material={sparkle} rotation={[Math.PI / 2, 0, 0]} position={[0, -0.6, 0]} scale={[0.55, 0.55, 0.55]} />
+        {/* el regalo: caja con tapa, cinta en cruz y moño; se ve grande y brillante para encontrarlo fácil */}
+        <group ref={gem} scale={1.5}>
+          <mesh
+            userData={{ secretGem: true }}
+            geometry={GEO.rounded}
+            material={gold}
+            scale={[1, 0.8, 1]}
+            position={[0, -0.1, 0]}
+            castShadow
+            onClick={(e) => {
+              if (!interactive || cameraState.handMode || e.delta > 8 || reveal.current < 0.5) return
+              e.stopPropagation()
+              onOpen(id)
+            }}
+            onPointerOver={() => (document.body.style.cursor = 'pointer')}
+            onPointerOut={() => (document.body.style.cursor = '')}
+          />
+          <mesh geometry={GEO.rounded} material={gold} scale={[1.1, 0.24, 1.1]} position={[0, 0.38, 0]} castShadow />
+          <mesh geometry={GEO.box} material={ribbon} scale={[0.2, 0.84, 1.02]} position={[0, -0.1, 0]} />
+          <mesh geometry={GEO.box} material={ribbon} scale={[1.02, 0.84, 0.2]} position={[0, -0.1, 0]} />
+          <mesh geometry={GEO.box} material={ribbon} scale={[0.2, 0.26, 1.12]} position={[0, 0.38, 0]} />
+          <mesh geometry={GEO.box} material={ribbon} scale={[1.12, 0.26, 0.2]} position={[0, 0.38, 0]} />
+          <mesh geometry={GEO.sphereSmooth} material={ribbon} scale={[0.42, 0.3, 0.2]} position={[-0.25, 0.7, 0]} rotation={[0, 0, 0.5]} />
+          <mesh geometry={GEO.sphereSmooth} material={ribbon} scale={[0.42, 0.3, 0.2]} position={[0.25, 0.7, 0]} rotation={[0, 0, -0.5]} />
+          <mesh geometry={GEO.sphereSmooth} material={ribbon} scale={0.2} position={[0, 0.62, 0]} />
+        </group>
+        <mesh geometry={GEO.torus} material={sparkle} rotation={[Math.PI / 2, 0, 0]} position={[0, -1.1, 0]} scale={[0.9, 0.9, 0.9]} />
         {[0, 1, 2].map((i) => (
           <mesh key={i} geometry={GEO.octa} material={sparkle} position={[Math.sin(i * 2.1) * 0.7, 0.4 + i * 0.15, Math.cos(i * 2.1) * 0.7]} scale={0.14} />
         ))}
@@ -106,7 +117,7 @@ export function HiddenMarker({ id, spot, interactive, onOpen, tone = 'gold' }: {
         <mesh
           userData={{ secretGem: true }}
           geometry={GEO.sphere}
-          scale={2}
+          scale={3}
           onClick={(e) => {
             if (!interactive || cameraState.handMode || e.delta > 8 || reveal.current < 0.5) return
             e.stopPropagation()

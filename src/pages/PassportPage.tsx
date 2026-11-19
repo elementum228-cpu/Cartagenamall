@@ -116,7 +116,7 @@ function TreasureHunt() {
               {current.floorId === 'P2' ? ' · Piso 2' : ''}
             </p>
             <p className="mt-0.5 text-[15px] leading-snug font-semibold">{current.clue}</p>
-            <p className="mt-1.5 text-[12px] text-ink-soft">Acércate con zoom: verás destellos turquesa y una gema turquesa que puedes tocar.</p>
+            <p className="mt-1.5 text-[12px] text-ink-soft">Acércate con zoom: verás destellos turquesa y un regalo turquesa que puedes tocar.</p>
             <button
               className="glass-teal mt-3 h-11 w-full rounded-full text-[14px] font-semibold"
               onClick={() => {
