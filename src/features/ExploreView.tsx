@@ -631,14 +631,14 @@ const TIME_LABEL = { auto: 'Hora real', day: 'Día', dusk: 'Atardecer', night: '
 const NEXT_MODE = { auto: 'day', day: 'dusk', dusk: 'night', night: 'auto' } as const
 
 /** Alterna Hora real (según el reloj: atardecer y amanecer graduales) → Día → Atardecer → Noche. */
-function TimeToggle() {
+function TimeToggle({ className }: { className?: string } = {}) {
   const mode = usePrefs((s) => s.timeMode)
   const setMode = usePrefs((s) => s.setTimeMode)
   const night = useIsNight()
   const Icon = mode === 'auto' ? SunMoon : mode === 'day' ? Sun : mode === 'dusk' ? Sunset : Moon
   return (
     <button
-      className={`glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap shadow-none transition active:scale-[0.98] ${night ? '!bg-deep/85 !text-white' : 'text-ink'}`}
+      className={`${className ?? 'glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap shadow-none transition active:scale-[0.98]'} ${night ? '!bg-deep/85 !text-white' : className ? '' : 'text-ink'}`}
       onClick={() => setMode(NEXT_MODE[mode])}
       aria-label={`Iluminación: ${TIME_LABEL[mode]}. Toca para cambiar`}
       title={`Iluminación: ${TIME_LABEL[mode]}`}
@@ -684,10 +684,10 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
   const [open, setOpen] = useState(false)
   // el cliente ve Plano 2D, día/noche/hora real, instalar, recorrido guiado y calidad; las herramientas de prueba y de guía son del administrador
   const canAdmin = useCanAdmin()
-  const item =
-    'glass flex h-11 min-w-11 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap text-ink shadow-none transition duration-200 active:scale-[0.98]'
+  // fichas cuadradas y compactas (icono arriba, nombre corto abajo): el menú entero cabe en pantalla, también con todas las herramientas de administración
+  const item = 'opt-tile flex min-h-[62px] w-full flex-col items-center justify-center gap-1 rounded-2xl px-1.5 py-2 text-center text-[11px] leading-tight font-semibold transition duration-150 active:scale-[0.96] [&>svg]:size-[19px]'
 
-  const buttons = (
+  const viewButtons = (
     <>
       {webgl && (
         <button
@@ -706,7 +706,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           {use3D ? <MapIcon className="size-4" /> : <Box className="size-4" />} {use3D ? 'Plano 2D' : 'Vista 3D'}
         </button>
       )}
-      {use3D && <TimeToggle />}
+      {use3D && <TimeToggle className={item} />}
       <InstallButton className={item} onDone={() => setOpen(false)} />
       <button
         className={`${item} ${qualityMode !== 'auto' ? '!bg-deep/85 !text-white' : ''}`}
@@ -728,7 +728,10 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           <Route className="size-4" /> Recorrido guiado
         </button>
       )}
-      {canAdmin && (
+    </>
+  )
+
+  const adminButtons = (
         <>
           <DemoPromoButton className={item} onDone={() => setOpen(false)} />
           {use3D && <ShipTestButton className={item} onDone={() => setOpen(false)} />}
@@ -751,17 +754,44 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           {use3D && <StadiumToggle className={item} />}
           {use3D && <StadiumEventToggle className={item} />}
         </>
-      )}
-    </>
   )
 
-  // escritorio y móvil: un solo botón de opciones que despliega el menú (el mapa queda limpio)
+  // el menú se cierra con Escape o tocando fuera de él
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    const onDown = (e: PointerEvent) => {
+      if (root.current && !root.current.contains(e.target as Node)) setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onDown)
+    }
+  }, [open])
+
+  // escritorio y móvil: un solo botón de opciones que despliega un panel compacto (el mapa queda limpio)
   void desktop
   return (
-    <div className="relative">
+    <div className="relative" ref={root}>
       {open && (
-        <div className="absolute right-0 bottom-full mb-2 flex flex-col items-stretch gap-2 *:justify-start" role="menu">
-          {buttons}
+        <div
+          className="opt-pop nav-pill absolute right-0 bottom-full mb-2 max-h-[calc(100dvh-200px)] w-[min(calc(100vw-24px),348px)] overflow-y-auto overscroll-contain rounded-[26px] p-3"
+          role="menu"
+          aria-label="Opciones"
+        >
+          <p className="px-1 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] uppercase opacity-60">Vista</p>
+          <div className="grid grid-cols-3 gap-1.5">{viewButtons}</div>
+          {canAdmin && (
+            <>
+              <p className="flex items-center gap-2 px-1 pt-3 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] uppercase opacity-60">
+                Administración <span className="rounded-full bg-[#00716c] px-1.5 py-px text-[9px] tracking-wider text-white">Solo tú</span>
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">{adminButtons}</div>
+            </>
+          )}
         </div>
       )}
       <button

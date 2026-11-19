@@ -226,6 +226,22 @@ body {
 .theme-night .nav-tab { color: rgb(247 245 241 / 0.84); }
 .theme-night .nav-tab-on { background: #2ad1c4; color: #04262a; box-shadow: 0 4px 14px -4px rgb(42 209 196 / 0.6); }
 
+/* Menú de opciones del mapa: fichas compactas que se ven bien de día y de noche, y entrada suave. */
+.opt-tile {
+  background: rgb(16 35 45 / 0.06);
+  color: #1f2d36;
+}
+.theme-night .opt-tile {
+  background: rgb(255 255 255 / 0.1);
+  color: #f2efe8;
+}
+@keyframes opt-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.opt-pop { transform-origin: bottom right; animation: opt-pop 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .opt-pop { animation: none; } }
+
 /* Navegador sin desenfoque: superficies más opacas para mantener la legibilidad. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass { background: rgb(247 245 241 / 0.94); }
