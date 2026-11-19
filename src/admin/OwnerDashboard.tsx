@@ -1,4 +1,6 @@
-import { Building2, Eye, Gamepad2, MapPin, RotateCcw, Search, Trophy, Utensils } from 'lucide-react'
+import { Building2, Eye, Gamepad2, MapPin, Power, RotateCcw, Search, Trophy, Utensils } from 'lucide-react'
+import { remoteEnabled, supabase } from '../remote/client'
+import { useSession } from '../remote/session'
 import { usePreviewMall } from '../state/previewMall'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -45,6 +47,63 @@ function useRows(): Row[] {
   )
 }
 
+/**
+ * Cierre de emergencia: cierra la sesión de TODAS las cuentas en TODOS los dispositivos (clientes, negocios y administradores).
+ * Las cuentas no se borran. Pide escribir «CERRAR» para evitar toques por error. Solo con la base de datos conectada.
+ */
+function SignOutAllCard() {
+  const toast = useUI((s) => s.toast)
+  const [open, setOpen] = useState(false)
+  const [word, setWord] = useState('')
+  const [busy, setBusy] = useState(false)
+  if (!remoteEnabled()) return null
+  const run = async () => {
+    if (word.trim().toUpperCase() !== 'CERRAR' || !supabase) return
+    setBusy(true)
+    const { data, error } = await supabase.rpc('cerrar_todas_las_sesiones')
+    setBusy(false)
+    if (error) return toast(/does not exist|schema cache/i.test(error.message) ? 'Falta aplicar la migración 0032 en la base de datos.' : `No se pudo cerrar las sesiones: ${error.message}`, 'error')
+    const n = (data as { sessions?: number } | null)?.sessions
+    toast(`Listo: ${n ?? 'todas las'} sesiones cerradas. Entra de nuevo con tu cuenta.`, 'success')
+    setOpen(false)
+    setWord('')
+    await useSession.getState().signOut()
+  }
+  return (
+    <section className="rounded-2xl border border-red-200 bg-red-50/60 p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-red-100 text-red-700" aria-hidden>
+          <Power className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-extrabold text-red-900">Cerrar todas las sesiones</p>
+          <p className="mt-0.5 text-xs text-red-900/80">Saca de la app a todas las cuentas (clientes, negocios y administradores) en todos los dispositivos. No borra ninguna cuenta: cada persona vuelve a entrar con su correo y contraseña. Úsalo en una emergencia de seguridad.</p>
+        </div>
+      </div>
+      {!open ? (
+        <button className="mt-3 w-full rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-bold text-red-700 active:scale-[0.99]" onClick={() => setOpen(true)}>
+          Cerrar todas las sesiones…
+        </button>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <label className="block text-xs font-bold text-red-900">
+            Escribe CERRAR para confirmar
+            <input className="mt-1 w-full rounded-xl border border-red-300 bg-white px-3.5 py-2.5 text-[15px] tracking-widest uppercase outline-none focus:border-red-500" value={word} onChange={(e) => setWord(e.target.value)} autoCapitalize="characters" autoComplete="off" placeholder="CERRAR" />
+          </label>
+          <div className="flex gap-2">
+            <button className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-extrabold text-white disabled:opacity-40" disabled={busy || word.trim().toUpperCase() !== 'CERRAR'} onClick={() => void run()}>
+              {busy ? 'Cerrando…' : 'Sí, cerrar todo'}
+            </button>
+            <button className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold" onClick={() => { setOpen(false); setWord('') }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 /** Prueba completa: llena todos los espacios libres con negocios inventados para ver el mall lleno. Solo en este dispositivo. */
 function FullMallCard() {
   const full = usePreviewMall((s) => s.full)
@@ -73,6 +132,7 @@ export function OwnerDashboard() {
   return (
     <div className="space-y-6">
       <FullMallCard />
+      <SignOutAllCard />
       <div>
         <h2 className="text-xl font-extrabold tracking-tight">Gestión del centro comercial</h2>
         <p className="text-sm text-ink-soft">Todos los espacios y amenidades del mall, su ocupación y el precio mensual de cada uno. Los precios que cambies se ven al instante en el mapa y en las fichas para reclamar.</p>

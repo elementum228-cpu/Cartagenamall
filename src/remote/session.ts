@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from './client'
+import { mustSignOut } from './sessionEpoch'
 
 /** Sesión del comerciante o administrador (solo con base de datos conectada). */
 interface SessionState {
@@ -85,11 +86,30 @@ export const useSession = create<SessionState>()((set, get) => ({
   },
 }))
 
+/** ¿Se cerraron todas las sesiones después de que esta persona entró? Si sí, sale de este dispositivo. */
+async function checkGlobalSignOut() {
+  if (!supabase) return
+  const { data } = await supabase.auth.getSession()
+  const user = data.session?.user
+  if (!user) return
+  const { data: row, error } = await supabase.from('mall_settings').select('doc').eq('key', 'session_epoch').maybeSingle()
+  if (error || !row) return
+  if (mustSignOut((row.doc as { at?: unknown } | null)?.at, user.last_sign_in_at)) {
+    await supabase.auth.signOut({ scope: 'local' })
+    await useSession.getState().refresh()
+  }
+}
+
 if (supabase) {
   supabase.auth.onAuthStateChange(() => {
     void useSession.getState().refresh()
   })
-  void useSession.getState().refresh()
+  void useSession.getState().refresh().then(checkGlobalSignOut)
+  // al volver a primer plano y cada 5 minutos con la app abierta
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) void checkGlobalSignOut()
+  })
+  window.setInterval(() => void checkGlobalSignOut(), 300_000)
 }
 
 /** ¿Mostrar el módulo de administración? Solo a administradores (sin base de datos, en modo demostración, sí). */
