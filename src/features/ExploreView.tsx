@@ -38,6 +38,7 @@ import {
   Shirt,
   Smartphone,
   Sparkles,
+  Telescope,
   Trophy,
   Utensils,
   Layers,
@@ -75,7 +76,7 @@ import { usePersonal } from '../state/personal'
 import { usePassport, usePassportStamps } from '../state/passport'
 import { useSeason, useSeasonSettings } from '../state/season'
 import { usePrefs, useUI } from '../state/ui'
-import { useArcadeUi } from '../arcade/store'
+import { useArcade, useArcadeUi } from '../arcade/store'
 import { Countdown, StoreLogo } from '../ui/bits'
 import { Map2D } from './Map2D'
 import { usePromoEvents } from '../promotions/store'
@@ -234,6 +235,7 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
   useEffect(() => {
     if (!overview) setCtaSeen()
   }, [overview, setCtaSeen])
+  const arcadeTickets = useArcade((s) => s.points)
   const hiddenLeft = Math.max(0, secretTotal - Math.min(discovered.length, secretTotal))
   // Globito de «Descubre»: lo que hay de nuevo (el periódico de hoy sin leer, ofertas escondidas por encontrar).
   const discoverBadge = (!hoySeenToday() || hoyNotice ? 1 : 0) + (hiddenLeft > 0 ? 1 : 0)
@@ -305,10 +307,21 @@ function Hud({ use3D, webgl, dimmed }: { use3D: boolean; webgl: boolean; dimmed:
               aria-label={discoverBadge ? `Descubre, ${discoverBadge} novedades` : 'Descubre'}
               className="glass touch-hit relative flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold tracking-[-0.005em] text-ink shadow-none transition active:scale-[0.98]"
             >
-              <Sparkles className="size-4" strokeWidth={1.9} />
+              <Telescope className="size-4" strokeWidth={1.9} />
               Descubre
               {discoverBadge > 0 && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-amber px-1 text-[10px] leading-none font-extrabold text-deep">{discoverBadge}</span>}
             </button>
+            {entOn && (
+              <button
+                data-tour="tiquetes"
+                onClick={() => useArcadeUi.getState().setOpen(true)}
+                aria-label={`Arcade: tienes ${arcadeTickets} tiquetes`}
+                className="glass touch-hit relative flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold tracking-[-0.005em] text-ink tabular-nums shadow-none transition active:scale-[0.98]"
+              >
+                <Ticket className="size-4 -rotate-12 text-[#e0558a]" strokeWidth={2} />
+                {arcadeTickets.toLocaleString('es-CO')}
+              </button>
+            )}
           </div>
         )}
         <div
