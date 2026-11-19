@@ -235,6 +235,13 @@ body {
   background: rgb(255 255 255 / 0.1);
   color: #f2efe8;
 }
+.opt-head { color: #5a6872; }
+.theme-night .opt-head { color: rgb(247 245 241 / 0.7); }
+/* ficha encendida (toggle activo) en modo noche: contorno turquesa para que se note sobre el panel oscuro */
+.theme-night .opt-tile[class*='bg-deep'] {
+  outline: 2px solid #2ad1c4;
+  outline-offset: -2px;
+}
 @keyframes opt-pop {
   from { opacity: 0; transform: translateY(8px) scale(0.96); }
   to { opacity: 1; transform: none; }

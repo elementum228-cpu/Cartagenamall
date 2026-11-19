@@ -782,11 +782,11 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           role="menu"
           aria-label="Opciones"
         >
-          <p className="px-1 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] uppercase opacity-60">Vista</p>
+          <p className="opt-head px-1 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] uppercase">Vista</p>
           <div className="grid grid-cols-3 gap-1.5">{viewButtons}</div>
           {canAdmin && (
             <>
-              <p className="flex items-center gap-2 px-1 pt-3 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] uppercase opacity-60">
+              <p className="opt-head flex items-center gap-2 px-1 pt-3 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] uppercase">
                 Administración <span className="rounded-full bg-[#00716c] px-1.5 py-px text-[9px] tracking-wider text-white">Solo tú</span>
               </p>
               <div className="grid grid-cols-3 gap-1.5">{adminButtons}</div>
