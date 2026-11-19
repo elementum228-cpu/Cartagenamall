@@ -86,9 +86,16 @@ export type AwningKind = 'none' | 'striped' | 'scalloped' | 'flat'
 export type SideKind = 'plain' | 'lattice' | 'brick'
 export type SignKind = 'band' | 'board' | 'none'
 export type LogoSide = 'left' | 'right' | 'none'
-export type TopperKind = 'none' | 'logo' | 'cap' | 'burger' | 'pizza' | 'coffee' | 'icecream' | 'donut' | 'bag' | 'flower'
+export type TopperKind =
+  | 'none' | 'logo' | 'cap' | 'burger' | 'pizza' | 'coffee' | 'icecream' | 'donut' | 'bag' | 'flower'
+  | 'scissors' | 'lipstick' | 'taco' | 'burrito' | 'palm' | 'sombrero' | 'chili' | 'shoe' | 'phone' | 'dumbbell'
+/** Forma del logo en el pilar y sobre el techo: disco, placa cuadrada o letrero colgante. */
+export type LogoShape = 'round' | 'square' | 'hanging'
+/** «local» (6 × 5 m) o «isla» (el quiosco pequeño de 2,6 × 2,6 m). */
+export type LocalForm = 'local' | 'island'
 export interface LocalDesign {
   v: 1
+  form: LocalForm
   /** Modelo de partida (solo para mostrar cuál se eligió). */
   model: string
   wall: string
@@ -101,6 +108,7 @@ export interface LocalDesign {
   side: SideKind
   sign: SignKind
   logoSide: LogoSide
+  logoShape: LogoShape
   topper: TopperKind
   /** Mesas en la terraza de enfrente (0 a 3). */
   tables: 0 | 1 | 2 | 3

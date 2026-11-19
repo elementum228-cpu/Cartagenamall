@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import type { LocalDesign, Store } from '../domain/types'
+import type { LocalDesign, LogoShape, Store } from '../domain/types'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
 import { readableOn } from './localDesign'
@@ -11,13 +11,13 @@ import { readableOn } from './localDesign'
 
 type V3 = [number, number, number]
 
-function Bx({ p, s, m, cast = false, r }: { p: V3; s: V3; m: THREE.Material; cast?: boolean; r?: V3 }) {
+export function Bx({ p, s, m, cast = false, r }: { p: V3; s: V3; m: THREE.Material; cast?: boolean; r?: V3 }) {
   return <mesh geometry={GEO.box} material={m} position={p} scale={s} rotation={r} castShadow={cast} />
 }
 
 // ── texturas (pequeñas, creadas una vez por diseño) ────────────────────────────────────────────────────────────────────────────────
 
-function canvasTex(w: number, h: number, paint: (g: CanvasRenderingContext2D) => void, repeat = false) {
+export function canvasTex(w: number, h: number, paint: (g: CanvasRenderingContext2D) => void, repeat = false) {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
@@ -30,7 +30,7 @@ function canvasTex(w: number, h: number, paint: (g: CanvasRenderingContext2D) =>
 }
 
 /** Nombre del negocio en una franja: letra gruesa, centrada y ajustada al ancho. */
-function nameTexture(name: string, fg: string) {
+export function nameTexture(name: string, fg: string) {
   return canvasTex(1024, 192, (g) => {
     g.clearRect(0, 0, 1024, 192)
     g.fillStyle = fg
@@ -47,7 +47,7 @@ function nameTexture(name: string, fg: string) {
 }
 
 /** Logo del negocio dentro de un disco: la imagen subida o, sin ella, sus letras. */
-function useLogoTexture(store: Pick<Store, 'logo' | 'logoText' | 'brandColor'>, ring: string) {
+export function useLogoTexture(store: Pick<Store, 'logo' | 'logoText' | 'brandColor'>, ring: string) {
   const [img, setImg] = useState<THREE.Texture | null>(null)
   useEffect(() => {
     if (!store.logo) return setImg(null)
@@ -81,7 +81,7 @@ function useLogoTexture(store: Pick<Store, 'logo' | 'logoText' | 'brandColor'>, 
   return img ?? letters
 }
 
-function sideTexture(kind: 'lattice' | 'brick', wall: string, trim: string) {
+export function sideTexture(kind: 'lattice' | 'brick', wall: string, trim: string) {
   const c = new THREE.Color(wall)
   const dark = c.clone().multiplyScalar(0.72).getStyle()
   const light = c.clone().lerp(new THREE.Color('#ffffff'), 0.25).getStyle()
@@ -113,6 +113,21 @@ function sideTexture(kind: 'lattice' | 'brick', wall: string, trim: string) {
 
 // ── piezas ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/** Marca del negocio: disco, placa cuadrada o (colgante) placa de dos caras que sobresale de la fachada. */
+export function LogoMark({ shape, r, tex, rim }: { shape: LogoShape; r: number; tex: THREE.Texture; rim: THREE.Material }) {
+  if (shape === 'round') return <Disc r={r} tex={tex} rim={rim} />
+  const w = r * 1.75
+  return (
+    <group>
+      <Bx p={[0, 0, 0]} s={[w + 0.16, w + 0.16, 0.14]} m={rim} cast />
+      <mesh position={[0, 0, 0.08]}>
+        <planeGeometry args={[w, w]} />
+        <meshBasicMaterial map={tex} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
 function Disc({ r, tex, rim, z = 0 }: { r: number; tex: THREE.Texture; rim: THREE.Material; z?: number }) {
   return (
     <group position={[0, 0, z]}>
@@ -125,7 +140,7 @@ function Disc({ r, tex, rim, z = 0 }: { r: number; tex: THREE.Texture; rim: THRE
   )
 }
 
-function Table({ x, z, top, chair }: { x: number; z: number; top: THREE.Material; chair: THREE.Material }) {
+export function Table({ x, z, top, chair }: { x: number; z: number; top: THREE.Material; chair: THREE.Material }) {
   const leg = mat('#2b2420')
   return (
     <group position={[x, 0.08, z]}>
@@ -180,12 +195,12 @@ function PizzaSlice() {
 }
 
 /** Objetos que coronan el techo: hechos con formas simples y colores planos. Miden unos 2 m. */
-function TopperModel({ kind, tex, rim, accent }: { kind: LocalDesign['topper']; tex: THREE.Texture; rim: THREE.Material; accent: string }) {
+export function TopperModel({ kind, tex, rim, accent, shape = 'round' }: { kind: LocalDesign['topper']; tex: THREE.Texture; rim: THREE.Material; accent: string; shape?: LogoShape }) {
   switch (kind) {
     case 'logo':
       return (
         <group position={[0, 1.15, 0]}>
-          <Disc r={1.05} tex={tex} rim={rim} />
+          <LogoMark shape={shape} r={1.05} tex={tex} rim={rim} />
         </group>
       )
     case 'cap':
@@ -292,6 +307,181 @@ function TopperModel({ kind, tex, rim, accent }: { kind: LocalDesign['topper']; 
             })}
             <mesh geometry={GEO.sphere} material={mat('#ffd23f')} position={[0, 0, 0.1]} scale={0.7} />
           </group>
+        </group>
+      )
+    case 'scissors':
+      return (
+        <group position={[0, 1.2, 0]} rotation={[0, 0.2, 0]} scale={1.3}>
+          {[1, -1].map((sg) => (
+            <group key={sg} rotation={[0, 0, sg * 0.28]}>
+              <mesh position={[0, 0.55, 0]} castShadow>
+                <cylinderGeometry args={[0.02, 0.2, 1.8, 4]} />
+                <meshStandardMaterial color="#cfd6dc" roughness={0.35} metalness={0.3} />
+              </mesh>
+              <mesh geometry={GEO.torus} material={mat(accent)} position={[sg * 0.05, -0.75, 0]} scale={[0.34, 0.34, 0.34]} />
+            </group>
+          ))}
+          <mesh geometry={GEO.sphere} material={mat('#8a929a')} position={[0, 0.0, 0.05]} scale={0.18} />
+        </group>
+      )
+    case 'lipstick':
+      return (
+        <group position={[0, 0.1, 0]}>
+          <mesh position={[0, 0.5, 0]} castShadow>
+            <cylinderGeometry args={[0.55, 0.55, 1.0, 12]} />
+            <meshStandardMaterial color="#e6c15a" roughness={0.35} metalness={0.4} />
+          </mesh>
+          <mesh position={[0, 1.15, 0]}>
+            <cylinderGeometry args={[0.45, 0.5, 0.35, 12]} />
+            <meshStandardMaterial color="#2b2020" roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 1.7, 0]}>
+            <cylinderGeometry args={[0.38, 0.38, 0.8, 12]} />
+            <meshStandardMaterial color={accent} roughness={0.55} />
+          </mesh>
+          <Bx p={[0.06, 2.15, 0]} s={[0.76, 0.2, 0.76]} m={mat(accent)} r={[0, 0, -0.5]} />
+        </group>
+      )
+    case 'taco':
+      return (
+        <group position={[0, 1.1, 0]} rotation={[-0.55, 0.45, 0]} scale={1.25}>
+          <mesh rotation={[0, 0, Math.PI]} scale={[1, 1, 1.5]} castShadow>
+            <torusGeometry args={[0.95, 0.3, 6, 16, Math.PI]} />
+            <meshStandardMaterial color="#f0c15a" roughness={0.9} />
+          </mesh>
+          {[-0.65, -0.2, 0.25, 0.65].map((x, i) => (
+            <mesh key={i} geometry={GEO.sphere} material={mat(['#58b04a', '#d9432f', '#ffd23f', '#58b04a'][i])} position={[x, -0.05 + (i % 2) * 0.1, (i - 1.5) * 0.28]} scale={[0.55, 0.45, 0.5]} />
+          ))}
+        </group>
+      )
+    case 'burrito':
+      return (
+        <group position={[0, 1.0, 0]} rotation={[0, 0.5, -0.25]}>
+          <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+            <cylinderGeometry args={[0.55, 0.55, 2.3, 12]} />
+            <meshStandardMaterial color="#f2dcae" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.9, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.58, 0.58, 0.7, 12]} />
+            <meshStandardMaterial color="#cfd6dc" roughness={0.4} metalness={0.3} />
+          </mesh>
+          <mesh position={[-1.17, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.45, 0.45, 0.05, 12]} />
+            <meshStandardMaterial color="#8a4b2a" roughness={0.9} />
+          </mesh>
+          {[-0.5, 0.1].map((x) => (
+            <mesh key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.57, 0.57, 0.1, 12]} />
+              <meshStandardMaterial color={accent} roughness={0.8} />
+            </mesh>
+          ))}
+        </group>
+      )
+    case 'chili':
+      return (
+        <group position={[0, 0.2, 0]} rotation={[0, 0.3, 0]}>
+          {Array.from({ length: 7 }, (_, i) => {
+            const t = i / 6
+            return (
+              <mesh key={i} position={[Math.sin(t * 1.6) * 0.75 - 0.1, 0.3 + t * 2.0, 0]} rotation={[0, 0, -t * 0.95 + 0.25]} castShadow>
+                <cylinderGeometry args={[0.46 * (1 - t * 0.72), 0.5 * (1 - t * 0.7), 0.5, 8]} />
+                <meshStandardMaterial color="#d9322a" roughness={0.5} />
+              </mesh>
+            )
+          })}
+          <mesh geometry={GEO.cylinderLow} material={mat('#3f8f3f')} position={[-0.28, 0.2, 0]} rotation={[0, 0, 0.5]} scale={[0.14, 0.5, 0.14]} />
+          <mesh geometry={GEO.sphere} material={mat('#3f8f3f')} position={[-0.15, 0.4, 0]} scale={0.34} />
+        </group>
+      )
+    case 'sombrero':
+      return (
+        <group position={[0, 0.2, 0]} rotation={[-0.12, 0.2, 0]}>
+          <mesh position={[0, 0.1, 0]} castShadow>
+            <cylinderGeometry args={[1.6, 1.7, 0.14, 18]} />
+            <meshStandardMaterial color="#e2b56a" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.17, 0]}>
+            <cylinderGeometry args={[1.62, 1.62, 0.05, 18]} />
+            <meshStandardMaterial color={accent} roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.8, 0]} castShadow>
+            <cylinderGeometry args={[0.5, 0.78, 1.2, 14]} />
+            <meshStandardMaterial color="#e2b56a" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.38, 0]}>
+            <cylinderGeometry args={[0.8, 0.8, 0.22, 14]} />
+            <meshStandardMaterial color={accent} roughness={0.8} />
+          </mesh>
+          <mesh geometry={GEO.sphere} material={mat('#e2b56a')} position={[0, 1.45, 0]} scale={0.8} />
+        </group>
+      )
+    case 'palm':
+      return (
+        <group position={[0, 0.1, 0]}>
+          {[0, 1, 2, 3].map((i) => (
+            <mesh key={i} position={[i * 0.1 + 0.05, 0.45 + i * 0.7, 0]} rotation={[0, 0, -0.09]} castShadow>
+              <cylinderGeometry args={[0.2 - i * 0.02, 0.26 - i * 0.02, 0.75, 7]} />
+              <meshStandardMaterial color={i % 2 ? '#a9794c' : '#946339'} roughness={0.9} />
+            </mesh>
+          ))}
+          <group position={[0.4, 3.0, 0]}>
+            {Array.from({ length: 7 }, (_, i) => {
+              const a = (i / 7) * Math.PI * 2
+              return <Bx key={i} p={[Math.cos(a) * 0.7, -0.15 - (i % 2) * 0.12, Math.sin(a) * 0.7]} s={[1.5, 0.07, 0.42]} m={mat(i % 2 ? '#3f9a4e' : '#58b04a')} r={[0, -a, -0.45]} cast />
+            })}
+            {[0, 1, 2].map((i) => (
+              <mesh key={i} geometry={GEO.sphere} material={mat('#6b4423')} position={[Math.sin(i * 2.1) * 0.22, -0.3, Math.cos(i * 2.1) * 0.22]} scale={0.3} />
+            ))}
+          </group>
+        </group>
+      )
+    case 'shoe':
+      return (
+        <group position={[0, 0.1, 0]} rotation={[0, 0.2, 0]}>
+          <Bx p={[0, 0.2, 0]} s={[2.4, 0.4, 0.95]} m={mat('#fbf6ea')} cast />
+          <Bx p={[-0.55, 0.85, 0]} s={[1.2, 0.95, 0.85]} m={mat(accent)} cast />
+          <Bx p={[0.45, 0.58, 0]} s={[1.1, 0.55, 0.85]} m={mat(accent)} r={[0, 0, -0.18]} />
+          <mesh geometry={GEO.sphereSmooth} material={mat(accent)} position={[1.0, 0.5, 0]} scale={[0.95, 0.7, 0.85]} />
+          <mesh geometry={GEO.sphereSmooth} material={mat('#fbf6ea')} position={[1.12, 0.38, 0]} scale={[0.75, 0.5, 0.9]} />
+          {[0, 1, 2].map((i) => (
+            <Bx key={i} p={[0.0 + i * 0.28, 1.0 - i * 0.1, 0.44]} s={[0.2, 0.06, 0.04]} m={mat('#fbf6ea')} r={[0, 0, -0.3]} />
+          ))}
+        </group>
+      )
+    case 'phone':
+      return (
+        <group position={[0, 1.1, 0]} rotation={[0, 0.3, 0]}>
+          <Bx p={[0, 0, 0]} s={[1.15, 2.1, 0.16]} m={mat('#1d2630')} cast />
+          <mesh position={[0, 0, 0.09]}>
+            <planeGeometry args={[1.0, 1.9]} />
+            <meshBasicMaterial color={accent} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 0.2, 0.1]}>
+            <circleGeometry args={[0.3, 16]} />
+            <meshBasicMaterial color="#ffffff" toneMapped={false} />
+          </mesh>
+          <Bx p={[0, 0.75, 0.1]} s={[0.7, 0.14, 0.01]} m={mat('#ffffff')} />
+        </group>
+      )
+    case 'dumbbell':
+      return (
+        <group position={[0, 0.85, 0]} rotation={[0, 0.5, 0.15]}>
+          <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+            <cylinderGeometry args={[0.13, 0.13, 2.6, 8]} />
+            <meshStandardMaterial color="#9aa3ab" roughness={0.35} metalness={0.4} />
+          </mesh>
+          {[-1, 1].map((sg) => (
+            <group key={sg}>
+              <mesh position={[sg * 0.95, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+                <cylinderGeometry args={[0.62, 0.62, 0.3, 12]} />
+                <meshStandardMaterial color="#26313c" roughness={0.6} />
+              </mesh>
+              <mesh position={[sg * 1.2, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.46, 0.46, 0.22, 12]} />
+                <meshStandardMaterial color={accent} roughness={0.6} />
+              </mesh>
+            </group>
+          ))}
         </group>
       )
     default:
@@ -507,9 +697,22 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
         <group position={[pillarX, 0, 0]}>
           <Bx p={[0, (H + 0.9) / 2 + 0.12, zF + 0.1]} s={[0.9, H + 0.9, 0.3]} m={wall} cast />
           <Bx p={[0, H + 0.95, zF + 0.1]} s={[1.0, 0.1, 0.4]} m={trim} />
-          <group position={[0, H + 1.8, zF + 0.1]}>
-            <Disc r={0.85} tex={logoTex} rim={trim} />
-          </group>
+          {d.logoShape === 'hanging' ? (
+            <group position={[pillarX > 0 ? 0.55 : -0.55, 0, zF + 0.1]}>
+              <Bx p={[0, 2.9, 0.55]} s={[0.08, 0.08, 1.1]} m={frame} />
+              <Bx p={[0, 2.35, 1.0]} s={[0.05, 0.5, 0.05]} m={frame} />
+              <group position={[0, 2.0, 1.0]} rotation={[0, Math.PI / 2, 0]}>
+                <LogoMark shape="square" r={0.45} tex={logoTex} rim={trim} />
+                <group rotation={[0, Math.PI, 0]}>
+                  <LogoMark shape="square" r={0.45} tex={logoTex} rim={trim} />
+                </group>
+              </group>
+            </group>
+          ) : (
+            <group position={[0, H + 1.8, zF + 0.1]}>
+              <LogoMark shape={d.logoShape} r={0.85} tex={logoTex} rim={trim} />
+            </group>
+          )}
           {[-0.2, 0, 0.2].map((x) => (
             <Bx key={x} p={[x, 1.3, zF + 0.27]} s={[0.04, 1.6, 0.02]} m={awnM} />
           ))}
@@ -544,7 +747,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
       {d.topper !== 'none' && (
         <group position={[d.logoSide === 'none' ? 0 : -pillarX * 0.9, roofTop + (d.sign === 'board' ? 0 : 0), zc - 0.2]} scale={1}>
           <group ref={topper} scale={1.5}>
-            <TopperModel kind={d.topper} tex={logoTex} rim={trim} accent={d.awningColor} />
+            <TopperModel kind={d.topper} tex={logoTex} rim={trim} accent={d.awningColor} shape={d.logoShape} />
           </group>
         </group>
       )}

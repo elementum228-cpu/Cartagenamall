@@ -16,6 +16,7 @@ import { useCatalog } from '../state/catalog'
 import { canPreview, usePreviewMall, useWorldCatalog } from '../state/previewMall'
 import { GeorgesCafe } from './GeorgesCafe'
 import { CustomStore } from './CustomStore'
+import { CustomKiosk } from './CustomKiosk'
 import { cleanDesign } from './localDesign'
 import { GEORGES_STORE_ID } from '../data/businesses'
 import { getGlassPill } from './labelTexture'
@@ -218,14 +219,20 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                   {spaces.map((space) => {
                     const store = storeById[assignments[space.id]] ?? null
                     // local armado a medida desde la administración («Arma tu local»); las islas conservan su mostrador
-                    const custom = store && space.type !== 'island' && store.id !== GEORGES_STORE_ID ? cleanDesign(store.design) : null
+                    const cd = store && store.id !== GEORGES_STORE_ID ? cleanDesign(store.design) : null
+                    const isIsland = space.type === 'island'
+                    const custom = cd && (cd.form === 'island') === isIsland ? cd : null
                     if (store && custom)
                       return (
                         <group key={space.id} position={[space.position[0], 0.2, space.position[1]]} rotation={[0, space.rotation, 0]}>
-                          <CustomStore store={store} design={custom} width={space.size[0]} depth={space.size[1]} interactive={interactive} onOpen={() => onSelect(space.id)} />
+                          {isIsland ? (
+                            <CustomKiosk store={store} design={custom} interactive={interactive} onOpen={() => onSelect(space.id)} />
+                          ) : (
+                            <CustomStore store={store} design={custom} width={space.size[0]} depth={space.size[1]} interactive={interactive} onOpen={() => onSelect(space.id)} />
+                          )}
                           <ScreenLabel
                             label={getGlassPill(store.name, { dot: store.brandColor, sub: storeCategoryName(store), logo: store.logo, dark: night })}
-                            position={[0, 6.1, 0]}
+                            position={[0, isIsland ? 4.9 : 6.1, 0]}
                             pixelHeight={selectedSpaceId === space.id ? 44 : 40}
                             minZoomRatio={0}
                             maxZoomRatio={2.4}
