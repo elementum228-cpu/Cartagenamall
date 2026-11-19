@@ -1,4 +1,4 @@
-import { Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Ticket, Volume2, VolumeX, X } from 'lucide-react'
+import { ChevronLeft, Crown, Gamepad2, Gift, Pause, Play as PlayIcon, Ticket, Volume2, VolumeX, X } from 'lucide-react'
 
 const Play2 = PlayIcon
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -14,6 +14,7 @@ import { MiniGame } from './games/MiniGame'
 import { CoinSlot } from './CoinSlot'
 import { GameEnd } from './TicketReceipt'
 import { Prizes, Ranking } from './ArcadeTabs'
+import { ArcadeHub } from './ArcadeHub'
 import '@fontsource/press-start-2p/latin-400.css'
 import './arcade.css'
 
@@ -94,12 +95,18 @@ function Cabinet({ onClose }: { onClose: () => void }) {
       {/* mientras se juega, la partida cubre la pantalla: el encabezado y las pestañas quedan ocultos para lectores de pantalla */}
       <div className="flex flex-col gap-2.5" aria-hidden={playing}>
             <div className="flex items-center gap-2 px-1">
-              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#ff7ad1] to-[#ff5aa5] text-white shadow-[0_10px_20px_-10px_rgba(255,90,165,0.9)]">
-                <Gamepad2 className="size-6" />
-              </div>
+              {tab === 'games' ? (
+                <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#ff7ad1] to-[#ff5aa5] text-white shadow-[0_10px_20px_-10px_rgba(255,90,165,0.9)]">
+                  <Gamepad2 className="size-6" />
+                </div>
+              ) : (
+                <button onClick={() => setTab('games')} aria-label="Volver a los juegos" className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/70 text-[#1c1747] shadow-[0_6px_16px_-8px_rgba(60,40,120,0.5)] ring-1 ring-white/80 backdrop-blur active:bg-white">
+                  <ChevronLeft className="size-6" />
+                </button>
+              )}
               <div className="min-w-0 flex-1 leading-tight">
                 <h2 className="truncate text-[20px] font-extrabold tracking-tight text-[#1c1747]">Arcade</h2>
-                <p className="truncate text-[13px] font-semibold text-[#4b4a7a]">{tab === 'prizes' ? 'Recompensas' : GAME_NAME[game]}</p>
+                <p className="truncate text-[13px] font-semibold text-[#4b4a7a]">{tab === 'prizes' ? 'Recompensas' : tab === 'games' ? 'Elige tu juego' : GAME_NAME[game]}</p>
               </div>
               <span className="flex items-center gap-2 rounded-full bg-white/70 px-3 py-2 text-[16px] font-extrabold text-[#1c1747] shadow-[0_6px_16px_-8px_rgba(60,40,120,0.5)] ring-1 ring-white/80 backdrop-blur" aria-label={`${points} tiquetes`}>
                 <span className="grid size-6 place-items-center rounded-full bg-gradient-to-br from-[#ffe36b] to-[#f5a912] text-[#7a4b00]" aria-hidden>
@@ -115,12 +122,12 @@ function Cabinet({ onClose }: { onClose: () => void }) {
             <div className="flex rounded-[20px] bg-white/45 p-1.5 shadow-[inset_0_1px_3px_rgba(60,40,120,0.12)] ring-1 ring-white/70 backdrop-blur" role="tablist">
               {(
                 [
-                  ['play', 'Jugar', Play2],
+                  ...(tab === 'games' ? ([['games', 'Juegos', Gamepad2]] as const) : ([['play', 'Jugar', Play2]] as const)),
                   ['rank', 'Ranking', Crown],
                   ['prizes', 'Premios', Gift],
                 ] as const
               )
-                .filter(([id]) => game === 'nave' || id !== 'rank')
+                .filter(([id]) => (game === 'nave' && tab !== 'games') || id !== 'rank')
                 .map(([id, label, Icon]) => (
                 <button
                   key={id}
@@ -129,7 +136,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
                   onClick={() => setTab(id)}
                   className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl text-[16px] font-extrabold transition active:scale-[0.98] ${tab === id ? 'bg-white text-[#1c1747] shadow-[0_6px_16px_-8px_rgba(60,40,120,0.55)]' : 'text-[#4b4a7a]'}`}
                 >
-                  <Icon className="size-[18px]" fill={id === 'play' && tab === id ? 'currentColor' : 'none'} />
+                  <Icon className="size-[18px]" fill={(id === 'play' || id === 'games') && tab === id ? 'currentColor' : 'none'} />
                   {label}
                 </button>
               ))}
@@ -141,7 +148,7 @@ function Cabinet({ onClose }: { onClose: () => void }) {
           <MiniGame key={game} id={game} active={tab === 'play'} onPrizes={() => setTab('prizes')} />
         </div>
       )}
-      {tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onPrizes={() => setTab('prizes')} onExit={onClose} /> : null : tab === 'rank' ? <ListFrame><Ranking /></ListFrame> : <Prizes />}
+      {tab === 'games' ? <ArcadeHub /> : tab === 'play' ? game === 'nave' ? <Play onRanking={() => setTab('rank')} onPrizes={() => setTab('prizes')} onExit={onClose} /> : null : tab === 'rank' ? <ListFrame><Ranking /></ListFrame> : <Prizes />}
     </div>
   )
 }

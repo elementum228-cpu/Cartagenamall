@@ -175,10 +175,10 @@ export const useArcade = create<ArcadeState>()(
 
 /** Abre y cierra el juego (no se guarda). `playing`: hay una partida en curso (la pantalla se vuelve de pantalla completa). */
 export type ArcadeGameId = 'nave' | 'cangrejos' | 'bolos'
-export type ArcadeTab = 'play' | 'rank' | 'prizes'
+export type ArcadeTab = 'games' | 'play' | 'rank' | 'prizes'
 export const useArcadeUi = create<{ open: boolean; setOpen: (v: boolean) => void; game: ArcadeGameId; openGame: (g: ArcadeGameId) => void; tab: ArcadeTab; setTab: (t: ArcadeTab) => void; openPrizes: () => void; playing: boolean; setPlaying: (v: boolean) => void }>()((set) => ({
   open: false,
-  setOpen: (open) => set(open ? { open, game: 'nave', tab: 'play' } : { open, playing: false }),
+  setOpen: (open) => set(open ? { open, game: 'nave', tab: 'games', playing: false } : { open, playing: false }),
   game: 'nave',
   tab: 'play',
   setTab: (tab) => set({ tab }),
