@@ -286,13 +286,11 @@ export function TopperModel({ kind, tex, rim, accent, shape = 'round' }: { kind:
       )
     case 'bag':
       return (
-        <group position={[0, 0.1, 0]}>
-          <mesh position={[0, 0.85, 0]} castShadow>
-            <cylinderGeometry args={[0.95, 0.8, 1.7, 4]} />
-            <meshStandardMaterial color={accent} roughness={0.8} />
-          </mesh>
-          <Bx p={[0, 0.9, 0.62]} s={[0.9, 0.7, 0.04]} m={mat('#fffaf0')} />
-          <mesh geometry={GEO.torus} material={mat('#fffaf0')} position={[0, 1.78, 0]} rotation={[0, 0, 0]} scale={[0.5, 0.55, 0.5]} />
+        <group position={[0, 0.1, 0]} rotation={[0, 0.25, 0]}>
+          <Bx p={[0, 0.8, 0]} s={[1.5, 1.6, 0.7]} m={mat(accent)} cast />
+          <Bx p={[0, 1.6, 0]} s={[1.56, 0.1, 0.76]} m={mat('#ffffff')} />
+          <Bx p={[0, 0.85, 0.36]} s={[0.55, 0.55, 0.03]} m={mat('#fffaf0')} />
+          <mesh geometry={GEO.torus} material={mat('#2b2420')} position={[0, 1.95, 0]} scale={[0.5, 0.4, 0.5]} />
         </group>
       )
     case 'flower':
