@@ -89,6 +89,7 @@ export type LogoSide = 'left' | 'right' | 'none'
 export type TopperKind =
   | 'none' | 'logo' | 'cap' | 'burger' | 'pizza' | 'coffee' | 'icecream' | 'donut' | 'bag' | 'flower'
   | 'scissors' | 'lipstick' | 'taco' | 'burrito' | 'palm' | 'sombrero' | 'chili' | 'shoe' | 'phone' | 'dumbbell'
+  | 'tshirt' | 'baby' | 'pants' | 'dress' | 'hanger' | 'dressshoe' | 'heel' | 'soccer' | 'basketball'
 /** Forma del logo en el pilar y sobre el techo: disco, placa cuadrada o letrero colgante. */
 export type LogoShape = 'round' | 'square' | 'hanging'
 /** «local» (6 × 5 m) o «isla» (el quiosco pequeño de 2,6 × 2,6 m). */

@@ -482,6 +482,136 @@ export function TopperModel({ kind, tex, rim, accent, shape = 'round' }: { kind:
           ))}
         </group>
       )
+    case 'tshirt':
+      return (
+        <group position={[0, 0.15, 0]} rotation={[0, 0.25, 0]}>
+          <Bx p={[0, 0.85, 0]} s={[1.45, 1.7, 0.3]} m={mat(accent)} cast />
+          {[-1, 1].map((sg) => (
+            <Bx key={sg} p={[sg * 0.95, 1.55, 0]} s={[0.85, 0.55, 0.3]} m={mat(accent)} r={[0, 0, sg * -0.6]} cast />
+          ))}
+          <mesh position={[0, 1.68, 0.02]} scale={[1, 1, 1]}>
+            <cylinderGeometry args={[0.34, 0.3, 0.32, 10]} />
+            <meshStandardMaterial color="#fbf6ea" roughness={0.9} />
+          </mesh>
+          <mesh geometry={GEO.cylinder} material={mat('#1d1713')} position={[0, 1.7, 0.1]} rotation={[Math.PI / 2, 0, 0]} scale={[0.5, 0.06, 0.4]} />
+          <Bx p={[0, 0.9, 0.17]} s={[0.55, 0.5, 0.03]} m={mat('#fffaf0')} />
+        </group>
+      )
+    case 'baby': {
+      const soft = '#cfeaf7'
+      return (
+        <group position={[0, 0.15, 0]} rotation={[0, 0.25, 0]}>
+          <Bx p={[0, 0.95, 0]} s={[1.1, 1.0, 0.28]} m={mat(soft)} cast />
+          {[-1, 1].map((sg) => (
+            <Bx key={sg} p={[sg * 0.68, 1.3, 0]} s={[0.5, 0.36, 0.26]} m={mat(soft)} r={[0, 0, sg * -0.5]} />
+          ))}
+          {[-1, 1].map((sg) => (
+            <Bx key={sg} p={[sg * 0.3, 0.3, 0]} s={[0.48, 0.55, 0.26]} m={mat(soft)} cast />
+          ))}
+          <Bx p={[0, 0.0, 0.0]} s={[1.1, 0.12, 0.28]} m={mat(accent)} />
+          <mesh geometry={GEO.cylinder} material={mat(accent)} position={[0, 1.42, 0.05]} rotation={[Math.PI / 2, 0, 0]} scale={[0.55, 0.08, 0.35]} />
+          {[-0.3, 0, 0.3].map((x) => (
+            <mesh key={x} geometry={GEO.sphere} material={mat('#fffaf0')} position={[x, 0.62, 0.15]} scale={0.1} />
+          ))}
+          <mesh geometry={GEO.sphere} material={mat('#ffd23f')} position={[0, 1.0, 0.16]} scale={0.34} />
+        </group>
+      )
+    }
+    case 'pants':
+      return (
+        <group position={[0, 0.15, 0]} rotation={[0, 0.25, 0]}>
+          {[-1, 1].map((sg) => (
+            <Bx key={sg} p={[sg * 0.36, 0.85, 0]} s={[0.66, 1.8, 0.32]} m={mat('#2f5f9e')} r={[0, 0, sg * -0.04]} cast />
+          ))}
+          <Bx p={[0, 1.82, 0]} s={[1.5, 0.34, 0.34]} m={mat('#2f5f9e')} cast />
+          <Bx p={[0, 1.82, 0.01]} s={[1.52, 0.1, 0.36]} m={mat('#4a2f1d')} />
+          <Bx p={[0, 1.82, 0.18]} s={[0.16, 0.14, 0.03]} m={mat('#e6c15a')} />
+          {[-1, 1].map((sg) => (
+            <Bx key={sg} p={[sg * 0.55, 1.45, 0.17]} s={[0.4, 0.36, 0.02]} m={mat('#3d74bd')} r={[0, 0, sg * 0.12]} />
+          ))}
+          <Bx p={[0, 0.9, 0.17]} s={[0.04, 1.2, 0.02]} m={mat('#e6c15a')} />
+        </group>
+      )
+    case 'dress':
+      return (
+        <group position={[0, 0.15, 0]} rotation={[0, 0.25, 0]}>
+          <mesh position={[0, 0.65, 0]} castShadow>
+            <cylinderGeometry args={[0.42, 1.0, 1.3, 12]} />
+            <meshStandardMaterial color={accent} roughness={0.85} />
+          </mesh>
+          <Bx p={[0, 1.6, 0]} s={[0.8, 0.7, 0.28]} m={mat(accent)} cast />
+          {[-1, 1].map((sg) => (
+            <Bx key={sg} p={[sg * 0.22, 2.1, 0]} s={[0.1, 0.4, 0.1]} m={mat(accent)} />
+          ))}
+          <mesh geometry={GEO.cylinder} material={mat('#fffaf0')} position={[0, 1.2, 0]} scale={[0.86, 0.1, 0.86]} />
+          <mesh geometry={GEO.sphere} material={mat('#fffaf0')} position={[0.1, 1.2, 0.46]} scale={0.22} />
+        </group>
+      )
+    case 'hanger':
+      return (
+        <group position={[0, 1.2, 0]} rotation={[0, 0.3, 0]}>
+          <mesh geometry={GEO.torus} material={mat('#cfd6dc')} position={[0, 1.05, 0]} rotation={[0, 0, 0]} scale={[0.22, 0.22, 0.22]} />
+          <Bx p={[0, 0.7, 0]} s={[0.07, 0.4, 0.07]} m={mat('#cfd6dc')} />
+          {[-1, 1].map((sg) => (
+            <Bx key={sg} p={[sg * 0.62, 0.3, 0]} s={[1.4, 0.09, 0.09]} m={mat('#cfd6dc')} r={[0, 0, -sg * 0.36]} />
+          ))}
+          <Bx p={[0, -0.12, 0]} s={[2.1, 0.1, 0.1]} m={mat('#cfd6dc')} />
+        </group>
+      )
+    case 'dressshoe':
+      return (
+        <group position={[0, 0.1, 0]} rotation={[0, 0.2, 0]}>
+          <Bx p={[0, 0.1, 0]} s={[2.5, 0.2, 0.9]} m={mat('#2a1a10')} cast />
+          <Bx p={[-0.95, 0.04, 0]} s={[0.55, 0.12, 0.85]} m={mat('#1a100a')} />
+          <Bx p={[-0.45, 0.75, 0]} s={[1.3, 1.0, 0.8]} m={mat('#7a3f1d')} cast />
+          <Bx p={[0.55, 0.45, 0]} s={[1.1, 0.5, 0.82]} m={mat('#7a3f1d')} r={[0, 0, -0.12]} />
+          <mesh geometry={GEO.sphereSmooth} material={mat('#7a3f1d')} position={[1.05, 0.38, 0]} scale={[0.9, 0.62, 0.84]} />
+          {[0, 1, 2].map((i) => (
+            <Bx key={i} p={[0.1 + i * 0.28 - 0.4, 0.98 - i * 0.12, 0.42]} s={[0.2, 0.05, 0.03]} m={mat('#f2e6cd')} r={[0, 0, -0.2]} />
+          ))}
+        </group>
+      )
+    case 'heel':
+      return (
+        <group position={[0, 0.1, 0]} rotation={[0, 0.2, 0]}>
+          <Bx p={[0.1, 1.1, 0]} s={[2.0, 0.14, 0.7]} m={mat(accent)} r={[0, 0, -0.38]} cast />
+          <Bx p={[-0.75, 0.55, 0]} s={[0.55, 1.15, 0.65]} m={mat(accent)} cast />
+          <Bx p={[-0.78, 0.42, 0]} s={[0.1, 0.9, 0.1]} m={mat('#2b2420')} />
+          <mesh geometry={GEO.sphereSmooth} material={mat(accent)} position={[0.95, 0.3, 0]} scale={[0.75, 0.38, 0.7]} />
+          <Bx p={[0.5, 0.68, 0]} s={[0.8, 0.08, 0.7]} m={mat('#2b2420')} r={[0, 0, -0.5]} />
+        </group>
+      )
+    case 'soccer':
+      return (
+        <group position={[0, 1.05, 0]}>
+          <mesh geometry={GEO.sphereSmooth} material={mat('#fbf6ea')} scale={2.0} castShadow />
+          {[
+            [0, 1, 0],
+            [0.95, 0.35, 0],
+            [-0.95, 0.35, 0],
+            [0.3, 0.35, 0.9],
+            [-0.3, 0.35, 0.9],
+            [0, -0.5, 0.88],
+            [0.6, -0.4, -0.7],
+            [-0.6, -0.4, -0.7],
+          ].map(([x, y, z], i) => {
+            const v = new THREE.Vector3(x, y, z).normalize().multiplyScalar(1.0)
+            const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), v.clone().normalize())
+            return <mesh key={i} geometry={GEO.sphere} material={mat('#1d1713')} position={v.toArray()} quaternion={q} scale={[0.5, 0.5, 0.18]} />
+          })}
+        </group>
+      )
+    case 'basketball':
+      return (
+        <group position={[0, 1.05, 0]} rotation={[0.3, 0.4, 0]}>
+          <mesh geometry={GEO.sphereSmooth} material={mat('#e8651f')} scale={2.0} castShadow />
+          {[0, Math.PI / 2].map((r) => (
+            <mesh key={r} geometry={GEO.torus} material={mat('#1d1713')} rotation={[0, r, 0]} scale={[1.0, 1.0, 1.0]} />
+          ))}
+          <mesh geometry={GEO.torus} material={mat('#1d1713')} rotation={[Math.PI / 2, 0, 0]} scale={[1.0, 1.0, 1.0]} />
+          <Bx p={[0, 0, 0]} s={[2.02, 0.06, 0.06]} m={mat('#1d1713')} />
+        </group>
+      )
     default:
       return null
   }

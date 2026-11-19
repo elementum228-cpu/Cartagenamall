@@ -102,7 +102,21 @@ export const TOPPER_GROUPS: { title: string; items: Option<TopperKind>[] }[] = [
     ],
   },
   { title: 'Belleza', items: [{ id: 'scissors', label: 'Tijeras' }, { id: 'lipstick', label: 'Labial' }, { id: 'flower', label: 'Flor' }] },
-  { title: 'Tiendas', items: [{ id: 'bag', label: 'Bolsa' }, { id: 'cap', label: 'Gorra' }, { id: 'shoe', label: 'Zapatilla' }, { id: 'phone', label: 'Celular' }, { id: 'dumbbell', label: 'Pesa' }] },
+  {
+    title: 'Ropa',
+    items: [
+      { id: 'tshirt', label: 'Camiseta' },
+      { id: 'baby', label: 'Ropa de bebé' },
+      { id: 'pants', label: 'Pantalón' },
+      { id: 'dress', label: 'Vestido' },
+      { id: 'hanger', label: 'Gancho' },
+      { id: 'cap', label: 'Gorra' },
+      { id: 'bag', label: 'Bolsa' },
+    ],
+  },
+  { title: 'Calzado', items: [{ id: 'dressshoe', label: 'Zapato' }, { id: 'heel', label: 'Tacón' }, { id: 'shoe', label: 'Zapato deportivo' }] },
+  { title: 'Deporte', items: [{ id: 'soccer', label: 'Balón de fútbol' }, { id: 'basketball', label: 'Balón de baloncesto' }, { id: 'dumbbell', label: 'Pesa' }] },
+  { title: 'Tecnología', items: [{ id: 'phone', label: 'Celular' }] },
   { title: 'Ambiente', items: [{ id: 'palm', label: 'Palmera' }] },
 ]
 export const TOPPERS: Option<TopperKind>[] = TOPPER_GROUPS.flatMap((g) => g.items)
