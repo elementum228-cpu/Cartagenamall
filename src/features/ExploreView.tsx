@@ -787,7 +787,7 @@ function ViewOptions({ use3D, webgl, desktop }: { use3D: boolean; webgl: boolean
           {canAdmin && (
             <>
               <p className="opt-head flex items-center gap-2 px-1 pt-3 pb-1.5 text-[11px] font-extrabold tracking-[0.14em] uppercase">
-                Administración <span className="rounded-full bg-[#00716c] px-1.5 py-px text-[9px] tracking-wider text-white">Solo tú</span>
+                Administración <span className="rounded-full bg-[#00716c] px-1.5 py-px text-[9px] tracking-wider text-white">Solo administrador</span>
               </p>
               <div className="grid grid-cols-3 gap-1.5">{adminButtons}</div>
             </>
