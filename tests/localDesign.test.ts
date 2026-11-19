@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { LOCAL_MODELS, cleanDesign, designFromModel, readableOn } from '../src/world/localDesign'
+
+describe('Arma tu local', () => {
+  it('trae diez modelos con identificadores distintos', () => {
+    expect(LOCAL_MODELS).toHaveLength(10)
+    expect(new Set(LOCAL_MODELS.map((m) => m.id)).size).toBe(10)
+  })
+  it('cada modelo es un diseño válido que no cambia al limpiarlo', () => {
+    for (const m of LOCAL_MODELS) expect(cleanDesign(designFromModel(m.id))).toEqual(designFromModel(m.id))
+  })
+  it('lo desconocido o dañado vuelve a los valores del modelo', () => {
+    const d = cleanDesign({ model: 'pizza', wall: 'rojo', roof: 'volcán', tables: 9, topper: 'cohete', planters: 'sí' })!
+    const base = designFromModel('pizza')
+    expect(d.wall).toBe(base.wall)
+    expect(d.roof).toBe(base.roof)
+    expect(d.tables).toBe(base.tables)
+    expect(d.topper).toBe(base.topper)
+    expect(d.planters).toBe(base.planters)
+  })
+  it('acepta colores válidos y opciones conocidas', () => {
+    const d = cleanDesign({ model: 'cafe', wall: '#112233', roof: 'gable', topper: 'burger', tables: 3 })!
+    expect(d).toMatchObject({ wall: '#112233', roof: 'gable', topper: 'burger', tables: 3 })
+  })
+  it('sin diseño devuelve null', () => {
+    expect(cleanDesign(undefined)).toBeNull()
+    expect(cleanDesign('x')).toBeNull()
+  })
+  it('el nombre siempre contrasta con el fondo', () => {
+    expect(readableOn('#ffffff')).toBe('#1b1410')
+    expect(readableOn('#101010')).toBe('#fffaf0')
+  })
+})

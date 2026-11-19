@@ -1,4 +1,5 @@
 import { ArrowLeft, Check, ChevronDown, Plug, RotateCcw, ShieldAlert, Trash2, X } from 'lucide-react'
+import { LocalBuilder } from './LocalBuilder'
 import { HoyAdmin } from './HoyAdmin'
 import { ServicesAdmin } from './ServicesAdmin'
 import { CineAdmin } from './CineAdmin'
@@ -37,13 +38,14 @@ import { DemoInvites } from './DemoInvites'
 import { ArcadeAdmin } from './ArcadeAdmin'
 import { useSpacePrice, useSpacePricing } from '../state/spacePricing'
 
-type Tab = 'arcade' | 'cine' | 'servicios' | 'hoy' | 'beta' | 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'estadio' | 'invitaciones' | 'integraciones'
+type Tab = 'arcade' | 'cine' | 'servicios' | 'hoy' | 'beta' | 'gestion' | 'espacios' | 'solicitudes' | 'tiendas' | 'productos' | 'promociones' | 'pedidos' | 'cancha' | 'estadio' | 'invitaciones' | 'integraciones' | 'local'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'gestion', label: 'Gestión y precios' },
   { id: 'espacios', label: 'Espacios' },
   { id: 'solicitudes', label: 'Solicitudes' },
   { id: 'tiendas', label: 'Tiendas' },
+  { id: 'local', label: 'Arma tu local' },
   { id: 'productos', label: 'Productos' },
   { id: 'promociones', label: 'Promociones' },
   { id: 'pedidos', label: 'Pedidos' },
@@ -114,6 +116,7 @@ function AdminContent() {
         {tab === 'espacios' && <SpacesAdmin />}
         {tab === 'solicitudes' && <ClaimsAdmin />}
         {tab === 'tiendas' && <StoresAdmin />}
+        {tab === 'local' && <LocalBuilder />}
         {tab === 'productos' && <ProductsAdmin />}
         {tab === 'promociones' && <PromotionsAdmin />}
         {tab === 'pedidos' && <OrdersAdmin />}

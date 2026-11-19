@@ -79,6 +79,35 @@ export interface SpaceSlot {
 export type StoreStatus = 'open' | 'paused'
 export type FacadeStyle = 'awning' | 'arch' | 'minimal'
 
+/** Local armado a medida desde la administración («Arma tu local»). Sin esto, el local usa su fachada de siempre. */
+export type RoofKind = 'flat' | 'gable' | 'shed' | 'cornice'
+export type WindowKind = 'wide' | 'panes' | 'arched'
+export type AwningKind = 'none' | 'striped' | 'scalloped' | 'flat'
+export type SideKind = 'plain' | 'lattice' | 'brick'
+export type SignKind = 'band' | 'board' | 'none'
+export type LogoSide = 'left' | 'right' | 'none'
+export type TopperKind = 'none' | 'logo' | 'cap' | 'burger' | 'pizza' | 'coffee' | 'icecream' | 'donut' | 'bag' | 'flower'
+export interface LocalDesign {
+  v: 1
+  /** Modelo de partida (solo para mostrar cuál se eligió). */
+  model: string
+  wall: string
+  trim: string
+  roofColor: string
+  awningColor: string
+  roof: RoofKind
+  windows: WindowKind
+  awning: AwningKind
+  side: SideKind
+  sign: SignKind
+  logoSide: LogoSide
+  topper: TopperKind
+  /** Mesas en la terraza de enfrente (0 a 3). */
+  tables: 0 | 1 | 2 | 3
+  planters: boolean
+  lights: boolean
+}
+
 /** Categoría propia de una tienda (por ejemplo «Champú» o «Platos fuertes»): la crea el dueño y filtra su catálogo. */
 export interface StoreCategory {
   id: string
@@ -116,6 +145,8 @@ export interface Store {
   brandColor: string
   accentColor: string
   facade: FacadeStyle
+  /** Local personalizado (solo lo arma la administración). */
+  design?: LocalDesign
   instagram: string
   /** Fondo de fotos de la tienda: los productos recortados se colocan sobre él (ver lib/studio.ts). */
   photoBg?: PhotoBackground
