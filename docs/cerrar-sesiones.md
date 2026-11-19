@@ -15,7 +15,7 @@ Pega `supabase/migrations/0032_cerrar_todas_las_sesiones.sql` en Supabase → SQ
    npm run cerrar-sesiones -- --confirmar
    ```
    Sin `--confirmar` solo explica qué haría. Nunca guardes la llave en el repositorio.
-3. **SQL** (Supabase → SQL Editor): `select public.cerrar_todas_las_sesiones();`
+3. **SQL** (Supabase → SQL Editor): `select public.cerrar_todas_las_sesiones();` (funciona porque el editor corre como `postgres`)
 
 ## Qué pasa en los dispositivos
 - Se borran las sesiones y los tokens de renovación: nadie puede renovar su acceso.

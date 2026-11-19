@@ -1,5 +1,6 @@
 -- Cierre de emergencia: cierra TODAS las sesiones de TODAS las cuentas, en todos los dispositivos.
--- Lo puede llamar un administrador (botón en Administración) o la llave de servicio (npm run cerrar-sesiones).
+-- Lo puede llamar un administrador (botón en Administración), la llave de servicio (npm run cerrar-sesiones) o quien ejecute SQL
+-- directamente en el editor de Supabase (session_user = postgres). Por la API pública (rol «authenticator») solo un administrador.
 -- 1) Borra las sesiones y los tokens de renovación de Supabase Auth: nadie puede renovar su acceso.
 -- 2) Anota la hora en mall_settings «session_epoch»: la app, al abrirse o volver a primer plano, sale sola si su inicio de sesión es anterior.
 -- Las personas pueden volver a entrar con su correo y contraseña (las cuentas NO se borran ni se bloquean).
@@ -12,7 +13,7 @@ declare
   v_tokens bigint := 0;
   v_now timestamptz := now();
 begin
-  if not (coalesce(auth.role(), '') = 'service_role' or public.is_admin()) then
+  if not (session_user in ('postgres', 'supabase_admin') or coalesce(auth.role(), '') = 'service_role' or public.is_admin()) then
     raise exception 'Solo un administrador puede cerrar todas las sesiones' using errcode = '42501';
   end if;
 
