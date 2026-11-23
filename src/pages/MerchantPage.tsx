@@ -10,6 +10,7 @@ import { EventsManager } from '../stadium/EventsManager'
 import { useStadiumConfig } from '../state/stadiumEvents'
 import {
   PartyPopper,
+  FileText,
   Trophy,
   BarChart3,
   ChevronDown,
@@ -68,6 +69,7 @@ import { MerchantPromotions } from './MerchantPromotions'
 import { CategoriesManager, CategoryPicker, QuickCategories } from './MerchantCategories'
 import { storeCategoryName } from '../lib/storeCategories'
 import { MerchantDashboard } from './MerchantDashboard'
+import { MenuImport } from './MenuImport'
 import { StoreColors } from '../ui/StoreColors'
 import { PhotoBackgroundEditor } from '../ui/PhotoBackground'
 import { ProductPhotoField, type PhotoState } from './MerchantPhoto'
@@ -736,6 +738,7 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
   const [seed, setSeed] = useState<Product | undefined>()
   const [nonce, setNonce] = useState(0)
   const [q, setQ] = useState('')
+  const [importing, setImporting] = useState(false)
   const [cat, setCat] = useState<string | null>(null)
   useEffect(() => {
     if (!startNew) return
@@ -794,10 +797,18 @@ function ProductsManager({ store, startNew, onStarted }: { store: Store; startNe
           </p>
           {!remoteEnabled() && <p className="text-[11px] text-ink-soft">Espacio usado en este navegador: {(catalogBytes() / 1_048_576).toFixed(1)} MB de unos 5 MB</p>}
         </div>
-        <button className={btn.primary} onClick={() => newOne()}>
-          <Plus className="size-4" /> {words.add}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {food && (
+            <button className={btn.secondary} onClick={() => setImporting(true)}>
+              <FileText className="size-4" /> Importar menú (PDF)
+            </button>
+          )}
+          <button className={btn.primary} onClick={() => newOne()}>
+            <Plus className="size-4" /> {words.add}
+          </button>
+        </div>
       </div>
+      {importing && <MenuImport store={store} onClose={() => setImporting(false)} />}
       <details className="group rounded-2xl border border-line bg-card" open={!mine.length}>
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
           <span>
