@@ -798,6 +798,20 @@ export function TopperModel({ kind, tex, rim, accent, shape = 'round' }: { kind:
   }
 }
 
+/** Dónde van las mesas del bohío: [x, fila] con fila 0 = adelante (a la vista) y 1 = atrás. */
+export function bohioTables(n: number, W: number): [number, number][] {
+  const row = (count: number, r: number): [number, number][] => {
+    const span = Math.min(W - 3.0, count * 2.4)
+    return Array.from({ length: count }, (_, i) => [count === 1 ? 0 : -span / 2 + (span / (count - 1)) * i, r] as [number, number])
+  }
+  if (n <= 0) return []
+  if (n === 1) return row(1, 0)
+  if (n === 2) return row(2, 0)
+  if (n === 3) return [...row(2, 0), ...row(1, 1)]
+  const front = Math.ceil(n / 2)
+  return [...row(front, 0), ...row(n - front, 1)]
+}
+
 /** Bohío abierto: postes de madera, vigas y una barra al fondo. Las mesas van dentro, bajo el techo. */
 function OpenPavilion({ W, zB, zF, H, wood, wall }: { W: number; zB: number; zF: number; H: number; wood: string; wall: string; wall2: string }) {
   const post = mat(wood)
@@ -1040,7 +1054,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
       )}
 
       {/* pilar con el logo en el costado de la fachada */}
-      {d.logoSide !== 'none' && (
+      {d.logoSide !== 'none' && !open && (
         <group position={[pillarX, 0, 0]}>
           <Bx p={[0, (H + 0.9) / 2 + 0.12, zF + 0.1]} s={[0.9, H + 0.9, 0.3]} m={wall} cast />
           <Bx p={[0, H + 0.95, zF + 0.1]} s={[1.0, 0.1, 0.4]} m={trim} />
@@ -1092,8 +1106,9 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
 
       {/* objeto sobre el techo */}
       {d.topper !== 'none' && !cutaway && (
-        <group position={[d.logoSide === 'none' ? 0 : -pillarX * 0.9, roofTop + (d.sign === 'board' ? 0 : 0), zc - 0.2]} scale={1}>
-          <group ref={topper} scale={1.5}>
+        // en un techo de paja la única parte plana arriba es la cumbrera: el objeto se apoya justo en el caballete (no se corre hacia un lado, que quedaría en el aire)
+        <group position={[isThatch || d.logoSide === 'none' ? 0 : -pillarX * 0.9, roofTop + (isThatch ? 0.22 : 0), isThatch ? zc : zc - 0.2]} scale={1}>
+          <group ref={topper} scale={isThatch && d.topper === 'logo' ? 1.0 : isThatch ? 1.25 : 1.5}>
             <TopperModel kind={d.topper} tex={logoTex} rim={trim} accent={d.awningColor} shape={d.logoShape} />
           </group>
         </group>
@@ -1102,20 +1117,12 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
       {/* terraza: tarima, mesas y maceteros */}
       <Bx p={[0, 0.07, (zF + D / 2) / 2]} s={[W, 0.1, D / 2 - zF]} m={mat('#b98a5c')} />
       {open
-        ? Array.from({ length: d.tables }, (_, i) => {
-            // adentro del bohío: dos filas de mesas bajo el techo
-            const perRow = Math.ceil(d.tables / 2)
-            const row = i < perRow ? 0 : 1
-            const k = row === 0 ? i : i - perRow
-            const n = row === 0 ? perRow : d.tables - perRow
-            const span = Math.min(W - 2.2, n * 1.9)
-            const x = n === 1 ? 0 : -span / 2 + (span / (n - 1)) * k
-            return (
-              <group key={i} position={[x, 0, row === 0 ? zF - 2.6 : zF - 0.95]} scale={1.3}>
-                <Table x={0} z={0} top={mat('#c79a68')} chair={mat('#7a4a2a')} />
-              </group>
-            )
-          })
+        ? bohioTables(d.tables, W).map(([tx, row], i) => (
+            // adentro del bohío: mesas bajo el techo, las de adelante bien a la vista
+            <group key={i} position={[tx, 0, row === 0 ? zF - 1.15 : zF - 3.1]} scale={1.4}>
+              <Table x={0} z={0} top={mat('#f2e6cd')} chair={mat('#7a4a2a')} />
+            </group>
+          ))
         : Array.from({ length: Math.min(d.tables, 3) }, (_, i) => {
             const t = Math.min(d.tables, 3)
             const span = t === 1 ? 0 : t === 2 ? 2.8 : 3.6
@@ -1124,7 +1131,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
           })}
       {d.planters && open && (
         <>
-          {[x0 + 0.5, x1 - 0.5, 0].map((x, i) => (
+          {[x0 + 0.5, x1 - 0.5].map((x, i) => (
             <group key={i} position={[x, 0.12, zF - 0.1]}>
               <mesh position={[0, 0.4, 0]} castShadow>
                 <cylinderGeometry args={[0.34, 0.24, 0.8, 6]} />
