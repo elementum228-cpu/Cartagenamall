@@ -227,7 +227,7 @@ function hipGeometry(w: number, d: number, rise: number) {
  * Techo de bohío: pirámide alta de paja (a cuatro aguas) con cumbrera de tronco oscuro y una cortina de flecos en todo el borde.
  * Con `fin`, además lleva la aleta alta de las palapas del Caribe.
  */
-export function ThatchRoof({ w, d, y, rise, zc, color, wood, fin = false }: { w: number; d: number; y: number; rise: number; zc: number; color: string; wood: string; fin?: boolean }) {
+export function ThatchRoof({ w, d, y, rise, zc, color, wood, fin = false, drop = 0.85 }: { w: number; d: number; y: number; rise: number; zc: number; color: string; wood: string; fin?: boolean; drop?: number }) {
   const tex = useMemo(() => strawTexture(color), [color])
   const fr = useMemo(() => fringeTexture(color), [color])
   const hip = useMemo(() => hipGeometry(w, d, rise), [w, d, rise])
@@ -247,7 +247,6 @@ export function ThatchRoof({ w, d, y, rise, zc, color, wood, fin = false }: { w:
   const fringeM = useMemo(() => new THREE.MeshStandardMaterial({ map: fr, roughness: 1, alphaTest: 0.5, side: THREE.DoubleSide }), [fr])
   const hw = w / 2
   const hd = d / 2
-  const drop = 0.85
   // cortina de flecos siguiendo la inclinación del faldón
   const tiltX = Math.atan2(rise, hd) * 0.0
   void tiltX
@@ -847,7 +846,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
   const open = d.windows === 'open' // sin paredes: bohío con postes
   const zF = D / 2 - (open ? 0.5 : 1.3) // fachada del edificio; delante queda la terraza
   const zc = (zB + zF) / 2
-  const H = 3.6
+  const H = open ? 4.5 : 3.6 // el bohío es más alto: así se ven las mesas de adentro
   const G = 2.35 // alto de las vitrinas
   const dead = (zF - zB) / 2 + 0.25
   const stripes = Math.round(W * 1.6)
@@ -995,7 +994,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
           ))}
         </>
       ) : (
-        <ThatchRoof w={W + 1.1} d={zF - zB + 1.1} y={H + 0.12} rise={rise} zc={zc} color={d.roofColor} wood={d.trim} fin={d.roof === 'thatchfin'} />
+        <ThatchRoof w={W + (open ? 0.5 : 1.1)} d={zF - zB + (open ? 0.5 : 1.1)} y={H + 0.12} rise={rise} zc={zc} color={d.roofColor} wood={d.trim} fin={d.roof === 'thatchfin'} drop={open ? 0.55 : 0.85} />
       )}
       </group>
 
@@ -1111,7 +1110,11 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
             const n = row === 0 ? perRow : d.tables - perRow
             const span = Math.min(W - 2.2, n * 1.9)
             const x = n === 1 ? 0 : -span / 2 + (span / (n - 1)) * k
-            return <Table key={i} x={x} z={row === 0 ? zc - 0.5 : zc + 1.0} top={mat('#c79a68')} chair={mat('#7a4a2a')} />
+            return (
+              <group key={i} position={[x, 0, row === 0 ? zF - 2.6 : zF - 0.95]} scale={1.3}>
+                <Table x={0} z={0} top={mat('#c79a68')} chair={mat('#7a4a2a')} />
+              </group>
+            )
           })
         : Array.from({ length: Math.min(d.tables, 3) }, (_, i) => {
             const t = Math.min(d.tables, 3)
