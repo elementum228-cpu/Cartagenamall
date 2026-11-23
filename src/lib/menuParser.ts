@@ -84,8 +84,8 @@ export function parseMenuText(input: string | string[]): ParsedMenu {
   const rawLines = (Array.isArray(input) ? input : input.split(/\r?\n/)).map(clean)
   const lines = rawLines.filter((l) => l && !JUNK.some((re) => re.test(l)))
   const sections: ParsedSection[] = []
-  let current: ParsedSection | null = null
-  let last: ParsedItem | null = null
+  let current = null as ParsedSection | null
+  let last = null as ParsedItem | null
   let pendingName: string | null = null
 
   const section = (name: string) => {
