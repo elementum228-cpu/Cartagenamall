@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { ISLAND_MODELS, LOCAL_MODELS, TOPPERS, cleanDesign, designFromModel, readableOn } from '../src/world/localDesign'
 
 describe('Arma tu local', () => {
-  it('trae diez modelos con identificadores distintos', () => {
-    expect(LOCAL_MODELS).toHaveLength(10)
-    expect(new Set(LOCAL_MODELS.map((m) => m.id)).size).toBe(10)
+  it('trae once modelos con identificadores distintos', () => {
+    expect(LOCAL_MODELS).toHaveLength(11)
+    expect(new Set(LOCAL_MODELS.map((m) => m.id)).size).toBe(11)
   })
   it('trae seis modelos de isla, que quedan marcados como isla', () => {
     expect(ISLAND_MODELS).toHaveLength(6)

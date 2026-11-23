@@ -232,7 +232,7 @@ export function Scene({ quality, night }: { quality: Quality; night: boolean }) 
                           )}
                           <ScreenLabel
                             label={getGlassPill(store.name, { dot: store.brandColor, sub: storeCategoryName(store), logo: store.logo, dark: night })}
-                            position={[0, isIsland ? 4.9 : 6.1, 0]}
+                            position={[0, isIsland ? 4.9 : custom.roof === 'thatch' ? 8.4 : 6.1, 0]}
                             pixelHeight={selectedSpaceId === space.id ? 44 : 40}
                             minZoomRatio={0}
                             maxZoomRatio={2.4}

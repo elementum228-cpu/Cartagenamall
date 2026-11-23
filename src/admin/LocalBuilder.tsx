@@ -134,6 +134,7 @@ export function LocalBuilder() {
   const saved = useMemo(() => cleanDesign(store?.design), [store?.design])
   const [draft, setDraft] = useState<LocalDesign | null>(saved)
   const [turn, setTurn] = useState(0)
+  const [cutaway, setCutaway] = useState(false)
   useEffect(() => setDraft(saved), [saved, storeId])
 
   const spaceOf = (id: string) => (spaceByStore[id] ? SPACE_BY_ID[spaceByStore[id]] : undefined)
@@ -161,7 +162,7 @@ export function LocalBuilder() {
           <div className="relative aspect-[4/3] w-full lg:aspect-auto lg:h-[min(58dvh,540px)]">
             {draft ? (
               <Suspense fallback={<div className="grid h-full place-items-center text-sm font-semibold text-ink-soft">Cargando vista previa…</div>}>
-                <LocalPreview store={store} design={draft} rotation={turn} width={isIsland ? 2.6 : width} depth={isIsland ? 2.6 : depth} />
+                <LocalPreview cutaway={cutaway} store={store} design={draft} rotation={turn} width={isIsland ? 2.6 : width} depth={isIsland ? 2.6 : depth} />
               </Suspense>
             ) : (
               <div className="grid h-full place-items-center p-6 text-center text-sm font-semibold text-ink-soft">
@@ -178,7 +179,12 @@ export function LocalBuilder() {
             <span className="min-w-0 truncate text-xs font-bold text-ink">
               {store.name} · {spaceLabel(store.id)}
             </span>
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-1.5">
+              {!isIsland && (
+                <label className="mr-1 flex items-center gap-1.5 text-xs font-bold text-ink-soft">
+                  <input type="checkbox" className="size-4 accent-brand" checked={cutaway} onChange={(e) => setCutaway(e.target.checked)} /> Ver por dentro
+                </label>
+              )}
               <button className="grid size-9 place-items-center rounded-full bg-sand-2 disabled:opacity-40" aria-label="Girar a la izquierda" disabled={!draft} onClick={() => setTurn((t) => t - Math.PI / 4)}>
                 <RotateCcw className="size-4" />
               </button>
@@ -267,7 +273,7 @@ export function LocalBuilder() {
               <Chips
                 label={isIsland ? 'Banquitos al frente' : 'Mesas afuera'}
                 value={draft.tables}
-                options={[0, 1, 2, 3].map((n) => ({ id: n as 0 | 1 | 2 | 3, label: n === 0 ? 'Ninguna' : String(n) }))}
+                options={Array.from({ length: !isIsland && draft.windows === 'open' ? 7 : 4 }, (_, n) => ({ id: n, label: n === 0 ? 'Ninguna' : String(n) }))}
                 onPick={(v) => set('tables', v)}
               />
               <div className="flex flex-wrap gap-4">

@@ -80,8 +80,8 @@ export type StoreStatus = 'open' | 'paused'
 export type FacadeStyle = 'awning' | 'arch' | 'minimal'
 
 /** Local armado a medida desde la administración («Arma tu local»). Sin esto, el local usa su fachada de siempre. */
-export type RoofKind = 'flat' | 'gable' | 'shed' | 'cornice'
-export type WindowKind = 'wide' | 'panes' | 'arched'
+export type RoofKind = 'flat' | 'gable' | 'shed' | 'cornice' | 'thatch'
+export type WindowKind = 'wide' | 'panes' | 'arched' | 'open'
 export type AwningKind = 'none' | 'striped' | 'scalloped' | 'flat'
 export type SideKind = 'plain' | 'lattice' | 'brick'
 export type SignKind = 'band' | 'board' | 'none'
@@ -112,7 +112,7 @@ export interface LocalDesign {
   logoShape: LogoShape
   topper: TopperKind
   /** Mesas en la terraza de enfrente (0 a 3). */
-  tables: 0 | 1 | 2 | 3
+  tables: number
   planters: boolean
   lights: boolean
 }

@@ -24,7 +24,7 @@ function FitZoom({ width }: { width: number }) {
   return null
 }
 
-export default function LocalPreview({ store, design, rotation, width, depth }: { store: Pick<Store, 'name' | 'logo' | 'logoText' | 'brandColor' | 'accentColor'>; design: LocalDesign; rotation: number; width: number; depth: number }) {
+export default function LocalPreview({ store, design, rotation, width, depth, cutaway = false }: { cutaway?: boolean; store: Pick<Store, 'name' | 'logo' | 'logoText' | 'brandColor' | 'accentColor'>; design: LocalDesign; rotation: number; width: number; depth: number }) {
   const cam = ISO_DIR.clone().multiplyScalar(CAMERA_DISTANCE)
   return (
     <Canvas
@@ -40,7 +40,7 @@ export default function LocalPreview({ store, design, rotation, width, depth }: 
       <mesh geometry={GEO.box} material={mat(PALETTE.floor)} position={[0, -0.1, 0]} scale={[40, 0.2, 40]} />
       <group rotation={[0, rotation, 0]}>
         <mesh geometry={GEO.box} material={mat('#e6d3a8')} position={[0, -0.02, 0]} scale={[width, 0.04, depth]} />
-        {design.form === 'island' ? <CustomKiosk store={store} design={design} interactive={false} /> : <CustomStore store={store} design={design} width={width} depth={depth} interactive={false} />}
+        {design.form === 'island' ? <CustomKiosk store={store} design={design} interactive={false} /> : <CustomStore store={store} design={design} width={width} depth={depth} interactive={false} cutaway={cutaway} />}
         <group position={[width / 2 + 1.2, 0, depth / 2 - 0.4]}>
           <Person color="#3aa57a" skin="#c58c64" />
         </group>

@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { LocalDesign } from '../domain/types'
-import { Bx, LogoMark, TopperModel, nameTexture, sideTexture, useLogoTexture, type CustomStoreProps } from './CustomStore'
+import { Bx, LogoMark, TopperModel, nameTexture, sideTexture, strawTexture, useLogoTexture, type CustomStoreProps } from './CustomStore'
 import { GEO, mat } from './materials'
 import { glowMat, lightPoolMat } from './night'
 import { readableOn } from './localDesign'
@@ -26,6 +26,8 @@ export function CustomKiosk({ store, design: d, interactive = true, onOpen }: Om
   useEffect(() => {
     if (sideTex) sideTex.repeat.set(2, 1)
   }, [sideTex])
+  const straw = useMemo(() => strawTexture(d.roofColor), [d.roofColor])
+  useEffect(() => () => straw.dispose(), [straw])
   const topper = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
     if (topper.current) topper.current.rotation.y = Math.sin(clock.elapsedTime * 0.8) * 0.12
@@ -33,7 +35,8 @@ export function CustomKiosk({ store, design: d, interactive = true, onOpen }: Om
 
   const umbrella = d.roof === 'cornice'
   const CY = 2.5 // altura del techo
-  const topY = CY + (d.roof === 'gable' ? 0.95 : umbrella ? 0.7 : 0.15)
+  const thatch = d.roof === 'thatch'
+  const topY = CY + (d.roof === 'gable' ? 0.95 : thatch ? 1.25 : umbrella ? 0.7 : 0.15)
   const items = ['#d9432f', '#ffd23f', '#58b04a']
 
   return (
@@ -102,6 +105,18 @@ export function CustomKiosk({ store, design: d, interactive = true, onOpen }: Om
         <mesh material={roofM} position={[0, CY + 0.5, 0.05]} rotation={[0, Math.PI / 4, 0]} castShadow>
           <coneGeometry args={[1.85, 1.0, 4]} />
         </mesh>
+      )}
+      {thatch && (
+        <>
+          <mesh position={[0, CY + 0.6, 0.05]} rotation={[0, Math.PI / 8, 0]} castShadow>
+            <coneGeometry args={[2.05, 1.3, 8]} />
+            <meshStandardMaterial map={straw} roughness={1} />
+          </mesh>
+          <mesh position={[0, CY - 0.02, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[2.0, 0.09, 5, 22]} />
+            <meshStandardMaterial color={d.roofColor} roughness={1} />
+          </mesh>
+        </>
       )}
       {d.roof === 'shed' && <Bx p={[0, CY + 0.1, 0.0]} s={[2.5, 0.12, 2.2]} m={roofM} r={[0.16, 0, 0]} cast />}
       {umbrella && (

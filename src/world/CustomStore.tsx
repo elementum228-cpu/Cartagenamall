@@ -113,6 +113,126 @@ export function sideTexture(kind: 'lattice' | 'brick', wall: string, trim: strin
 
 // ── piezas ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/** Paja: fondo del color elegido con hebras verticales más claras y más oscuras (siempre iguales para el mismo color). */
+export function strawTexture(base: string) {
+  const c = new THREE.Color(base)
+  const dark = c.clone().multiplyScalar(0.62).getStyle()
+  const light = c.clone().lerp(new THREE.Color('#fff2cf'), 0.35).getStyle()
+  return canvasTex(
+    128,
+    128,
+    (g) => {
+      g.fillStyle = c.getStyle()
+      g.fillRect(0, 0, 128, 128)
+      let seed = 7
+      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+      for (let i = 0; i < 150; i++) {
+        g.strokeStyle = rnd() > 0.5 ? dark : light
+        g.globalAlpha = 0.35 + rnd() * 0.4
+        g.lineWidth = 1 + rnd() * 1.6
+        const x = rnd() * 128
+        const y = rnd() * 128
+        g.beginPath()
+        g.moveTo(x, y)
+        g.lineTo(x + (rnd() - 0.5) * 6, y + 14 + rnd() * 26)
+        g.stroke()
+      }
+      g.globalAlpha = 1
+    },
+    true,
+  )
+}
+
+/** Techo de palapa: faldón de paja a cuatro aguas con flecos en el borde y la aleta alta que lo caracteriza. */
+export function ThatchRoof({ w, d, y, rise, zc, color, wood }: { w: number; d: number; y: number; rise: number; zc: number; color: string; wood: string }) {
+  const tex = useMemo(() => strawTexture(color), [color])
+  const finTex = useMemo(() => strawTexture(new THREE.Color(color).multiplyScalar(0.9).getStyle()), [color])
+  useEffect(
+    () => () => {
+      tex.dispose()
+      finTex.dispose()
+    },
+    [tex, finTex],
+  )
+  useEffect(() => {
+    tex.repeat.set(3, 1.6)
+    finTex.repeat.set(1.4, 1.4)
+  }, [tex, finTex])
+  const fin = useMemo(() => {
+    const s = new THREE.Shape()
+    s.moveTo(-1.35, 0)
+    s.lineTo(1.35, 0)
+    s.quadraticCurveTo(0.7, 1.2, 0.15, 2.3)
+    s.lineTo(-0.05, 2.35)
+    s.quadraticCurveTo(-0.55, 1.2, -1.35, 0)
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.5, bevelEnabled: false })
+    g.translate(0, 0, -0.25)
+    g.rotateY(Math.PI / 2)
+    return g
+  }, [])
+  const inner = useMemo(() => {
+    const s = new THREE.Shape()
+    s.moveTo(-1.0, 0.08)
+    s.lineTo(1.0, 0.08)
+    s.quadraticCurveTo(0.55, 1.1, 0.12, 2.1)
+    s.lineTo(-0.02, 2.12)
+    s.quadraticCurveTo(-0.4, 1.1, -1.0, 0.08)
+    const g = new THREE.ShapeGeometry(s)
+    g.rotateY(Math.PI / 2)
+    return g
+  }, [])
+  useEffect(
+    () => () => {
+      fin.dispose()
+      inner.dispose()
+    },
+    [fin, inner],
+  )
+  const hw = w / 2
+  const hd = d / 2
+  // flecos colgando del borde del techo
+  const frays: { x: number; z: number; ry: number; len: number }[] = []
+  const step = 0.42
+  for (let x = -hw; x <= hw; x += step) {
+    frays.push({ x, z: hd, ry: 0, len: 0.35 + ((x * 7) % 3) * 0.06 }, { x, z: -hd, ry: 0, len: 0.35 + ((x * 5) % 3) * 0.06 })
+  }
+  for (let z = -hd + step; z < hd; z += step) {
+    frays.push({ x: hw, z, ry: Math.PI / 2, len: 0.38 }, { x: -hw, z, ry: Math.PI / 2, len: 0.34 })
+  }
+  const strawM = useMemo(() => new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }), [tex])
+  const finM = useMemo(() => new THREE.MeshStandardMaterial({ map: finTex, roughness: 1 }), [finTex])
+  const fray = mat(new THREE.Color(color).multiplyScalar(0.8).getStyle())
+  return (
+    <group position={[0, y, zc]}>
+      {/* faldón: pirámide achatada que cubre toda la planta */}
+      <mesh position={[0, rise / 2, 0]} rotation={[0, Math.PI / 4, 0]} scale={[w / Math.SQRT2, rise, d / Math.SQRT2]} material={strawM} castShadow>
+        <coneGeometry args={[1, 1, 4]} />
+      </mesh>
+      {/* borde grueso y flecos */}
+      {[
+        [0, hd, w, 0.16],
+        [0, -hd, w, 0.16],
+      ].map(([x, z, ww, t], i) => (
+        <Bx key={i} p={[x, 0.02, z]} s={[ww, 0.3, t]} m={fray} />
+      ))}
+      {[hw, -hw].map((x) => (
+        <Bx key={x} p={[x, 0.02, 0]} s={[0.16, 0.3, d]} m={fray} />
+      ))}
+      {frays.map((f, i) => (
+        <Bx key={i} p={[f.x, -0.2 - f.len / 2 + 0.2, f.z]} s={[f.ry ? 0.05 : 0.07, f.len, f.ry ? 0.07 : 0.05]} m={fray} r={[0, f.ry, ((i % 5) - 2) * 0.04]} />
+      ))}
+      {/* aleta alta */}
+      <group position={[-hw * 0.15, rise * 0.42, hd * 0.2]} scale={1.45}>
+        <mesh geometry={fin} material={finM} castShadow />
+        <mesh geometry={inner} material={mat(wood)} position={[0.27, 0, 0]} />
+        {[0.45, 0.95, 1.5].map((h, i) => (
+          <Bx key={i} p={[0.28, h, 0]} s={[0.04, 0.05, 1.5 - h * 0.62]} m={mat(wood)} r={[0, 0, 0]} />
+        ))}
+      </group>
+    </group>
+  )
+}
+
 /** Marca del negocio: disco, placa cuadrada o (colgante) placa de dos caras que sobresale de la fachada. */
 export function LogoMark({ shape, r, tex, rim }: { shape: LogoShape; r: number; tex: THREE.Texture; rim: THREE.Material }) {
   if (shape === 'round') return <Disc r={r} tex={tex} rim={rim} />
@@ -617,6 +737,31 @@ export function TopperModel({ kind, tex, rim, accent, shape = 'round' }: { kind:
   }
 }
 
+/** Bohío abierto: postes de madera, vigas y una barra al fondo. Las mesas van dentro, bajo el techo. */
+function OpenPavilion({ W, zB, zF, H, wood, wall }: { W: number; zB: number; zF: number; H: number; wood: string; wall: string; wall2: string }) {
+  const post = mat(wood)
+  const xs = [-W / 2 + 0.3, 0, W / 2 - 0.3]
+  return (
+    <>
+      {[zF - 0.25, zB + 0.3].flatMap((z) =>
+        xs.map((x) => (
+          <mesh key={`${x}${z}`} geometry={GEO.cylinderLow} material={post} position={[x, H / 2 + 0.12, z]} scale={[0.26, H, 0.26]} castShadow />
+        )),
+      )}
+      {[zF - 0.25, zB + 0.3].map((z) => (
+        <Bx key={z} p={[0, H + 0.0, z]} s={[W, 0.22, 0.26]} m={post} cast />
+      ))}
+      {[-W / 2 + 0.3, W / 2 - 0.3].map((x) => (
+        <Bx key={x} p={[x, H + 0.0, (zF + zB) / 2 + 0.03]} s={[0.26, 0.22, zF - zB - 0.5]} m={post} />
+      ))}
+      {/* barra al fondo */}
+      <Bx p={[0, 0.65, zB + 0.62]} s={[W - 1.4, 1.05, 0.55]} m={mat(wall)} cast />
+      <Bx p={[0, 1.2, zB + 0.62]} s={[W - 1.3, 0.1, 0.65]} m={post} />
+      <Bx p={[0, 1.55, zB + 0.2]} s={[W - 1.4, 0.9, 0.08]} m={mat('#4a2f1d')} />
+    </>
+  )
+}
+
 export interface CustomStoreProps {
   store: Pick<Store, 'name' | 'logo' | 'logoText' | 'brandColor' | 'accentColor'>
   design: LocalDesign
@@ -625,13 +770,16 @@ export interface CustomStoreProps {
   depth?: number
   interactive?: boolean
   onOpen?: () => void
+  /** Solo en la vista previa: quita el techo para ver lo de adentro. */
+  cutaway?: boolean
 }
 
-export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, interactive = true, onOpen }: CustomStoreProps) {
+export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, interactive = true, onOpen, cutaway = false }: CustomStoreProps) {
   const x0 = -W / 2
   const x1 = W / 2
   const zB = -D / 2
-  const zF = D / 2 - 1.3 // fachada del edificio; delante queda la terraza
+  const open = d.windows === 'open' // sin paredes: bohío con postes
+  const zF = D / 2 - (open ? 0.5 : 1.3) // fachada del edificio; delante queda la terraza
   const zc = (zB + zF) / 2
   const H = 3.6
   const G = 2.35 // alto de las vitrinas
@@ -661,8 +809,8 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
   }, [sideTex, zF, zB])
 
   // altura de la superficie del techo, para apoyar el objeto que lo corona
-  const rise = d.roof === 'gable' ? 1.3 : d.roof === 'shed' ? 1.0 : 0
-  const roofTop = d.roof === 'gable' ? H + rise : d.roof === 'shed' ? H + rise * 0.5 : H + 0.16
+  const rise = d.roof === 'gable' ? 1.3 : d.roof === 'shed' ? 1.0 : d.roof === 'thatch' ? Math.max(2.4, W * 0.36) : 0
+  const roofTop = d.roof === 'gable' || d.roof === 'thatch' ? H + rise : d.roof === 'shed' ? H + rise * 0.5 : H + 0.16
   const pillarX = d.logoSide === 'left' ? x0 + 0.45 : d.logoSide === 'right' ? x1 - 0.45 : 0
   const topper = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
@@ -727,12 +875,13 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
       )}
 
       {/* cuerpo y base */}
-      <Bx p={[0, 0.06, (zB + D / 2) / 2]} s={[W, 0.12, D / 2 - zB]} m={mat('#d8c9a8')} />
-      <Bx p={[0, H / 2 + 0.12, zc]} s={[W, H, zF - zB]} m={wall} cast />
-      <Bx p={[0, 0.3, zF + 0.04]} s={[W + 0.08, 0.36, 0.1]} m={trim} />
+      <Bx p={[0, 0.06, (zB + D / 2) / 2]} s={[W, 0.12, D / 2 - zB]} m={mat(open ? '#7a3434' : '#d8c9a8')} />
+      {!open && <Bx p={[0, H / 2 + 0.12, zc]} s={[W, H, zF - zB]} m={wall} cast />}
+      {!open && <Bx p={[0, 0.3, zF + 0.04]} s={[W + 0.08, 0.36, 0.1]} m={trim} />}
+      {open && <OpenPavilion W={W} zB={zB} zF={zF} H={H} wood={d.trim} wall={d.wall} wall2={d.wall} />}
 
       {/* costados: liso, calado o ladrillo */}
-      {sideTex &&
+      {sideTex && !open &&
         [x0, x1].map((x) => (
           <mesh key={x} position={[x + (x > 0 ? 0.012 : -0.012), H / 2 + 0.12, zc]} rotation={[0, x > 0 ? Math.PI / 2 : -Math.PI / 2, 0]}>
             <planeGeometry args={[zF - zB, H - 0.4]} />
@@ -740,6 +889,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
           </mesh>
         ))}
 
+      <group visible={!cutaway}>
       {/* techo */}
       {d.roof === 'flat' || d.roof === 'cornice' ? (
         <>
@@ -766,21 +916,24 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
           {[1, -1].map((sgn) => (
             <Bx key={sgn} p={[0, H + 0.12 + 0.65 + 0.07, zc + sgn * (dead / 2)]} s={[W + 0.5, 0.16, Math.hypot(dead, 1.3) + 0.05]} m={roofM} r={[sgn * Math.atan2(1.3, dead), 0, 0]} cast />
           ))}
-          {[x0, x1].map((x) => (
+          {!open && [x0, x1].map((x) => (
             <mesh key={x} geometry={gableShape} material={wall} position={[x, H + 0.12, zc]} />
           ))}
         </>
-      ) : (
+      ) : d.roof === 'shed' ? (
         <>
           <Bx p={[0, H + 0.12 + 0.5 + 0.07, zc]} s={[W + 0.5, 0.16, Math.hypot(dead, 1.0) + 0.05]} m={roofM} r={[Math.atan2(1.0, dead), 0, 0]} cast />
-          {[x0, x1].map((x) => (
+          {!open && [x0, x1].map((x) => (
             <mesh key={x} geometry={shedShape} material={wall} position={[x, H + 0.12, zc]} />
           ))}
         </>
+      ) : (
+        <ThatchRoof w={W + 1.1} d={zF - zB + 1.1} y={H + 0.12} rise={rise} zc={zc} color={d.roofColor} wood={d.trim} />
       )}
+      </group>
 
       {/* vitrinas con marco */}
-      {panes.map((x, i) => (
+      {!open && panes.map((x, i) => (
         <group key={i} position={[x, 0, zF + 0.03]}>
           <Bx p={[0, 0.12 + 0.45 + (G - 0.45) / 2, 0]} s={[paneW + 0.16, G - 0.45 + 0.16, 0.06]} m={frame} />
           <Bx p={[0, 0.12 + 0.45 + (G - 0.45) / 2, 0.035]} s={[paneW, G - 0.45, 0.04]} m={glass} />
@@ -872,7 +1025,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
       )}
 
       {/* objeto sobre el techo */}
-      {d.topper !== 'none' && (
+      {d.topper !== 'none' && !cutaway && (
         <group position={[d.logoSide === 'none' ? 0 : -pillarX * 0.9, roofTop + (d.sign === 'board' ? 0 : 0), zc - 0.2]} scale={1}>
           <group ref={topper} scale={1.5}>
             <TopperModel kind={d.topper} tex={logoTex} rim={trim} accent={d.awningColor} shape={d.logoShape} />
@@ -882,12 +1035,40 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
 
       {/* terraza: tarima, mesas y maceteros */}
       <Bx p={[0, 0.07, (zF + D / 2) / 2]} s={[W, 0.1, D / 2 - zF]} m={mat('#b98a5c')} />
-      {Array.from({ length: d.tables }, (_, i) => {
-        const span = d.tables === 1 ? 0 : d.tables === 2 ? 2.8 : 3.6
-        const x = d.tables === 1 ? 0 : -span / 2 + (span / (d.tables - 1)) * i
-        return <Table key={i} x={x} z={zF + 0.95} top={mat('#f2e6cd')} chair={mat(d.awningColor)} />
-      })}
-      {d.planters && (
+      {open
+        ? Array.from({ length: d.tables }, (_, i) => {
+            // adentro del bohío: dos filas de mesas bajo el techo
+            const perRow = Math.ceil(d.tables / 2)
+            const row = i < perRow ? 0 : 1
+            const k = row === 0 ? i : i - perRow
+            const n = row === 0 ? perRow : d.tables - perRow
+            const span = Math.min(W - 2.2, n * 1.9)
+            const x = n === 1 ? 0 : -span / 2 + (span / (n - 1)) * k
+            return <Table key={i} x={x} z={row === 0 ? zc - 0.5 : zc + 1.0} top={mat('#c79a68')} chair={mat('#7a4a2a')} />
+          })
+        : Array.from({ length: Math.min(d.tables, 3) }, (_, i) => {
+            const t = Math.min(d.tables, 3)
+            const span = t === 1 ? 0 : t === 2 ? 2.8 : 3.6
+            const x = t === 1 ? 0 : -span / 2 + (span / (t - 1)) * i
+            return <Table key={i} x={x} z={zF + 0.95} top={mat('#f2e6cd')} chair={mat(d.awningColor)} />
+          })}
+      {d.planters && open && (
+        <>
+          {[x0 + 0.5, x1 - 0.5, 0].map((x, i) => (
+            <group key={i} position={[x, 0.12, zF - 0.1]}>
+              <mesh position={[0, 0.4, 0]} castShadow>
+                <cylinderGeometry args={[0.34, 0.24, 0.8, 6]} />
+                <meshStandardMaterial color="#e9e6e0" roughness={0.8} />
+              </mesh>
+              {Array.from({ length: 6 }, (_, k) => {
+                const a = (k / 6) * Math.PI * 2
+                return <Bx key={k} p={[Math.cos(a) * 0.3, 1.0, Math.sin(a) * 0.3]} s={[0.1, 0.8, 0.28]} m={mat(k % 2 ? '#3f9a4e' : '#58b04a')} r={[Math.sin(a) * 0.5, -a, -Math.cos(a) * 0.5]} />
+              })}
+            </group>
+          ))}
+        </>
+      )}
+      {d.planters && !open && (
         <>
           <Bx p={[0, 0.25, D / 2 - 0.1]} s={[W - 0.3, 0.3, 0.3]} m={trim} />
           {Array.from({ length: bushes }, (_, i) => (
@@ -895,7 +1076,18 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
           ))}
         </>
       )}
-      {d.lights && (
+      {d.lights && open && (
+        <>
+          {[-W / 3, 0, W / 3].map((x) => (
+            <group key={x} position={[x, H - 0.1, zc]}>
+              <mesh geometry={GEO.cylinderLow} material={frame} position={[0, -0.25, 0]} scale={[0.02, 0.5, 0.02]} />
+              <mesh geometry={GEO.sphere} material={glowMat('#ffd9a0', 2.4, { dayGlow: 0.25 })} position={[0, -0.6, 0]} scale={[0.5, 0.6, 0.5]} />
+            </group>
+          ))}
+          <mesh geometry={GEO.plane} material={lightPoolMat('#ffc97a', 0.9)} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.16, zc]} scale={[W + 1, D, 1]} />
+        </>
+      )}
+      {d.lights && !open && (
         <>
           {[x0 + 0.1, x1 - 0.1].map((px) => (
             <group key={px} position={[px, 0.12, D / 2 - 0.12]}>
