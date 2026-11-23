@@ -35,7 +35,7 @@ export function CustomKiosk({ store, design: d, interactive = true, onOpen }: Om
 
   const umbrella = d.roof === 'cornice'
   const CY = 2.5 // altura del techo
-  const thatch = d.roof === 'thatch'
+  const thatch = d.roof === 'thatch' || d.roof === 'thatchfin'
   const topY = CY + (d.roof === 'gable' ? 0.95 : thatch ? 1.25 : umbrella ? 0.7 : 0.15)
   const items = ['#d9432f', '#ffd23f', '#58b04a']
 

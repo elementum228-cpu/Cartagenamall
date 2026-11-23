@@ -58,7 +58,8 @@ export const ROOFS: Option<RoofKind>[] = [
   { id: 'gable', label: 'Dos aguas' },
   { id: 'shed', label: 'Inclinado' },
   { id: 'cornice', label: 'Con cornisa' },
-  { id: 'thatch', label: 'Palapa (paja)' },
+  { id: 'thatch', label: 'Bohío (paja)' },
+  { id: 'thatchfin', label: 'Palapa con aleta' },
 ]
 export const WINDOWS: Option<WindowKind>[] = [
   { id: 'wide', label: 'Vitrina amplia' },

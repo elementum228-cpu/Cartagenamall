@@ -80,7 +80,7 @@ export type StoreStatus = 'open' | 'paused'
 export type FacadeStyle = 'awning' | 'arch' | 'minimal'
 
 /** Local armado a medida desde la administración («Arma tu local»). Sin esto, el local usa su fachada de siempre. */
-export type RoofKind = 'flat' | 'gable' | 'shed' | 'cornice' | 'thatch'
+export type RoofKind = 'flat' | 'gable' | 'shed' | 'cornice' | 'thatch' | 'thatchfin'
 export type WindowKind = 'wide' | 'panes' | 'arched' | 'open'
 export type AwningKind = 'none' | 'striped' | 'scalloped' | 'flat'
 export type SideKind = 'plain' | 'lattice' | 'brick'

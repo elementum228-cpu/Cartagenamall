@@ -113,28 +113,40 @@ export function sideTexture(kind: 'lattice' | 'brick', wall: string, trim: strin
 
 // ── piezas ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Paja: fondo del color elegido con hebras verticales más claras y más oscuras (siempre iguales para el mismo color). */
+/** Paja: hileras finas (como las capas de un techo de palma) con fibras verticales claras y oscuras. Siempre igual para el mismo color. */
 export function strawTexture(base: string) {
   const c = new THREE.Color(base)
-  const dark = c.clone().multiplyScalar(0.62).getStyle()
-  const light = c.clone().lerp(new THREE.Color('#fff2cf'), 0.35).getStyle()
+  const dark = c.clone().multiplyScalar(0.6).getStyle()
+  const mid = c.clone().multiplyScalar(0.82).getStyle()
+  const light = c.clone().lerp(new THREE.Color('#fff2cf'), 0.4).getStyle()
   return canvasTex(
-    128,
-    128,
+    256,
+    256,
     (g) => {
       g.fillStyle = c.getStyle()
-      g.fillRect(0, 0, 128, 128)
-      let seed = 7
+      g.fillRect(0, 0, 256, 256)
+      let seed = 11
       const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
-      for (let i = 0; i < 150; i++) {
+      // hileras: cada capa de paja se solapa con la de arriba
+      for (let y = 0; y < 256; y += 16) {
+        g.fillStyle = mid
+        g.globalAlpha = 0.55
+        g.fillRect(0, y, 256, 3)
+        g.fillStyle = light
+        g.globalAlpha = 0.25
+        g.fillRect(0, y + 3, 256, 2)
+      }
+      g.globalAlpha = 1
+      // fibras
+      for (let i = 0; i < 700; i++) {
         g.strokeStyle = rnd() > 0.5 ? dark : light
-        g.globalAlpha = 0.35 + rnd() * 0.4
-        g.lineWidth = 1 + rnd() * 1.6
-        const x = rnd() * 128
-        const y = rnd() * 128
+        g.globalAlpha = 0.2 + rnd() * 0.35
+        g.lineWidth = 0.8 + rnd() * 1.3
+        const x = rnd() * 256
+        const y = rnd() * 256
         g.beginPath()
         g.moveTo(x, y)
-        g.lineTo(x + (rnd() - 0.5) * 6, y + 14 + rnd() * 26)
+        g.lineTo(x + (rnd() - 0.5) * 3, y + 6 + rnd() * 14)
         g.stroke()
       }
       g.globalAlpha = 1
@@ -143,22 +155,104 @@ export function strawTexture(base: string) {
   )
 }
 
-/** Techo de palapa: faldón de paja a cuatro aguas con flecos en el borde y la aleta alta que lo caracteriza. */
-export function ThatchRoof({ w, d, y, rise, zc, color, wood }: { w: number; d: number; y: number; rise: number; zc: number; color: string; wood: string }) {
+/** Flecos de paja: tiras verticales de distinto largo sobre fondo transparente. */
+function fringeTexture(base: string) {
+  const c = new THREE.Color(base)
+  const dark = c.clone().multiplyScalar(0.62).getStyle()
+  const light = c.clone().lerp(new THREE.Color('#fff2cf'), 0.25).getStyle()
+  return canvasTex(
+    256,
+    64,
+    (g) => {
+      g.clearRect(0, 0, 256, 64)
+      let seed = 5
+      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+      for (let i = 0; i < 220; i++) {
+        const x = (i / 220) * 256 + rnd() * 2
+        const len = 34 + rnd() * 28
+        g.strokeStyle = rnd() > 0.45 ? c.getStyle() : rnd() > 0.5 ? dark : light
+        g.lineWidth = 1.3 + rnd() * 1.2
+        g.beginPath()
+        g.moveTo(x, 0)
+        g.lineTo(x + (rnd() - 0.5) * 2, len)
+        g.stroke()
+      }
+    },
+    true,
+  )
+}
+
+/** Altura del techo de paja según el ancho del local: siempre alto y empinado, como un bohío. */
+export const thatchRise = (w: number) => Math.max(2.8, (w + 1.1) * 0.42)
+
+/** Faldón a cuatro aguas con cumbrera corta: dos trapecios largos y dos triángulos en los extremos. */
+function hipGeometry(w: number, d: number, rise: number) {
+  const hw = w / 2
+  const hd = d / 2
+  const alongX = hw >= hd
+  const rl = Math.max(0.35, alongX ? hw - hd : hd - hw)
+  const T = (ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, uv: number[]) => ({ p: [ax, ay, az, bx, by, bz, cx, cy, cz], uv })
+  const tris: { p: number[]; uv: number[] }[] = []
+  const quad = (a: number[], b: number[], c: number[], e: number[], len: number, h: number) => {
+    // a,b: base; c,e: cumbrera (c sobre b, e sobre a)
+    tris.push(T(...(a as [number, number, number]), ...(b as [number, number, number]), ...(c as [number, number, number]), [0, 0, len, 0, len * 0.85, h]))
+    tris.push(T(...(a as [number, number, number]), ...(c as [number, number, number]), ...(e as [number, number, number]), [0, 0, len * 0.85, h, len * 0.15, h]))
+  }
+  const slope = Math.hypot(rise, alongX ? hd : hw)
+  if (alongX) {
+    quad([-hw, 0, hd], [hw, 0, hd], [rl, rise, 0], [-rl, rise, 0], w, slope) // frente
+    quad([hw, 0, -hd], [-hw, 0, -hd], [-rl, rise, 0], [rl, rise, 0], w, slope) // fondo
+    tris.push(T(hw, 0, hd, hw, 0, -hd, rl, rise, 0, [0, 0, d, 0, d / 2, slope]))
+    tris.push(T(-hw, 0, -hd, -hw, 0, hd, -rl, rise, 0, [0, 0, d, 0, d / 2, slope]))
+  } else {
+    quad([hw, 0, hd], [hw, 0, -hd], [0, rise, -rl], [0, rise, rl], d, slope)
+    quad([-hw, 0, -hd], [-hw, 0, hd], [0, rise, rl], [0, rise, -rl], d, slope)
+    tris.push(T(-hw, 0, hd, hw, 0, hd, 0, rise, rl, [0, 0, w, 0, w / 2, slope]))
+    tris.push(T(hw, 0, -hd, -hw, 0, -hd, 0, rise, -rl, [0, 0, w, 0, w / 2, slope]))
+  }
+  const pos: number[] = []
+  const uvs: number[] = []
+  for (const t of tris) {
+    pos.push(...t.p)
+    uvs.push(...t.uv)
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  g.computeVertexNormals()
+  return { geo: g, rl, alongX }
+}
+
+/**
+ * Techo de bohío: pirámide alta de paja (a cuatro aguas) con cumbrera de tronco oscuro y una cortina de flecos en todo el borde.
+ * Con `fin`, además lleva la aleta alta de las palapas del Caribe.
+ */
+export function ThatchRoof({ w, d, y, rise, zc, color, wood, fin = false }: { w: number; d: number; y: number; rise: number; zc: number; color: string; wood: string; fin?: boolean }) {
   const tex = useMemo(() => strawTexture(color), [color])
-  const finTex = useMemo(() => strawTexture(new THREE.Color(color).multiplyScalar(0.9).getStyle()), [color])
+  const fr = useMemo(() => fringeTexture(color), [color])
+  const hip = useMemo(() => hipGeometry(w, d, rise), [w, d, rise])
   useEffect(
     () => () => {
       tex.dispose()
-      finTex.dispose()
+      fr.dispose()
+      hip.geo.dispose()
     },
-    [tex, finTex],
+    [tex, fr, hip],
   )
   useEffect(() => {
-    tex.repeat.set(3, 1.6)
-    finTex.repeat.set(1.4, 1.4)
-  }, [tex, finTex])
-  const fin = useMemo(() => {
+    tex.repeat.set(w / 3.2, 0.5)
+    fr.repeat.set(w / 2.4, 1)
+  }, [tex, fr, w])
+  const strawM = useMemo(() => new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }), [tex])
+  const fringeM = useMemo(() => new THREE.MeshStandardMaterial({ map: fr, roughness: 1, alphaTest: 0.5, side: THREE.DoubleSide }), [fr])
+  const hw = w / 2
+  const hd = d / 2
+  const drop = 0.85
+  // cortina de flecos siguiendo la inclinación del faldón
+  const tiltX = Math.atan2(rise, hd) * 0.0
+  void tiltX
+  const finGeo = useMemo(() => {
+    if (!fin) return null
     const s = new THREE.Shape()
     s.moveTo(-1.35, 0)
     s.lineTo(1.35, 0)
@@ -169,66 +263,34 @@ export function ThatchRoof({ w, d, y, rise, zc, color, wood }: { w: number; d: n
     g.translate(0, 0, -0.25)
     g.rotateY(Math.PI / 2)
     return g
-  }, [])
-  const inner = useMemo(() => {
-    const s = new THREE.Shape()
-    s.moveTo(-1.0, 0.08)
-    s.lineTo(1.0, 0.08)
-    s.quadraticCurveTo(0.55, 1.1, 0.12, 2.1)
-    s.lineTo(-0.02, 2.12)
-    s.quadraticCurveTo(-0.4, 1.1, -1.0, 0.08)
-    const g = new THREE.ShapeGeometry(s)
-    g.rotateY(Math.PI / 2)
-    return g
-  }, [])
-  useEffect(
-    () => () => {
-      fin.dispose()
-      inner.dispose()
-    },
-    [fin, inner],
-  )
-  const hw = w / 2
-  const hd = d / 2
-  // flecos colgando del borde del techo
-  const frays: { x: number; z: number; ry: number; len: number }[] = []
-  const step = 0.42
-  for (let x = -hw; x <= hw; x += step) {
-    frays.push({ x, z: hd, ry: 0, len: 0.35 + ((x * 7) % 3) * 0.06 }, { x, z: -hd, ry: 0, len: 0.35 + ((x * 5) % 3) * 0.06 })
-  }
-  for (let z = -hd + step; z < hd; z += step) {
-    frays.push({ x: hw, z, ry: Math.PI / 2, len: 0.38 }, { x: -hw, z, ry: Math.PI / 2, len: 0.34 })
-  }
-  const strawM = useMemo(() => new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }), [tex])
-  const finM = useMemo(() => new THREE.MeshStandardMaterial({ map: finTex, roughness: 1 }), [finTex])
-  const fray = mat(new THREE.Color(color).multiplyScalar(0.8).getStyle())
+  }, [fin])
+  useEffect(() => () => finGeo?.dispose(), [finGeo])
+  const ridgeLen = hip.rl * 2 + 0.5
   return (
     <group position={[0, y, zc]}>
-      {/* faldón: pirámide achatada que cubre toda la planta */}
-      <mesh position={[0, rise / 2, 0]} rotation={[0, Math.PI / 4, 0]} scale={[w / Math.SQRT2, rise, d / Math.SQRT2]} material={strawM} castShadow>
-        <coneGeometry args={[1, 1, 4]} />
+      <mesh geometry={hip.geo} material={strawM} castShadow />
+      {/* cumbrera: tronco oscuro */}
+      <mesh position={[0, rise + 0.06, 0]} rotation={hip.alongX ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.2, 0.2, ridgeLen, 8]} />
+        <meshStandardMaterial color="#3a2415" roughness={0.9} />
       </mesh>
-      {/* borde grueso y flecos */}
+      {/* flecos en los cuatro lados */}
       {[
-        [0, hd, w, 0.16],
-        [0, -hd, w, 0.16],
-      ].map(([x, z, ww, t], i) => (
-        <Bx key={i} p={[x, 0.02, z]} s={[ww, 0.3, t]} m={fray} />
+        { p: [0, -drop / 2 + 0.04, hd] as V3, r: 0, ww: w },
+        { p: [0, -drop / 2 + 0.04, -hd] as V3, r: Math.PI, ww: w },
+        { p: [hw, -drop / 2 + 0.04, 0] as V3, r: Math.PI / 2, ww: d },
+        { p: [-hw, -drop / 2 + 0.04, 0] as V3, r: -Math.PI / 2, ww: d },
+      ].map((f, i) => (
+        <mesh key={i} position={f.p} rotation={[0, f.r, 0]} material={fringeM}>
+          <planeGeometry args={[f.ww, drop]} />
+        </mesh>
       ))}
-      {[hw, -hw].map((x) => (
-        <Bx key={x} p={[x, 0.02, 0]} s={[0.16, 0.3, d]} m={fray} />
-      ))}
-      {frays.map((f, i) => (
-        <Bx key={i} p={[f.x, -0.2 - f.len / 2 + 0.2, f.z]} s={[f.ry ? 0.05 : 0.07, f.len, f.ry ? 0.07 : 0.05]} m={fray} r={[0, f.ry, ((i % 5) - 2) * 0.04]} />
-      ))}
-      {/* aleta alta */}
-      <group position={[-hw * 0.15, rise * 0.42, hd * 0.2]} scale={1.45}>
-        <mesh geometry={fin} material={finM} castShadow />
-        <mesh geometry={inner} material={mat(wood)} position={[0.27, 0, 0]} />
-        {[0.45, 0.95, 1.5].map((h, i) => (
-          <Bx key={i} p={[0.28, h, 0]} s={[0.04, 0.05, 1.5 - h * 0.62]} m={mat(wood)} r={[0, 0, 0]} />
-        ))}
-      </group>
+      {fin && finGeo && (
+        <group position={[-hw * 0.15, rise * 0.4, hd * 0.2]} scale={1.45}>
+          <mesh geometry={finGeo} material={strawM} castShadow />
+          <Bx p={[0.27, 1.0, 0]} s={[0.03, 1.9, 0.9]} m={mat(wood)} />
+        </group>
+      )}
     </group>
   )
 }
@@ -745,7 +807,11 @@ function OpenPavilion({ W, zB, zF, H, wood, wall }: { W: number; zB: number; zF:
     <>
       {[zF - 0.25, zB + 0.3].flatMap((z) =>
         xs.map((x) => (
-          <mesh key={`${x}${z}`} geometry={GEO.cylinderLow} material={post} position={[x, H / 2 + 0.12, z]} scale={[0.26, H, 0.26]} castShadow />
+          <group key={`${x}${z}`}>
+            <mesh geometry={GEO.cylinderLow} material={post} position={[x, H / 2 + 0.12, z]} scale={[0.26, H, 0.26]} castShadow />
+            <Bx p={[x, 0.22, z]} s={[0.5, 0.2, 0.5]} m={mat('#a8a8a2')} />
+            <mesh geometry={GEO.cylinderLow} material={mat('#efe6d2')} position={[x, 0.5, z]} scale={[0.33, 0.2, 0.33]} />
+          </group>
         )),
       )}
       {[zF - 0.25, zB + 0.3].map((z) => (
@@ -809,8 +875,9 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
   }, [sideTex, zF, zB])
 
   // altura de la superficie del techo, para apoyar el objeto que lo corona
-  const rise = d.roof === 'gable' ? 1.3 : d.roof === 'shed' ? 1.0 : d.roof === 'thatch' ? Math.max(2.4, W * 0.36) : 0
-  const roofTop = d.roof === 'gable' || d.roof === 'thatch' ? H + rise : d.roof === 'shed' ? H + rise * 0.5 : H + 0.16
+  const isThatch = d.roof === 'thatch' || d.roof === 'thatchfin'
+  const rise = d.roof === 'gable' ? 1.3 : d.roof === 'shed' ? 1.0 : isThatch ? thatchRise(W) : 0
+  const roofTop = d.roof === 'gable' || isThatch ? H + rise : d.roof === 'shed' ? H + rise * 0.5 : H + 0.16
   const pillarX = d.logoSide === 'left' ? x0 + 0.45 : d.logoSide === 'right' ? x1 - 0.45 : 0
   const topper = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
@@ -928,7 +995,7 @@ export function CustomStore({ store, design: d, width: W = 6, depth: D = 5, inte
           ))}
         </>
       ) : (
-        <ThatchRoof w={W + 1.1} d={zF - zB + 1.1} y={H + 0.12} rise={rise} zc={zc} color={d.roofColor} wood={d.trim} />
+        <ThatchRoof w={W + 1.1} d={zF - zB + 1.1} y={H + 0.12} rise={rise} zc={zc} color={d.roofColor} wood={d.trim} fin={d.roof === 'thatchfin'} />
       )}
       </group>
 
