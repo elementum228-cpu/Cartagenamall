@@ -1,9 +1,10 @@
-import { AlertTriangle, Check, FileText, Loader2, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, Check, FileText, Loader2, Sparkles, Trash2, Upload, X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import type { Product, Store } from '../domain/types'
 import { uniqueId } from '../lib/ids'
 import { stockKey } from '../lib/inventory'
 import { iconFor, parseMenuText, type ItemFlag, type ParsedMenu } from '../lib/menuParser'
+import { MenuAiError, prepareImage, readMenuWithAi } from '../lib/menuAi'
 import { formatCOP } from '../lib/format'
 import { newCategoryId, storeCategories } from '../lib/storeCategories'
 import { remoteEnabled } from '../remote/client'
@@ -45,6 +46,10 @@ export function MenuImport({ store, onClose }: { store: Store; onClose: () => vo
   const [pasted, setPasted] = useState('')
   const [secs, setSecs] = useState<Sec[]>([])
   const [skipDup, setSkipDup] = useState(true)
+  /** De dónde salió el menú: para poder volver a leerlo con IA. */
+  const [source, setSource] = useState<{ pdf?: File; images?: File[] } | null>(null)
+  const [byAi, setByAi] = useState(false)
+  const [busyMsg, setBusyMsg] = useState('Leyendo el PDF…')
   const existing = useMemo(() => new Set(products.filter((p) => p.storeId === store.id).map((p) => norm(p.name))), [products, store.id])
 
   const load = (menu: ParsedMenu) => {
@@ -63,19 +68,50 @@ export function MenuImport({ store, onClose }: { store: Store; onClose: () => vo
     setPhase('review')
   }
 
-  const onFile = async (f: File | undefined) => {
-    if (!f) return
+  /** Lee con IA: las imágenes subidas o las páginas del PDF dibujadas como imágenes. */
+  const readWithAi = async (src: { pdf?: File; images?: File[] }) => {
     setError('')
-    if (f.size > 15 * 1024 * 1024) return setError('El PDF pesa más de 15 MB. Prueba con uno más liviano.')
+    setBusyMsg('Leyendo con IA… puede tardar hasta un minuto')
+    setPhase('reading')
+    try {
+      let blobs: Blob[] = src.images ?? []
+      if (src.pdf) {
+        const { pdfToImages } = await import('../lib/pdfText')
+        blobs = await pdfToImages(src.pdf)
+      }
+      const images = await Promise.all(blobs.map((b) => prepareImage(b)))
+      const menu = await readMenuWithAi(images, store.id)
+      setByAi(true)
+      load(menu)
+    } catch (e) {
+      setError(e instanceof MenuAiError ? e.message : 'No pude leer el menú con IA. Intenta con una foto más clara.')
+      setPhase(secs.length ? 'review' : 'pick')
+    }
+  }
+
+  const onFiles = async (list: FileList | null) => {
+    const files = Array.from(list ?? [])
+    if (!files.length) return
+    setError('')
+    setByAi(false)
+    const images = files.filter((f) => f.type.startsWith('image/'))
+    const pdf = files.find((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name))
+    if (images.length && !pdf) {
+      if (images.length > 6) return setError('Sube hasta 6 imágenes a la vez.')
+      setSource({ images })
+      return void readWithAi({ images })
+    }
+    const f = pdf
+    if (!f) return setError('Sube un PDF o una imagen (JPG, PNG o WebP).')
+    if (f.size > 25 * 1024 * 1024) return setError('El PDF pesa más de 25 MB. Prueba con uno más liviano.')
+    setSource({ pdf: f })
+    setBusyMsg('Leyendo el PDF…')
     setPhase('reading')
     try {
       const { pdfToLines } = await import('../lib/pdfText')
       const read = await pdfToLines(f)
-      if (read.scanned) {
-        setError('Este PDF es una imagen (escaneado o foto) y no tiene texto que pueda leer. Si tienes el menú en Word o en un PDF descargado de la web, sirve; o pega el texto a mano aquí abajo.')
-        setPhase('pick')
-        return
-      }
+      // un PDF que es una foto no tiene texto: se lee con IA
+      if (read.scanned) return void readWithAi({ pdf: f })
       load(parseMenuText(read.lines))
     } catch (e) {
       console.error('[menú] no se pudo leer el PDF', e)
@@ -152,14 +188,14 @@ export function MenuImport({ store, onClose }: { store: Store; onClose: () => vo
         {phase !== 'review' && (
           <div className="space-y-4">
             <div className="rounded-3xl border border-line bg-card p-5 text-center">
-              <p className="text-lg font-extrabold">Sube el menú en PDF</p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">Leo los platos, sus precios y las categorías, y te los muestro para que los revises antes de crearlos.</p>
-              <input ref={file} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
+              <p className="text-lg font-extrabold">Sube el menú: PDF o foto</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">Leo los platos, sus precios y las categorías, y te los muestro para que los revises antes de crearlos. Si es una foto o un menú con mucho diseño, lo leo con IA.</p>
+              <input ref={file} type="file" accept="application/pdf,.pdf,image/*" multiple className="hidden" onChange={(e) => void onFiles(e.target.files)} />
               <button className={`${btn.primary} mt-4 w-full max-w-xs`} disabled={phase === 'reading'} onClick={() => file.current?.click()}>
                 {phase === 'reading' ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                {phase === 'reading' ? 'Leyendo el PDF…' : 'Elegir el PDF'}
+                {phase === 'reading' ? busyMsg : 'Elegir PDF o fotos'}
               </button>
-              <p className="mt-3 text-[11px] text-ink-soft">Funciona con PDFs que tienen texto (los que se exportan de Word, Canva o la web). Un PDF que es solo una foto no se puede leer.</p>
+              <p className="mt-3 text-[11px] text-ink-soft">Puedes subir hasta 6 fotos del mismo menú (por ejemplo, las dos caras). Un PDF con texto se lee al instante; una foto o un PDF escaneado se lee con IA.</p>
             </div>
             {error && (
               <p className="flex items-start gap-2 rounded-2xl bg-amber-100 p-3 text-sm font-semibold text-amber-900" role="alert">
@@ -182,7 +218,15 @@ export function MenuImport({ store, onClose }: { store: Store; onClose: () => vo
               <p className="font-extrabold">
                 Encontré {secs.reduce((n, s) => n + s.rows.length, 0)} platos en {secs.length} {secs.length === 1 ? 'categoría' : 'categorías'}
               </p>
-              <p className="text-xs text-ink-soft">Corrige lo que haga falta: nombre, precio o descripción. Desmarca lo que no quieras crear.</p>
+              <p className="text-xs text-ink-soft">
+                {byAi ? 'Leído con IA: revisa los precios antes de crear. ' : ''}Corrige lo que haga falta: nombre, precio o descripción. Desmarca lo que no quieras crear.
+              </p>
+              {!byAi && source && remoteEnabled() && (
+                <button className={`${btn.secondary} mt-2 !py-2 text-xs`} onClick={() => void readWithAi(source)}>
+                  <Sparkles className="size-4" /> ¿Faltan platos o hay errores? Leer de nuevo con IA
+                </button>
+              )}
+              {error && <p className="mt-2 text-xs font-semibold text-amber-800">{error}</p>}
               {dupCount > 0 && (
                 <label className="mt-2 flex items-center gap-2 text-xs font-semibold">
                   <input type="checkbox" className="size-4 accent-brand" checked={skipDup} onChange={(e) => setSkipDup(e.target.checked)} />

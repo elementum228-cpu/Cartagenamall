@@ -81,3 +81,27 @@ export async function pdfToLines(file: File | ArrayBuffer): Promise<PdfRead> {
   await task.destroy().catch(() => undefined)
   return { lines, pages, scanned: lines.join('').replace(/\s/g, '').length < 20 }
 }
+
+/** Dibuja las primeras páginas del PDF como imágenes (JPEG), para leerlas con IA cuando el PDF es una foto o tiene un diseño difícil. */
+export async function pdfToImages(file: File | ArrayBuffer, maxPages = 4): Promise<Blob[]> {
+  const pdfjs = await import('pdfjs-dist')
+  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
+  const data = file instanceof ArrayBuffer ? file : await file.arrayBuffer()
+  const task = pdfjs.getDocument({ data })
+  const doc = await task.promise
+  const out: Blob[] = []
+  for (let p = 1; p <= Math.min(doc.numPages, maxPages); p++) {
+    const page = await doc.getPage(p)
+    const base = page.getViewport({ scale: 1 })
+    const viewport = page.getViewport({ scale: Math.min(3, 1800 / Math.max(base.width, base.height)) })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(viewport.width)
+    canvas.height = Math.round(viewport.height)
+    await page.render({ canvas, viewport }).promise
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.88))
+    if (blob) out.push(blob)
+    page.cleanup()
+  }
+  await task.destroy().catch(() => undefined)
+  return out
+}
