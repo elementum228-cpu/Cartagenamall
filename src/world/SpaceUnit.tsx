@@ -92,8 +92,8 @@ export const SpaceUnit = memo(function SpaceUnit({ space, store, products, zoneC
 
   const [w, d] = space.size
   const accent = store?.brandColor ?? zoneColor
-  const highlightMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false }), [accent])
-  const haloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#13b9ad', transparent: true, opacity: 0, depthWrite: false, toneMapped: false }), [])
+  const highlightMat = useMemo(() => new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), [accent])
+  const haloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#13b9ad', transparent: true, opacity: 0, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), [])
   const select = () => onSelect(space.id)
   const night = useIsNight()
   const price = useSpacePrice(space.id)
@@ -286,8 +286,8 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
 
   return (
     <group>
-      {/* interior: piso y panel del fondo se iluminan de noche */}
-      <mesh geometry={GEO.box} material={lit ? glowMat(store.accentColor, 0.6) : mat(shade(store.accentColor, -0.3))} position={[0, 0.05, 0]} scale={[w - 0.1, 0.1, d - 0.1]} receiveShadow />
+      {/* interior: el panel del fondo se ilumina de noche. Los locales ya no tienen piso propio: se ve el piso del mall (el piso de color
+          se pegaba con el del pasillo y se veía dentado, sobre todo en el borde de la fachada) */}
       <mesh geometry={GEO.box} material={lit ? glowMat(shade(store.accentColor, -0.06), 0.75) : mat(shade(store.accentColor, -0.4))} position={[0, H / 2, -d / 2 + T + 0.02]} scale={[w - 2 * T, H - 0.1, 0.03]} />
       {lit && <mesh geometry={GEO.plane} material={INTERIOR()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.12, 0]} scale={[w * 1.25, d * 1.35, 1]} />}
       {lit && <mesh geometry={GEO.box} material={INTERIOR_LIGHT()} position={[0, H / 2, 0.05]} scale={[w - 0.5, H - 0.25, d - 0.5]} />}
@@ -362,11 +362,10 @@ function ShopFront({ store, products, w, d, premium, detail, rotation }: { store
           </group>
         )
       })}
-      {/* cartel de abierto en el vidrio y tapete de entrada */}
+      {/* cartel de abierto en el vidrio */}
       <mesh geometry={GEO.plane} position={[-(w / 2 - T - glassW / 2), 0.75, front + 0.04]} scale={[0.22 * open.aspect, 0.22, 1]}>
         <meshBasicMaterial map={open.texture} transparent toneMapped={false} />
       </mesh>
-      <mesh geometry={GEO.box} material={mat(shade(store.brandColor, -0.15))} position={[0, 0.11, d / 2 + 0.35]} scale={[doorW * 0.7, 0.02, 0.6]} />
       {/* halo de luz frente a la tienda (solo de noche) */}
       {lit && <mesh geometry={GEO.plane} material={POOL()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, d / 2 + 1.1]} scale={[w + 2.5, 3.2, 1]} />}
 

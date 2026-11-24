@@ -66,6 +66,10 @@ export function lightPoolMat(color = '#ffcf8a', strength = 0.8, dayOpacity = 0) 
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       toneMapped: false,
+      // calcomanía sobre el piso: se dibuja siempre encima, sin parpadeos ni bordes dentados
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     })
     glows.push({ material: m, strength, base: dayOpacity })
     poolCache.set(key, m)
