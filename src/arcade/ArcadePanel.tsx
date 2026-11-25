@@ -29,6 +29,7 @@ type Phase = 'menu' | 'play' | 'pause' | 'over'
 export function ArcadePanel() {
   const open = useArcadeUi((s) => s.open)
   const game = useArcadeUi((s) => s.game)
+  const playing = useArcadeUi((s) => s.playing)
   const close = useCallback(() => useArcadeUi.getState().setOpen(false), [])
   useEffect(() => {
     if (!open) return
@@ -43,7 +44,7 @@ export function ArcadePanel() {
   }, [open, close])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center arcade-soft-bg p-2" role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
+    <div className={`fixed inset-0 z-[70] flex items-center justify-center arcade-soft-bg py-2 ${playing ? 'px-2' : 'px-[14px]'}`} role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
       <Cabinet onClose={close} />
     </div>
   )
