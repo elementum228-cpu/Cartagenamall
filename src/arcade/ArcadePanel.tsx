@@ -37,9 +37,18 @@ export function ArcadePanel() {
     window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    // Fondo de la página y color de barra del sistema iguales al del Arcade: en iPhone no puede asomar ninguna franja de otro color.
+    const root = document.documentElement
+    const prevBg = root.style.background
+    root.style.background = '#f6dcd6'
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+    const prevTheme = meta?.content
+    if (meta) meta.content = '#c9cbf4'
     return () => {
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
+      root.style.background = prevBg
+      if (meta && prevTheme !== undefined) meta.content = prevTheme
     }
   }, [open, close])
   if (!open) return null

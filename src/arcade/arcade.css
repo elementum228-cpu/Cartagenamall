@@ -22,7 +22,7 @@
   content: '';
   position: absolute;
   inset: 100% 0 auto 0;
-  height: 160px;
+  height: 400px;
   background: #f6dcd6;
   pointer-events: none;
 }
