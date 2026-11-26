@@ -66,7 +66,17 @@ export function setupInstall() {
     const register = () =>
       navigator.serviceWorker
         .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
-        .then(() => {
+        .then((reg) => {
+          // Al volver a la app se busca una versión nueva; si hay, se recarga cuando la app queda en segundo plano (sin cortar nada).
+          const hadController = !!navigator.serviceWorker.controller
+          let updated = false
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (hadController) updated = true
+          })
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') void reg.update().catch(() => {})
+            else if (updated) location.reload()
+          })
           setTimeout(share, 4000)
           setTimeout(share, 25000) // lo que se bajó en reposo después (paneles, arcade)
         })

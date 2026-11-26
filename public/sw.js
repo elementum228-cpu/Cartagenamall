@@ -4,7 +4,7 @@
 // Otros archivos del sitio (íconos, manifiesto): copia guardada y se refresca por detrás.
 // Nada de Supabase ni otros servicios se guarda aquí.
 // Sin conexión la app abre completa (la página avisa qué archivos ya bajó: mensaje «precache») y el Arcade se puede jugar.
-const CACHE = 'cm-v5'
+const CACHE = 'cm-v6'
 const SCOPE = new URL(self.registration.scope)
 const SHELL = new URL('./', SCOPE).href
 
@@ -62,7 +62,7 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate' && sameSite(url)) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' }) // siempre pregunta al servidor si hay versión nueva (no usa la copia de 10 min del navegador)
         .then((res) => {
           const copy = res.clone()
           if (res.ok) caches.open(CACHE).then((c) => c.put(SHELL, copy))
