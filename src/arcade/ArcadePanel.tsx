@@ -44,7 +44,7 @@ export function ArcadePanel() {
   }, [open, close])
   if (!open) return null
   return (
-    <div className={`fixed inset-0 z-[70] flex items-center justify-center arcade-soft-bg py-2 ${playing ? 'px-2' : 'px-[14px]'}`} role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
+    <div className={`fixed inset-0 z-[70] flex items-center justify-center arcade-soft-bg py-2 ${playing ? 'px-2' : 'px-4'}`} role="dialog" aria-modal="true" aria-label={`Arcade: ${GAME_NAME[game]}`}>
       <Cabinet onClose={close} />
     </div>
   )

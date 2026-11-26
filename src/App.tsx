@@ -395,6 +395,8 @@ function TopBar() {
   );
   return (
     // sin cápsula: el logo y cada botón flotan sueltos sobre el mapa, con aire entre ellos
+    <>
+    {!onMap && <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[29] h-[calc(max(10px,env(safe-area-inset-top))+58px)] bg-gradient-to-b from-sand from-70% to-transparent md:h-[calc(max(12px,env(safe-area-inset-top))+72px)]" />}
     <header className="tour-hide chrome-in-top pointer-events-none fixed inset-x-3 top-[max(10px,env(safe-area-inset-top))] z-30 flex h-[46px] items-center gap-2 md:inset-x-5 md:top-[max(12px,env(safe-area-inset-top))] md:h-[60px] *:pointer-events-auto">
       <Link
         to="/"
@@ -504,6 +506,7 @@ function TopBar() {
         </Link>
       </div>
     </header>
+    </>
   );
 }
 
