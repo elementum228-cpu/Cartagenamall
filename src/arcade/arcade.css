@@ -17,6 +17,15 @@
 .arcade-soft-bg {
   background: linear-gradient(180deg, #c9cbf4 0%, #e3d2f0 55%, #f6dcd6 100%);
 }
+/* En iPhone (app instalada) el borde inferior del celular queda fuera de la ventana: el fondo sigue hacia abajo para que no asome la franja del mapa. */
+.arcade-soft-bg::after {
+  content: '';
+  position: absolute;
+  inset: 100% 0 auto 0;
+  height: 160px;
+  background: #f6dcd6;
+  pointer-events: none;
+}
 .arcade-soft {
   background: linear-gradient(180deg, #cfd0f4 0%, #e9d3ee 55%, #f5dcd6 100%);
   border: 1px solid rgb(255 255 255 / 0.7);
